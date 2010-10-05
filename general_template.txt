@@ -1,0 +1,64 @@
+<center><font size="4">'''%title%'''</font></center>
+
+
+=General Information=
+
+<div style="float: left;">'''Initiator''': [mailto:%initiator%@mindcti.com %initiator%]</div>
+<div style="float: right;">'''Tester''' : [mailto:%tester%@mindcti.com %tester%]
+</div>
+
+
+
+%customer%
+
+%customer_bug%
+
+{| class="wikitable"
+| '''Type'''
+| %type%
+|-
+| '''Category'''
+| %category%
+|-
+| '''Project'''
+| %project%
+|-
+| '''Product'''
+| %product%
+|-
+| '''Full status'''
+| %full_status%
+|-
+| '''Status'''
+| %status%
+|}
+
+{| class="wikitable"
+! Fix version
+! Version
+! Build version
+! Prod version
+|-
+| [[:Category:%fix_version%|%fix_version%]]
+| %version%
+| %build_version%
+| %prod_version%
+|}
+
+'''Parent ID''': [[%parent_id%]]
+
+'''Related tasks''':
+
+{| class="wikitable"
+%related_tasks%
+|}
+
+{| class="wikitable"
+! Modules
+! Modules list affected
+|-
+| %modules%
+| %modules_list%
+|}
+
+%fix_description%
