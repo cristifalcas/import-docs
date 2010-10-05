@@ -2,7 +2,6 @@
 #LD_LIBRARY_PATH=./instantclient_11_2/ perl ./oracle.pl
 use warnings;
 use strict;
-# $ENV{LD_LIBRARY_PATH} = './instantclient_11_2/';
 
 use lib "./our_perl_lib/lib";
 use DBI;
