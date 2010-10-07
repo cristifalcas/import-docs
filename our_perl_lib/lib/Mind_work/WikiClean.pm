@@ -163,6 +163,7 @@ sub html_tidy {
 sub cleanup_html {
     my ($html, $file_name) = @_;
     my ($name,$dir,$suffix) = fileparse($file_name, qr/\.[^.]*/);
+
     print "\t-Fix html file $name.html.\t". (WikiCommons::get_time_diff) ."\n";
     $html =~ s/&nbsp;/ /gs;
     $html = html_clean_tables_in_menu($html);
@@ -189,6 +190,37 @@ sub make_wiki_from_html {
     open (FILEHANDLE, "$html_file") or die "at wiki from html Can't open file $html_file: ".$!."\n";
     my $html = do { local $/; <FILEHANDLE> };
     close (FILEHANDLE);
+# use XML::Twig;
+#
+# my $string = <<"HTML";
+# <?xml version="1.0"?>
+# <html>
+# <font color="#008080"><span style="background: #ffffff"></span></font>
+# <font color="#008080">    s</font>
+# <font></font>
+# </html>
+# HTML
+#
+# use XML::Twig;
+# my $twig = XML::Twig->new(
+#     pretty_print => 'nice',
+#     twig_handlers => {
+#         span => \&delete_empty,
+#         font => \&delete_empty,
+#         },
+#     );
+# $twig->parse( $string );
+#
+# $twig->print;
+#
+# sub delete_empty {
+#     my( $twig, $element ) = @_;
+#
+#     $element->delete unless $element->text =~ /\S/;
+#     }
+#
+#
+
 
     $html = cleanup_html($html, $html_file);
 
@@ -196,7 +228,7 @@ sub make_wiki_from_html {
     my $strip_tags = [ '~comment', 'head', 'script', 'style', 'strike'];
     my $wc = new HTML::WikiConverter(
 	dialect => 'MediaWiki_Mind',
-	strip_tags => $strip_tags
+	strip_tags => $strip_tags,
     );
     my $wiki = $wc->html2wiki($html);
     WikiCommons::write_file("$dir/original.$name.wiki", $wiki, 1);
@@ -240,7 +272,7 @@ WikiCommons::write_file("$dir/fix_wiki_menus.$name.txt", $wiki, 1);
     $wiki = fix_tabs( $wiki );
 WikiCommons::write_file("$dir/fix_tabs.$name.txt", $wiki, 1);
 
-    $wiki =~ s/^:+\s*$//gm;
+    $wiki =~ s/^[:\s]*$//gm;
     ## remove consecutive blank lines
     $wiki =~ s/(\n){4,}/\n\n/gs;
     ## more new lines for menus and tables
@@ -260,7 +292,7 @@ sub fix_tabs {
     my $wiki = shift;
     my $newwiki = $wiki;
     my $count = 0;
-    while ($wiki =~ m/\n([ \t]+)(.*?)\n/gs ) {
+    while ($wiki =~ m/^([ \t]+)(.*?)$/g ) {
 	my $found_string = $&;
 	my $str = $2;
 	my $found_string_end_pos = pos($wiki);
@@ -268,7 +300,7 @@ sub fix_tabs {
 	next if ! defined $str;
 	$spaces =~ s/ //g;
 	$spaces =~ s/\t/:/g;
-	my $new = "\n$spaces$str\n";
+	my $new = "$spaces$str";
 	substr($newwiki, $found_string_end_pos - length($found_string) + $count, length($found_string)) = "$new";
 	$count += length($new) - length($found_string);
     }
@@ -281,21 +313,22 @@ sub fix_small_issues {
     $wiki =~ s/(((<font([^>]*)>)|(<span(.*?)>))+?)([ \t]+)/$7$1/gi;
     $wiki =~ s/(((<font([^>]*)>)|(<span(.*?)>))+?)([ \t]+)/$7$1/gi;
 
-    $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
-    $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
-    $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
-    $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
-    $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
-    $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
+#     $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
+#     $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
+#     $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
+#     $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
+#     $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
+#     $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
 
-    $wiki =~ s/<font>(.*?)<\/font>/$1/gi;
-    $wiki =~ s/<span>(.*?)<\/span>/$1/gi;
+#     $wiki =~ s/<font>(.*?)<\/font>/$1/gi;
+#     $wiki =~ s/<span>(.*?)<\/span>/$1/gi;
 
     ## replace breaks
     $wiki =~ s/(<BR>)|(<br\ \/>)/\n\n/gmi;
     ## remove table of content
     $wiki =~ s/\'\'\'Content\'\'\'[\s]*<div id="Table of Contents.*?>.*?<\/div>//gsi;
     $wiki =~ s/(<u>)?(\'\'\'Table of Content[s]?\'\'\')?(<\/u>)?[\s]*<div id="Table of Contents.*?>.*?<\/div>//gsi;
+#     $wiki =~ s/\'\'\'Content\'\'\'[\s]*<div id="Table of Contents.*?>.*?<\/div>//gsi;
     ## remove empty sub
     $wiki =~ s/<sub>[\s]{0,}<\/sub>//gsi;
     ## remove empty div
@@ -327,9 +360,9 @@ sub fix_wiki_chars {
 ## old
     ## get ascii hex values from http://www.mikezilla.com/exp0012.html  is ascii %EF%192%17E which is utf \x{e2}\x{87}\x{92}
     # numbers ??
-    $wiki =~ s/\x{B2}/2/gs;
-    $wiki =~ s/\x{B0}/0/gs;
-    $wiki =~ s/\x{B5}/5/gs;
+#     $wiki =~ s/\x{B2}/2/gs;
+#     $wiki =~ s/\x{B0}/0/gs;
+#     $wiki =~ s/\x{B5}/5/gs;
     # copyright
     $wiki =~ s/\x{EF}\x{192}\x{A3}/\x{C2}\x{A9}/gs;
     $wiki =~ s/\x{EF}\x{192}\x{201C}/\x{C2}\x{A9}/gs;
@@ -345,11 +378,14 @@ sub fix_wiki_chars {
     $wiki =~ s/\x{E2}\x{20AC}\x{201C}/\x{E2}\x{80}\x{93}/gs;
     ## puiu
     $wiki =~ s//\x{e2}\x{97}\x{bb}/gs;
-    ## arrow
-    $wiki =~ s/\x{EF}\x{192}\x{A8}/\x{e2}\x{9e}\x{94}/gs;
-    $wiki =~ s/\x{E2}\x{2020}\x{2019}/\x{e2}\x{9e}\x{94}/gs;
-    $wiki =~ s/\x{EF}\x{192}\x{A0}/\x{e2}\x{9e}\x{94}/gs;
-    $wiki =~ s//\x{e2}\x{9e}\x{94}/gs;
+    ## RIGHTWARDS arrow
+    $wiki =~ s/\x{EF}\x{192}\x{A8}/\x{e2}\x{86}\x{92}/gs;
+    $wiki =~ s/\x{E2}\x{2020}\x{2019}/\x{e2}\x{86}\x{92}/gs;
+    $wiki =~ s/\x{EF}\x{192}\x{A0}/\x{e2}\x{86}\x{92}/gs;
+    $wiki =~ s//\x{e2}\x{86}\x{92}/gs;
+    ## LEFTWARDS arrow
+    $wiki =~ s/\x{EF}\x{192}\x{178}/\x{e2}\x{86}\x{90}/gs;
+    $wiki =~ s//\x{e2}\x{86}\x{90}/gs;
     ## double arrow:
     $wiki =~ s/\x{EF}\x{192}\x{17E}/\x{e2}\x{87}\x{92}/gs;
     ## 3 points
@@ -388,7 +424,7 @@ sub fix_wiki_menus {
     print "\tClean up menus.\t". (WikiCommons::get_time_diff) ."\n";
     my $newwiki = $wiki;
     my $count = 0;
-    while ($wiki =~ m/\n([ \t]*=+[ \t]*)(.*?)([ \t]*=+[ \t]*)\n/g ) {
+    while ($wiki =~ m/\n[ \t]*(=+)[ \t]*(.*?)[ \t]*(=+)[ \t]*\n/g ) {
 	my $found_string = $&;
 	my $found_string_end_pos = pos($wiki);
 
@@ -555,8 +591,8 @@ sub fix_wiki_link_to_sc {
 
 	next if ($found_string =~ /^\[\[Image:/);
 	print "\tSC link: $found_string\n";
-	substr($newwiki, $found_string_end_pos - length($found_string)+$count, length($found_string)) = "[[$found_string]]";
-	$count += 4;
+	substr($newwiki, $found_string_end_pos - length($found_string)+$count, length($found_string)) = " [[$found_string]] ";
+	$count += 6;
     }
     $wiki = $newwiki;
     return $wiki;
@@ -585,6 +621,10 @@ sub wiki_fix_lists {
 	my @data = extract_tagged( $wiki, $type[0], $type[1]);
 # 	pos($wiki) = $found_string_end_pos + length($data[0]);
 	my $txt = $data[0];
+if (! $txt){
+    die "nothing for $type[0]\n";
+next;
+}
 	$txt =~ s/\n+/<br>/mg;
 	my @data_li = extract_multiple( $txt, [ $extractor_li]);
 	my $new_text = "";

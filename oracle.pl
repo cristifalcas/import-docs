@@ -17,6 +17,7 @@ use Cwd 'abs_path','chdir';
 use XML::Simple;
 use File::Find::Rule;
 use Data::Compare;
+use Mind_work::WikiCommons;
 
 die "We need the temp path and the destination path.\n" if ( $#ARGV != 1 );
 our ($tmp_path, $to_path) = @ARGV;
@@ -32,6 +33,7 @@ our $svn_user = 'svncheckout';
 our $files_info = "files_info.txt";
 our $general_template_file = "./general_template.txt";
 our $time = time();
+my $url_sep = WikiCommons::get_urlsep;
 
 our $dbh;
 our $request;
@@ -115,22 +117,23 @@ sub general_info {
     my $general = <FH>;
     close(FH);
     my @categories = ();
-#     $general =~ s/%title%/@$info[$index->{'changeid'}] : @$info[$index->{'title'}]/;
     $general =~ s/%title%/@$info[$index->{'title'}]/;
     my $tmp = join ' ', @$initiator;
     $general =~ s/%initiator%/$tmp/g;
     $tmp = join ' ', @$tester;
     $general =~ s/%tester%/$tmp/g;
     $tmp = @$info[$index->{'customer'}];
-    if ($tmp ne ' ' || $tmp ne '') {
-	$general =~ s/%customer%//;
-    } else {
+    if ($tmp !~ m/^\s*$/) {
 	$general =~ s/%customer%/\'\'\'Customer\'\'\': \[\[:Category:$tmp\|$tmp\]\]/;
 	push @categories, $tmp;
+    } else {
+	$general =~ s/%customer%//;
     }
 
-    if (@$info[$index->{'customer_bug'}] ne 'N' && @$info[$index->{'customer_bug'}] ne 'Y') {
-	$general =~ s/%customer_bug%/\'\'\'Customer bug\'\'\' (CRM ID): @$info[$index->{'customer_bug'}] - @$info[$index->{'crmid'}]/;
+    if (@$info[$index->{'customer_bug'}] eq 'Y') {
+	$tmp = @$info[$index->{'crmid'}];
+	$tmp =~ s/\//$url_sep/;
+	$general =~ s/%customer_bug%/\'\'\'Customer bug\'\'\' (CRM ID): [[$tmp]]/;
     } else {
 	$general =~ s/%customer_bug%//;
     }
@@ -140,7 +143,8 @@ sub general_info {
     $general =~ s/%product%/@$info[$index->{'productname'}]/;
     $general =~ s/%full_status%/@$info[$index->{'fullstatus'}]/;
     $general =~ s/%status%/@$info[$index->{'status'}]/;
-    $general =~ s/%fix_version%/@$info[$index->{'fixversion'}]/g;
+    $tmp = @$info[$index->{'fixversion'}];
+    $general =~ s/%fix_version%/[[:Category:$tmp|$tmp]]/g if $tmp && $tmp ne '';;
     push @categories, @$info[$index->{'fixversion'}];
     $general =~ s/%version%/@$info[$index->{'version'}]/;
     $general =~ s/%build_version%/@$info[$index->{'buildversion'}]/;
@@ -642,7 +646,7 @@ my ($index, $SEL_INFO) = sql_generate_select_changeinfo();
 my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id ne "B71488";
+#     next if $change_id ne "B600044";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -701,8 +705,10 @@ foreach my $change_id (sort keys %$crt_hash){
     makedir("$work_dir");
     if (defined $todo->{'SC_info'}) {
  	print "\tUpdate SC info.\n";
-	print "\tChanged CRC: $crt_info->{'SC_info'}->{'size'} from $prev_info->{'SC_info'}->{'size'}.\n" if ( defined $prev_info->{'SC_info'}->{'size'} || $crt_info->{'SC_info'}->{'size'} ne $prev_info->{'SC_info'}->{'size'});
-	print "\tChanged status: $crt_info->{'SC_info'}->{'revision'} from $prev_info->{'SC_info'}->{'revision'}.\n" if ( defined $prev_info->{'SC_info'}->{'revision'} ||$crt_info->{'SC_info'}->{'revision'} ne $prev_info->{'SC_info'}->{'revision'});
+	my $prev = $prev_info->{'SC_info'}->{'size'} || 'NULL';
+	print "\tChanged CRC: $crt_info->{'SC_info'}->{'size'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'size'} || $crt_info->{'SC_info'}->{'size'} ne $prev);
+	$prev = $prev_info->{'SC_info'}->{'revision'} || 'NULL';
+	print "\tChanged status: $crt_info->{'SC_info'}->{'revision'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'revision'} || $crt_info->{'SC_info'}->{'revision'} ne $prev);
 	my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
 	my $modules = sql_get_modules( split ',', @$info_ret[$index->{'modules'}] ) if defined @$info_ret[$index->{'modules'}];
 	my $tester = sql_get_workers_names( split ',', @$info_ret[$index->{'tester'}] ) if defined @$info_ret[$index->{'tester'}];

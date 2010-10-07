@@ -39,7 +39,7 @@
 ! Build version
 ! Prod version
 |-
-| [[:Category:%fix_version%|%fix_version%]]
+| %fix_version%
 | %version%
 | %build_version%
 | %prod_version%

@@ -50,12 +50,13 @@ sub wiki_delete_page {
     || die "Could not delete url $title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
   }
 
-  if ($extra_files_path ne "" ) {
-    print "\t-Delete previous files from wiki.\t". (WikiCommons::get_time_diff) ."\n";
-    my @cmd_output = `php "$wiki_site_path/maintenance/deleteBatch.php" --conf "$wiki_site_path/LocalSettings.php" "$extra_files_path"`;
-#     print "@cmd_output\n";
-    print "\t+Delete previous files from wiki.\t". (WikiCommons::get_time_diff) ."\n";
-  }
+    ## remove due to too many overwrites
+#   if ($extra_files_path ne "" ) {
+#     print "\t-Delete previous files from wiki.\t". (WikiCommons::get_time_diff) ."\n";
+#     my @cmd_output = `php "$wiki_site_path/maintenance/deleteBatch.php" --conf "$wiki_site_path/LocalSettings.php" "$extra_files_path"`;
+# #     print "@cmd_output\n";
+#     print "\t+Delete previous files from wiki.\t". (WikiCommons::get_time_diff) ."\n";
+#   }
 
   $mw->login( {lgname => $wiki_user, lgpassword => $wiki_pass } )
     || die "Could not login with user $wiki_user: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";

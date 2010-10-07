@@ -189,7 +189,7 @@ sub attributes { {
 
   # see bug #28402
 # xxx  passthrough_naked_tags => { default => [ qw/ tbody thead font / ] },
-  passthrough_naked_tags => { default => [ qw/ tbody thead font span / ] },
+  passthrough_naked_tags => { default => [ qw/ tbody thead span div font / ] },
 } }
 
 sub _hr_start {
@@ -222,8 +222,8 @@ sub _li_start {
     my $bullet = '';
     $bullet = '*' if $parent->tag eq 'ul';
     $bullet = '#' if $parent->tag eq 'ol';
-    $bullet = ':' if $parent->tag eq 'dl';
-    $bullet = ';' if $parent->tag eq 'dl' and $node->tag eq 'dt';
+#     $bullet = ':' if $parent->tag eq 'dl';
+#     $bullet = ';' if $parent->tag eq 'dl' and $node->tag eq 'dt';
     $prefix = $bullet.$prefix;
   }
 
