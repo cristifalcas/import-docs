@@ -4,10 +4,10 @@
 =General Information=
 
 <div style="float: left;">'''Initiator''': [mailto:%initiator%@mindcti.com %initiator%]</div>
-<div style="float: right;">'''Tester''' : [mailto:%tester%@mindcti.com %tester%]
+<div style="float: right;">'''Tester''' : %tester%
 </div>
 
-
+%dealer%
 
 %customer%
 

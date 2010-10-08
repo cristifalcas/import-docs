@@ -27,6 +27,7 @@ makedir ("$tmp_path");
 makedir ("$to_path");
 $tmp_path = abs_path("$tmp_path");
 $to_path = abs_path("$to_path");
+my $svn_updates = "no";
 
 our $svn_pass = 'svncheckout';
 our $svn_user = 'svncheckout';
@@ -111,7 +112,7 @@ sub array_diff {
 }
 
 sub general_info {
-    my ($info, $index, $modules, $tester, $initiator) = @_;
+    my ($info, $index, $modules, $tester, $initiator, $dealer) = @_;
     local( $/, *FH ) ;
     open(FH, "$general_template_file") or die "Can't open file for read: $!.\n";
     my $general = <FH>;
@@ -120,7 +121,13 @@ sub general_info {
     $general =~ s/%title%/@$info[$index->{'title'}]/;
     my $tmp = join ' ', @$initiator;
     $general =~ s/%initiator%/$tmp/g;
-    $tmp = join ' ', @$tester;
+    $tmp = join ' ', @$dealer;
+    $general =~ s/\'\'\'Dealer\'\'\': %dealer%/$tmp/g;
+    $tmp = "";
+    foreach (@$tester) {
+	s/\ /_/g;
+	$tmp .= "[mailto:$_\@mindcti.com $_]\n";
+    }
     $general =~ s/%tester%/$tmp/g;
     $tmp = @$info[$index->{'customer'}];
     $tmp = WikiCommons::capitalize_string( $tmp );
@@ -153,15 +160,15 @@ sub general_info {
     $general =~ s/%version%/@$info[$index->{'version'}]/;
     $general =~ s/%build_version%/@$info[$index->{'buildversion'}]/;
     $general =~ s/%prod_version%/@$info[$index->{'prodversion'}]/;
-    $general =~ s/%parent_id%/@$info[$index->{'parent_change_id'}]/;
+    $general =~ s/%parent_id%/SC:@$info[$index->{'parent_change_id'}]\|@$info[$index->{'parent_change_id'}]/;
     my $related_tasks = "";
     my @related = split ',', @$info[$index->{'relatedtasks'}];
     for (my $i=0;$i<@related;$i++){
 	next if ($related[$i] eq @$info[$index->{'changeid'}] || $related[$i] eq '' || $related[$i] eq ' ');
 	if ($i%6 != 0){
-	    $related_tasks .= "| '''[[$related[$i]]]'''\n";
+	    $related_tasks .= "| '''[[SC:$related[$i]|$related[$i]]]'''\n";
 	} else {
-	    $related_tasks .= "|-\n| '''[[$related[$i]]]'''\n";
+	    $related_tasks .= "|-\n| '''[[SC:$related[$i]|$related[$i]]]'''\n";
 	}
     }
     if ($related_tasks ne ' ' && $related_tasks ne ''){
@@ -307,6 +314,7 @@ sub sql_generate_select_changeinfo {
 	'Messages_SC'		=> 'nvl(a.messages,\' \')',
 	'initiator'		=> 'a.initiator',
 	'tester'		=> 'nvl(a.testincharge,-1)',
+	'dealer'		=> 'nvl(a.dealer,-1)',
 	};
 
     my %index;
@@ -367,6 +375,22 @@ sub sql_get_workers_names {
 	push @workers, @row;
     }
     return \@workers;
+}
+
+sub sql_get_dealer_names {
+    my @ids = shift;
+    chomp @ids;
+    $_ = '\''.$_.'\'' foreach (@ids);
+    my $tmp = join ',', @ids;
+
+    my $SEL_MODULES = "select name from scdealer where id in ( $tmp )";
+    my $sth = $dbh->prepare($SEL_MODULES);
+    $sth->execute();
+    my @dealers = ();
+    while ( my @row=$sth->fetchrow_array() ) {
+	push @dealers, @row;
+    }
+    return \@dealers;
 }
 
 sub sql_get_all_changes {
@@ -635,7 +659,6 @@ sql_connect('10.0.0.103', 'SCROM', 'scview', 'scview');
 my ($index_comm, $info_comm) = sql_get_common_info();
 write_common_info ($index_comm, $info_comm);
 my $crt_hash = sql_get_all_changes();
-my $svn_updates = "yes";
 ## remove not needed directories
 opendir(DIR, "$to_path") || die "Cannot open directory $to_path: $!.\n";
 my @dirs = grep { (!/^\.\.?$/) && -d "$to_path/$_"} readdir(DIR);
@@ -651,7 +674,7 @@ my ($index, $SEL_INFO) = sql_generate_select_changeinfo();
 my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id lt "B19623";
+#     next if $change_id ne "B099303";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -739,7 +762,8 @@ foreach my $change_id (sort keys %$crt_hash){
 	my $modules = sql_get_modules( split ',', @$info_ret[$index->{'modules'}] ) if defined @$info_ret[$index->{'modules'}];
 	my $tester = sql_get_workers_names( split ',', @$info_ret[$index->{'tester'}] ) if defined @$info_ret[$index->{'tester'}];
 	my $initiator = sql_get_workers_names( split ',', @$info_ret[$index->{'initiator'}] );
-	my $txt = general_info($info_ret, $index, $modules, $tester, $initiator);
+	my $dealer = sql_get_dealer_names( split ',', @$info_ret[$index->{'dealer'}] );
+	my $txt = general_info($info_ret, $index, $modules, $tester, $initiator, $dealer);
 	foreach my $key (sort keys %$missing_documents) {
 	    $txt .= "\nMissing \'\'\'$key\'\'\' from [$missing_documents->{$key} this] svn adrress, but database says it should exist.";
 	}
