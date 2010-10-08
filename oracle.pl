@@ -124,7 +124,7 @@ sub general_info {
     $general =~ s/%tester%/$tmp/g;
     $tmp = @$info[$index->{'customer'}];
     $tmp = WikiCommons::capitalize_string( $tmp );
-    if ($tmp !~ m/^\s*$/) {
+    if ($tmp !~ m/^\s*$/ && $tmp ne "All") {
 	$general =~ s/%customer%/\'\'\'Customer\'\'\': \[\[:Category:$tmp\|$tmp\]\]/;
 	push @categories, $tmp;
     } else {
@@ -134,6 +134,7 @@ sub general_info {
     if (@$info[$index->{'customer_bug'}] eq 'Y') {
 	$tmp = @$info[$index->{'crmid'}];
 	$tmp =~ s/\s+/ /g;
+	$tmp =~ s/(^\s+)|(\s+$)//g;
 	$tmp = WikiCommons::capitalize_string( $tmp );
 	$tmp =~ s/\//$url_sep/;
 	$general =~ s/%customer_bug%/\'\'\'Customer bug\'\'\' (CRM ID): [[$tmp]]/;
@@ -559,7 +560,8 @@ sub http_svn_get {
 	print $response->decoded_content;
     }
     else {
-	print Dumper($response->status_line) ."\tfor file $url_path\n" if $response->status_line ne "404 Not Found"
+	die Dumper($response->status_line) ."\tfor file $url_path\n" if $response->status_line ne "404 Not Found";
+	return;
     }
     print "\t+Get from svn url $url_path.\n";
     return "$local_path/$name$suffix";
@@ -649,7 +651,7 @@ my ($index, $SEL_INFO) = sql_generate_select_changeinfo();
 my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id ne "B600044";
+#     next if $change_id lt "B19623";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -676,6 +678,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	}
     }
 
+    my $missing_documents = {};
     my $arr = $crt_hash->{$change_id};
     $crt_info->{'SC_info'}->{'name'} = @$arr[0];
     $crt_info->{'SC_info'}->{'size'} = @$arr[1];
@@ -683,29 +686,49 @@ foreach my $change_id (sort keys %$crt_hash){
     my $todo = {};
     $todo->{'SC_info'} = $change_id if ! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'});
     next if Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) && $svn_updates eq "no";
-
     foreach my $key (sort keys %$svn_docs) {
 	next if (! exists $svn_docs->{$key});
-	my $res = svn_info("@$info_comm[$index_comm->{$key}]/$svn_docs->{$key}");
-	my ($doc_rev, $doc_size);
-	if (defined $res) {
-	    $doc_rev = $res->{'list'}->{'entry'}->{'commit'}->{'revision'};
-	    $doc_size = $res->{'list'}->{'entry'}->{'size'};
+	if (! defined $prev_info->{'SC_info'}){
+	    $todo->{$key} = "$svn_docs->{$key}";
+	} else {
+	    my $res = svn_info("@$info_comm[$index_comm->{$key}]/$svn_docs->{$key}");
+	    my ($doc_rev, $doc_size);
+	    if (defined $res) {
+		$doc_rev = $res->{'list'}->{'entry'}->{'commit'}->{'revision'};
+		$doc_size = $res->{'list'}->{'entry'}->{'size'};
+	    }
+	    delete $prev_info->{$key} if (!(-e "$to_path/$change_id/$key.doc" && -s "$to_path/$change_id/$key.doc" == $doc_size));
+	    $crt_info->{$key}->{'name'} = $svn_docs->{$key};
+	    $crt_info->{$key}->{'size'} = $doc_size;
+	    $crt_info->{$key}->{'revision'} = $doc_rev;
+	    if (! defined $doc_rev && ! defined $doc_size) {
+		print "\tSC $change_id says we have document for $key, but we don't have anything on svn.\n";
+		my $svn_dir = @$info_comm[$index_comm->{$key}];
+		$missing_documents->{$key} = "$svn_dir/$svn_docs->{$key}";
+		next;
+	    }
+	    $todo->{$key} = "$svn_docs->{$key}" if (! Compare($crt_info->{$key}, $prev_info->{$key}) );
 	}
-	delete $prev_info->{$key} if (!(-e "$to_path/$change_id/$key.doc" && -s "$to_path/$change_id/$key.doc" == $doc_size));
-	$crt_info->{$key}->{'name'} = $svn_docs->{$key};
-	$crt_info->{$key}->{'size'} = $doc_size;
-	$crt_info->{$key}->{'revision'} = $doc_rev;
-	if (! defined $doc_rev && ! defined $doc_size) {
-	    print "\tSC $change_id says we have document for $key, but we don't have anything on svn.\n";
-	    next;
-	}
-	$todo->{$key} = "$svn_docs->{$key}" if (! Compare($crt_info->{$key}, $prev_info->{$key}) );
     }
 
     next if Compare($crt_info, $prev_info);
 
     makedir("$work_dir");
+    foreach my $key (keys %$svn_docs) {
+	if ( exists $todo->{$key}) {
+	    print "\tUpdate svn http for $key.\n";
+	    my $svn_dir = @$info_comm[$index_comm->{$key}];
+	    $request = HTTP::Request->new(GET => "$svn_dir");
+	    $request->authorization_basic("$svn_user", "$svn_pass");
+	    my $file = http_svn_get("$svn_dir/$svn_docs->{$key}", "$work_dir");
+	    if (! defined $file){
+		$missing_documents->{$key} = "$svn_dir/$svn_docs->{$key}";
+	    } else {
+		move("$file", "$work_dir/$key.doc") || die "can't move file $file to $work_dir/$key.doc: $!.\n";
+	    }
+	}
+    }
+
     if (defined $todo->{'SC_info'}) {
  	print "\tUpdate SC info.\n";
 	my $prev = $prev_info->{'SC_info'}->{'size'} || 'NULL';
@@ -717,6 +740,9 @@ foreach my $change_id (sort keys %$crt_hash){
 	my $tester = sql_get_workers_names( split ',', @$info_ret[$index->{'tester'}] ) if defined @$info_ret[$index->{'tester'}];
 	my $initiator = sql_get_workers_names( split ',', @$info_ret[$index->{'initiator'}] );
 	my $txt = general_info($info_ret, $index, $modules, $tester, $initiator);
+	foreach my $key (sort keys %$missing_documents) {
+	    $txt .= "\nMissing \'\'\'$key\'\'\' from [$missing_documents->{$key} this] svn adrress, but database says it should exist.";
+	}
 
 	write_file ("$work_dir/General_info.wiki" ,$txt);
 	write_rtf ("$work_dir/1 Market_SC.rtf", @$info_ret[$index->{'Market_SC'}]);
@@ -724,17 +750,6 @@ foreach my $change_id (sort keys %$crt_hash){
 	write_rtf ("$work_dir/3 HLD.rtf", @$info_ret[$index->{'HLD_SC'}]);
 	write_rtf ("$work_dir/4 Messages_SC.rtf", @$info_ret[$index->{'Messages_SC'}]);
 	write_rtf ("$work_dir/5 Architecture_SC.rtf", @$info_ret[$index->{'Architecture_SC'}]);
-    }
-
-    foreach my $key (keys %$svn_docs) {
-	if ( exists $todo->{$key}) {
-	    print "\tUpdate svn http for $key.\n";
-	    my $svn_dir = @$info_comm[$index_comm->{$key}];
-	    $request = HTTP::Request->new(GET => "$svn_dir");
-	    $request->authorization_basic("$svn_user", "$svn_pass");
-	    my $file = http_svn_get("$svn_dir/$svn_docs->{$key}", "$work_dir");
-	    move("$file", "$work_dir/$key.doc");
-	}
     }
 
     write_control_file($crt_info, $work_dir);
