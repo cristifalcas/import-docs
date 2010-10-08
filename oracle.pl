@@ -123,6 +123,7 @@ sub general_info {
     $tmp = join ' ', @$tester;
     $general =~ s/%tester%/$tmp/g;
     $tmp = @$info[$index->{'customer'}];
+    $tmp = WikiCommons::capitalize_string( $tmp );
     if ($tmp !~ m/^\s*$/) {
 	$general =~ s/%customer%/\'\'\'Customer\'\'\': \[\[:Category:$tmp\|$tmp\]\]/;
 	push @categories, $tmp;
@@ -132,6 +133,8 @@ sub general_info {
 
     if (@$info[$index->{'customer_bug'}] eq 'Y') {
 	$tmp = @$info[$index->{'crmid'}];
+	$tmp =~ s/\s+/ /g;
+	$tmp = WikiCommons::capitalize_string( $tmp );
 	$tmp =~ s/\//$url_sep/;
 	$general =~ s/%customer_bug%/\'\'\'Customer bug\'\'\' (CRM ID): [[$tmp]]/;
     } else {
@@ -646,7 +649,7 @@ my ($index, $SEL_INFO) = sql_generate_select_changeinfo();
 my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id ne "B600044";
+    next if $change_id ne "B600044";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488

@@ -170,14 +170,20 @@ sub get_file_md5 {
     return $doc_md5;
 }
 
+sub capitalize_string {
+    my $str = shift;
+    $str =~ s/([\w']+)/\u\L$1/g;
+    return $str;
+}
+
 sub fix_name {
     my ($fixed_name, $customer, $main, $ver) = @_;
-    $fixed_name = WikiCommons::normalize_text($fixed_name);
+    $fixed_name = normalize_text($fixed_name);
 
     $fixed_name =~ s/^User Guide|User Guide$//i;
     $fixed_name =~ s/^User Manual|User Manual$//i;
 
-    $customer =~ s/([\w']+)/\u\L$1/g;
+    $customer = capitalize_string($customer);
     $fixed_name =~ s/^\s?$customer[-_ \t]//i;
     $fixed_name =~ s/[-_ \t]$customer\s*$//i;
 
@@ -205,7 +211,7 @@ sub fix_name {
     $fixed_name =~ s/^\s*-\s+//;
     $fixed_name =~ s/\s+/ /g;
     ## capitalize
-    $fixed_name =~ s/\b(\w)/\U$1/g;
+    $fixed_name =~ capitalize_string($fixed_name);
     $fixed_name =~ s/^\budr\b/UDR/i;
 
     ## Specific updates
