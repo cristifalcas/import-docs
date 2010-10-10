@@ -27,7 +27,6 @@ makedir ("$tmp_path");
 makedir ("$to_path");
 $tmp_path = abs_path("$tmp_path");
 $to_path = abs_path("$to_path");
-my $svn_updates = "no";
 
 our $svn_pass = 'svncheckout';
 our $svn_user = 'svncheckout';
@@ -708,30 +707,26 @@ foreach my $change_id (sort keys %$crt_hash){
     $crt_info->{'SC_info'}->{'revision'} = @$arr[2];
     my $todo = {};
     $todo->{'SC_info'} = $change_id if ! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'});
-    next if Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) && $svn_updates eq "no";
+    next if Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'});
     foreach my $key (sort keys %$svn_docs) {
 	next if (! exists $svn_docs->{$key});
-	if (! defined $prev_info->{'SC_info'}){
-	    $todo->{$key} = "$svn_docs->{$key}";
-	} else {
-	    my $res = svn_info("@$info_comm[$index_comm->{$key}]/$svn_docs->{$key}");
-	    my ($doc_rev, $doc_size);
-	    if (defined $res) {
-		$doc_rev = $res->{'list'}->{'entry'}->{'commit'}->{'revision'};
-		$doc_size = $res->{'list'}->{'entry'}->{'size'};
-	    }
-	    delete $prev_info->{$key} if (!(-e "$to_path/$change_id/$key.doc" && -s "$to_path/$change_id/$key.doc" == $doc_size));
-	    $crt_info->{$key}->{'name'} = $svn_docs->{$key};
-	    $crt_info->{$key}->{'size'} = $doc_size;
-	    $crt_info->{$key}->{'revision'} = $doc_rev;
-	    if (! defined $doc_rev && ! defined $doc_size) {
-		print "\tSC $change_id says we have document for $key, but we don't have anything on svn.\n";
-		my $svn_dir = @$info_comm[$index_comm->{$key}];
-		$missing_documents->{$key} = "$svn_dir/$svn_docs->{$key}";
-		next;
-	    }
-	    $todo->{$key} = "$svn_docs->{$key}" if (! Compare($crt_info->{$key}, $prev_info->{$key}) );
-	}
+	  my $res = svn_info("@$info_comm[$index_comm->{$key}]/$svn_docs->{$key}");
+	  my ($doc_rev, $doc_size);
+	  if (defined $res) {
+	      $doc_rev = $res->{'list'}->{'entry'}->{'commit'}->{'revision'};
+	      $doc_size = $res->{'list'}->{'entry'}->{'size'};
+	  }
+	  delete $prev_info->{$key} if (!(-e "$to_path/$change_id/$key.doc" && -s "$to_path/$change_id/$key.doc" == $doc_size));
+	  $crt_info->{$key}->{'name'} = $svn_docs->{$key};
+	  $crt_info->{$key}->{'size'} = $doc_size;
+	  $crt_info->{$key}->{'revision'} = $doc_rev;
+	  if (! defined $doc_rev && ! defined $doc_size) {
+	      print "\tSC $change_id says we have document for $key, but we don't have anything on svn.\n";
+	      my $svn_dir = @$info_comm[$index_comm->{$key}];
+	      $missing_documents->{$key} = "$svn_dir/$svn_docs->{$key}";
+	      next;
+	  }
+	  $todo->{$key} = "$svn_docs->{$key}" if (! Compare($crt_info->{$key}, $prev_info->{$key}) );
     }
 
     next if Compare($crt_info, $prev_info);

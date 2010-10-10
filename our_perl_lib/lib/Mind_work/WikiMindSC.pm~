@@ -41,7 +41,7 @@ sub get_documents {
 	    my @info = split ';', $line;
 	    $md5 .= "$info[2]" if defined $info[2];
 	}
-	$pages_toimp_hash->{"SC:$node"} = [$md5, "$node", "", "real", \@categories];
+	$pages_toimp_hash->{$node} = [$md5, "$node", "", "real", \@categories];
     }
     print "\tDone $count from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($count%500 != 0);
     print "+Searching for files in SC dir.\t". (WikiCommons::get_time_diff) ."\n";

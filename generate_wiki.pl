@@ -82,14 +82,16 @@ use Mind_work::WikiMindSC;
 
 my $our_wiki;
 
+# my $path_prefix = "/media/share/Documentation/cfalcas/q/";
+my $path_prefix = "./";
 my $path_files = abs_path(shift);
 my $path_type = shift;
-our $wiki_dir = "/media/share/Documentation/cfalcas/q/import_docs/work/workfor_". (fileparse($path_files, qr/\.[^.]*/))[0] ."";
+our $wiki_dir = "$path_prefix/import_docs/work/workfor_". (fileparse($path_files, qr/\.[^.]*/))[0] ."";
 WikiCommons::makedir $wiki_dir;
 $wiki_dir = abs_path($wiki_dir);
 
-my $bad_dir = "/media/share/Documentation/cfalcas/q/import_docs/work/bad_dir";
-my $pid_file = "/media/share/Documentation/cfalcas/q/import_docs/work/mind_import_wiki.pid";
+my $bad_dir = "$path_prefix/import_docs/work/bad_dir";
+my $pid_file = "$path_prefix/import_docs/work/mind_import_wiki.pid";
 
 my $wiki_result = "result";
 my $wiki_files_uploaded = "wiki_files_uploaded.txt";
@@ -418,7 +420,7 @@ sub insertdata {
     $text .= "link_type = $pages_toimp_hash->{$url}[$link_type_pos]\n";
     WikiCommons::write_file("$work_dir/$wiki_files_info", $text);
     delete($pages_toimp_hash->{$url});
-    WikiCommons::cleanup;
+#     WikiCommons::cleanup;
 }
 
 sub work_real {
@@ -579,7 +581,8 @@ foreach my $url (sort keys %$pages_toimp_hash) {
 
     WikiCommons::makedir "$wiki_dir/$url/";
     my $info_crt_h = {};
-    open(FH, "$path_files/$url/files_info.txt") || die("Could not open file!");
+     my $rel_path = "$pages_toimp_hash->{$url}[$rel_path_pos]";
+    open(FH, "$path_files/$rel_path/files_info.txt") || die("Could not open file $path_files/$rel_path/files_info.txt: $!");
     my @info_crt = <FH>;
     chomp @info_crt;
     close (FH);
@@ -593,7 +596,7 @@ foreach my $url (sort keys %$pages_toimp_hash) {
 
     my $wiki = {};
     local( $/, *FH ) ;
-    open(FH, "$path_files/$url/$general_wiki_file") || die("Could not open file!");
+    open(FH, "$path_files/$rel_path/$general_wiki_file") || die("Could not open file: $!");
     my $wiki_txt = <FH>;
     close (FH);
     $wiki_txt =~ s/^[\f ]+|[\f ]+$//mg;
@@ -606,14 +609,16 @@ foreach my $url (sort keys %$pages_toimp_hash) {
 
     $wiki->{'0'} = $wiki_txt;
 
-    opendir(DIR, "$path_files/$url") || die("Cannot open directory $path_files/$url.\n");
-    my @files = grep { (!/^\.\.?$/) && -f "$path_files/$url/$_" && /(\.rtf)|(\.doc)/i } readdir(DIR);
+    opendir(DIR, "$path_files/$rel_path") || die("Cannot open directory $path_files/$rel_path: $!.\n");
+    my @files = grep { (!/^\.\.?$/) && -f "$path_files/$rel_path/$_" && /(\.rtf)|(\.doc)/i } readdir(DIR);
+print Dumper(@files);
     closedir(DIR);
     foreach my $file (@files) {
-	my $file = "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]/$file";
+	my $file = "$path_files/$rel_path/$file";
 	my ($name,$dir,$suffix) = fileparse($file, qr/\.[^.]*/);
 	my ($node, $title, $header) = "";
 	if ($suffix eq ".doc") {
+print "xxx $name\n".Dumper($info_crt_h);
 	    foreach my $key (keys %$info_crt_h) {
 		if ($key =~ /^([0-9]{1,}) $name$/) {
 		    $node = $1;
