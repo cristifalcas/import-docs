@@ -591,8 +591,9 @@ sub fix_wiki_link_to_sc {
 
 	next if ($found_string =~ /^\[\[Image:/);
 	print "\tSC link: $found_string\n";
-	substr($newwiki, $found_string_end_pos - length($found_string)+$count, length($found_string)) = " [[$found_string]] ";
-	$count += 6;
+	my $new_string = " [[SC:$found_string|$found_string]] ";
+	substr($newwiki, $found_string_end_pos - length($found_string)+$count, length($found_string)) = $new_string;
+	$count += length($new_string) - length($found_string);
     }
     $wiki = $newwiki;
     return $wiki;
