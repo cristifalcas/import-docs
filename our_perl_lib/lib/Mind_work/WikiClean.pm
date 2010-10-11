@@ -50,7 +50,7 @@ sub html_clean_tables_in_menu {
 	$text =~ s/(<I>)|(<\/I>)//gsi;
 	$text =~ s/(<CENTER( [^>]*)?>)|(<\/CENTER>)//gsi;
 	$text =~ s/(<SDFIELD( [^>]*)?>)|(<\/SDFIELD>)//gsi;
-	$text =~ s/<A [^>]*>.*?<\/A>//gsi;
+# 	$text =~ s/<A [^>]*>.*?<\/A>//gsi;
 	$text =~ s/(<SPAN( [^>]*)?>)|(<\/SPAN>)//gsi;
 	$text =~ s/(<STRONG>)|(<\/STRONG>)//gsi;
 	$text =~ s/(<EM>)|(<\/EM>)//gsi;
@@ -64,7 +64,7 @@ sub html_clean_tables_in_menu {
 	}
 
 	if ($text =~ m/(<([^>]*)>)/) {
-	    die "shit menu in html: $text: $1\n" if ("$1" ne "<U>") && ("$1" ne "<SUP>") && ("$1" !~ m/<font[^>]*>/i) && ("$1" !~ m/<span[^>]*>/i) && ("$1" !~ m/<a name[^>]*>/i) && ("$1" !~ m/<STRIKE>/i);
+	    die "shit menu in html: $text: $1\n" if ("$1" ne "<U>") && ("$1" ne "<SUP>") && ("$1" !~ m/<font[^>]*>/i) && ("$1" !~ m/<span[^>]*>/i) && ("$1" !~ m/<a name[^>]*>/i) && ("$1" !~ m/<STRIKE>/i) && ("$1" !~ m/<A [^>]*>/i);
 	}
 	my $replacement = "$start$text$end\n$other";
 	substr($newhtml, $found_string_end_pos - length($found_string)+$count, length($found_string)) = "$replacement";
@@ -152,7 +152,7 @@ sub html_clean_menu_in_lists {
 sub html_tidy {
     my ($html, $preserve) = @_;
     $preserve = 1 if ! defined $preserve;
-    my $tidy = HTML::Tidy->new({ indent => 1, tidy_mark => 0, doctype => 'omit', quote_marks => 'yes',
+    my $tidy = HTML::Tidy->new({ indent => 1, tidy_mark => 0, doctype => 'omit', quote_marks => 'no',
 	input_encoding => "utf8", output_encoding => "raw", clean => 'no', show_body_only => 1,
 	preserve_entities => "$preserve"});
     $html = $tidy->clean($html);
@@ -244,8 +244,8 @@ sub make_wiki_from_html {
     $wiki =~ s/[ ]{8}/\t/gs;
     $wiki = fix_wiki_chars($wiki);
 WikiCommons::write_file("$dir/fix_wiki_chars.$name.txt", $wiki, 1);
-    $wiki = fix_wiki_menus( $wiki, $dir );
-WikiCommons::write_file("$dir/fix_wiki_menus.$name.txt", $wiki, 1);
+#     $wiki = fix_wiki_menus( $wiki, $dir );
+# WikiCommons::write_file("$dir/fix_wiki_menus.$name.txt", $wiki, 1);
     ($wiki, $image_files) = fix_wiki_tables( $wiki, $dir );
 WikiCommons::write_file("$dir/fix_wiki_tables.$name.txt", $wiki, 1);
     ($wiki, $image_files) = fix_wiki_images( $wiki, $image_files, $dir );
@@ -439,9 +439,8 @@ sub fix_wiki_menus {
 	    die "shit menu: $menu: $1\n" if ("$1" ne "<nowiki>") && ("$1" ne "<sup>") && ("$1" !~ m/<font[^>]*>/) && ("$1" !~ m/^<span ?/) && ("$1" ne "<u>");
 	}
 	##remove numbers from beginning
-# 	$fix_menu =~ s/\s*([[:digit:]]{1,}\.)*[[:digit:]]{0,}\s+//;
 	$fix_menu =~ s/\s*([[:digit:]]{1,2}\.)*([[:digit:]]{1,2})*\s*([^<])/$3/;
-# 	$fix_menu =~ s/\s*([[:digit:]]{1,})+([^\s+])/$2/;
+# 	$fix_menu =~ s/\s*([[:digit:]]{1,2}\.)*\s*([^<])/$3/;
 	$fix_menu =~ s/(<u>)|(<\/u>)//g;
 	$fix_menu =~ s/<font[^>]*>(.*?)<\/font>/$1/gi;
 	$fix_menu =~ s/<span[^>]*>(.*?)<\/span>/$1/gi;
@@ -642,6 +641,7 @@ next;
 	}
 	$new_text = html_tidy( $new_text, 0 );
 	$new_text =~ s/<br>/\n/gs;
+	$new_text =~ s/^[\f ]+|[\f ]+$//mg;
 	substr($newwiki, $found_string_end_pos - length($found_string) + $count, length($data[0])) = "$new_text";
 	$count += length($new_text) - length($data[0]);
     }

@@ -82,16 +82,18 @@ use Mind_work::WikiMindSC;
 
 my $our_wiki;
 
-# my $path_prefix = "/media/share/Documentation/cfalcas/q/";
-my $path_prefix = "./";
+my $path_prefix = "/media/share/Documentation/cfalcas/q/import_docs";
+# my $path_prefix = "./";
 my $path_files = abs_path(shift);
 my $path_type = shift;
-our $wiki_dir = "$path_prefix/import_docs/work/workfor_". (fileparse($path_files, qr/\.[^.]*/))[0] ."";
+our $wiki_dir = "$path_prefix/work/workfor_". (fileparse($path_files, qr/\.[^.]*/))[0] ."";
 WikiCommons::makedir $wiki_dir;
 $wiki_dir = abs_path($wiki_dir);
 
-my $bad_dir = "$path_prefix/import_docs/work/bad_dir";
-my $pid_file = "$path_prefix/import_docs/work/mind_import_wiki.pid";
+my $bad_dir = "$path_prefix/work/bad_dir";
+my $pid_file = "$path_prefix/work/mind_import_wiki.pid";
+my $remote_work = "no";
+my $remote_work_path = "$wiki_dir/remote_batch_files";
 
 my $wiki_result = "result";
 my $wiki_files_uploaded = "wiki_files_uploaded.txt";
@@ -404,15 +406,21 @@ sub make_categories {
 sub insertdata {
     my ($url, $wiki) = @_;
     my $work_dir = "$wiki_dir/$url";
-    $our_wiki->wiki_import_files ("$work_dir/$wiki_result", "$url");
-
     WikiCommons::write_file("$work_dir/$url.full.wiki", $wiki, 1);
-    print "\tDeleting url $url just to be sure.\t". (WikiCommons::get_time_diff) ."\n";
-    $our_wiki->wiki_delete_page ($url,"") if ( $our_wiki->wiki_exists_page($url) );
-    print "\tImporting url $url.\t". (WikiCommons::get_time_diff) ."\n";
-    $our_wiki->wiki_edit_page($url, $wiki);
-    die "Could not import url $url.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url) );
-    print "\tDone $url.\t". (WikiCommons::get_time_diff) ."\n";
+
+    if ($remote_work eq "no"){
+	$our_wiki->wiki_import_files ("$work_dir/$wiki_result", "$url");
+	print "\tDeleting url $url just to be sure.\t". (WikiCommons::get_time_diff) ."\n";
+	$our_wiki->wiki_delete_page ($url,"") if ( $our_wiki->wiki_exists_page($url) );
+	print "\tImporting url $url.\t". (WikiCommons::get_time_diff) ."\n";
+	$our_wiki->wiki_edit_page($url, $wiki);
+	die "Could not import url $url.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url) );
+	print "\tDone $url.\t". (WikiCommons::get_time_diff) ."\n";
+    } else {
+	WikiCommons::makedir("$remote_work_path/$wiki_result");
+	WikiCommons::copy_dir ("$work_dir/$wiki_result", "$remote_work_path/$wiki_result");
+	copy("$work_dir/$url.full.wiki","$remote_work_path") or die "Copy failed for: $url.full.wiki to $remote_work_path: $!\t". (WikiCommons::get_time_diff) ."\n";
+    }
 
     my $text = "md5 = $pages_toimp_hash->{$url}[$md5_pos]\n";
     $text .= "rel_path = $pages_toimp_hash->{$url}[$rel_path_pos]\n";
@@ -545,171 +553,164 @@ if ($path_type eq "mind_svn") {
     $coco = new WikiMindUsers("$path_files", WikiCommons::get_urlsep);
     work_for_docs("$path_files");
 } elsif ($path_type eq "sc_docs") {
-
-
-$all_real = "yes";
-my $info_h = {};
-open(FH, "$path_files/common_info") || die("Could not open file common_info: $!\n");
-my @info = <FH>;
-chomp @info;
-close (FH);
-
-foreach my $line (@info) {
-    my @tmp = split ' = ', $line;
-#     $tmp[0] =~ s/ /_/g;
-    $info_h->{$tmp[0]} = "$tmp[1]";
-}
-my $ftp_links = {};
-$ftp_links->{'FTP_def_attach'} = "ftp://$info_h->{'FTP_USER'}:$info_h->{'FTP_PASS'}\@$info_h->{'FTP_IP'}/$info_h->{'FTP_def_attach'}";
-$ftp_links->{'FTP_market_attach'} = "ftp://$info_h->{'FTP_USER'}:$info_h->{'FTP_PASS'}\@$info_h->{'FTP_IP'}/$info_h->{'FTP_market_attach'}";
-$ftp_links->{'FTP_test_attach'} = "ftp://$info_h->{'FTP_USER'}:$info_h->{'FTP_PASS'}\@$info_h->{'FTP_IP'}/$info_h->{'FTP_test_attach'}";
-
-my $url_sep = WikiCommons::get_urlsep;
-$coco = new WikiMindSC("$path_files", WikiCommons::get_urlsep);
-my ($to_delete, $to_keep) = work_begin;
-my $tmp = {};
-foreach (keys %$pages_toimp_hash) {$tmp->{$_} = 1 if ($pages_toimp_hash->{$_}[$link_type_pos] eq "link")};
-die "There are no links.\n" if scalar keys %$tmp;
-
-my $general_wiki_file = "General_info.wiki";
-
-foreach my $url (sort keys %$pages_toimp_hash) {
-# 	next if ($pages_toimp_hash->{$url}[$link_type_pos] eq "link");
-# next if "$url" ne "B71488";
-    WikiCommons::reset_time();
-    print "\n*************************\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
-
-    WikiCommons::makedir "$wiki_dir/$url/";
-    my $info_crt_h = {};
-     my $rel_path = "$pages_toimp_hash->{$url}[$rel_path_pos]";
-    open(FH, "$path_files/$rel_path/files_info.txt") || die("Could not open file $path_files/$rel_path/files_info.txt: $!");
-    my @info_crt = <FH>;
-    chomp @info_crt;
+    $all_real = "yes";
+    my $info_h = {};
+    open(FH, "$path_files/common_info") || die("Could not open file common_info: $!\n");
+    my @info = <FH>;
+    chomp @info;
     close (FH);
-    foreach my $line (@info_crt) {
-	my @tmp = split ';', $line;
-	next if @tmp<4;
-	$info_crt_h->{$tmp[0]}->{'name'} = "$tmp[1]";
-	$info_crt_h->{$tmp[0]}->{'size'} = "$tmp[2]";
-	$info_crt_h->{$tmp[0]}->{'revision'} = "$tmp[3]";
+
+    foreach my $line (@info) {
+	my @tmp = split ' = ', $line;
+	$info_h->{$tmp[0]} = "$tmp[1]";
     }
 
-    my $wiki = {};
-    local( $/, *FH ) ;
-    open(FH, "$path_files/$rel_path/$general_wiki_file") || die("Could not open file: $!");
-    my $wiki_txt = <FH>;
-    close (FH);
-    $wiki_txt =~ s/^[\f ]+|[\f ]+$//mg;
-    my $str = 'SC';
-    $wiki_txt =~ s/\[\[Category:(.*?)\]\]/\[\[Category:$1$url_sep$str\]\]/g;
-    $wiki_txt .= "\n'''FTP links:'''\n\n";
-    foreach my $key (keys %$ftp_links) {
-	$wiki_txt .= "[$ftp_links->{$key}/$url $key]\n\n";
-    }
+    my $ftp_links = {};
+    $ftp_links->{'FTP_def_attach'} = "ftp://$info_h->{'FTP_USER'}:$info_h->{'FTP_PASS'}\@$info_h->{'FTP_IP'}/$info_h->{'FTP_def_attach'}";
+    $ftp_links->{'FTP_market_attach'} = "ftp://$info_h->{'FTP_USER'}:$info_h->{'FTP_PASS'}\@$info_h->{'FTP_IP'}/$info_h->{'FTP_market_attach'}";
+    $ftp_links->{'FTP_test_attach'} = "ftp://$info_h->{'FTP_USER'}:$info_h->{'FTP_PASS'}\@$info_h->{'FTP_IP'}/$info_h->{'FTP_test_attach'}";
 
-    $wiki->{'0'} = $wiki_txt;
+    my $url_sep = WikiCommons::get_urlsep;
+    $coco = new WikiMindSC("$path_files", WikiCommons::get_urlsep);
+    my ($to_delete, $to_keep) = work_begin;
+    my $tmp = {};
+    foreach (keys %$pages_toimp_hash) {$tmp->{$_} = 1 if ($pages_toimp_hash->{$_}[$link_type_pos] eq "link")};
+    die "There are no links.\n" if scalar keys %$tmp;
 
-    opendir(DIR, "$path_files/$rel_path") || die("Cannot open directory $path_files/$rel_path: $!.\n");
-    my @files = grep { (!/^\.\.?$/) && -f "$path_files/$rel_path/$_" && /(\.rtf)|(\.doc)/i } readdir(DIR);
-print Dumper(@files);
-    closedir(DIR);
-    foreach my $file (@files) {
-	my $file = "$path_files/$rel_path/$file";
-	my ($name,$dir,$suffix) = fileparse($file, qr/\.[^.]*/);
-	my ($node, $title, $header) = "";
-	if ($suffix eq ".doc") {
-print "xxx $name\n".Dumper($info_crt_h);
-	    foreach my $key (keys %$info_crt_h) {
-		if ($key =~ /^([0-9]{1,}) $name$/) {
-		    $node = $1;
-		    $title = $name;
-		    $header = "<center>\'\'\'This file was automatically imported from the following document: [[File:$url $name.zip]]\'\'\'\n\n";
-		    $header .= "The original document can be found at [$info_h->{$name}/$info_crt_h->{$key}->{'name'} this address]\n";
-		    $header .= "</center>\n----\n\n";
-		    last;
+    my $general_wiki_file = "General_info.wiki";
+
+    foreach my $url (sort keys %$pages_toimp_hash) {
+    # next if "$url" ne "B71488";
+	WikiCommons::reset_time();
+	print "\n*************************\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
+
+	WikiCommons::makedir "$wiki_dir/$url/";
+	my $rel_path = "$pages_toimp_hash->{$url}[$rel_path_pos]";
+
+	my $info_crt_h = {};
+	open(FH, "$path_files/$rel_path/files_info.txt") || die("Could not open file $path_files/$rel_path/files_info.txt: $!");
+	my @info_crt = <FH>;
+	chomp @info_crt;
+	close (FH);
+
+	foreach my $line (@info_crt) {
+	    my @tmp = split ';', $line;
+	    next if @tmp<4;
+	    $info_crt_h->{$tmp[0]}->{'name'} = "$tmp[1]";
+	    $info_crt_h->{$tmp[0]}->{'size'} = "$tmp[2]";
+	    $info_crt_h->{$tmp[0]}->{'revision'} = "$tmp[3]";
+	}
+
+	my $wiki = {};
+	local( $/, *FH ) ;
+	open(FH, "$path_files/$rel_path/$general_wiki_file") || die("Could not open file: $!");
+	my $wiki_txt = <FH>;
+	close (FH);
+	$wiki_txt =~ s/^[\f ]+|[\f ]+$//mg;
+	my $str = 'SC';
+	$wiki_txt =~ s/\[\[Category:(.*?)\]\]/\[\[Category:$1$url_sep$str\]\]/g;
+	$wiki_txt .= "\n'''FTP links:'''\n\n";
+	foreach my $key (keys %$ftp_links) {
+	    $wiki_txt .= "[$ftp_links->{$key}/$rel_path $key]\n\n";
+	}
+
+	$wiki->{'0'} = $wiki_txt;
+
+	opendir(DIR, "$path_files/$rel_path") || die("Cannot open directory $path_files/$rel_path: $!.\n");
+	my @files = grep { (!/^\.\.?$/) && -f "$path_files/$rel_path/$_" && /(\.rtf)|(\.doc)/i } readdir(DIR);
+	closedir(DIR);
+	foreach my $file (@files) {
+	    my $file = "$path_files/$rel_path/$file";
+	    my ($name,$dir,$suffix) = fileparse($file, qr/\.[^.]*/);
+	    my ($node, $title, $header) = "";
+	    if ($suffix eq ".doc") {
+		foreach my $key (keys %$info_crt_h) {
+		    if ($key =~ /^([0-9]{1,}) $name$/) {
+			$node = $1;
+			$title = $name;
+			$header = "<center>\'\'\'This file was automatically imported from the following document: [[File:$url $name.zip]]\'\'\'\n\n";
+			$header .= "The original document can be found at [$info_h->{$name}/$info_crt_h->{$key}->{'name'} this address]\n";
+			$header .= "</center>\n----\n\n";
+			last;
+		    }
 		}
-	    }
-	} elsif ($suffix eq ".rtf") {
-	    $title = $name;
-	    $title =~ s/^([0-9]{1,}) //;
-	    $node = $1;
-	    $header = "";
-	} else {
-	    die "WTF?\n";
-	}
-	print "\tWork for $file.\n";
-	my $wiki_txt = create_wiki("$url/$url $name", "$file", "$url $name");
-	WikiCommons::add_to_remove("$wiki_dir/$url/$url $name", "dir");
-	$wiki_txt =~ s/\n(=+)(.*?)(=+)\n/\n=$1$2$3=\n/g;
-
-	my $count = 0;
-if ($name !~ m/(review document)|(review docuemnt)/) {
-	my $newwiki = $wiki_txt;
-
-my $q ="";
-	my $menu_h = {};
-	while ($wiki_txt =~ m/\n(==+)(.*?)(==+)\n/g ) {
-	    my $found_string = $&;
-	    my $length1 = length($1); my $length2 = length($3); my $menu_name = $2;
-
-	    foreach my $key (keys %$menu_h) {
-		delete $menu_h->{$key} if ( $key >= $length1+1 );
-# 		delete $menu_h->{$length1+1} if ( exists $menu_h->{$length1+1} ) ;
-	    }
-
-	    if ( exists $menu_h->{$length1} ) {
-		$menu_h->{$length1}++ ;
+	    } elsif ($suffix eq ".rtf") {
+		$title = $name;
+		$title =~ s/^([0-9]{1,}) //;
+		$node = $1;
+		$header = "";
 	    } else {
-		$menu_h->{$length1} = 1;
+		die "WTF?\n";
+	    }
+	    print "\tWork for $file.\n";
+	    my $wiki_txt = create_wiki("$url/$url $name", "$file", "$url $name");
+	    WikiCommons::add_to_remove("$wiki_dir/$url/$url $name", "dir");
+	    $wiki_txt =~ s/\n(=+)(.*?)(=+)\n/\n=$1$2$3=\n/g;
+
+	    my $count = 0;
+	    if ($name !~ m/(review document)|(review docuemnt)/) {
+		my $newwiki = $wiki_txt;
+
+		my $q ="";
+		my $menu_h = {};
+		while ($wiki_txt =~ m/\n(==+)(.*?)(==+)\n/g ) {
+		    my $found_string = $&;
+		    my $length1 = length($1); my $length2 = length($3); my $menu_name = $2;
+
+		    foreach my $key (keys %$menu_h) {
+			delete $menu_h->{$key} if ( $key >= $length1+1 );
+		    }
+
+		    if ( exists $menu_h->{$length1} ) {
+			$menu_h->{$length1}++ ;
+		    } else {
+			$menu_h->{$length1} = 1;
+		    }
+
+		    $q = "";
+		    foreach my $key (sort {$a<=>$b} keys %$menu_h) {
+			$q .= $menu_h->{$key}.".";
+		    }
+		    $q .= " ";
+		    my $found_string_end_pos = pos($wiki_txt);
+		    substr($newwiki, $found_string_end_pos - length($found_string) + $count, length($found_string)) = "\n\'\'\'$q$menu_name\'\'\'\n";
+		    $count += 6 - ( $length1 + $length2 ) + length($q) * 1;
+		}
+		$wiki_txt = $newwiki;
+	    } else {
+		$wiki_txt =~ s/\n(==+)(.*?)(==+)\n/\n\'\'\'$2\'\'\'\n/g;
+		$count += 6 - ( length($1) + length($1) );
 	    }
 
-	    $q = "";
-	    foreach my $key (sort {$a<=>$b} keys %$menu_h) {
-		$q .= $menu_h->{$key}.".";
-	    }
-$q .= " ";
-	    my $found_string_end_pos = pos($wiki_txt);
-	    substr($newwiki, $found_string_end_pos - length($found_string) + $count, length($found_string)) = "\n\'\'\'$q$menu_name\'\'\'\n";
-	    $count += 6 - ( $length1 + $length2 ) + length($q) * 1;
+	    $wiki_txt =~ s/^\s*(.*)\s*$/$1/gs;
+	    next if $wiki_txt eq '';
+	    $wiki_txt = "\n=$title=\n\n".$header.$wiki_txt."\n\n";
+	    $wiki->{$node} = $wiki_txt;
+
+	    ### from dir $url/$doc$type/$wiki_result get all files in $url/$wiki_result
+	    WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
+	    WikiCommons::add_to_remove("$wiki_dir/$url/$wiki_result", "dir");
+	    WikiCommons::copy_dir ("$wiki_dir/$url/$url $name/$wiki_result", "$wiki_dir/$url/$wiki_result") if ($suffix eq ".doc");
 	}
-	$wiki_txt = $newwiki;
-} else {
+	my $full_wiki = "";
+	$full_wiki .= $wiki->{$_} foreach (sort {$a<=>$b} keys %$wiki);
 
 
+	WikiCommons::write_file("$wiki_dir/$url/$url.wiki", "$full_wiki");
 
-	$wiki_txt =~ s/\n(==+)(.*?)(==+)\n/\n\'\'\'$2\'\'\'\n/g;
-$count += 6 - ( length($1) + length($1) );
-}
-	$wiki_txt =~ s/^\s*(.*)\s*$/$1/gs;
-	next if $wiki_txt eq '';
-	$wiki_txt = "\n=$title=\n\n".$header.$wiki_txt."\n\n";
-	$wiki->{$node} = $wiki_txt;
+	my $dir = "$wiki_dir/$url/$wiki_result";
+	opendir(DIR, $dir);
+	@files = grep { (!/^\.\.?$/) && -f "$dir/$_" } readdir(DIR);
+	closedir(DIR);
+	if ( @files ) {
+	    my $files = join "\nFile:", @files;
+	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "File:$files\n");
+	} else {
+	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
+	}
 
-	### from dir $url/$doc$type/$wiki_result get all files in $url/$wiki_result
-	WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
-	WikiCommons::add_to_remove("$wiki_dir/$url/$wiki_result", "dir");
-	WikiCommons::copy_dir ("$wiki_dir/$url/$url $name/$wiki_result", "$wiki_dir/$url/$wiki_result") if ($suffix eq ".doc");
+	insertdata($url, $full_wiki);
     }
-    my $full_wiki = "";
-    $full_wiki .= $wiki->{$_} foreach (sort {$a<=>$b} keys %$wiki);
-
-
-    WikiCommons::write_file("$wiki_dir/$url/$url.wiki", "$full_wiki");
-
-    my $dir = "$wiki_dir/$url/$wiki_result";
-    opendir(DIR, $dir);
-    @files = grep { (!/^\.\.?$/) && -f "$dir/$_" } readdir(DIR);
-    closedir(DIR);
-    if ( @files ) {
-	my $files = join "\nFile:", @files;
-	WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "File:$files\n");
-    } else {
-	WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
-    }
-
-    insertdata($url, $full_wiki);
-}
-
 }
 
 print "End.\n";

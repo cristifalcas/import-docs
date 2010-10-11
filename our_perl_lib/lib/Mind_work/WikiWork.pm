@@ -8,8 +8,8 @@ use Data::Dumper;
 use MediaWiki::API;
 
 our $wiki_site_path = "/var/www/html/wiki/";
-# our $wiki_url = "http://10.0.0.99/wiki";
-our $wiki_url = "http://localhost:1900/wiki";
+our $wiki_url = "http://10.0.0.99/wiki";
+#our $wiki_url = "http://localhost:1900/wiki";
 our $wiki_user = 'wiki_auto_import';
 our $wiki_pass = '!0wiki_auto_import@9';
 our $mw;

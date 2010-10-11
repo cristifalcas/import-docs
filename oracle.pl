@@ -32,6 +32,8 @@ our $svn_pass = 'svncheckout';
 our $svn_user = 'svncheckout';
 our $files_info = "files_info.txt";
 our $general_template_file = "./general_template.txt";
+my $bulk_svn_update = "yes";
+my $svn_update = "yes";
 our $time = time();
 my $url_sep = WikiCommons::get_urlsep;
 
@@ -121,7 +123,7 @@ sub general_info {
     my $tmp = join ' ', @$initiator;
     $general =~ s/%initiator%/$tmp/g;
     $tmp = join ' ', @$dealer;
-    $general =~ s/\'\'\'Dealer\'\'\': %dealer%/$tmp/g;
+    $general =~ s/%dealer%/\'\'\'Dealer\'\'\': $tmp/g;
     $tmp = "";
     foreach (@$tester) {
 	s/\ /_/g;
@@ -299,7 +301,7 @@ sub sql_generate_select_changeinfo {
 	'productname'		=> 'c.productname',
 	'changetype' 		=> 'nvl(a.changetype,\' \')',
 	'title'			=> 'nvl(a.title,\' \')',
-	'customer_bug'		=> 'nvl(a.is_customer_bug,\' \')',
+	'customer_bug'		=> 'nvl(a.is_customer_bug,\'\')',
 	'customer'		=> 'nvl(a.customer,\' \')',
 	'crmid'			=> 'nvl(a.requestref,\' \')',
 	'category'		=> 'g.description',
@@ -669,11 +671,28 @@ foreach my $dir (@$only_in_dirs) {
     remove_tree("$to_path/$dir");
 }
 
+my $svn_info_all = {};
+if ($bulk_svn_update eq "yes"){
+    foreach my $key (sort keys %$index_comm) {
+	my $retries = 0;
+	my $tmp = @$info_comm[$index_comm->{$key}];
+	# print "$key = @$info_comm[$index_comm->{$key}]\n";
+	next if ($tmp !~ "^http://" || defined $svn_info_all->{$tmp});
+	while ( ! defined $svn_info_all->{$tmp} && $retries < 3){
+	    print "\tRetrieve svn info for $key.\t". (time() - $time) ."\n";
+	    $svn_info_all->{$tmp} = svn_info($tmp);
+	    $retries++;
+	}
+	die if $retries == 3;
+    };
+}
+
 my ($index, $SEL_INFO) = sql_generate_select_changeinfo();
+## (scalar @dirs) - (scalar @$only_in_dirs)
 my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id ne "B099303";
+#     next if $change_id gt "B04021";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -707,26 +726,32 @@ foreach my $change_id (sort keys %$crt_hash){
     $crt_info->{'SC_info'}->{'revision'} = @$arr[2];
     my $todo = {};
     $todo->{'SC_info'} = $change_id if ! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'});
-    next if Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'});
+    next if Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) && $svn_update eq "no";
     foreach my $key (sort keys %$svn_docs) {
 	next if (! exists $svn_docs->{$key});
-	  my $res = svn_info("@$info_comm[$index_comm->{$key}]/$svn_docs->{$key}");
-	  my ($doc_rev, $doc_size);
-	  if (defined $res) {
-	      $doc_rev = $res->{'list'}->{'entry'}->{'commit'}->{'revision'};
-	      $doc_size = $res->{'list'}->{'entry'}->{'size'};
-	  }
-	  delete $prev_info->{$key} if (!(-e "$to_path/$change_id/$key.doc" && -s "$to_path/$change_id/$key.doc" == $doc_size));
-	  $crt_info->{$key}->{'name'} = $svn_docs->{$key};
-	  $crt_info->{$key}->{'size'} = $doc_size;
-	  $crt_info->{$key}->{'revision'} = $doc_rev;
-	  if (! defined $doc_rev && ! defined $doc_size) {
-	      print "\tSC $change_id says we have document for $key, but we don't have anything on svn.\n";
-	      my $svn_dir = @$info_comm[$index_comm->{$key}];
-	      $missing_documents->{$key} = "$svn_dir/$svn_docs->{$key}";
-	      next;
-	  }
-	  $todo->{$key} = "$svn_docs->{$key}" if (! Compare($crt_info->{$key}, $prev_info->{$key}) );
+	my $res = {};
+	if ($bulk_svn_update eq "yes") {
+	    $res = $svn_info_all->{@$info_comm[$index_comm->{$key}]}->{'list'}->{'entry'}->{$svn_docs->{$key}};
+	} else {
+	    $res = svn_info("@$info_comm[$index_comm->{$key}]/$svn_docs->{$key}");
+	    $res = $res->{'list'}->{'entry'};
+	}
+	my ($doc_rev, $doc_size);
+	if (defined $res) {
+	    $doc_rev = $res->{'commit'}->{'revision'};
+	    $doc_size = $res->{'size'};
+	}
+	delete $prev_info->{$key} if (!(-e "$to_path/$change_id/$key.doc" && -s "$to_path/$change_id/$key.doc" == $doc_size));
+	$crt_info->{$key}->{'name'} = $svn_docs->{$key};
+	$crt_info->{$key}->{'size'} = $doc_size;
+	$crt_info->{$key}->{'revision'} = $doc_rev;
+	if (! defined $doc_rev && ! defined $doc_size) {
+	    print "\tSC $change_id says we have document for $key, but we don't have anything on svn.\n";
+	    my $svn_dir = @$info_comm[$index_comm->{$key}];
+	    $missing_documents->{$key} = "$svn_dir/$svn_docs->{$key}";
+	    next;
+	}
+	$todo->{$key} = "$svn_docs->{$key}" if (! Compare($crt_info->{$key}, $prev_info->{$key}) );
     }
 
     next if Compare($crt_info, $prev_info);
@@ -760,7 +785,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	my $dealer = sql_get_dealer_names( split ',', @$info_ret[$index->{'dealer'}] );
 	my $txt = general_info($info_ret, $index, $modules, $tester, $initiator, $dealer);
 	foreach my $key (sort keys %$missing_documents) {
-	    $txt .= "\nMissing \'\'\'$key\'\'\' from [$missing_documents->{$key} this] svn adrress, but database says it should exist.";
+	    $txt .= "\nMissing \'\'\'$key\'\'\' from [$missing_documents->{$key} this] svn address, but database says it should exist.\n";
 	}
 
 	write_file ("$work_dir/General_info.wiki" ,$txt);
