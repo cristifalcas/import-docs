@@ -440,7 +440,7 @@ sub fix_wiki_menus {
 	}
 	##remove numbers from beginning
 	$fix_menu =~ s/\s*([[:digit:]]{1,2}\.)*([[:digit:]]{1,2})*\s*([^<])/$3/;
-# 	$fix_menu =~ s/\s*([[:digit:]]{1,2}\.)*\s*([^<])/$3/;
+	$fix_menu =~ s/^\.//;
 	$fix_menu =~ s/(<u>)|(<\/u>)//g;
 	$fix_menu =~ s/<font[^>]*>(.*?)<\/font>/$1/gi;
 	$fix_menu =~ s/<span[^>]*>(.*?)<\/span>/$1/gi;
