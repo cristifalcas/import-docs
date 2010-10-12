@@ -131,7 +131,7 @@ sub general_info {
     }
     $general =~ s/%tester%/$tmp/g;
     $tmp = @$info[$index->{'customer'}];
-    $tmp = WikiCommons::capitalize_string( $tmp, "first" );
+    $tmp = WikiCommons::capitalize_string( $tmp, "all" );
     if ($tmp !~ m/^\s*$/ && $tmp ne "All") {
 	$general =~ s/%customer%/\'\'\'Customer\'\'\': \[\[:Category:$tmp\|$tmp\]\]/;
 	push @categories, "customer $tmp";
