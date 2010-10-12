@@ -131,10 +131,10 @@ sub general_info {
     }
     $general =~ s/%tester%/$tmp/g;
     $tmp = @$info[$index->{'customer'}];
-    $tmp = WikiCommons::capitalize_string( $tmp );
+    $tmp = WikiCommons::capitalize_string( $tmp, "first" );
     if ($tmp !~ m/^\s*$/ && $tmp ne "All") {
 	$general =~ s/%customer%/\'\'\'Customer\'\'\': \[\[:Category:$tmp\|$tmp\]\]/;
-	push @categories, $tmp;
+	push @categories, "customer $tmp";
     } else {
 	$general =~ s/%customer%//;
     }
@@ -143,7 +143,7 @@ sub general_info {
 	$tmp = @$info[$index->{'crmid'}];
 	$tmp =~ s/\s+/ /g;
 	$tmp =~ s/(^\s+)|(\s+$)//g;
-	$tmp = WikiCommons::capitalize_string( $tmp );
+	$tmp = WikiCommons::capitalize_string( $tmp, "first"  );
 	$tmp =~ s/\//$url_sep/;
 	$general =~ s/%customer_bug%/\'\'\'Customer bug\'\'\' (CRM ID): [[$tmp]]/;
     } else {
@@ -157,7 +157,7 @@ sub general_info {
     $general =~ s/%status%/@$info[$index->{'status'}]/;
     $tmp = @$info[$index->{'fixversion'}];
     $general =~ s/%fix_version%/[[:Category:$tmp|$tmp]]/g if $tmp && $tmp ne '';;
-    push @categories, @$info[$index->{'fixversion'}];
+    push @categories, "version ". @$info[$index->{'fixversion'}];
     $general =~ s/%version%/@$info[$index->{'version'}]/;
     $general =~ s/%build_version%/@$info[$index->{'buildversion'}]/;
     $general =~ s/%prod_version%/@$info[$index->{'prodversion'}]/;
@@ -194,7 +194,7 @@ sub general_info {
 	$general .= "[[Category:$cat]]\n";
     }
 
-    return $general;
+    return ($general, \@categories);
 }
 
 sub sql_connect {
@@ -483,6 +483,7 @@ sub get_previous {
 	my @all = split(/;/, $line);
 	return if (@all < 1);
 	$all[0] =~ s/^[0-9]{1,} //;
+	next if $all[0] eq "Categories";
 	$info_hash->{$all[0]}->{'name'} = $all[1];
 	$info_hash->{$all[0]}->{'size'} = $all[2];
 	$info_hash->{$all[0]}->{'revision'} = $all[3];
@@ -615,10 +616,10 @@ sub svn_info {
 }
 
 sub write_control_file {
-    my ($hash, $dir) = @_;
+    my ($hash, $dir, $categories) = @_;
     my $text = "";
+    print "Write control file\n";
     for (my $i=0;$i<@doc_types;$i++) {
-#     foreach my $key (keys %$hash) {
 	next if ! exists $hash->{$doc_types[$i]};
 	my $name = $hash->{$doc_types[$i]}->{'name'} || '';
 	my $size = '';
@@ -626,7 +627,10 @@ sub write_control_file {
 	my $rev = $hash->{$doc_types[$i]}->{'revision'} || '';
 	$text .= (1000 + $i) ." $doc_types[$i];$name;$size;$rev\n";
     }
+
     $text .= "SC_info;$hash->{'SC_info'}->{'name'};$hash->{'SC_info'}->{'size'};$hash->{'SC_info'}->{'revision'}\n";
+    $text .= "Categories;". (join ';',@$categories) ."\n";
+
     write_file("$dir/$files_info", "$text");
 }
 
@@ -742,20 +746,19 @@ foreach my $change_id (sort keys %$crt_hash){
 	    $doc_size = $res->{'size'};
 	}
 	delete $prev_info->{$key} if (!(-e "$to_path/$change_id/$key.doc" && -s "$to_path/$change_id/$key.doc" == $doc_size));
-	$crt_info->{$key}->{'name'} = $svn_docs->{$key};
-	$crt_info->{$key}->{'size'} = $doc_size;
-	$crt_info->{$key}->{'revision'} = $doc_rev;
 	if (! defined $doc_rev && ! defined $doc_size) {
 	    print "\tSC $change_id says we have document for $key, but we don't have anything on svn.\n";
 	    my $svn_dir = @$info_comm[$index_comm->{$key}];
 	    $missing_documents->{$key} = "$svn_dir/$svn_docs->{$key}";
 	    next;
 	}
+	$crt_info->{$key}->{'name'} = $svn_docs->{$key};
+	$crt_info->{$key}->{'size'} = $doc_size;
+	$crt_info->{$key}->{'revision'} = $doc_rev;
 	$todo->{$key} = "$svn_docs->{$key}" if (! Compare($crt_info->{$key}, $prev_info->{$key}) );
     }
 
     next if Compare($crt_info, $prev_info);
-
     makedir("$work_dir");
     foreach my $key (keys %$svn_docs) {
 	if ( exists $todo->{$key}) {
@@ -772,6 +775,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	}
     }
 
+    my $cat = ();
     if (defined $todo->{'SC_info'}) {
  	print "\tUpdate SC info.\n";
 	my $prev = $prev_info->{'SC_info'}->{'size'} || 'NULL';
@@ -783,7 +787,8 @@ foreach my $change_id (sort keys %$crt_hash){
 	my $tester = sql_get_workers_names( split ',', @$info_ret[$index->{'tester'}] ) if defined @$info_ret[$index->{'tester'}];
 	my $initiator = sql_get_workers_names( split ',', @$info_ret[$index->{'initiator'}] );
 	my $dealer = sql_get_dealer_names( split ',', @$info_ret[$index->{'dealer'}] );
-	my $txt = general_info($info_ret, $index, $modules, $tester, $initiator, $dealer);
+	my ($txt, $categories) = general_info($info_ret, $index, $modules, $tester, $initiator, $dealer);
+	$cat = $categories;
 	foreach my $key (sort keys %$missing_documents) {
 	    $txt .= "\nMissing \'\'\'$key\'\'\' from [$missing_documents->{$key} this] svn address, but database says it should exist.\n";
 	}
@@ -796,7 +801,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	write_rtf ("$work_dir/5 Architecture_SC.rtf", @$info_ret[$index->{'Architecture_SC'}]);
     }
 
-    write_control_file($crt_info, $work_dir);
+    write_control_file($crt_info, $work_dir, $cat);
     move_dir("$work_dir", "$to_path/$change_id/");
     print "+Finish working for $change_id: nr $count of $total.\t$dif\n";
 }

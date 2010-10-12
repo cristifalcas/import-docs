@@ -310,25 +310,13 @@ sub fix_tabs {
 
 sub fix_small_issues {
     my $wiki = shift;
-    $wiki =~ s/(((<font([^>]*)>)|(<span(.*?)>))+?)([ \t]+)/$7$1/gi;
-    $wiki =~ s/(((<font([^>]*)>)|(<span(.*?)>))+?)([ \t]+)/$7$1/gi;
-
-#     $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
-#     $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
-#     $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
-#     $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
-#     $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
-#     $wiki =~ s/(<font\s*>)(.*?)(<\/font>)/$2/gmi;
-
-#     $wiki =~ s/<font>(.*?)<\/font>/$1/gi;
-#     $wiki =~ s/<span>(.*?)<\/span>/$1/gi;
 
     ## replace breaks
     $wiki =~ s/(<BR>)|(<br\ \/>)/\n\n/gmi;
     ## remove table of content
     $wiki =~ s/\'\'\'Content\'\'\'[\s]*<div id="Table of Contents.*?>.*?<\/div>//gsi;
     $wiki =~ s/(<u>)?(\'\'\'Table of Content[s]?\'\'\')?(<\/u>)?[\s]*<div id="Table of Contents.*?>.*?<\/div>//gsi;
-#     $wiki =~ s/\'\'\'Content\'\'\'[\s]*<div id="Table of Contents.*?>.*?<\/div>//gsi;
+# #     $wiki =~ s/\'\'\'Content\'\'\'[\s]*<div id="Table of Contents.*?>.*?<\/div>//gsi;
     ## remove empty sub
     $wiki =~ s/<sub>[\s]{0,}<\/sub>//gsi;
     ## remove empty div

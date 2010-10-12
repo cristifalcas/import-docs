@@ -171,8 +171,14 @@ sub get_file_md5 {
 }
 
 sub capitalize_string {
-    my $str = shift;
-    $str =~ s/([\w']+)/\u\L$1/g;
+    my ($str,$type) = @_;
+    if ($type eq "first") {
+	$str =~ s/\b(\w)/\U$1/g;
+    } elsif ($type eq "all") {
+	$str =~ s/([\w']+)/\u\L$1/g;
+    } else {
+	die "Capitalization: first (only first letter is capital) or all (first letter is capital and the rest remain the same.)\n";
+    }
     return $str;
 }
 
@@ -183,7 +189,8 @@ sub fix_name {
     $fixed_name =~ s/^User Guide|User Guide$//i;
     $fixed_name =~ s/^User Manual|User Manual$//i;
 
-    $customer = capitalize_string($customer);
+    $customer = capitalize_string($customer, "all");
+
     $fixed_name =~ s/^\s?$customer[-_ \t]//i;
     $fixed_name =~ s/[-_ \t]$customer\s*$//i;
 
@@ -210,11 +217,10 @@ sub fix_name {
     $fixed_name =~ s/\s?$//;
     $fixed_name =~ s/^\s*-\s+//;
     $fixed_name =~ s/\s+/ /g;
-    ## capitalize
-    $fixed_name =~ capitalize_string($fixed_name);
-    $fixed_name =~ s/^\budr\b/UDR/i;
 
     ## Specific updates
+    $fixed_name = capitalize_string($fixed_name, "first");
+    $fixed_name =~ s/^\budr\b/UDR/i;
     $fixed_name = "$1" if ($fixed_name =~ "^GN (.*)");
     $fixed_name = "Billing" if ($fixed_name eq "BillingUserManual5.0-Rev12");
     $fixed_name = "Billing Rev12" if ($fixed_name eq "BillingUserManual5.01-Rev12");
@@ -259,6 +265,7 @@ sub fix_name {
     $fixed_name = "Dialup CDR And Invoice Generation" if ($fixed_name eq "Dialup CDR And Invoice Generation 521");
     $fixed_name = "Vendors Support" if ($fixed_name eq "VendorsSupport");
     $fixed_name = "User Activity" if ($fixed_name eq "UserActivity5 30");
+    $fixed_name = "IPE Monitor$1" if ($fixed_name =~ "IPEMonitor(.*)");
 
     return $fixed_name;
 }
@@ -267,6 +274,8 @@ sub check_vers {
     my ($main, $ver) = @_;
     die "main $main or ver $ver is not defined.\n" if (! defined $main || ! defined $ver);
     my $ver_fixed = "";
+    my $ver_sp = "";
+    my $ver_without_sp = "";
     #case 1: ver is a real version:
     # ver could be 5.55.111QQ or 5.55.111 QQ or V6.01.004 SP47.004
     # main is corect
@@ -292,6 +301,8 @@ sub check_vers {
     no warnings;
     if ($ver_fixed =~ /[[:digit:]]{1,}(\.[[:digit:]]{1,})*?( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*/i) {
 	$ver_fixed =~ s/([[:digit:]]{1,}\.)*?( )?(sp[[::digit]]{1,})(\.[[:digit:]]{1,})*/$1 $3$4/gi;
+	$ver_sp =~ s/([[:digit:]]{1,}\.)*?( )?(sp[[::digit]]{1,})(\.[[:digit:]]{1,})*/$3$4/gi;
+	$ver_without_sp =~ s/([[:digit:]]{1,}\.)*?( )?(sp[[::digit]]{1,})(\.[[:digit:]]{1,})*/$1/gi;
     } else {
 	$ver_fixed =~ s/([[:digit:]]{1,}\.)*?( )?([a-z]{1,})/$1 $3/gi;
     }
@@ -306,7 +317,7 @@ sub check_vers {
 	die "Version $ver should contain main $main.\n";
     }
 
-    return $main, $ver, $ver_fixed, $big_ver;
+    return $main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp;
 }
 
 sub generate_html_file {
