@@ -82,8 +82,8 @@ use Mind_work::WikiMindSC;
 
 my $our_wiki;
 
-my $path_prefix = "/media/share/Documentation/cfalcas/q/import_docs";
-# my $path_prefix = "./";
+# my $path_prefix = "/media/share/Documentation/cfalcas/q/import_docs";
+my $path_prefix = "./";
 my $path_files = abs_path(shift);
 my $path_type = shift;
 our $wiki_dir = "$path_prefix/work/workfor_". (fileparse($path_files, qr/\.[^.]*/))[0] ."";
