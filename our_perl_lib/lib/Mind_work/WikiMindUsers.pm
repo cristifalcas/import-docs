@@ -27,7 +27,7 @@ sub add_document {
     my $customer = "";
     my $page_url = "";
     my @categories = ();
-    my $main = ""; my $ver = ""; my $ver_fixed = ""; my $big_ver = "";
+    my $main = ""; my $ver = ""; my $ver_fixed = ""; my $big_ver = ""; my $ver_sp = ""; my $ver_without_sp = "";
 
     if (-f "$dir/$name.txt") {
 	open (FILEHANDLE, "$dir/$name.txt") or die $!."\t". (WikiCommons::get_time_diff) ."\n";
@@ -46,17 +46,20 @@ sub add_document {
 	$customer = (split ('=', $text[1]))[1];
 	if ( defined $customer ) {
 	    $customer =~ s/(^\s+|\s+$)//g;
+	    $customer = WikiCommons::capitalize_string( $customer, "first"  );
 	    push @categories, $customer;
 	} else {
 	    $customer = "";
 	}
 	my $done = (split ('=', $text[3]))[1]; $done =~ s/(^\s+|\s+$)//g;
 	if ($done eq "yes") {
-	    ($main, $ver, $ver_fixed, $big_ver) = WikiCommons::check_vers ($version, $version) if ($version ne "" );
-	    WikiCommons::generate_categories($ver_fixed, $main, $big_ver, $customer, "Users documents");
+	    ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers ( $version, $version) if ($version ne "" );
+# 	    WikiCommons::generate_categories($ver_fixed, $main, $big_ver, $customer, "Users documents");
+	    WikiCommons::generate_categories($ver_without_sp, $main, $big_ver, $customer, "Users documents");
 	    my $fixed_name = $name;
 	    $fixed_name = WikiCommons::fix_name ($name, $customer, $main, $ver) if ($version ne "" );
-	    $page_url = "$fixed_name$url_sep$main$url_sep$ver_fixed$url_sep$customer";
+# 	    $page_url = "$fixed_name$url_sep$main$url_sep$ver_fixed$url_sep$customer";
+	    $page_url = "$fixed_name$url_sep$ver_without_sp$url_sep$customer";
 	    $page_url =~ s/($url_sep){2,}/$url_sep/g;
 	    $page_url =~ s/(^$url_sep)|($url_sep$)//;
 	} else {

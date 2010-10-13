@@ -3,6 +3,7 @@
 use warnings;
 use strict;
 
+## ~ 10 hours first run
 use lib "./our_perl_lib/lib";
 use DBI;
 use Net::FTP;
@@ -134,11 +135,10 @@ sub general_info {
     $tmp = WikiCommons::capitalize_string( $tmp, "all" );
     if ($tmp !~ m/^\s*$/ && $tmp ne "All") {
 	$general =~ s/%customer%/\'\'\'Customer\'\'\': \[\[:Category:$tmp\|$tmp\]\]/;
-	push @categories, "customer $tmp";
     } else {
 	$general =~ s/%customer%//;
     }
-
+    push @categories, "customer $tmp";
     if (@$info[$index->{'customer_bug'}] eq 'Y') {
 	$tmp = @$info[$index->{'crmid'}];
 	$tmp =~ s/\s+/ /g;
@@ -155,7 +155,7 @@ sub general_info {
     $general =~ s/%product%/@$info[$index->{'productname'}]/;
     $general =~ s/%full_status%/@$info[$index->{'fullstatus'}]/;
     $general =~ s/%status%/@$info[$index->{'status'}]/;
-    $tmp = @$info[$index->{'fixversion'}];
+    $tmp = @$info[$index->{'version'}];
     $general =~ s/%fix_version%/[[:Category:$tmp|$tmp]]/g if $tmp && $tmp ne '';;
     push @categories, "version ". @$info[$index->{'fixversion'}];
     $general =~ s/%version%/@$info[$index->{'version'}]/;
@@ -301,7 +301,7 @@ sub sql_generate_select_changeinfo {
 	'productname'		=> 'c.productname',
 	'changetype' 		=> 'nvl(a.changetype,\' \')',
 	'title'			=> 'nvl(a.title,\' \')',
-	'customer_bug'		=> 'nvl(a.is_customer_bug,\'\')',
+	'customer_bug'		=> 'nvl(a.is_customer_bug,\' \')',
 	'customer'		=> 'nvl(a.customer,\' \')',
 	'crmid'			=> 'nvl(a.requestref,\' \')',
 	'category'		=> 'g.description',
@@ -309,7 +309,7 @@ sub sql_generate_select_changeinfo {
 	'parent_change_id'	=> 'nvl(a.parent_change_id,\' \')',
 	'relatedtasks'		=> 'nvl(a.relatedtasks,\' \')',
 	'Market_SC'		=> 'nvl(a.marketinfo,\' \')',
-	'Description_SC'		=> 'nvl(a.function,\' \')',
+	'Description_SC'	=> 'nvl(a.function,\' \')',
 	'Architecture_SC'	=> 'nvl(a.architecture_memo,\' \')',
 	'HLD_SC'		=> 'nvl(a.hld_memo,\' \')',
 	'Messages_SC'		=> 'nvl(a.messages,\' \')',
@@ -629,7 +629,7 @@ sub write_control_file {
     }
 
     $text .= "SC_info;$hash->{'SC_info'}->{'name'};$hash->{'SC_info'}->{'size'};$hash->{'SC_info'}->{'revision'}\n";
-    $text .= "Categories;". (join ';',@$categories) ."\n";
+    $text .= "Categories;". (join ';',@$categories) .";\n";
 
     write_file("$dir/$files_info", "$text");
 }
@@ -760,8 +760,10 @@ foreach my $change_id (sort keys %$crt_hash){
 
     next if Compare($crt_info, $prev_info);
     makedir("$work_dir");
+    my $update_me = "";
     foreach my $key (keys %$svn_docs) {
 	if ( exists $todo->{$key}) {
+	    $update_me = "yes";
 	    print "\tUpdate svn http for $key.\n";
 	    my $svn_dir = @$info_comm[$index_comm->{$key}];
 	    $request = HTTP::Request->new(GET => "$svn_dir");
@@ -776,7 +778,7 @@ foreach my $change_id (sort keys %$crt_hash){
     }
 
     my $cat = ();
-    if (defined $todo->{'SC_info'}) {
+    if (defined $todo->{'SC_info'} || $update_me eq "yes") {
  	print "\tUpdate SC info.\n";
 	my $prev = $prev_info->{'SC_info'}->{'size'} || 'NULL';
 	print "\tChanged CRC: $crt_info->{'SC_info'}->{'size'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'size'} || $crt_info->{'SC_info'}->{'size'} ne $prev);

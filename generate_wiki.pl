@@ -100,7 +100,7 @@ my $wiki_files_uploaded = "wiki_files_uploaded.txt";
 my $wiki_files_info = "wiki_files_info.txt";
 
 my $delete_everything = "no";
-my $make_categoris = "no";
+my $make_categoris = "yes";
 my $pid_old = "100000";
 my $all_real = "no";
 my $type_old = "";
@@ -351,9 +351,12 @@ sub generate_pages_to_delete_to_import {
 
 sub delete_categories {
     my $categories_dir = "$wiki_dir/categories/";
-    opendir(DIR, "$categories_dir") || die("Cannot open directory $categories_dir.\n");
-    my @files = grep { (!/^\.\.?$/) && -d "$categories_dir/$_" } readdir(DIR);
-    closedir(DIR);
+    my @files = ();
+    if (-e "$wiki_dir/categories/") {
+	opendir(DIR, "$categories_dir") || die("Cannot open directory $categories_dir.\n");
+	@files = grep { (!/^\.\.?$/) && -d "$categories_dir/$_" } readdir(DIR);
+	closedir(DIR);
+    }
     foreach my $category (@files) {
 	print "-Delete category $category.\t". (WikiCommons::get_time_diff) ."\n";
 	if ( -d "$categories_dir/$category" ) {
@@ -512,7 +515,8 @@ sub work_begin {
 	$pages_toimp_hash = $coco->get_documents();
 	($to_delete, $to_keep) = generate_pages_to_delete_to_import;
     }
-
+make_categories;
+exit 1;
     foreach my $url (sort keys %$to_delete) {
 	print "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";
 	$our_wiki->wiki_delete_page($url, "$wiki_dir/$url/$wiki_files_uploaded") if ( $our_wiki->wiki_exists_page($url) );
@@ -587,20 +591,13 @@ if ($path_type eq "mind_svn") {
 	WikiCommons::makedir "$wiki_dir/$url/";
 	my $rel_path = "$pages_toimp_hash->{$url}[$rel_path_pos]";
 
-	my $info_crt_h = {};
-	open(FH, "$path_files/$rel_path/files_info.txt") || die("Could not open file $path_files/$rel_path/files_info.txt: $!");
-	my @info_crt = <FH>;
-	chomp @info_crt;
-	close (FH);
-
-	foreach my $line (@info_crt) {
-	    my @tmp = split ';', $line;
-	    next if @tmp<4;
-	    $info_crt_h->{$tmp[0]}->{'name'} = "$tmp[1]";
-	    $info_crt_h->{$tmp[0]}->{'size'} = "$tmp[2]";
-	    $info_crt_h->{$tmp[0]}->{'revision'} = "$tmp[3]";
-	}
-
+# 	my $info_crt_h = {};
+# 	open(FH, "$path_files/$rel_path/files_info.txt") || die("Could not open file $path_files/$rel_path/files_info.txt: $!");
+# 	my @info_crt = <FH>;
+# 	chomp @info_crt;
+# 	close (FH);
+	my $info_crt_h = $pages_toimp_hash->{$url}[$svn_url_pos];
+print Dumper($info_crt_h);exit 1;
 	my $wiki = {};
 	local( $/, *FH ) ;
 	open(FH, "$path_files/$rel_path/$general_wiki_file") || die("Could not open file: $!");
@@ -625,7 +622,7 @@ if ($path_type eq "mind_svn") {
 	    my ($node, $title, $header) = "";
 	    if ($suffix eq ".doc") {
 		foreach my $key (keys %$info_crt_h) {
-		    if ($key =~ /^([0-9]{1,}) $name$/) {
+		    if ($key =~ m/^([0-9]{1,}) $name$/) {
 			$node = $1;
 			$title = $name;
 			$header = "<center>\'\'\'This file was automatically imported from the following document: [[File:$url $name.zip]]\'\'\'\n\n";
@@ -694,7 +691,6 @@ if ($path_type eq "mind_svn") {
 	}
 	my $full_wiki = "";
 	$full_wiki .= $wiki->{$_} foreach (sort {$a<=>$b} keys %$wiki);
-
 
 	WikiCommons::write_file("$wiki_dir/$url/$url.wiki", "$full_wiki");
 

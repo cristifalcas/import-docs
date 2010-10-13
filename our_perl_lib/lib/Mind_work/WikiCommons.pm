@@ -7,6 +7,7 @@ use File::Path qw(make_path remove_tree);
 use Unicode::Normalize 'NFD','NFC','NFKD','NFKC';
 use File::Basename;
 use File::Copy;
+use Data::Dumper;
 
 our $start_time = 0;
 our $clean_up = {};
@@ -91,6 +92,7 @@ sub generate_categories {
 
 sub get_categories {
     print Dumper($general_categories_hash);
+exit 1;
     return $general_categories_hash;
 }
 
@@ -266,6 +268,7 @@ sub fix_name {
     $fixed_name = "Vendors Support" if ($fixed_name eq "VendorsSupport");
     $fixed_name = "User Activity" if ($fixed_name eq "UserActivity5 30");
     $fixed_name = "IPE Monitor$1" if ($fixed_name =~ "IPEMonitor(.*)");
+    $fixed_name = "Radius Paramaters$1" if ($fixed_name =~ "RadiusParamaters(.*)");
 
     return $fixed_name;
 }
@@ -273,9 +276,7 @@ sub fix_name {
 sub check_vers {
     my ($main, $ver) = @_;
     die "main $main or ver $ver is not defined.\n" if (! defined $main || ! defined $ver);
-    my $ver_fixed = "";
-    my $ver_sp = "";
-    my $ver_without_sp = "";
+    my $ver_fixed = ""; my $ver_sp = ""; my $ver_without_sp = "";
     #case 1: ver is a real version:
     # ver could be 5.55.111QQ or 5.55.111 QQ or V6.01.004 SP47.004
     # main is corect
@@ -285,28 +286,27 @@ sub check_vers {
     # case 2.2: else main is main, ver is main
     #Fix first version
     if ( ($ver !~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,}){0,}( )?[a-z]*?$/i) &&
-        ($ver !~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,})*( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*$/i) ){
-    if ( ($main =~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,}){0,}( )?[a-z]{0,}$/i) ||
-        ($main =~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,})*( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*$/i) ){
-        $ver = $main;
-        $main =~ s/^([v])?([[:digit:]]{1,}\.[[:digit:]]{1,})(.*)?/$2/gi;
-    } else {
-        $ver = $main;
-    }
+	    ($ver !~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,})*( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*$/i) ){
+	$ver = $main;
+	if ( ($main =~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,}){0,}( )?[a-z]{0,}$/i) ||
+	    ($main =~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,})*( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*$/i) ){
+	    $main =~ s/^([v])?([[:digit:]]{1,}\.[[:digit:]]{1,})(.*)?/$2/gi;
+	}
     }
     $main =~ s/^v//gi;
     $ver =~ s/^v//gi;
     # ver could be 5.55.111QQ or 5.55.111 QQ. Fix first version
     $ver_fixed = $ver;
-    no warnings;
     if ($ver_fixed =~ /[[:digit:]]{1,}(\.[[:digit:]]{1,})*?( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*/i) {
-	$ver_fixed =~ s/([[:digit:]]{1,}\.)*?( )?(sp[[::digit]]{1,})(\.[[:digit:]]{1,})*/$1 $3$4/gi;
-	$ver_sp =~ s/([[:digit:]]{1,}\.)*?( )?(sp[[::digit]]{1,})(\.[[:digit:]]{1,})*/$3$4/gi;
-	$ver_without_sp =~ s/([[:digit:]]{1,}\.)*?( )?(sp[[::digit]]{1,})(\.[[:digit:]]{1,})*/$1/gi;
+	$ver_fixed =~ s/([[:digit:]]{1,}(\.[[:digit:]]{1,})*?)( )?(sp[[::digit]]{1,})(\.[[:digit:]]{1,})*/$1 $4$5/gi;
+	$ver_sp = $ver;
+	$ver_sp =~ s/^(.*?)( )?(sp.*)$/$3/gi;
+	$ver_without_sp = $ver;
+	$ver_without_sp =~ s/^(.*?)( )?(sp.*)$/$1/gi;
+# 	$ver_fixed = $ver_without_sp;
     } else {
-	$ver_fixed =~ s/([[:digit:]]{1,}\.)*?( )?([a-z]{1,})/$1 $3/gi;
+	$ver_fixed =~ s/([[:digit:]]{1,}(\.[[:digit:]]{1,})*?)( )?([a-z]{1,})/$1 $4/gi;
     }
-    use warnings;
     my $big_ver = $main;
     $big_ver =~ s/^(.*?)\.(.*)/$1/;
 
@@ -316,7 +316,7 @@ sub check_vers {
     || ($main !~ /^[[:digit:]]{1,}(\.[[:digit:]]{1,})*?$/) ) {
 	die "Version $ver should contain main $main.\n";
     }
-
+    $ver_without_sp = $ver_fixed if $ver_without_sp eq "";
     return $main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp;
 }
 
