@@ -1,0 +1,85 @@
+<center><font size="4">'''View invoice cannot be performed when shipping invoices.'''</font></center>
+
+
+=General Information=
+
+<div style="float: left;">'''Initiator''': [mailto:doina.rosu@mindcti.com doina.rosu]</div>
+<div style="float: right;">'''Tester''' : [mailto:adrian.leon@mindcti.com adrian.leon]
+
+</div>
+
+
+
+'''Dealer''': Support
+
+'''Customer''': [[:Category:Moldtel|Moldtel]]
+
+
+
+{| class="wikitable"
+| '''Type'''
+| Bug
+|-
+| '''Category'''
+| Clone - Copy to new version
+|-
+| '''Project'''
+| iPhonEX
+|-
+| '''Product'''
+| iPhonEX
+|-
+| '''Full status'''
+| Prod
+|-
+| '''Status'''
+| Prod
+|}
+
+{| class="wikitable"
+! Fix version
+! Version
+! Build version
+! Prod version
+|-
+| [[:Category:6.01.003|6.01.003]]
+| 6.01.003 SP37.001
+| 6.01.003 SP48.001
+|  
+|}
+
+'''Parent ID''': [[SC:B90901|B90901]]
+
+'''Related tasks''':
+
+{| class="wikitable"
+|-
+| '''[[SC:B90901|B90901]]'''
+| '''[[SC:B91321|B91321]]'''
+| '''[[SC:B91384|B91384]]'''
+
+|}
+
+{| class="wikitable"
+! Modules
+! Modules list affected
+|-
+| EOM
+| Source\Java\Utils <br/>
+Installation\lib files - copy
+|}
+
+'''Fix descrption''':
+
+andrei.rabei, 08/04/09  <br/>
+Layout changes for Moltel integrated in B91321 - View invoice cannot be performed when shipping invoices. [MoldTel]. <br/>
+SYNCHRONIZE_TRANSFORMATION parameter must be set to N, to avoid the issue. <br/>
+ <br/>
+Vlad Faca, 08/04/09: <br/>
+Upgrade FOP to v0.95 <br/>
+Deployment consideration: old FOP jars must be removed - fop.jar, batik-all-1.6.jar, commons-io-1.0.jar, xmlgraphics-commons-1.0.jar <br/>
+Gabriela:
+
+
+[[Category:Moldtel]]
+[[Category:6.01.003]]
