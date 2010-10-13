@@ -677,6 +677,7 @@ if ($path_type eq "mind_svn") {
 
 	    $wiki_txt =~ s/^\s*(.*)\s*$/$1/gs;
 	    next if $wiki_txt eq '';
+	    die "No title for $name.\n" if ! defined $title;
 	    $wiki_txt = "\n=$title=\n\n".$header.$wiki_txt."\n\n";
 	    $wiki->{$node} = $wiki_txt;
 
