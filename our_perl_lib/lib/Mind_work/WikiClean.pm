@@ -152,9 +152,12 @@ sub html_clean_menu_in_lists {
 sub html_tidy {
     my ($html, $preserve) = @_;
     $preserve = 1 if ! defined $preserve;
-    my $tidy = HTML::Tidy->new({ indent => 1, tidy_mark => 0, doctype => 'omit', quote_marks => 'no',
-	input_encoding => "utf8", output_encoding => "raw", clean => 'no', show_body_only => 1,
-	preserve_entities => "$preserve"});
+#     my $tidy = HTML::Tidy->new({ indent => 1, tidy_mark => 0, doctype => 'omit', quote_marks => 'no',
+# 	input_encoding => "utf8", output_encoding => "raw", clean => 'no', show_body_only => 1,
+# 	preserve_entities => "$preserve"});
+    my $tidy = HTML::Tidy->new({ indent => 1, tidy_mark => 0, doctype => 'omit', uppercase_tags => 1,uppercase_attributes=>1,
+	input_encoding => "utf8", output_encoding => "raw", clean => 'no', show_body_only => 1,}
+	);
     $html = $tidy->clean($html);
     $html = Encode::encode('utf8', $html);
     return $html;
@@ -172,6 +175,92 @@ WikiCommons::write_file("$dir/html_clean_tables_in_menu.$name.html", $html, 1);
 WikiCommons::write_file("$dir/html_clean_menu_in_tables.$name.html", $html, 1);
     $html = html_clean_menu_in_lists($html);
 WikiCommons::write_file("$dir/html_clean_menu_in_lists.$name.html", $html, 1);
+
+
+    use HTML::TreeBuilder;
+    use HTML::Element;
+my $q1='<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=utf-8">
+	<TITLE></TITLE>
+	<META NAME="GENERATOR" CONTENT="OpenOffice.org 3.2  (Unix)">
+	<META NAME="CREATED" CONTENT="0;0">
+	<META NAME="CHANGED" CONTENT="0;0">
+	<STYLE TYPE="text/css">
+	<!--
+		@page { size: 8.5in 11in; margin-right: 1.25in; margin-top: 1in; margin-bottom: 1in }
+		P { margin-bottom: 0.08in }
+	-->
+	</STYLE>
+</HEAD>
+<BODY LANG="ro-RO" DIR="LTR" STYLE="border: none; padding: 0in">
+<P LANG="en-US" STYLE="margin-bottom: 0in"><FONT SIZE=2>catalin.marangoci,
+08/04/09 </FONT><FONT SIZE=2>marangoci,catalin.
+08/04/09 </FONT>
+</P>
+<P LANG="en-US" STYLE="margin-bottom: 0in"><FONT SIZE=2>According to
+Vlad:</FONT></P>
+<P STYLE="margin-top: 0.07in; margin-bottom: 0.07in"><FONT SIZE=2><SPAN LANG="en-US">&quot;</SPAN></FONT><FONT FACE="Arial, sans-serif"><FONT SIZE=2><SPAN LANG="en-GB">The
+release for this task should include some new jars. The files:
+</SPAN></FONT></FONT><FONT FACE="Arial, sans-serif"><FONT SIZE=2><SPAN LANG="en-GB"><B>fop.jar,
+batik-all-1.6.jar, commons-io-1.1.jar, xmlgraphics-commons-1.0.jar</B></SPAN></FONT></FONT><FONT FACE="Arial, sans-serif"><FONT SIZE=2><SPAN LANG="en-GB">
+must be replaced by </SPAN></FONT></FONT><FONT FACE="Arial, sans-serif"><FONT SIZE=2><SPAN LANG="en-GB"><B>fop-0.95.jar,
+batik-all-1.7.jar, commons-io-1.3.1.jar,
+xmlgraphics-commons-1.3.1.jar, xml-apis-1.3.04.jar,
+xml-apis-ext-1.3.04.jar </B></SPAN></FONT></FONT><FONT FACE="Arial, sans-serif"><FONT SIZE=2><SPAN LANG="en-GB">which
+I have added to thirdparty/apache/fop/lib.</SPAN></FONT></FONT></P>
+<P LANG="en-US" STYLE="margin-bottom: 0in"><FONT SIZE=2>&quot;</FONT></P>
+</BODY>
+</HTML>';
+my $tree = HTML::TreeBuilder->new_from_content($q1);
+#     $tree->parse($html);
+#     print "Hey, here's a dump of the parse tree of $html:\n";
+#     $tree->dump; # a method we inherit from HTML::Element
+#     print "And here it is, bizarrely rerendered as HTML:\n",
+#       $tree->as_HTML, "\n";
+    my $q=$tree->elementify();
+
+#http://www.foo.be/docs/tpj/issues/vol5_3/tpj0503-0008.html
+my ($title) = $tree->look_down( '_tag' , 'font', sub{my $w=join '',
+    map(
+      ref($_) ? $_->as_HTML : $_,
+      $_[0]->content_list
+    )
+ if $_[0];print Dumper($w);} );
+
+#http://search.cpan.org/~jfearn/HTML-Tree-4.0/lib/HTML/Element.pm#$h-%3Edelete%28%29_destroy_destroy_content
+#
+# my @wide_pix_images
+#     = $h->look_down(
+#                     "_tag", "img",
+#                     "alt", "pix!",
+#                     sub { $_[0]->attr('width') > 350 }
+#                    );
+
+    # Now that we're done with it, we must destroy it.
+
+    $tree = $tree->delete;
+
+exit 1;
+
+    my $a = HTML::Element->new('font', href => 'http://www.perl.com/');
+    $a->push_content("The Perl Homepage");
+
+    my $tag = $a->tag;
+    print "$tag starts out as:",  $a->starttag, "\n";
+    print "$tag ends as:",  $a->endtag, "\n";
+    print "$tag\'s href attribute is: ", $a->attr('href'), "\n";
+
+    my $links_r = $a->extract_links();
+    print "Hey, I found ", scalar(@$links_r), " links.\n";
+
+    print "And that, as HTML, is: ", $a->as_HTML, "\n";
+    $a = $a->delete;
+exit 1;
+
+
+    $html =~ s/\n/ /gs;
     $html = html_tidy( $html );
 WikiCommons::write_file("$dir/html_tidy.$name.html", $html, 1);
 
@@ -190,37 +279,6 @@ sub make_wiki_from_html {
     open (FILEHANDLE, "$html_file") or die "at wiki from html Can't open file $html_file: ".$!."\n";
     my $html = do { local $/; <FILEHANDLE> };
     close (FILEHANDLE);
-# use XML::Twig;
-#
-# my $string = <<"HTML";
-# <?xml version="1.0"?>
-# <html>
-# <font color="#008080"><span style="background: #ffffff"></span></font>
-# <font color="#008080">    s</font>
-# <font></font>
-# </html>
-# HTML
-#
-# use XML::Twig;
-# my $twig = XML::Twig->new(
-#     pretty_print => 'nice',
-#     twig_handlers => {
-#         span => \&delete_empty,
-#         font => \&delete_empty,
-#         },
-#     );
-# $twig->parse( $string );
-#
-# $twig->print;
-#
-# sub delete_empty {
-#     my( $twig, $element ) = @_;
-#
-#     $element->delete unless $element->text =~ /\S/;
-#     }
-#
-#
-
 
     $html = cleanup_html($html, $html_file);
 
