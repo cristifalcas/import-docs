@@ -515,8 +515,7 @@ sub work_begin {
 	$pages_toimp_hash = $coco->get_documents();
 	($to_delete, $to_keep) = generate_pages_to_delete_to_import;
     }
-make_categories;
-exit 1;
+
     foreach my $url (sort keys %$to_delete) {
 	print "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";
 	$our_wiki->wiki_delete_page($url, "$wiki_dir/$url/$wiki_files_uploaded") if ( $our_wiki->wiki_exists_page($url) );
@@ -574,7 +573,7 @@ if ($path_type eq "mind_svn") {
     $ftp_links->{'FTP_market_attach'} = "ftp://$info_h->{'FTP_USER'}:$info_h->{'FTP_PASS'}\@$info_h->{'FTP_IP'}/$info_h->{'FTP_market_attach'}";
     $ftp_links->{'FTP_test_attach'} = "ftp://$info_h->{'FTP_USER'}:$info_h->{'FTP_PASS'}\@$info_h->{'FTP_IP'}/$info_h->{'FTP_test_attach'}";
 
-    my $url_sep = WikiCommons::get_urlsep;
+#     my $url_sep = WikiCommons::get_urlsep;
     $coco = new WikiMindSC("$path_files", WikiCommons::get_urlsep);
     my ($to_delete, $to_keep) = work_begin;
     my $tmp = {};
@@ -591,21 +590,18 @@ if ($path_type eq "mind_svn") {
 	WikiCommons::makedir "$wiki_dir/$url/";
 	my $rel_path = "$pages_toimp_hash->{$url}[$rel_path_pos]";
 
-# 	my $info_crt_h = {};
-# 	open(FH, "$path_files/$rel_path/files_info.txt") || die("Could not open file $path_files/$rel_path/files_info.txt: $!");
-# 	my @info_crt = <FH>;
-# 	chomp @info_crt;
-# 	close (FH);
 	my $info_crt_h = $pages_toimp_hash->{$url}[$svn_url_pos];
-print Dumper($info_crt_h);exit 1;
+
 	my $wiki = {};
 	local( $/, *FH ) ;
 	open(FH, "$path_files/$rel_path/$general_wiki_file") || die("Could not open file: $!");
 	my $wiki_txt = <FH>;
 	close (FH);
 	$wiki_txt =~ s/^[\f ]+|[\f ]+$//mg;
-	my $str = 'SC';
-	$wiki_txt =~ s/\[\[Category:(.*?)\]\]/\[\[Category:$1$url_sep$str\]\]/g;
+	foreach my $key (keys %{$info_crt_h->{"Categories"}}) {
+	    $wiki_txt.= "[[Category:".$info_crt_h->{'Categories'}->{$key}."]]" if $info_crt_h->{'Categories'}->{$key} ne "";
+	}
+
 	$wiki_txt .= "\n'''FTP links:'''\n\n";
 	foreach my $key (keys %$ftp_links) {
 	    $wiki_txt .= "[$ftp_links->{$key}/$rel_path $key]\n\n";

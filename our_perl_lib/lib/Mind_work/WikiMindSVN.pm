@@ -139,7 +139,7 @@ sub add_document {
 
     ### Release Notes
     if ($dir =~ /\/(.*? )?Release Notes\//i && $dir_type ne "SC") {
-	$ver_fixed = $ver_fixed.$url_sep."RN" if $ver_fixed ne "";
+	$ver_without_sp = $ver_without_sp.$url_sep."RN" if $ver_without_sp ne "";
 	$main = $main.$url_sep."RN" if $main ne "";
 	$big_ver = $big_ver.$url_sep."RN" if $big_ver ne "";
 	$customer = $customer.$url_sep."RN" if $customer ne "";
@@ -157,7 +157,7 @@ sub add_document {
     push @categories, $main;
     push @categories, $big_ver;
     push @categories, $customer;
-    WikiCommons::generate_categories(@categories, $dir_type);
+    WikiCommons::generate_categories($ver_without_sp, $main, $big_ver, $customer, $dir_type);
 
     ++$count_files;
     print "\tNumber of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n" if ($count_files%100 == 0);
@@ -166,14 +166,13 @@ sub add_document {
     die "No page for $doc_file.\n" if ($page_url eq "" );
 
     if (exists $pages_ver->{$page_url} && $pages_ver->{$page_url} gt "$ver_sp") {
-# 	print "Ignore new page $page_url from\n\t\t$rel_path\n\tbecause new SP $ver_sp is smaller then $pages_ver->{$page_url}.\n"
+	print "Ignore new page $page_url from\n\t\t$rel_path\n\tbecause new SP $ver_sp is smaller then $pages_ver->{$page_url}.\n"
     } else {
-# 	print "Replace old url $page_url from\n\t\t$pages_toimp_hash->{$page_url}[1]\n\twith the doc from\n\t\t$rel_path\n\tbecause new SP $ver_sp is bigger then $pages_ver->{$page_url}.\n" if (exists $pages_toimp_hash->{$page_url});
+	print "Replace old url $page_url from\n\t\t$pages_toimp_hash->{$page_url}[1]\n\twith the doc from\n\t\t$rel_path\n\tbecause new SP $ver_sp is bigger then $pages_ver->{$page_url}.\n" if (exists $pages_toimp_hash->{$page_url});
 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
+	$pages_ver->{$page_url} = "$ver_sp";
     }
-print Dumper($pages_toimp_hash->{$page_url}) if $ver_without_sp eq "6.60.003 SP12";
 #     push(@{$pages_ver->{"$fixed_name$url_sep$ver_without_sp"}}, $ver_sp);
-    $pages_ver->{$page_url} = "$ver_sp";
 }
 
 sub get_documents {

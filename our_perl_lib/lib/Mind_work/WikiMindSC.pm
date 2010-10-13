@@ -25,6 +25,7 @@ sub get_documents {
     my $files_info_file = "files_info.txt";
     my $total = @all;
     my $count = 0;
+    my $url_sep = WikiCommons::get_urlsep;
     print "-Searching for files in SC dir.\t". (WikiCommons::get_time_diff) ."\n";
     foreach my $node (sort @all) {
 	$count++;
@@ -40,41 +41,44 @@ sub get_documents {
 
 
 	my @categories = ();
-	my $info_crt_h = {};
+	my $info_crt_h ;
 	foreach my $line (@data) {
-	    $line .= " " if $line =~ m/\;$/;
+# 	    $line .= " " if $line =~ m/^Categories(.*)\;$/;
+	    $line .= " " if $line =~ m/^(.*)\;$/;
 	    my @tmp = split ';', $line;
+	    chomp @tmp;
 	    $md5 .= "$tmp[2]" if defined $tmp[2];
 	    die "Wrong number of fields for line $line in $node/$files_info_file.\n" if @tmp<4;
 
-# print "$node: $tmp[0]\n";
 	    if ($tmp[0] eq "Categories") {
+		$tmp[1] =~ s/^customer //i;
+		$tmp[1] =~ s/\s*$//g;
+		$tmp[2] =~ s/^version //i;
+		$tmp[2] =~ s/\s*$//g;
+		$tmp[3] =~ s/\s*$//g;
 		my $customer = $tmp[1] || "";
-		$customer =~ s/^customer //;
 		my $full_ver = $tmp[2] || "";
-		$full_ver =~ s/^version //;
 		my $main_ver = $full_ver;
 		$main_ver =~ s/([[:digit:]]{1,})(\.[[:digit:]]{1,})?(.*)/$1$2/;
-# print "xxx $node _$main_ver _$full_ver.\n";
-		# $main, $ver
+
 		my ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers ($main_ver, $full_ver);
-# 		# $ver, $main, $big_ver, $customer,
-		WikiCommons::generate_categories( $ver_without_sp, $main, $big_ver, $customer, "SC docs");
-# 			foreach my $sec_key (keys %{$info_crt_h->{$key}}) {
-# 			    push @categories, $info_crt_h->{$key}->{$sec_key};
-# 			}
-# print Dumper(@categories);
+		$main = $main.$url_sep."SC" if $main ne "";
+		$ver = $ver.$url_sep."SC" if $ver ne "";
+		$ver_fixed = $ver_fixed.$url_sep."SC" if $ver_fixed ne "";
+		$big_ver = $big_ver.$url_sep."SC" if $big_ver ne "";
+		$ver_sp = $ver_sp.$url_sep."SC" if $ver_sp ne "";
+		$ver_without_sp = $ver_without_sp.$url_sep."SC" if $ver_without_sp ne "";
+		$customer = $customer.$url_sep."SC" if $customer ne "";
+		WikiCommons::generate_categories( $ver_without_sp, $main, $big_ver, $customer, "SCDocs");
+
+		$tmp[1] = $customer;
+		$tmp[2] = $main;
 	    }
 	    $info_crt_h->{$tmp[0]}->{'name'} = "$tmp[1]";
 	    $info_crt_h->{$tmp[0]}->{'size'} = "$tmp[2]";
 	    $info_crt_h->{$tmp[0]}->{'revision'} = "$tmp[3]";
 	}
-
-# 	foreach my $line (@data) {
-# 	    my @info = split ';', $line;
-# 	    $md5 .= "$info[2]" if defined $info[2];
-# 	}
-	$pages_toimp_hash->{"SC:$node"} = [$md5, "$node", "$info_crt_h", "real", \@categories];
+	$pages_toimp_hash->{"SC:$node"} = [$md5, "$node", $info_crt_h, "real", \@categories];
     }
     print "\tDone $count from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($count%500 != 0);
     print "+Searching for files in SC dir.\t". (WikiCommons::get_time_diff) ."\n";

@@ -35,6 +35,7 @@ our $files_info = "files_info.txt";
 our $general_template_file = "./general_template.txt";
 my $bulk_svn_update = "yes";
 my $svn_update = "yes";
+my $force_sc_update = "no";
 our $time = time();
 my $url_sep = WikiCommons::get_urlsep;
 
@@ -52,6 +53,10 @@ our @doc_types = (
 'Test document',
 'STP document'
 );
+
+if ($force_sc_update eq "yes"){
+    $bulk_svn_update = "no";
+}
 
 sub makedir {
     my $dir = shift;
@@ -155,9 +160,9 @@ sub general_info {
     $general =~ s/%product%/@$info[$index->{'productname'}]/;
     $general =~ s/%full_status%/@$info[$index->{'fullstatus'}]/;
     $general =~ s/%status%/@$info[$index->{'status'}]/;
-    $tmp = @$info[$index->{'version'}];
+    $tmp = @$info[$index->{'fixversion'}];
     $general =~ s/%fix_version%/[[:Category:$tmp|$tmp]]/g if $tmp && $tmp ne '';;
-    push @categories, "version ". @$info[$index->{'fixversion'}];
+    push @categories, "version ". @$info[$index->{'version'}];
     $general =~ s/%version%/@$info[$index->{'version'}]/;
     $general =~ s/%build_version%/@$info[$index->{'buildversion'}]/;
     $general =~ s/%prod_version%/@$info[$index->{'prodversion'}]/;
@@ -189,10 +194,10 @@ sub general_info {
     } else {
 	$general =~ s/%fix_description%//;
     }
-    $general .= "\n\n";
-    foreach my $cat (@categories) {
-	$general .= "[[Category:$cat]]\n";
-    }
+#     $general .= "\n\n";
+#     foreach my $cat (@categories) {
+# 	$general .= "[[Category:$cat]]\n";
+#     }
 
     return ($general, \@categories);
 }
@@ -580,14 +585,21 @@ sub http_svn_get {
 
     print "\t-Get from svn url $url_path.\n";
     my ($name,$dir,$suffix) = fileparse($url_path, qr/\.[^.]*/);
-    $request->uri( $url_path );
-    my $response = $ua->request($request, "$local_path/$name$suffix");
-    if ($response->is_success) {
-	print $response->decoded_content;
-    }
-    else {
-	die Dumper($response->status_line) ."\tfor file $url_path\n" if $response->status_line ne "404 Not Found";
-	return;
+    my $retries = 0;
+    while ($retries < 3) {
+	$request->uri( $url_path );
+	my $response = $ua->request($request, "$local_path/$name$suffix");
+	if ($response->is_success) {
+	    print $response->decoded_content;
+	    last;
+	}else {
+	    if ($response->status_line eq "404 Not Found") {
+		return;
+	    } else {
+		print Dumper($response->status_line) ."\tfor file $url_path\n" ;
+		$retries++;
+	    }
+	}
     }
     print "\t+Get from svn url $url_path.\n";
     return "$local_path/$name$suffix";
@@ -730,8 +742,13 @@ foreach my $change_id (sort keys %$crt_hash){
     $crt_info->{'SC_info'}->{'revision'} = @$arr[2];
     my $todo = {};
     $todo->{'SC_info'} = $change_id if ! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'});
-    next if Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) && $svn_update eq "no";
+    next if Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) && $svn_update eq "no" && $force_sc_update ne "yes";
     foreach my $key (sort keys %$svn_docs) {
+	if ($force_sc_update eq "yes") {
+	    $crt_info = $prev_info;
+	    last;
+	}
+
 	next if (! exists $svn_docs->{$key});
 	my $res = {};
 	if ($bulk_svn_update eq "yes") {
@@ -758,12 +775,10 @@ foreach my $change_id (sort keys %$crt_hash){
 	$todo->{$key} = "$svn_docs->{$key}" if (! Compare($crt_info->{$key}, $prev_info->{$key}) );
     }
 
-    next if Compare($crt_info, $prev_info);
+    next if Compare($crt_info, $prev_info) && $force_sc_update ne "yes";
     makedir("$work_dir");
-    my $update_me = "";
     foreach my $key (keys %$svn_docs) {
-	if ( exists $todo->{$key}) {
-	    $update_me = "yes";
+	if ( exists $todo->{$key} ) {
 	    print "\tUpdate svn http for $key.\n";
 	    my $svn_dir = @$info_comm[$index_comm->{$key}];
 	    $request = HTTP::Request->new(GET => "$svn_dir");
@@ -778,7 +793,7 @@ foreach my $change_id (sort keys %$crt_hash){
     }
 
     my $cat = ();
-    if (defined $todo->{'SC_info'} || $update_me eq "yes") {
+    if (defined $todo->{'SC_info'} || (keys %$todo) > 1 || $force_sc_update eq "yes") {
  	print "\tUpdate SC info.\n";
 	my $prev = $prev_info->{'SC_info'}->{'size'} || 'NULL';
 	print "\tChanged CRC: $crt_info->{'SC_info'}->{'size'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'size'} || $crt_info->{'SC_info'}->{'size'} ne $prev);

@@ -88,6 +88,10 @@ sub generate_categories {
     $general_categories_hash->{$main}->{'Release Notes'} = 1 if $main =~ /$url_sep(RN)$/;
     $general_categories_hash->{$customer}->{'Release Notes'} = 1 if $customer =~ /$url_sep(RN)$/;
     $general_categories_hash->{$big_ver}->{'Release Notes'} = 1 if $big_ver =~ /$url_sep(RN)$/;
+    ## SC
+    $general_categories_hash->{$main}->{'SCDocs'} = 1 if $main =~ /$url_sep(SC)$/;
+    $general_categories_hash->{$customer}->{'SCDocs'} = 1 if $customer =~ /$url_sep(SC)$/;
+    $general_categories_hash->{$big_ver}->{'SCDocs'} = 1 if $big_ver =~ /$url_sep(SC)$/;
 }
 
 sub get_categories {
