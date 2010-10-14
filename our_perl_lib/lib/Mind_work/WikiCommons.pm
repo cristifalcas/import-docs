@@ -95,8 +95,6 @@ sub generate_categories {
 }
 
 sub get_categories {
-    print Dumper($general_categories_hash);
-exit 1;
     return $general_categories_hash;
 }
 

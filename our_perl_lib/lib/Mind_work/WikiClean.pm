@@ -13,24 +13,88 @@ use Text::Balanced qw (
     extract_multiple
     gen_extract_tagged
     );
+use Encode;
 
 our $debug = "yes";
 
+sub tag_remove_attr {
+    my ($tag_name, $attr_name, $attr_value) = @_;
+    if ($tag_name eq "font") {
+	if ($attr_name eq "size" ||
+	    $attr_name eq "face" ||
+	    ($attr_name eq "style" && $attr_value =~ m/font-size: [0-9]{1,}pt/)) {
+		return 1;
+	    } elsif ($attr_name eq "color") {
+		return 0;
+	    } else {
+		die "Unknown attribute for font: $attr_name = $attr_value.\n";
+	    }
+    } elsif ($tag_name eq "span"){
+	    if ($attr_name eq "lang") {
+		return 1;
+	    } elsif ($attr_name eq "style" && (
+		    $attr_value =~  m/background: #[a-f0-9]{6}/ ||
+		    $attr_value =~  m/font-(weight|style): normal/ ) ) {
+		return 0;
+	    } else {
+		die "Unknown attribute for span: $attr_name = $attr_value.\n";
+	    }
+    } else {
+	die "Unknown attribute for tag $tag_name: $attr_name = $attr_value.\n";
+    }
+}
+
+# sub is_empty {
+#   my($font) = @_;
+#
+#   my $is_interesting = sub {
+#     for ($_[0]->content_list) {
+#       return 1 if !ref($_) && /\S/;
+#     }
+#   };
+#
+#   !$font->look_down($is_interesting);
+# }
+
 sub clean_empty_tag {
     my ($text, $tag) = @_;
-    my $tree = HTML::TreeBuilder->new_from_content($text);
-    foreach my $font ($tree->guts->look_down(_tag => "$tag")) {
-	$font->detach, next
-	unless $font->look_down(sub { grep !ref && /\S/ => $_[0]->content_list });
+# $text='<FONT COLOR="#000000"><IMG SRC="Viaero%20Configuration%20Guide_html_m2af2f4f1.png" NAME="graphics8" ALIGN=BOTTOM WIDTH=349 HEIGHT=340 BORDER=1></FONT>';
+    my $tree = HTML::TreeBuilder->new_from_content(decode_utf8($text));
+    foreach my $a_tag ($tree->guts->look_down(_tag => "$tag")) {
+	next unless $a_tag->look_down(sub { grep !ref && /\S/ => $_[0]->content_list });
+# 	if (my $q =$a_tag->look_down(sub { grep !ref && /\S/ => $_[0]->content_list })){
+# # print Dumper($q);
+# 	} else {
+# $a_tag->detach;
+#  next;
+# 	}
 
-	$font->attr($_,undef) for $font->all_external_attr_names;
-	foreach my $text ($font->content_refs_list) {
+	my $some_ok_attr = 0;
+	my $tag_name = $a_tag->tag;
+	for my $attr_name ($a_tag->all_external_attr_names){
+	    my $attr_value = $a_tag->attr($attr_name);
+	    if ( tag_remove_attr($tag_name, $attr_name, $attr_value) ) {
+# print "rem attr $attr_name from tag $tag_name\n";
+		$a_tag->attr("$attr_name", undef);
+	    } else {
+		++$some_ok_attr;
+# print "keep attr $attr_name\n";
+	    }
+	}
+# 	if ( ! $some_ok_attr ) {
+# 	    $a_tag->replace_with($a_tag->content_list());
+# print "replace tag $tag_name with ". Dumper($a_tag->content_list)."\n";
+# 	}
+	foreach my $text ($a_tag->content_refs_list) {
 	    next if ref $$text;
-	    $$text =~ s/^\s+//;
-	    $$text =~ s/\s+$//;
+# die "OK!!\n" if $$text =~ /m2af2f4f1/;
+# 	    $$text =~ s/^\s+//;
+# 	    $$text =~ s/\s+$//;
 	}
     }
-    (my $cleaned = $tree->guts ? $tree->guts->as_HTML : "") =~ s/\s+$//;
+#     (my $cleaned = $tree->guts ? $tree->guts->as_HTML : "") =~ s/\s+$//;
+    my $cleaned = $tree->guts ? $tree->guts->as_HTML(undef, "\t") : "";
+# print "$cleaned\n";exit 1;
     return $cleaned;
 }
 
@@ -137,9 +201,9 @@ sub html_clean_menu_in_lists {
 		$new_text .= $h."\n";
 	    }
 	}
-	$new_text = clean_empty_tag($new_text, "LI");
-	$new_text = clean_empty_tag($new_text, "OL") if ($found_string =~ m/<OL/i);
-	$new_text = clean_empty_tag($new_text, "UL") if ($found_string =~ m/<UL/i);
+	$new_text = clean_empty_tag($new_text, "li");
+	$new_text = clean_empty_tag($new_text, "ol") if ($found_string =~ m/<OL/i);
+	$new_text = clean_empty_tag($new_text, "ul") if ($found_string =~ m/<UL/i);
 
 	$new_text = "$titles$new_text";
 	substr($newhtml, $found_string_end_pos - length($found_string) + $count, length($data[0])) = "$new_text";
@@ -150,17 +214,13 @@ sub html_clean_menu_in_lists {
 }
 
 sub html_tidy {
-    my ($html, $preserve) = @_;
-    $preserve = 1 if ! defined $preserve;
-#     my $tidy = HTML::Tidy->new({ indent => 1, tidy_mark => 0, doctype => 'omit', quote_marks => 'no',
-# 	input_encoding => "utf8", output_encoding => "raw", clean => 'no', show_body_only => 1,
-# 	preserve_entities => "$preserve"});
-    my $tidy = HTML::Tidy->new({ indent => 1, tidy_mark => 0, doctype => 'omit', uppercase_tags => 1,uppercase_attributes=>1,
-	input_encoding => "utf8", output_encoding => "raw", clean => 'no', show_body_only => 1,}
-	);
+    my ($html, $indent, $preserve) = @_;
+
+    my $tidy = HTML::Tidy->new({ indent => "$indent", tidy_mark => 0, doctype => 'omit', quote_marks => 'no',
+	input_encoding => "utf8", output_encoding => "raw", clean => 'no', show_body_only => 1,
+	preserve_entities => "$preserve"});
     $html = $tidy->clean($html);
-    $html = Encode::encode('utf8', $html);
-    return $html;
+    return Encode::encode('utf8', $html);
 }
 
 sub cleanup_html {
@@ -175,93 +235,12 @@ WikiCommons::write_file("$dir/html_clean_tables_in_menu.$name.html", $html, 1);
 WikiCommons::write_file("$dir/html_clean_menu_in_tables.$name.html", $html, 1);
     $html = html_clean_menu_in_lists($html);
 WikiCommons::write_file("$dir/html_clean_menu_in_lists.$name.html", $html, 1);
-
-
-    use HTML::TreeBuilder;
-    use HTML::Element;
-my $q1='<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<HTML>
-<HEAD>
-	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=utf-8">
-	<TITLE></TITLE>
-	<META NAME="GENERATOR" CONTENT="OpenOffice.org 3.2  (Unix)">
-	<META NAME="CREATED" CONTENT="0;0">
-	<META NAME="CHANGED" CONTENT="0;0">
-	<STYLE TYPE="text/css">
-	<!--
-		@page { size: 8.5in 11in; margin-right: 1.25in; margin-top: 1in; margin-bottom: 1in }
-		P { margin-bottom: 0.08in }
-	-->
-	</STYLE>
-</HEAD>
-<BODY LANG="ro-RO" DIR="LTR" STYLE="border: none; padding: 0in">
-<P LANG="en-US" STYLE="margin-bottom: 0in"><FONT SIZE=2>catalin.marangoci,
-08/04/09 </FONT><FONT SIZE=2>marangoci,catalin.
-08/04/09 </FONT>
-</P>
-<P LANG="en-US" STYLE="margin-bottom: 0in"><FONT SIZE=2>According to
-Vlad:</FONT></P>
-<P STYLE="margin-top: 0.07in; margin-bottom: 0.07in"><FONT SIZE=2><SPAN LANG="en-US">&quot;</SPAN></FONT><FONT FACE="Arial, sans-serif"><FONT SIZE=2><SPAN LANG="en-GB">The
-release for this task should include some new jars. The files:
-</SPAN></FONT></FONT><FONT FACE="Arial, sans-serif"><FONT SIZE=2><SPAN LANG="en-GB"><B>fop.jar,
-batik-all-1.6.jar, commons-io-1.1.jar, xmlgraphics-commons-1.0.jar</B></SPAN></FONT></FONT><FONT FACE="Arial, sans-serif"><FONT SIZE=2><SPAN LANG="en-GB">
-must be replaced by </SPAN></FONT></FONT><FONT FACE="Arial, sans-serif"><FONT SIZE=2><SPAN LANG="en-GB"><B>fop-0.95.jar,
-batik-all-1.7.jar, commons-io-1.3.1.jar,
-xmlgraphics-commons-1.3.1.jar, xml-apis-1.3.04.jar,
-xml-apis-ext-1.3.04.jar </B></SPAN></FONT></FONT><FONT FACE="Arial, sans-serif"><FONT SIZE=2><SPAN LANG="en-GB">which
-I have added to thirdparty/apache/fop/lib.</SPAN></FONT></FONT></P>
-<P LANG="en-US" STYLE="margin-bottom: 0in"><FONT SIZE=2>&quot;</FONT></P>
-</BODY>
-</HTML>';
-my $tree = HTML::TreeBuilder->new_from_content($q1);
-#     $tree->parse($html);
-#     print "Hey, here's a dump of the parse tree of $html:\n";
-#     $tree->dump; # a method we inherit from HTML::Element
-#     print "And here it is, bizarrely rerendered as HTML:\n",
-#       $tree->as_HTML, "\n";
-    my $q=$tree->elementify();
-
-#http://www.foo.be/docs/tpj/issues/vol5_3/tpj0503-0008.html
-my ($title) = $tree->look_down( '_tag' , 'font', sub{my $w=join '',
-    map(
-      ref($_) ? $_->as_HTML : $_,
-      $_[0]->content_list
-    )
- if $_[0];print Dumper($w);} );
-
-#http://search.cpan.org/~jfearn/HTML-Tree-4.0/lib/HTML/Element.pm#$h-%3Edelete%28%29_destroy_destroy_content
-#
-# my @wide_pix_images
-#     = $h->look_down(
-#                     "_tag", "img",
-#                     "alt", "pix!",
-#                     sub { $_[0]->attr('width') > 350 }
-#                    );
-
-    # Now that we're done with it, we must destroy it.
-
-    $tree = $tree->delete;
-
-exit 1;
-
-    my $a = HTML::Element->new('font', href => 'http://www.perl.com/');
-    $a->push_content("The Perl Homepage");
-
-    my $tag = $a->tag;
-    print "$tag starts out as:",  $a->starttag, "\n";
-    print "$tag ends as:",  $a->endtag, "\n";
-    print "$tag\'s href attribute is: ", $a->attr('href'), "\n";
-
-    my $links_r = $a->extract_links();
-    print "Hey, I found ", scalar(@$links_r), " links.\n";
-
-    print "And that, as HTML, is: ", $a->as_HTML, "\n";
-    $a = $a->delete;
-exit 1;
-
-
+    $html = clean_empty_tag($html, 'span');
+WikiCommons::write_file("$dir/html_clean_empty_tag_span.$name.html", $html, 1);
+    $html = clean_empty_tag($html, 'font');
+WikiCommons::write_file("$dir/html_clean_empty_tag_font.$name.html", $html, 1);
     $html =~ s/\n/ /gs;
-    $html = html_tidy( $html );
+    $html = html_tidy( $html, 0, 1 );
 WikiCommons::write_file("$dir/html_tidy.$name.html", $html, 1);
 
     my $just_test = html_clean_menu_in_tables($html);
@@ -320,15 +299,15 @@ WikiCommons::write_file("$dir/fix_wiki_link_to_sc.$name.txt", $wiki, 1);
 WikiCommons::write_file("$dir/fix_external_links.$name.txt", $wiki, 1);
     $wiki = fix_small_issues( $wiki );
 WikiCommons::write_file("$dir/fix_small_issues.$name.txt", $wiki, 1);
+    $wiki = fix_tabs( $wiki );
+WikiCommons::write_file("$dir/fix_tabs.$name.txt", $wiki, 1);
     ## colapse spaces (here, so we don't mess with the lists)
-    $wiki =~ s/[ ]+/ /gm;
+    $wiki =~ s/ +/ /gm;
     $wiki =~ s/^[\f ]+|[\f ]+$//mg;
     $wiki = wiki_fix_lists( $wiki );
 WikiCommons::write_file("$dir/fix_lists.$name.txt", $wiki, 1);
     $wiki = fix_wiki_menus( $wiki, $dir );
 WikiCommons::write_file("$dir/fix_wiki_menus.$name.txt", $wiki, 1);
-    $wiki = fix_tabs( $wiki );
-WikiCommons::write_file("$dir/fix_tabs.$name.txt", $wiki, 1);
 
     $wiki =~ s/^[:\s]*$//gm;
     ## remove consecutive blank lines
@@ -350,14 +329,14 @@ sub fix_tabs {
     my $wiki = shift;
     my $newwiki = $wiki;
     my $count = 0;
-    while ($wiki =~ m/^([ \t]+)(.*?)$/g ) {
+    while ($wiki =~ m/^([ \t]+)(.*?)$/gm ) {
 	my $found_string = $&;
 	my $str = $2;
 	my $found_string_end_pos = pos($wiki);
 	my $spaces = $1;
 	next if ! defined $str;
-	$spaces =~ s/ //g;
 	$spaces =~ s/\t/:/g;
+# 	$spaces =~ s/ //g;
 	my $new = "$spaces$str";
 	substr($newwiki, $found_string_end_pos - length($found_string) + $count, length($found_string)) = "$new";
 	$count += length($new) - length($found_string);
@@ -379,8 +358,8 @@ sub fix_small_issues {
     $wiki =~ s/<sub>[\s]{0,}<\/sub>//gsi;
     ## remove empty div
     $wiki =~ s/<div>[\s]{0,}<\/div>//gsi;
-    $wiki =~ s/<span[^>]*>\s*?<\/span>//gsi;
-    $wiki =~ s/<font[^>]*>\s*?<\/font>//gsi;
+#     $wiki =~ s/<span[^>]*>\s*?<\/span>//gsi;
+#     $wiki =~ s/<font[^>]*>\s*?<\/font>//gsi;
 
     $wiki =~ s/(<center>)|(<\/center>)//gmi;
 
@@ -568,7 +547,7 @@ sub fix_wiki_images {
 	    }
 	}
     }
-    $wiki=$newwiki;
+    $wiki = $newwiki;
     return ($wiki, $image_files);
 }
 
@@ -577,9 +556,21 @@ sub fix_wiki_footers {
     print "\tFix footers from wiki.\t". (WikiCommons::get_time_diff) ."\n";
     ## fix footers
     $wiki =~ s/(<div id="sdfootnote.*?">)/----\n$1/gsi;
-    $wiki =~ s/\[(#sdfootnote[[:print:]]*?)([\s]{1,})(<sup>)?([[:print:]]).*?(<\/sup>)?\]/\[\[#sdfootnote_$4|$4\]\]/gsi;
-    $wiki =~ s/<div id="(sdfootnote[[:digit:]]{1,})">([\s]{1,})\[\[#([[:print:]].*?)\|([[:print:]].*?)\]\](.*?)<\/div>/<span id="$3">$4: $5<\/span>\n\n/gsi;
-    return $wiki;
+    my $count = 0;
+    my  $newwiki = $wiki;
+    while ($wiki =~ m/(\[#sdfootnote)([^ ]*) ([^\]]*)(\])/gsi ) {
+	my $found_string = $&;
+	my $found_string_end_pos = pos($wiki);
+	my $start= $1;
+	my $string= $3;
+	my $end= $4;
+	my $striped_srt =  HTML::TreeBuilder->new_from_content($string)->guts->as_text();
+	my $new_string = "\[$start"."_"."$striped_srt\|$striped_srt$end\]";
+	substr($newwiki, $found_string_end_pos - length($found_string) + $count, length($found_string)) = $new_string;
+	$count += length($new_string) - length($found_string);
+    }
+    $newwiki =~ s/<div id="(sdfootnote[[:digit:]]{1,})">([\s]{1,})\[\[#([[:print:]].*?)\|([[:print:]].*?)\]\](.*?)<\/div>/<span id="$3">$4: $5<\/span>\n\n/gsi;
+    return $newwiki;
 }
 
 sub fix_wiki_links_menus {
@@ -685,9 +676,9 @@ next;
 		$new_text .= $h;
 	    }
 	}
-	$new_text = html_tidy( $new_text, 0 );
+	$new_text = html_tidy( $new_text, 1, 0 );
 	$new_text =~ s/<br>/\n/gs;
-	$new_text =~ s/^[\f ]+|[\f ]+$//mg;
+	$new_text =~ s/^ +: */:/mg;
 	substr($newwiki, $found_string_end_pos - length($found_string) + $count, length($data[0])) = "$new_text";
 	$count += length($new_text) - length($data[0]);
     }
