@@ -708,7 +708,7 @@ my ($index, $SEL_INFO) = sql_generate_select_changeinfo();
 my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id gt "B04021";
+#     next if $change_id ne "B91991";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -793,7 +793,7 @@ foreach my $change_id (sort keys %$crt_hash){
     }
 
     my $cat = ();
-    if (defined $todo->{'SC_info'} || (keys %$todo) > 1 || $force_sc_update eq "yes") {
+    if (defined $todo->{'SC_info'} || (scalar keys %$todo) > 1 || $force_sc_update eq "yes") {
  	print "\tUpdate SC info.\n";
 	my $prev = $prev_info->{'SC_info'}->{'size'} || 'NULL';
 	print "\tChanged CRC: $crt_info->{'SC_info'}->{'size'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'size'} || $crt_info->{'SC_info'}->{'size'} ne $prev);

@@ -72,7 +72,7 @@ sub get_documents {
 		WikiCommons::generate_categories( $ver_without_sp, $main, $big_ver, $customer, "SCDocs");
 
 		$tmp[1] = $customer;
-		$tmp[2] = $main;
+		$tmp[2] = $ver_without_sp;
 	    }
 	    $info_crt_h->{$tmp[0]}->{'name'} = "$tmp[1]";
 	    $info_crt_h->{$tmp[0]}->{'size'} = "$tmp[2]";

@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 print "Start.\n";
 
 #soffice "-accept=socket,host=localhost,port=2002;urp;StarOffice.ServiceManager" -nologo -headless -nofirststartwizard
@@ -50,7 +50,7 @@ print "Start.\n";
 # eval 'exec /usr/bin/perl  -S $0 ${1+"$@"}'
 #     if 0; # not running under some shell
 
-die "We need the dir where the doc files are and the type of the dir: mind_svn, users.\n" if ( $#ARGV != 1 );
+die "We need the dir where the doc files are and the type of the dir: mind_svn, users, sc_docs.\n" if ( $#ARGV != 1 );
 
 use warnings;
 use strict;
@@ -82,8 +82,8 @@ use Mind_work::WikiMindSC;
 
 my $our_wiki;
 
-# my $path_prefix = "/media/share/Documentation/cfalcas/q/import_docs";
-my $path_prefix = "./";
+my $path_prefix = "/media/share/Documentation/cfalcas/q/import_docs";
+# my $path_prefix = "./";
 my $path_files = abs_path(shift);
 my $path_type = shift;
 our $wiki_dir = "$path_prefix/work/workfor_". (fileparse($path_files, qr/\.[^.]*/))[0] ."";
@@ -100,7 +100,8 @@ my $wiki_files_uploaded = "wiki_files_uploaded.txt";
 my $wiki_files_info = "wiki_files_info.txt";
 
 my $delete_everything = "no";
-my $make_categoris = "yes";
+my $delete_categories = "no";
+my $make_categories = "no";
 my $pid_old = "100000";
 my $all_real = "no";
 my $type_old = "";
@@ -371,9 +372,9 @@ sub delete_categories {
 }
 
 sub make_categories {
-    return 1 if ( $make_categoris eq "no");
+    return 1 if ( $make_categories eq "no");
     my $url = "";
-    delete_categories;
+    delete_categories if ( $delete_categories eq "yes");
 
     return if ($delete_everything eq "yes");
     print "-Making categories.\t". (WikiCommons::get_time_diff) ."\n";
@@ -431,7 +432,7 @@ sub insertdata {
     $text .= "link_type = $pages_toimp_hash->{$url}[$link_type_pos]\n";
     WikiCommons::write_file("$work_dir/$wiki_files_info", $text);
     delete($pages_toimp_hash->{$url});
-#     WikiCommons::cleanup;
+    WikiCommons::cleanup;
 }
 
 sub work_real {
@@ -576,6 +577,7 @@ if ($path_type eq "mind_svn") {
 #     my $url_sep = WikiCommons::get_urlsep;
     $coco = new WikiMindSC("$path_files", WikiCommons::get_urlsep);
     my ($to_delete, $to_keep) = work_begin;
+    make_categories;
     my $tmp = {};
     foreach (keys %$pages_toimp_hash) {$tmp->{$_} = 1 if ($pages_toimp_hash->{$_}[$link_type_pos] eq "link")};
     die "There are no links.\n" if scalar keys %$tmp;
@@ -583,7 +585,7 @@ if ($path_type eq "mind_svn") {
     my $general_wiki_file = "General_info.wiki";
 
     foreach my $url (sort keys %$pages_toimp_hash) {
-    # next if "$url" ne "B71488";
+#     next if "$url" ne "SC:B91991";
 	WikiCommons::reset_time();
 	print "\n*************************\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 
@@ -602,7 +604,7 @@ if ($path_type eq "mind_svn") {
 	    $wiki_txt.= "[[Category:".$info_crt_h->{'Categories'}->{$key}."]]" if $info_crt_h->{'Categories'}->{$key} ne "";
 	}
 
-	$wiki_txt .= "\n'''FTP links:'''\n\n";
+	$wiki_txt .= "\n\n'''FTP links:'''\n\n";
 	foreach my $key (keys %$ftp_links) {
 	    $wiki_txt .= "[$ftp_links->{$key}/$rel_path $key]\n\n";
 	}
