@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 #LD_LIBRARY_PATH=./instantclient_11_2/ perl ./oracle.pl
 use warnings;
 use strict;
