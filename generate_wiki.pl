@@ -424,7 +424,7 @@ sub insertdata {
 	print "\tCopy files to $remote_work_path/$wiki_result\n";
 	WikiCommons::makedir("$remote_work_path/$wiki_result");
 	WikiCommons::copy_dir ("$work_dir/$wiki_result", "$remote_work_path/$wiki_result");
-	copy("$work_dir/$url.full.wiki","$remote_work_path") or die "Copy failed for: $url.full.wiki to $remote_work_path: $!\t". (WikiCommons::get_time_diff) ."\n";
+	copy("$work_dir/$url.full.wiki","$remote_work_path/$url.wiki") or die "Copy failed for: $url.full.wiki to $remote_work_path: $!\t". (WikiCommons::get_time_diff) ."\n";
     }
 
     my $text = "md5 = $pages_toimp_hash->{$url}[$md5_pos]\n";
@@ -537,7 +537,7 @@ sub work_for_docs {
 # 	my @oo_procs = `ps -ef | grep office | grep -v grep`;
 # 	die "OpenOffice is already running.\n" if (@oo_procs);
 # 	my $result = `/usr/bin/ooffice "$doc_file" -headless -invisible "macro:///Standard.Module1.runall()"`;
-my @oo_procs = `ps -ef | grep '\\-accept=socket,host=localhost,port=2002;urp;StarOffice.ServiceManager' | grep -v grep`;
+my @oo_procs = `ps -ef | grep '\\-accept=socket,host=127.0.0.1,port=2002;urp;StarOffice.ServiceManager' | grep -v grep`;
 die "OpenOffice is NOT running: $#oo_procs.\t". (WikiCommons::get_time_diff) ."\n" if ($#oo_procs < 1);
 
 if (-f "$pid_file") {
@@ -584,13 +584,13 @@ if ($path_type eq "mind_svn") {
     die "There are no links.\n" if scalar keys %$tmp;
 
     my $general_wiki_file = "General_info.wiki";
-
     foreach my $url (sort keys %$pages_toimp_hash) {
 #     next if "$url" ne "SC:B91991";
 	WikiCommons::reset_time();
 	print "\n*************************\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 
 	WikiCommons::makedir "$wiki_dir/$url/";
+	WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
 	my $rel_path = "$pages_toimp_hash->{$url}[$rel_path_pos]";
 
 	my $info_crt_h = $pages_toimp_hash->{$url}[$svn_url_pos];
@@ -685,7 +685,6 @@ if ($path_type eq "mind_svn") {
 	    $wiki->{$node} = $wiki_txt;
 
 	    ### from dir $url/$doc$type/$wiki_result get all files in $url/$wiki_result
-	    WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
 	    WikiCommons::add_to_remove("$wiki_dir/$url/$wiki_result", "dir");
 	    WikiCommons::copy_dir ("$wiki_dir/$url/$url $name/$wiki_result", "$wiki_dir/$url/$wiki_result") if ($suffix eq ".doc");
 	}

@@ -30,7 +30,8 @@ sub tag_remove_attr {
 		die "Unknown attribute for font: $attr_name = $attr_value.\n";
 	    }
     } elsif ($tag_name eq "span"){
-	    if ($attr_name eq "lang" || $attr_name eq "id" || $attr_name eq "dir") {
+	    if ($attr_name eq "lang" || $attr_name eq "id" || $attr_name eq "dir" ||
+		    ($attr_name eq "style" && $attr_value eq "text-decoration: none")) {
 		return 1;
 	    } elsif ($attr_name eq "style" && (
 		    $attr_value =~  m/background: #[a-f0-9]{6}/ ||
@@ -39,7 +40,13 @@ sub tag_remove_attr {
 	    } else {
 		die "Unknown attribute for span: $attr_name = $attr_value.\n";
 	    }
-    } else {
+    } elsif ($tag_name eq "ol") {
+	if ($attr_name eq "start" ) {
+	    return 0;
+	} else {
+	    die "Unknown attribute for tag $tag_name: $attr_name = $attr_value.\n";
+	}
+    }else {
 	die "Unknown attribute for tag $tag_name: $attr_name = $attr_value.\n";
     }
 }
