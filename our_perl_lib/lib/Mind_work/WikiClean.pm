@@ -283,14 +283,14 @@ sub make_wiki_from_html {
 WikiCommons::write_file("$dir/fix_wiki_chars.$name.txt", $wiki, 1);
 #     $wiki = fix_wiki_menus( $wiki, $dir );
 # WikiCommons::write_file("$dir/fix_wiki_menus.$name.txt", $wiki, 1);
-    ($wiki, $image_files) = fix_wiki_tables( $wiki, $dir );
-WikiCommons::write_file("$dir/fix_wiki_tables.$name.txt", $wiki, 1);
     ($wiki, $image_files) = fix_wiki_images( $wiki, $image_files, $dir );
 WikiCommons::write_file("$dir/fix_wiki_images.$name.txt", $wiki, 1);
     $wiki = fix_wiki_footers( $wiki );
 WikiCommons::write_file("$dir/fix_wiki_footers.$name.txt", $wiki, 1);
     $wiki = fix_wiki_links_menus( $wiki );
 WikiCommons::write_file("$dir/fix_wiki_links_menus.$name.txt", $wiki, 1);
+    ($wiki, $image_files) = fix_wiki_tables( $wiki, $dir );
+WikiCommons::write_file("$dir/fix_wiki_tables.$name.txt", $wiki, 1);
     $wiki = fix_wiki_url( $wiki );
 WikiCommons::write_file("$dir/fix_wiki_url.$name.txt", $wiki, 1);
     $wiki = fix_wiki_link_to_sc( $wiki );
@@ -490,6 +490,7 @@ sub fix_wiki_tables {
     my $newwiki = $wiki;
     while ($wiki =~ m/(\{\|.*?\|\})/sg ) {
 	my $table=$1;
+	$table =~ s/\s*//gs;
 	my $tmp = "\n".$table;
 	$table = quotemeta $table;
 	if ($tmp =~ m/(\[\[Image:)([[:print:]].*?)(\]\])/) {

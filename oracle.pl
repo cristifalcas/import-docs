@@ -488,7 +488,7 @@ sub get_previous {
 	my @all = split(/;/, $line);
 	return if (@all < 1);
 	$all[0] =~ s/^[0-9]{1,} //;
-	next if $all[0] eq "Categories";
+# 	next if $all[0] eq "Categories";
 	$info_hash->{$all[0]}->{'name'} = $all[1];
 	$info_hash->{$all[0]}->{'size'} = $all[2];
 	$info_hash->{$all[0]}->{'revision'} = $all[3];
@@ -641,7 +641,7 @@ sub write_control_file {
     }
 
     $text .= "SC_info;$hash->{'SC_info'}->{'name'};$hash->{'SC_info'}->{'size'};$hash->{'SC_info'}->{'revision'}\n";
-    $text .= "Categories;". (join ';',@$categories) .";\n";
+    $text .= "Categories;". (join ';',@$categories). ";"x(3-(scalar @$categories))."\n";
 
     write_file("$dir/$files_info", "$text");
 }
@@ -708,7 +708,7 @@ my ($index, $SEL_INFO) = sql_generate_select_changeinfo();
 my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id ne "B91991";
+#     next if $change_id ne "B94932";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -793,7 +793,7 @@ foreach my $change_id (sort keys %$crt_hash){
     }
 
     my $cat = ();
-    if (defined $todo->{'SC_info'} || (scalar keys %$todo) > 1 || $force_sc_update eq "yes") {
+    if (defined $todo->{'SC_info'} || $force_sc_update eq "yes") {
  	print "\tUpdate SC info.\n";
 	my $prev = $prev_info->{'SC_info'}->{'size'} || 'NULL';
 	print "\tChanged CRC: $crt_info->{'SC_info'}->{'size'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'size'} || $crt_info->{'SC_info'}->{'size'} ne $prev);
@@ -817,6 +817,8 @@ foreach my $change_id (sort keys %$crt_hash){
 	write_rtf ("$work_dir/4 Messages_SC.rtf", @$info_ret[$index->{'Messages_SC'}]);
 	write_rtf ("$work_dir/5 Architecture_SC.rtf", @$info_ret[$index->{'Architecture_SC'}]);
     }
+
+    $cat = [ $prev_info->{'Categories'}->{'name'}, $prev_info->{'Categories'}->{'size'}, $prev_info->{'Categories'}->{'revision'} ] if ! defined $cat;
 
     write_control_file($crt_info, $work_dir, $cat);
     move_dir("$work_dir", "$to_path/$change_id/");
