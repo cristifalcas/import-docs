@@ -55,7 +55,9 @@ my $problem_categories = {};
 my $problem_types = {};
 
 sub get_eventscode {
-    my $SEL_INFO = 'select t.rsuppeventscode,t.rsuppeventsdesc,t.rsuppeventsdefsupstatus from tblsuppevents t';
+    my $SEL_INFO = '
+select t.rsuppeventscode, t.rsuppeventsdesc, t.rsuppeventsdefsupstatus
+  from tblsuppevents t';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
@@ -65,7 +67,7 @@ sub get_eventscode {
 }
 
 sub get_attributes {
-    my $SEL_INFO = 'select t.attribisn,t.attribname from tblattributes t';
+    my $SEL_INFO = 'select t.attribisn, t.attribname from tblattributes t';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
@@ -74,8 +76,7 @@ sub get_attributes {
 }
 
 sub get_attributes_options {
-    my $SEL_INFO = 'select t.attrib_isn,t.option_line,t.option_text
-	from tblattriboptions t';
+    my $SEL_INFO = 'select t.attrib_isn, t.option_line, t.option_text from tblattriboptions t';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
@@ -84,8 +85,12 @@ sub get_attributes_options {
 }
 
 sub get_staff {
-    my $SEL_INFO = 'select t.rsuppstaffenggcode,t.rsuppstafflastname,t.rsuppstafffirstname,t.rsuppstaffemail
-    from tblsupportstaff t';
+    my $SEL_INFO = '
+select t.rsuppstaffenggcode,
+       t.rsuppstafflastname,
+       t.rsuppstafffirstname,
+       t.rsuppstaffemail
+  from tblsupportstaff t';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
@@ -95,7 +100,9 @@ sub get_staff {
 }
 
 sub get_priorities {
-    my $SEL_INFO = 'select t.rsupppriorities,t.rsuppprioritiesdesc,t.colorforlistofspr from tblsupppriorities t';
+    my $SEL_INFO = '
+select t.rsupppriorities, t.rsuppprioritiesdesc, t.colorforlistofspr
+  from tblsupppriorities t';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
@@ -105,7 +112,7 @@ sub get_priorities {
 }
 
 sub get_problem_categories {
-    my $SEL_INFO = 'select t.rprobcatgcode,t.rprobcatgdesc from tblproblemcategories t';
+    my $SEL_INFO = 'select t.rprobcatgcode, t.rprobcatgdesc from tblproblemcategories t';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
@@ -114,7 +121,7 @@ sub get_problem_categories {
 }
 
 sub get_problem_types {
-    my $SEL_INFO = 'select t.rsctypescode,t.rsctypesdesc from tblsctypes t';
+    my $SEL_INFO = 'select t.rsctypescode, t.rsctypesdesc from tblsctypes t';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
@@ -124,8 +131,10 @@ sub get_problem_types {
 
 sub get_customers {
     my $info = {};
-    my $SEL_INFO = 'select t.rcustcompanycode, t.rcustcompanyname, t.rcustiddisplay
-	    from tblcustomers t where t.rcuststatus = \'A\'';
+    my $SEL_INFO = '
+select t.rcustcompanycode, t.rcustcompanyname, t.rcustiddisplay
+  from tblcustomers t
+ where t.rcuststatus = \'A\'';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
@@ -139,8 +148,10 @@ sub get_customers {
 sub get_customer_attributes {
     my $code = shift;
     my $info = {};
-    my $SEL_INFO = 'select t.attrib_isn,t.value_text
-	from tblattrib_values t where attrib_object_code1= :CUST_CODE';
+    my $SEL_INFO = '
+select t.attrib_isn, t.value_text
+  from tblattrib_values t
+ where attrib_object_code1 = :CUST_CODE';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->bind_param( ":CUST_CODE", $code );
     $sth->execute();
@@ -169,18 +180,23 @@ select t.rsceventsscno,
        t.rsceventscreator,
        t.rsceventsshortdesc
   from tblscevents t
- where t.rsceventscompanycode = :CUST_CODE';
+ where t.rsceventscompanycode = :CUST_CODE
+   and t.rsceventsdate >= \'20100101\'';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->bind_param( ":CUST_CODE", $code );
     $sth->execute();
     my $nr=0;
     while ( my @row=$sth->fetchrow_array() ) {
 	my $desc = get_sr_desc($row[0], $code);
-	$info->{$row[0]}->{$row[1]}->{'description'} = $desc;
+	$info->{$row[0]}->{'description'} = $desc if ! exists $info->{$row[0]}->{'description'};
 	$info->{$row[0]}->{$row[1]}->{'event'}->{$_} = $event_codes->{$row[2]}->{$_} foreach (keys %{$event_codes->{$row[2]}});
 	$info->{$row[0]}->{$row[1]}->{'date'} = $row[3]." ".$row[4];
 	$info->{$row[0]}->{$row[1]}->{'person'}->{$_} = $staff->{$row[5]}->{$_} foreach (keys %{$staff->{$row[5]}});
 	$info->{$row[0]}->{$row[1]}->{'short_description'} = $row[6];
+	$desc = get_event_desc($row[0], $row[1], $code);
+	$info->{$row[0]}->{$row[1]}->{'description'} = $desc;
+	$desc = get_event_reference($row[0], $row[1], $code);
+	$info->{$row[0]}->{$row[1]}->{'reference'} = $desc;
     }
     return $info;
 }
@@ -214,11 +230,61 @@ select t.rscmainproblemdescription,
 	$info->{'priority'}->{$_} = $priorities->{$row[1]}->{$_} foreach (keys %{$priorities->{$row[1]}});
 	$info->{'incharge'}->{$_} = $staff->{$row[2]}->{$_} foreach (keys %{$staff->{$row[2]}});
 	$info->{'date'} = $row[4]." ".$row[3];
-	$info->{'cust_category'} = $problem_categories->{$row[5]};
+	$info->{'cust_category'} = $problem_categories->{$row[5]} || $row[5];
 	$info->{'type'} = $problem_types->{$row[6]};
 	$info->{'solution'} = $row[7];
 	$info->{'subject'} = $row[8];
 	$info->{'mind_category'} = $problem_categories->{$row[9]};
+    }
+    return $info;
+}
+
+sub get_event_desc {
+    my ($scno, $srno, $customer) = @_;
+    my $info = {};
+
+    my $SEL_INFO = '
+select t.rsceventdoctype,
+       t.rsceventdocno,
+       t.rsceventdocpath
+  from tblsceventdoc t
+ where t.rsceventdoccompanycode = :CUSTOMER
+   and t.rsceventdocscno = :SCNO
+   and t.rsceventsrno = :SRNO';
+
+    my $sth = $dbh->prepare($SEL_INFO);
+    $sth->bind_param( ":CUSTOMER", $customer );
+    $sth->bind_param( ":SCNO", $scno );
+    $sth->bind_param( ":SRNO", $srno );
+    $sth->execute();
+    while ( my @row=$sth->fetchrow_array() ) {
+	die "too many rows: $scno, $srno, $customer\n" if exists $info->{$row[0]};
+	$info->{$row[0].$row[1]} = $row[2];
+    }
+    return $info;
+}
+
+sub get_event_reference {
+    my ($scno, $srno, $customer) = @_;
+    my $info = {};
+
+    my $SEL_INFO = '
+select t.rscrefnum1, t.rscrefnum2
+  from tblscrefnum t
+ where (trim(\' \' from NVL(t.rscrefnum1, \'\')) is not null or
+       trim(\' \' from NVL(t.rscrefnum2, \'\')) is not null)
+   and t.rscrefcust = :CUSTOMER
+   and t.rscrefscno = :SCNO
+   and t.rscrefeventsrno = :SRNO';
+
+    my $sth = $dbh->prepare($SEL_INFO);
+    $sth->bind_param( ":CUSTOMER", $customer );
+    $sth->bind_param( ":SCNO", $scno );
+    $sth->bind_param( ":SRNO", $srno );
+    $sth->execute();
+    while ( my @row=$sth->fetchrow_array() ) {
+	$info->{'ref1'} = $row[0];
+	$info->{'ref2'} = $row[1];
     }
     return $info;
 }
@@ -251,6 +317,6 @@ get_problem_types();
 foreach my $cust (sort keys %$customers){
     $customers->{$cust}->{'attributes'} = get_customer_attributes($cust);
     $customers->{$cust}->{'srs'} = get_allsrs($cust);
-    print Dumper($customers->{$cust});
+    print "$cust".Dumper($customers->{$cust});
 }
 $dbh->disconnect if defined($dbh);
