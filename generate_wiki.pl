@@ -82,8 +82,8 @@ use Mind_work::WikiMindSC;
 
 my $our_wiki;
 
-my $path_prefix = "/media/share/Documentation/cfalcas/q/import_docs";
-# my $path_prefix = "./";
+# my $path_prefix = "/media/share/Documentation/cfalcas/q/import_docs";
+my $path_prefix = "./";
 my $path_files = abs_path(shift);
 my $path_type = shift;
 our $wiki_dir = "$path_prefix/work/workfor_". (fileparse($path_files, qr/\.[^.]*/))[0] ."";
@@ -92,8 +92,7 @@ $wiki_dir = abs_path($wiki_dir);
 
 my $bad_dir = "$path_prefix/work/bad_dir";
 my $pid_file = "$path_prefix/work/mind_import_wiki.pid";
-my $remote_work = "no";
-my $remote_work_path = "$wiki_dir/remote_batch_files";
+my $remote_work_path = "./remote_batch_files";
 
 my $wiki_result = "result";
 my $wiki_files_uploaded = "wiki_files_uploaded.txt";
@@ -117,6 +116,7 @@ my $categories_pos = 4;
 
 my $count_files;
 our $coco;
+WikiCommons::is_remote("yes");
 
 sub create_wiki {
     my ($page_url, $doc_file, $zip_name) = @_;
@@ -412,7 +412,7 @@ sub insertdata {
     my $work_dir = "$wiki_dir/$url";
     WikiCommons::write_file("$work_dir/$url.full.wiki", $wiki, 1);
 
-    if ($remote_work eq "no"){
+    if (WikiCommons::is_remote ne "yes"){
 	$our_wiki->wiki_import_files ("$work_dir/$wiki_result", "$url");
 	print "\tDeleting url $url just to be sure.\t". (WikiCommons::get_time_diff) ."\n";
 	$our_wiki->wiki_delete_page ($url,"") if ( $our_wiki->wiki_exists_page($url) );
@@ -421,6 +421,7 @@ sub insertdata {
 	die "Could not import url $url.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url) );
 	print "\tDone $url.\t". (WikiCommons::get_time_diff) ."\n";
     } else {
+	print "\tCopy files to $remote_work_path/$wiki_result\n";
 	WikiCommons::makedir("$remote_work_path/$wiki_result");
 	WikiCommons::copy_dir ("$work_dir/$wiki_result", "$remote_work_path/$wiki_result");
 	copy("$work_dir/$url.full.wiki","$remote_work_path") or die "Copy failed for: $url.full.wiki to $remote_work_path: $!\t". (WikiCommons::get_time_diff) ."\n";

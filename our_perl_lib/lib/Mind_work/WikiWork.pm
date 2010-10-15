@@ -8,8 +8,8 @@ use Data::Dumper;
 use MediaWiki::API;
 
 our $wiki_site_path = "/var/www/html/wiki/";
-our $wiki_url = "http://10.0.0.99/wiki";
-# our $wiki_url = "http://localhost:1900/wiki";
+# our $wiki_url = "http://10.0.0.99/wiki";
+our $wiki_url = "http://localhost:1900/wiki";
 our $wiki_user = 'wiki_auto_import';
 our $wiki_pass = '!0wiki_auto_import@9';
 our $mw;
@@ -27,6 +27,7 @@ sub wiki_on_error {
 sub new {
     my $class = shift;
     my $self = {};
+    return $self if WikiCommons::is_remote eq "yes";
     $mw = MediaWiki::API->new({ api_url => "$wiki_url/api.php" }, retries  => 3) or die "coco";
     $mw->{config}->{on_error} = \&wiki_on_error;
     $mw->login( {lgname => $wiki_user, lgpassword => $wiki_pass } )
@@ -79,6 +80,7 @@ sub wiki_import_files {
     my ($self, $file_path, $url) = @_;
     print "\t-Uploading files for url $url.\t". (WikiCommons::get_time_diff) ."\n";
     my @cmd_output = `php "$wiki_site_path/maintenance/importImages.php" --conf "$wiki_site_path/LocalSettings.php" --user="$wiki_user" --overwrite --check-userblock "$file_path"`;
+    die "\tError $? for importImages.php.\n" if ($?);
     print "@cmd_output\n";
     print "\t+Uploading files for url $url.\t". (WikiCommons::get_time_diff) ."\n";
 }

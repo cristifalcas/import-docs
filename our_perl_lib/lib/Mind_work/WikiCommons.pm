@@ -13,6 +13,13 @@ our $start_time = 0;
 our $clean_up = {};
 our $url_sep = " -- ";
 our $general_categories_hash = {};
+our $remote_work = "no";
+
+sub is_remote {
+    my $q=shift;
+    $remote_work = $q || $remote_work;
+    return $remote_work;
+}
 
 sub cleanup {
     foreach my $key (keys %$clean_up) {

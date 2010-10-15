@@ -30,7 +30,7 @@ sub tag_remove_attr {
 		die "Unknown attribute for font: $attr_name = $attr_value.\n";
 	    }
     } elsif ($tag_name eq "span"){
-	    if ($attr_name eq "lang") {
+	    if ($attr_name eq "lang" || $attr_name eq "id" || $attr_name eq "dir") {
 		return 1;
 	    } elsif ($attr_name eq "style" && (
 		    $attr_value =~  m/background: #[a-f0-9]{6}/ ||
