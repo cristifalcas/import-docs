@@ -41,7 +41,7 @@ sub tag_remove_attr {
 		die "Unknown attribute for span: $attr_name = $attr_value.\n";
 	    }
     } elsif ($tag_name eq "ol") {
-	if ($attr_name eq "start" ) {
+	if ($attr_name eq "start" || $attr_name eq "type" ) {
 	    return 0;
 	} else {
 	    die "Unknown attribute for tag $tag_name: $attr_name = $attr_value.\n";
