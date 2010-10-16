@@ -27,11 +27,12 @@ sub wiki_on_error {
 sub new {
     my $class = shift;
     my $self = {};
-    return $self if WikiCommons::is_remote eq "yes";
-    $mw = MediaWiki::API->new({ api_url => "$wiki_url/api.php" }, retries  => 3) or die "coco";
-    $mw->{config}->{on_error} = \&wiki_on_error;
-    $mw->login( {lgname => $wiki_user, lgpassword => $wiki_pass } )
-	|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+    if (WikiCommons::is_remote ne "yes" ) {
+	$mw = MediaWiki::API->new({ api_url => "$wiki_url/api.php" }, retries  => 3) or die "coco";
+	$mw->{config}->{on_error} = \&wiki_on_error;
+	$mw->login( {lgname => $wiki_user, lgpassword => $wiki_pass } )
+	    || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+    }
     bless($self, $class);
     return $self;
 }

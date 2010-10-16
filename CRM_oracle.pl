@@ -180,14 +180,14 @@ select t.rsceventsscno,
        t.rsceventscreator,
        t.rsceventsshortdesc
   from tblscevents t
- where t.rsceventscompanycode = :CUST_CODE
-   and t.rsceventsdate >= \'20100101\'';
+ where t.rsceventscompanycode = :CUST_CODE';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->bind_param( ":CUST_CODE", $code );
     $sth->execute();
     my $nr=0;
     while ( my @row=$sth->fetchrow_array() ) {
 	my $desc = get_sr_desc($row[0], $code);
+	next if ! defined $desc;
 	$info->{$row[0]}->{'description'} = $desc if ! exists $info->{$row[0]}->{'description'};
 	$info->{$row[0]}->{$row[1]}->{'event'}->{$_} = $event_codes->{$row[2]}->{$_} foreach (keys %{$event_codes->{$row[2]}});
 	$info->{$row[0]}->{$row[1]}->{'date'} = $row[3]." ".$row[4];
@@ -219,7 +219,8 @@ select t.rscmainproblemdescription,
        t.rscmainrectsinternalpriority
   from tblscmainrecord t
  where t.rscmainreccustcode = :CUSTOMER
-   and t.rscmainrecscno = :SRSCNO';
+   and t.rscmainrecscno = :SRSCNO
+   and t.rscmainreclasteventdate >= \'20100101\'';
 
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->bind_param( ":CUSTOMER", $customer );

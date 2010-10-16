@@ -35,7 +35,8 @@ sub tag_remove_attr {
 		return 1;
 	    } elsif ($attr_name eq "style" && (
 		    $attr_value =~  m/background: #[a-f0-9]{6}/ ||
-		    $attr_value =~  m/font-(weight|style): normal/ ) ) {
+		    $attr_value =~  m/font-(weight|style): normal/ ||
+		    $attr_value =~  m/background: transparent/) ) {
 		return 0;
 	    } else {
 		die "Unknown attribute for span: $attr_name = $attr_value.\n";

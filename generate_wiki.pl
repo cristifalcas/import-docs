@@ -518,10 +518,12 @@ sub work_begin {
 	($to_delete, $to_keep) = generate_pages_to_delete_to_import;
     }
 
-    foreach my $url (sort keys %$to_delete) {
-	print "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";
-	$our_wiki->wiki_delete_page($url, "$wiki_dir/$url/$wiki_files_uploaded") if ( $our_wiki->wiki_exists_page($url) );
-	remove_tree("$wiki_dir/$url") || die "Can't remove dir $wiki_dir/$url: $?.\n";
+    if (WikiCommons::is_remote ne "yes") {
+	foreach my $url (sort keys %$to_delete) {
+	    print "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";
+	    $our_wiki->wiki_delete_page($url, "$wiki_dir/$url/$wiki_files_uploaded") if ( $our_wiki->wiki_exists_page($url) );
+	    remove_tree("$wiki_dir/$url") || die "Can't remove dir $wiki_dir/$url: $?.\n";
+	}
     }
     return ($to_delete, $to_keep);
 }
