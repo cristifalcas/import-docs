@@ -313,7 +313,8 @@ get_priorities();
 get_problem_categories();
 get_problem_types();
 # get_sr_desc(100,1);
-# print Dumper($event_codes);
+print Dumper($problem_types);
+exit 1;
 foreach my $cust (sort keys %$customers){
     $customers->{$cust}->{'attributes'} = get_customer_attributes($cust);
     $customers->{$cust}->{'srs'} = get_allsrs($cust);
