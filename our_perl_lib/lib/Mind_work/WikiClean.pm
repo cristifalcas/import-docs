@@ -112,11 +112,12 @@ sub html_clean_tables_in_menu {
     ## tables in menu
     my $count = 0;
     my $newhtml = $html;
-    while ($html =~ m/(<h([0-9]{1,2})[^>]*>)(.*?)(<\/H\2>)/gsi ) {
+    while ($html =~ m/(<h([0-9]{1,2})[^>]*>)(.*?)(<\/h\2>)/gsi ) {
 	my $found_string = $&;
 	my $found_string_end_pos = pos($html);
 	my $start = $1; my $end = $4;
 	my $text = $3; my $other = "";
+	my $orig_text = $text;
 	$text =~ s/<BR( [^>]*)?>//gsi;
 	$text =~ s/(<B>)|(<\/B>)//gsi;
 	$text =~ s/(<I>)|(<\/I>)//gsi;
@@ -136,7 +137,7 @@ sub html_clean_tables_in_menu {
 	}
 
 	if ($text =~ m/(<([^>]*)>)/) {
-	    die "shit menu in html: $text: $1\n" if ("$1" ne "<U>") && ("$1" ne "<SUP>") && ("$1" !~ m/<font[^>]*>/i) && ("$1" !~ m/<span[^>]*>/i) && ("$1" !~ m/<a name[^>]*>/i) && ("$1" !~ m/<STRIKE>/i) && ("$1" !~ m/<A [^>]*>/i);
+	    die "shit menu in html: $orig_text: $1\nfrom $found_string.\n" if ("$1" ne "<U>") && ("$1" ne "<SUP>") && ("$1" !~ m/<font[^>]*>/i) && ("$1" !~ m/<span[^>]*>/i) && ("$1" !~ m/<a name[^>]*>/i) && ("$1" !~ m/<STRIKE>/i) && ("$1" !~ m/<A [^>]*>/i);
 	}
 	my $replacement = "$start$text$end\n$other";
 	substr($newhtml, $found_string_end_pos - length($found_string)+$count, length($found_string)) = "$replacement";

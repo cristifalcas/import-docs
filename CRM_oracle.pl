@@ -187,7 +187,7 @@ select t.rsceventsscno,
     my $nr=0;
     while ( my @row=$sth->fetchrow_array() ) {
 	my $desc = get_sr_desc($row[0], $code);
-	next if ! defined $desc;
+	next if ! scalar keys %$desc;
 	$info->{$row[0]}->{'description'} = $desc if ! exists $info->{$row[0]}->{'description'};
 	$info->{$row[0]}->{$row[1]}->{'event'}->{$_} = $event_codes->{$row[2]}->{$_} foreach (keys %{$event_codes->{$row[2]}});
 	$info->{$row[0]}->{$row[1]}->{'date'} = $row[3]." ".$row[4];
@@ -220,7 +220,7 @@ select t.rscmainproblemdescription,
   from tblscmainrecord t
  where t.rscmainreccustcode = :CUSTOMER
    and t.rscmainrecscno = :SRSCNO
-   and t.rscmainreclasteventdate >= \'20100101\'';
+   and t.rscmainreclasteventdate >= \'20070101\'';
 
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->bind_param( ":CUSTOMER", $customer );
@@ -305,6 +305,7 @@ sub sql_connect {
 $ENV{NLS_LANG} = 'AMERICAN_AMERICA.AL32UTF8';
 sql_connect('10.0.0.232', 'BILL1022', 'service25', 'service25');
 
+print "-Get common info.\n";
 get_eventscode();
 my $customers = get_customers();
 get_attributes();
@@ -313,10 +314,12 @@ get_staff();
 get_priorities();
 get_problem_categories();
 get_problem_types();
+print "+Get common info\n";
 # get_sr_desc(100,1);
-print Dumper($problem_types);
-exit 1;
+# print Dumper($problem_types);
+# exit 1;
 foreach my $cust (sort keys %$customers){
+    print "\t Start for customer nr $cust.\n";
     $customers->{$cust}->{'attributes'} = get_customer_attributes($cust);
     $customers->{$cust}->{'srs'} = get_allsrs($cust);
     print "$cust".Dumper($customers->{$cust});

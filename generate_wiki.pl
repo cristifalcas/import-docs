@@ -539,8 +539,8 @@ sub work_for_docs {
 # 	my @oo_procs = `ps -ef | grep office | grep -v grep`;
 # 	die "OpenOffice is already running.\n" if (@oo_procs);
 # 	my $result = `/usr/bin/ooffice "$doc_file" -headless -invisible "macro:///Standard.Module1.runall()"`;
-my @oo_procs = `ps -ef | grep '\\-accept=socket,host=127.0.0.1,port=2002;urp;StarOffice.ServiceManager' | grep -v grep`;
-die "OpenOffice is NOT running: $#oo_procs.\t". (WikiCommons::get_time_diff) ."\n" if ($#oo_procs < 1);
+# my @oo_procs = `ps -ef | grep '\\-accept=socket,host=127.0.0.1,port=2002;urp;StarOffice.ServiceManager' | grep -v grep`;
+# die "OpenOffice is NOT running: $#oo_procs.\t". (WikiCommons::get_time_diff) ."\n" if ($#oo_procs < 1);
 
 if (-f "$pid_file") {
     open (FH, "<$pid_file") or die "Could not read file $pid_file.\n";
