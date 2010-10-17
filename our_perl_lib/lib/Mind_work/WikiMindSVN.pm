@@ -186,7 +186,6 @@ sub get_documents {
 	print "+Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
     }
 
-print Dumper((sort keys %$pages_toimp_hash));
     return $pages_toimp_hash;
 }
 
