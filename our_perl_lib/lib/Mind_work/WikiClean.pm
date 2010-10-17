@@ -118,16 +118,15 @@ sub html_clean_tables_in_menu {
 	my $start = $1; my $end = $4;
 	my $text = $3; my $other = "";
 	my $orig_text = $text;
-	$text =~ s/<BR( [^>]*)?>//gsi;
-	$text =~ s/(<B>)|(<\/B>)//gsi;
-	$text =~ s/(<I>)|(<\/I>)//gsi;
-	$text =~ s/(<CENTER( [^>]*)?>)|(<\/CENTER>)//gsi;
-	$text =~ s/(<SDFIELD( [^>]*)?>)|(<\/SDFIELD>)//gsi;
-# 	$text =~ s/<A [^>]*>.*?<\/A>//gsi;
-	$text =~ s/(<SPAN( [^>]*)?>)|(<\/SPAN>)//gsi;
-	$text =~ s/(<STRONG>)|(<\/STRONG>)//gsi;
-	$text =~ s/(<EM>)|(<\/EM>)//gsi;
 	if ($text =~ m/^(.*?)(<TABLE[^>]*>.*?<\/TABLE>)(.*?)$/si){
+	    $text = "$1$3";
+	    $other .= $2."\n";
+	}
+	if ($text =~ m/^(.*?)(<ul[^>]*>.*?<\/ul>)(.*?)$/si){
+	    $text = "$1$3";
+	    $other .= $2."\n";
+	}
+	if ($text =~ m/^(.*?)(<ol[^>]*>.*?<\/ol>)(.*?)$/si){
 	    $text = "$1$3";
 	    $other .= $2."\n";
 	}
@@ -139,9 +138,18 @@ sub html_clean_tables_in_menu {
 	    $text = "$1$5\n";
 	    $other .= $2."\n";
 	}
+	$text =~ s/<BR( [^>]*)?>//gsi;
+	$text =~ s/(<B>)|(<\/B>)//gsi;
+	$text =~ s/(<I>)|(<\/I>)//gsi;
+	$text =~ s/(<CENTER( [^>]*)?>)|(<\/CENTER>)//gsi;
+	$text =~ s/(<SDFIELD( [^>]*)?>)|(<\/SDFIELD>)//gsi;
+# 	$text =~ s/<A [^>]*>.*?<\/A>//gsi;
+	$text =~ s/(<SPAN( [^>]*)?>)|(<\/SPAN>)//gsi;
+	$text =~ s/(<STRONG>)|(<\/STRONG>)//gsi;
+	$text =~ s/(<EM>)|(<\/EM>)//gsi;
 
 	if ($text =~ m/(<([^>]*)>)/) {
-	    die "shit menu in html: $orig_text: $1\nfrom $found_string.\n" if ("$1" ne "<U>") && ("$1" ne "<SUP>") && ("$1" !~ m/<font[^>]*>/i) && ("$1" !~ m/<span[^>]*>/i) && ("$1" !~ m/<a name[^>]*>/i) && ("$1" !~ m/<STRIKE>/i) && ("$1" !~ m/<A [^>]*>/i);
+	    die "shit menu in html: $text: $1\nfrom $found_string.\n" if ("$1" ne "<U>") && ("$1" ne "<SUP>") && ("$1" !~ m/<font[^>]*>/i) && ("$1" !~ m/<span[^>]*>/i) && ("$1" !~ m/<a name[^>]*>/i) && ("$1" !~ m/<STRIKE>/i) && ("$1" !~ m/<A [^>]*>/i);
 	}
 	my $replacement = "$start$text$end\n$other";
 	substr($newhtml, $found_string_end_pos - length($found_string)+$count, length($found_string)) = "$replacement";
