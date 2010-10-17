@@ -131,6 +131,10 @@ sub html_clean_tables_in_menu {
 	    $text = "$1$3";
 	    $other .= $2."\n";
 	}
+	if ($text =~ m/^(.*?)(<h([0-9]{1,2})[^>]*>.*?<\/h\3>)(.*?)$/si){
+	    $text = "$1$4";
+	    $other .= $2."\n";
+	}
 	while ($text =~ m/^(.*?)((<IMG SRC=[^>]*>\s*)+|(<P [^>]*>.*?<\/P>\s*)+)(.*?)$/si) {
 	    $text = "$1$5\n";
 	    $other .= $2."\n";
