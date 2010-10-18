@@ -89,35 +89,6 @@ sub write_file {
     close (FILE);
 }
 
-sub array_diff {
-    print "-Compute difference and uniqueness.\n";
-    my ($arr1, $arr2) = @_;
-    my (@only_in_arr1, @only_in_arr2, @common) = ();
-## union: all, intersection: common, difference: unique in a and b
-    my (@union, @intersection, @difference) = ();
-    my %count = ();
-    foreach my $element (@$arr1, @$arr2) { $count{"$element"}++ }
-    foreach my $element (sort keys %count) {
-	push @union, $element;
-	push @{ $count{$element} > 1 ? \@intersection : \@difference }, $element;
-# 	push @difference, $element if $count{$element} <= 1;
-    }
-    print "\tdifference done.\n";
-
-    my $arr1_hash = ();
-    $arr1_hash->{$_} = 1 foreach (@$arr1);
-
-    foreach my $element (@difference) {
-	if (exists $arr1_hash->{$element}) {
-	    push @only_in_arr1, $element;
-	} else {
-	    push @only_in_arr2, $element;
-	}
-    }
-    print "+Compute difference and uniqueness.\n";
-    return \@only_in_arr1,  \@only_in_arr2,  \@intersection;
-}
-
 sub general_info {
     my ($info, $index, $modules, $tester, $initiator, $dealer) = @_;
     local( $/, *FH ) ;
@@ -681,7 +652,7 @@ opendir(DIR, "$to_path") || die "Cannot open directory $to_path: $!.\n";
 my @dirs = grep { (!/^\.\.?$/) && -d "$to_path/$_"} readdir(DIR);
 closedir(DIR);
 my @scdirs = keys %$crt_hash;
-my ($only_in_sc, $only_in_dirs, $common) = array_diff(\@scdirs, \@dirs);
+my ($only_in_sc, $only_in_dirs, $common) = WikiCommons::array_diff( \@scdirs, \@dirs);
 foreach my $dir (@$only_in_dirs) {
     print "Remove old dir $dir.\n";
     remove_tree("$to_path/$dir");

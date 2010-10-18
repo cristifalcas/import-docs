@@ -354,4 +354,33 @@ sub reset_time {
     $start_time = time();
 }
 
+sub array_diff {
+    print "-Compute difference and uniqueness.\n";
+    my ($arr1, $arr2) = @_;
+    my (@only_in_arr1, @only_in_arr2, @common) = ();
+## union: all, intersection: common, difference: unique in a and b
+    my (@union, @intersection, @difference) = ();
+    my %count = ();
+    foreach my $element (@$arr1, @$arr2) { $count{"$element"}++ }
+    foreach my $element (sort keys %count) {
+	push @union, $element;
+	push @{ $count{$element} > 1 ? \@intersection : \@difference }, $element;
+# 	push @difference, $element if $count{$element} <= 1;
+    }
+    print "\tdifference done.\n";
+
+    my $arr1_hash = ();
+    $arr1_hash->{$_} = 1 foreach (@$arr1);
+
+    foreach my $element (@difference) {
+	if (exists $arr1_hash->{$element}) {
+	    push @only_in_arr1, $element;
+	} else {
+	    push @only_in_arr2, $element;
+	}
+    }
+    print "+Compute difference and uniqueness.\n";
+    return \@only_in_arr1,  \@only_in_arr2,  \@intersection;
+}
+
 return 1;

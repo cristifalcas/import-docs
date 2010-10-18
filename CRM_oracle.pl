@@ -3,31 +3,6 @@
 use warnings;
 use strict;
 
-# select t.rcustcompanycode, t.rcustcompanyname, t.rcustiddisplay, t.*
-#   from tblcustomers t where t.rcuststatus == 'A';
-# select t.rsceventsscno, t.rsceventssrno, t.rsceventscode, t.rsceventsdate,t.rsceventstime,
-#        t.rsceventscreator, t.rsceventsshortdesc, t.rsceventsservicestatus,t.*
-#   from tblscevents t where t.rsceventscompanycode = '485' order by 1,2;-- rcustcompanycode
-# select t.rscmainproblemdescription,t.rscmainreccustomerpriority,t.rscmainrecenggincharge,
-#        t.rscmainreclasteventdate,t.rscmainreclasteventtime,t.rscmainrecprobcatg,t.rscmainrecsctype,t.rscmainrecsolution,
-#        t.rscmainrecsubject,t.rscmainrectsinternalpriority,t.*
-#   from tblscmainrecord t where t.rscmainreccustcode='485' and t.rscmainrecscno='2';
-# select t.rsceventsrno,t.rsceventdocno,t.rsceventdocscno,t.rsceventdoctype,t.rsceventdoctype,t.*
-#   from tblsceventdoc t where t.rsceventdoccompanycode='485' and t.rsceventdocscno='1';
-# select t.attrib_object_code1,t.*
-#   from tblattrib_values t where attrib_object_code1='485';
-# select *
-#   from tblattributes;
-# select t.rsuppeventscode,t.*
-#   from tblsuppevents t;
-# select *
-#   from tblacttreeitems t;
-# select *
-#   from tblattriboptions t; --??
-# select t.rscrefeventsrno,t.rscrefscno,t.*
-#   from tblscrefnum t where t.rscrefcust='485' and (trim(' ' from NVL(t.rscrefnum1,'')) is not null
-#             or trim(' ' from NVL(t.rscrefnum2,'')) is not null);
-
 use lib "./our_perl_lib/lib";
 use DBI;
 use Net::FTP;
@@ -40,10 +15,15 @@ use File::Listing qw(parse_dir);
 use File::Find;
 use File::Copy;
 use Cwd 'abs_path','chdir';
-use XML::Simple;
 use File::Find::Rule;
-use Data::Compare;
 use Mind_work::WikiCommons;
+use XML::Simple;
+use Encode;
+
+die "We need the destination path.\n" if ( $#ARGV != 0 );
+our $to_path = shift;
+WikiCommons::makedir ("$to_path");
+$to_path = abs_path("$to_path");
 
 my $dbh;
 my $event_codes = {};
@@ -53,6 +33,20 @@ my $staff = {};
 my $priorities = {};
 my $problem_categories = {};
 my $problem_types = {};
+
+sub print_coco {
+    my $nr = shift;
+    my @array = qw( \ | / - );
+    my $padded = sprintf("%05d", $nr);
+    print "running $padded ".$array[$nr%@array]."\r";
+}
+
+sub write_file {
+    my ($path,$text) = @_;
+    open (FILE, ">$path") or die "can't open file $path for writing: $!\n";
+    print FILE Encode::encode('utf8', "$text");
+    close (FILE);
+}
 
 sub get_eventscode {
     my $SEL_INFO = '
@@ -156,56 +150,81 @@ select t.attrib_isn, t.value_text
     $sth->bind_param( ":CUST_CODE", $code );
     $sth->execute();
     my $nr=0;
+    my $ftp_addr = 'http://62.219.96.62/SupportFTP/Attrib/';
     while ( my @row=$sth->fetchrow_array() ) {
+	my $data = "";
 	if (defined $attributes_options->{$row[0]}->{$row[1]}) {
-	    $info->{$attributes->{$row[0]}} = $attributes_options->{$row[0]}->{$row[1]};
+	     $data = $attributes_options->{$row[0]}->{$row[1]};
 	} else {
-	    $info->{$attributes->{$row[0]}} = $row[1];
+	    $data = $row[1];
 	}
+	$data =~ s/(^\s*)|(\s*$)//;
+	next if $data eq '';
+	if ( $row[0] == 23 || $row[0] == 9  || $row[0] == 6 ) {
+	    $data = $ftp_addr.$data;
+	}
+	$info->{$attributes->{$row[0]}} = $data;
     }
-# 'System Description Document' 'Support Team Manager' 'Project Manager' 'Last Plug Information' 'DBA service' 'Database Type' 'Account Manager'
-# remove 'Additional Service  schedule and description'
+    $info->{'customer_id'} = $code;
     return $info;
 }
 
 sub get_allsrs {
-    my $code = shift;
-    my $info = {};
+    my $cust = shift;
     my $SEL_INFO = '
-select t.rsceventsscno,
-       t.rsceventssrno,
+select t1.rsceventsscno, count(t1.rsceventssrno)
+  from tblscevents t1
+ where t1.rsceventscompanycode = :CUST_CODE
+   and t1.rsceventsscno in
+       (select t.rscmainrecscno
+          from tblscmainrecord t
+         where t.rscmainreccustcode = :CUST_CODE
+           and t.rscmainreclasteventdate >= \'20070101\')
+ group by t1.rsceventsscno';
+    my $sth = $dbh->prepare($SEL_INFO);
+    $sth->bind_param( ":CUST_CODE", $cust );
+    $sth->execute();
+    my $info = {};
+    while ( my @row=$sth->fetchrow_array() ) {
+	$info->{$row[0]} = $row[1];
+    }
+    return $info;
+}
+
+sub get_sr {
+    my ($cust, $sr) = @_;
+    my $SEL_INFO = '
+select t.rsceventssrno,
        t.rsceventscode,
        t.rsceventsdate,
        t.rsceventstime,
        t.rsceventscreator,
        t.rsceventsshortdesc
   from tblscevents t
- where t.rsceventscompanycode = :CUST_CODE';
+ where t.rsceventscompanycode = :CUST_CODE
+   and t.rsceventsscno = :SR_NR
+ order by 1';
     my $sth = $dbh->prepare($SEL_INFO);
-    $sth->bind_param( ":CUST_CODE", $code );
+    $sth->bind_param( ":CUST_CODE", $cust );
+    $sth->bind_param( ":SR_NR", $sr );
     $sth->execute();
-    my $nr=0;
+    my $info = {};
     while ( my @row=$sth->fetchrow_array() ) {
-	my $desc = get_sr_desc($row[0], $code);
-	next if ! scalar keys %$desc;
-	$info->{$row[0]}->{'description'} = $desc if ! exists $info->{$row[0]}->{'description'};
-	$info->{$row[0]}->{$row[1]}->{'event'}->{$_} = $event_codes->{$row[2]}->{$_} foreach (keys %{$event_codes->{$row[2]}});
-	$info->{$row[0]}->{$row[1]}->{'date'} = $row[3]." ".$row[4];
-	$info->{$row[0]}->{$row[1]}->{'person'}->{$_} = $staff->{$row[5]}->{$_} foreach (keys %{$staff->{$row[5]}});
-	$info->{$row[0]}->{$row[1]}->{'short_description'} = $row[6];
-	$desc = get_event_desc($row[0], $row[1], $code);
-	$info->{$row[0]}->{$row[1]}->{'description'} = $desc;
-	$desc = get_event_reference($row[0], $row[1], $code);
-	$info->{$row[0]}->{$row[1]}->{'reference'} = $desc;
+	$info->{$row[0]}->{'event'}->{$_} = $event_codes->{$row[1]}->{$_} foreach (keys %{$event_codes->{$row[1]}});
+	$info->{$row[0]}->{'date'} = $row[2]." ".$row[3];
+	$info->{$row[0]}->{'person'}->{$_} = $staff->{$row[4]}->{$_} foreach (keys %{$staff->{$row[4]}});
+	$info->{$row[0]}->{'short_description'} = $row[5];
+	my $desc = get_event_desc($sr, $row[0], $cust);
+	$info->{$row[0]}->{'description'} = $desc;
+	$desc = get_event_reference($sr, $row[0], $cust);
+	$info->{$row[0]}->{'reference'} = $desc;
     }
     return $info;
 }
 
 sub get_sr_desc {
-    my ($srscno, $customer) = @_;
+    my ($customer, $srscno) = @_;
     my $info = {};
-# DBI->trace(3);
-
     my $SEL_INFO = '
 select t.rscmainproblemdescription,
        t.rscmainreccustomerpriority,
@@ -219,8 +238,7 @@ select t.rscmainproblemdescription,
        t.rscmainrectsinternalpriority
   from tblscmainrecord t
  where t.rscmainreccustcode = :CUSTOMER
-   and t.rscmainrecscno = :SRSCNO
-   and t.rscmainreclasteventdate >= \'20070101\'';
+   and t.rscmainrecscno = :SRSCNO';
 
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->bind_param( ":CUSTOMER", $customer );
@@ -302,10 +320,55 @@ sub sql_connect {
     $dbh->{LongTruncOk}   = 0;
 }
 
+sub write_customer {
+    my ($cust, $hash) = @_;
+    print "\t-Get customer info.\t". (WikiCommons::get_time_diff) ."\n";
+    $hash->{'names'} = $cust;
+    my $xs = new XML::Simple;
+    my $xml = $xs->XMLout($hash,
+                      NoAttr => 1,
+                      RootName=>$cust->{'name'},
+                     );
+    my $dir = "$to_path/".$cust->{'displayname'};
+    WikiCommons::makedir ("$dir");
+    write_file( "$dir/attributes.xml", $xml);
+    print "\t+Get customer info.\t". (WikiCommons::get_time_diff) ."\n";
+    return $dir;
+}
+
+sub write_sr {
+    my ($info, $name) = @_;
+    my @keys = keys %$info;
+    die "pai da de ce?\n".Dumper($info) if scalar keys %{$info->{$keys[0]}} < 2 ;
+    my $xs = new XML::Simple;
+    my $xml = $xs->XMLout($info,
+                      NoAttr => 1,
+                      RootName=>"info",
+                     );
+    write_file( "$name", $xml);
+}
+
+sub get_previous {
+    my $dir = shift;
+    my $info = {};
+    opendir(DIR, "$dir") || die "Cannot open directory $dir: $!.\n";
+    my @files = grep { (!/^\.\.?$/) && -f "$dir/$_" && "$_" ne "attributes.xml"} readdir(DIR);
+    closedir(DIR);
+    foreach my $file (@files){
+	my $str = $file;
+	$str =~ s/\.xml$//;
+	$str =~ s/^0*//;
+	my @tmp = split '_', $str;
+	$info->{$tmp[0]."_".$tmp[1]} = $file;
+    }
+    return $info;
+}
+
 $ENV{NLS_LANG} = 'AMERICAN_AMERICA.AL32UTF8';
 sql_connect('10.0.0.232', 'BILL1022', 'service25', 'service25');
-
-print "-Get common info.\n";
+WikiCommons::reset_time();
+local $| = 1;
+print "-Get common info.\t". (WikiCommons::get_time_diff) ."\n";
 get_eventscode();
 my $customers = get_customers();
 get_attributes();
@@ -314,14 +377,46 @@ get_staff();
 get_priorities();
 get_problem_categories();
 get_problem_types();
-print "+Get common info\n";
+print "+Get common info.\t". (WikiCommons::get_time_diff) ."\n";
 # get_sr_desc(100,1);
 # print Dumper($problem_types);
 # exit 1;
 foreach my $cust (sort keys %$customers){
-    print "\t Start for customer nr $cust.\n";
-    $customers->{$cust}->{'attributes'} = get_customer_attributes($cust);
-    $customers->{$cust}->{'srs'} = get_allsrs($cust);
-    print "$cust".Dumper($customers->{$cust});
+    print "\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
+# next if $customers->{$cust}->{'displayname'} ne "Nice";
+    my $dir = write_customer ($customers->{$cust}, get_customer_attributes($cust));
+    my $crt_srs = get_allsrs($cust);
+    my $prev_srs = get_previous("$to_path/".$customers->{$cust}->{'displayname'});
+    foreach my $key (keys %$crt_srs) {
+	my $str = $key."_".$crt_srs->{$key};
+	if (exists $prev_srs->{$str}) {
+	    delete $prev_srs->{$str} ;
+	    delete $crt_srs->{$key} ;
+	}
+    }
+
+    print "\tremove ".(scalar keys %$prev_srs)." old files.\n";
+    foreach my $key (keys %$prev_srs) {
+	unlink("$dir/$prev_srs->{$key}") or die "Could not delete the file $dir/$prev_srs->{$key}: ".$!."\n";
+    }
+    print "\tadd ".(scalar keys %$crt_srs)." new files.\n";
+    my $nr = 0;
+    foreach my $sr (keys %$crt_srs) {
+	my $info = {};
+	$info = get_sr($cust, $sr);
+	my $name = "$dir/".sprintf("%07d", $sr)."_".(scalar keys %$info).".xml";
+	my $desc = get_sr_desc($cust, $sr);
+	$info->{'0'} = $desc;
+	write_sr($info, $name);
+	print_coco(++$nr);
+    }
 }
+### links url encoded
 $dbh->disconnect if defined($dbh);
+# http://62.219.96.62/eServiceReq/mgrqispi93.dll?APPNAME=Service&PRGNAME=SecondFrame&ARGUMENTS=-A001_0000434033E,-N0000$SR,-N001,-N000$CUST
+# http://62.219.96.62/eServiceReq/mgrqispi93.dll?APPNAME=Service&PRGNAME=SecondFrame&ARGUMENTS=-A001_0000434033E,-N0000456,-N001,-N000221
+#sr 1586, customer 221
+# http://62.219.96.62/eServiceReq/mgrqispi93.dll?APPNAME=Service&PRGNAME=SecondFrame&ARGUMENTS=-A001_0000434033E,-N00001586,-N001,-N000221,-N010,-A001_0000434033E,-N000221,-N1,-N00000000,-N000,-N000,-N0000000000,-AFalse,-AFalse,-AFalse,-AFalse,-AFalse,-AALL,-A000000,-A000000,-A000000,-A000000,-N000005,-AFalse,-N000000,-AA,-A,-N000,-N000,-N000,-A,-A,-LFalse,-A,-A000000,-A000000,-A,-LFalse,-N00,-LF,-Akocnet,-A,-AA
+
+#sr 761, customer 328
+# http://62.219.96.62/eServiceReq/mgrqispi93.dll?APPNAME=Service&PRGNAME=SecondFrame&ARGUMENTS=-A001_0000434033E,-N00000761,-N001,-N000328,-N011,-A001_0000434033E,-N000328,-N1,-N00000000,-N000,-N000,-N0000000000,-AFalse,-AFalse,-AFalse,-AFalse,-AFalse,-AALL,-A000000,-A000000,-A000000,-A000000,-N000005,-AFalse,-N000000,-AA,-A,-N000,-N000,-N000,-A,-A,-LFalse,-A,-A000000,-A000000,-A,-LFalse,-N00,-LF,-ASRG,-A,-AA
