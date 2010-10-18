@@ -192,7 +192,7 @@ select t1.rsceventsscno, count(t1.rsceventssrno)
 }
 
 sub get_sr {
-    my ($cust, $sr) = @_;
+    my ($cust, $sc_no) = @_;
     my $SEL_INFO = '
 select t.rsceventssrno,
        t.rsceventscode,
@@ -206,7 +206,7 @@ select t.rsceventssrno,
  order by 1';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->bind_param( ":CUST_CODE", $cust );
-    $sth->bind_param( ":SR_NR", $sr );
+    $sth->bind_param( ":SR_NR", $sc_no );
     $sth->execute();
     my $info = {};
     while ( my @row=$sth->fetchrow_array() ) {
@@ -214,9 +214,9 @@ select t.rsceventssrno,
 	$info->{$row[0]}->{'date'} = $row[2]." ".$row[3];
 	$info->{$row[0]}->{'person'}->{$_} = $staff->{$row[4]}->{$_} foreach (keys %{$staff->{$row[4]}});
 	$info->{$row[0]}->{'short_description'} = $row[5];
-	my $desc = get_event_desc($sr, $row[0], $cust);
+	my $desc = get_event_desc($sc_no, $row[0], $cust);
 	$info->{$row[0]}->{'description'} = $desc;
-	$desc = get_event_reference($sr, $row[0], $cust);
+	$desc = get_event_reference($sc_no, $row[0], $cust);
 	$info->{$row[0]}->{'reference'} = $desc;
     }
     return $info;
