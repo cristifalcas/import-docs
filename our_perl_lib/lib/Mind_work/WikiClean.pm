@@ -52,57 +52,27 @@ sub tag_remove_attr {
     }
 }
 
-# sub is_empty {
-#   my($font) = @_;
-#
-#   my $is_interesting = sub {
-#     for ($_[0]->content_list) {
-#       return 1 if !ref($_) && /\S/;
-#     }
-#   };
-#
-#   !$font->look_down($is_interesting);
-# }
-
 sub clean_empty_tag {
     my ($text, $tag) = @_;
-# $text='<FONT COLOR="#000000"><IMG SRC="Viaero%20Configuration%20Guide_html_m2af2f4f1.png" NAME="graphics8" ALIGN=BOTTOM WIDTH=349 HEIGHT=340 BORDER=1></FONT>';
     my $tree = HTML::TreeBuilder->new_from_content(decode_utf8($text));
     foreach my $a_tag ($tree->guts->look_down(_tag => "$tag")) {
 	next unless $a_tag->look_down(sub { grep !ref && /\S/ => $_[0]->content_list });
-# 	if (my $q =$a_tag->look_down(sub { grep !ref && /\S/ => $_[0]->content_list })){
-# # print Dumper($q);
-# 	} else {
-# $a_tag->detach;
-#  next;
-# 	}
 
 	my $some_ok_attr = 0;
 	my $tag_name = $a_tag->tag;
 	for my $attr_name ($a_tag->all_external_attr_names){
 	    my $attr_value = $a_tag->attr($attr_name);
 	    if ( tag_remove_attr($tag_name, $attr_name, $attr_value) ) {
-# print "rem attr $attr_name from tag $tag_name\n";
 		$a_tag->attr("$attr_name", undef);
 	    } else {
 		++$some_ok_attr;
-# print "keep attr $attr_name\n";
 	    }
 	}
-# 	if ( ! $some_ok_attr ) {
-# 	    $a_tag->replace_with($a_tag->content_list());
-# print "replace tag $tag_name with ". Dumper($a_tag->content_list)."\n";
-# 	}
 	foreach my $text ($a_tag->content_refs_list) {
 	    next if ref $$text;
-# die "OK!!\n" if $$text =~ /m2af2f4f1/;
-# 	    $$text =~ s/^\s+//;
-# 	    $$text =~ s/\s+$//;
 	}
     }
-#     (my $cleaned = $tree->guts ? $tree->guts->as_HTML : "") =~ s/\s+$//;
     my $cleaned = $tree->guts ? $tree->guts->as_HTML(undef, "\t") : "";
-# print "$cleaned\n";exit 1;
     return $cleaned;
 }
 
@@ -302,44 +272,27 @@ sub make_wiki_from_html {
     $wiki =~ s/[ ]{8}/\t/gs;
     $wiki = fix_wiki_chars($wiki);
 WikiCommons::write_file("$dir/fix_wiki_chars.$name.txt", $wiki, 1);
-#     $wiki = fix_wiki_menus( $wiki, $dir );
-# WikiCommons::write_file("$dir/fix_wiki_menus.$name.txt", $wiki, 1);
-    ($wiki, $image_files) = fix_wiki_images( $wiki, $image_files, $dir );
-WikiCommons::write_file("$dir/fix_wiki_images.$name.txt", $wiki, 1);
+    $image_files = get_wiki_images( $wiki, $image_files, $dir );
+WikiCommons::write_file("$dir/get_wiki_images.$name.txt", $wiki, 1);
     $wiki = fix_wiki_footers( $wiki );
 WikiCommons::write_file("$dir/fix_wiki_footers.$name.txt", $wiki, 1);
     $wiki = fix_wiki_links_menus( $wiki );
 WikiCommons::write_file("$dir/fix_wiki_links_menus.$name.txt", $wiki, 1);
-    ($wiki, $image_files) = fix_wiki_tables( $wiki, $dir );
-WikiCommons::write_file("$dir/fix_wiki_tables.$name.txt", $wiki, 1);
     $wiki = fix_wiki_url( $wiki );
 WikiCommons::write_file("$dir/fix_wiki_url.$name.txt", $wiki, 1);
     $wiki = fix_wiki_link_to_sc( $wiki );
 WikiCommons::write_file("$dir/fix_wiki_link_to_sc.$name.txt", $wiki, 1);
     $wiki = fix_external_links( $wiki );
 WikiCommons::write_file("$dir/fix_external_links.$name.txt", $wiki, 1);
-    $wiki = fix_small_issues( $wiki );
-WikiCommons::write_file("$dir/fix_small_issues.$name.txt", $wiki, 1);
     $wiki = fix_tabs( $wiki );
 WikiCommons::write_file("$dir/fix_tabs.$name.txt", $wiki, 1);
-    ## colapse spaces (here, so we don't mess with the lists)
-    $wiki =~ s/ +/ /gm;
-    $wiki =~ s/^[\f ]+|[\f ]+$//mg;
     $wiki = wiki_fix_lists( $wiki );
 WikiCommons::write_file("$dir/fix_lists.$name.txt", $wiki, 1);
     $wiki = fix_wiki_menus( $wiki, $dir );
 WikiCommons::write_file("$dir/fix_wiki_menus.$name.txt", $wiki, 1);
+    $wiki = fix_small_issues( $wiki );
+WikiCommons::write_file("$dir/fix_small_issues.$name.txt", $wiki, 1);
 
-    $wiki =~ s/^[:\s]*$//gm;
-    ## remove consecutive blank lines
-    $wiki =~ s/(\n){4,}/\n\n/gs;
-    ## more new lines for menus and tables
-    $wiki =~ s/\n([ \t]*=+[ \t]*)(.*?)([ \t]*=+[ \t]*)\n/\n\n\n$1$2$3\n/gm;
-    $wiki =~ s/\|}\s*{\|/\|}\n\n\n{\|/mg;
-
-    ## FAST AND UGLY
-    $wiki =~ s/(<span id="Frame[0-9]{1,}" style=")float: left;/$1/mg;
-#     $wiki =~ s/<\/span>/<\/span>\n\n/mg;
     WikiCommons::write_file("$dir/$name.wiki", $wiki);
     print "\t+Fixing wiki.\t". (WikiCommons::get_time_diff) ."\n";
 
@@ -374,17 +327,35 @@ sub fix_small_issues {
     ## remove table of content
     $wiki =~ s/\'\'\'Content\'\'\'[\s]*<div id="Table of Contents.*?>.*?<\/div>//gsi;
     $wiki =~ s/(<u>)?(\'\'\'Table of Content[s]?\'\'\')?(<\/u>)?[\s]*<div id="Table of Contents.*?>.*?<\/div>//gsi;
-# #     $wiki =~ s/\'\'\'Content\'\'\'[\s]*<div id="Table of Contents.*?>.*?<\/div>//gsi;
     ## remove empty sub
     $wiki =~ s/<sub>[\s]{0,}<\/sub>//gsi;
     ## remove empty div
     $wiki =~ s/<div>[\s]{0,}<\/div>//gsi;
-#     $wiki =~ s/<span[^>]*>\s*?<\/span>//gsi;
-#     $wiki =~ s/<font[^>]*>\s*?<\/font>//gsi;
-
     $wiki =~ s/(<center>)|(<\/center>)//gmi;
 
     $wiki =~ s/\r\n?/\n/gs;
+    $wiki =~ s/\{\|/\n\{\|/gs;
+    $wiki =~ s/\|\}/\n\|\}/gs;
+    ## more new lines for menus and tables
+    $wiki =~ s/\n([ \t]*=+[ \t]*)(.*?)([ \t]*=+[ \t]*)\n/\n\n\n$1$2$3\n/gm;
+    $wiki =~ s/\|}\s*{\|/\|}\n\n\n{\|/mg;
+    my $newwiki = "";
+    foreach my $line (split '\n', $wiki){
+	if ($line !~ m/(<\/?ol[^>]*>)|(<\/?li[^>]*>)|(<\/?ul[^>]*>)/) {
+	    $line =~ s/^\s+//;
+	    $line =~ s/\s+$//;
+	    $line =~ s/ +/ /gm;
+	}
+	$newwiki .= "$line\n";
+    }
+    $wiki = $newwiki;
+    $wiki =~ s/^[:\s]*$//gm;
+    ## remove consecutive blank lines
+    $wiki =~ s/(\n){4,}/\n\n/gs;
+
+    ## FAST AND UGLY
+    $wiki =~ s/(<span id="Frame[0-9]{1,}" style=")float: left;/$1/mg;
+
     return $wiki;
 }
 
@@ -413,17 +384,23 @@ sub fix_wiki_chars {
     $wiki =~ s/\x{EF}\x{192}\x{A3}/\x{C2}\x{A9}/gs;
     $wiki =~ s/\x{EF}\x{192}\x{201C}/\x{C2}\x{A9}/gs;
     $wiki =~ s//\x{C2}\x{A9}/gs;
+    $wiki =~ s//\x{C2}\x{A9}/gs;
+    $wiki =~ s/ï/\x{C2}\x{A9}/gs;
     ## registered
     $wiki =~ s/\x{EF}\x{192}\x{2019}/\x{C2}\x{AE}/gs;
     $wiki =~ s//\x{C2}\x{AE}/gs;
+    $wiki =~ s/Â®/\x{C2}\x{AE}/gs;
     ## trademark
     $wiki =~ s/\x{EF}\x{192}\x{201D}/\x{E2}\x{84}\x{A2}/gs;
     $wiki =~ s//\x{E2}\x{84}\x{A2}/gs;
     ## long line
     $wiki =~ s/\x{E2}\x{20AC}\x{201D}/\x{E2}\x{80}\x{93}/gs;
     $wiki =~ s/\x{E2}\x{20AC}\x{201C}/\x{E2}\x{80}\x{93}/gs;
-    ## puiu
+    $wiki =~ s/â¬/\x{E2}\x{80}\x{93}/gs;
+    ## puiu / amanda
     $wiki =~ s//\x{e2}\x{97}\x{bb}/gs;
+    $wiki =~ s/ï¿/\x{e2}\x{97}\x{bb}/gs;
+
     ## RIGHTWARDS arrow
     $wiki =~ s/\x{EF}\x{192}\x{A8}/\x{e2}\x{86}\x{92}/gs;
     $wiki =~ s/\x{E2}\x{2020}\x{2019}/\x{e2}\x{86}\x{92}/gs;
@@ -452,6 +429,12 @@ sub fix_wiki_chars {
     ## CIRCLE BACKSLASH
     $wiki =~ s/\x{EF}\x{81}\x{2014}/\x{e2}\x{9c}\x{98}/gs;
     $wiki =~ s//\x{e2}\x{83}\x{A0}/gs;
+    ## apostrof
+    $wiki =~ s/â¬"/'/gs;
+    $wiki =~ s/â¬Ü/'/gs;
+    ## ghilimele
+    $wiki =~ s/â¬S/"/gs;
+    $wiki =~ s/â¬/"/gs;
 
     return $wiki;
 }
@@ -503,74 +486,19 @@ sub fix_wiki_menus {
     return $wiki;
 }
 
-sub fix_wiki_tables {
-    my ($wiki, $dir) = @_;
-    print "\tFix tables from wiki.\t". (WikiCommons::get_time_diff) ."\n";
-    my $image_files = ();
-    ## fix images from tables:
-    my $newwiki = $wiki;
-    while ($wiki =~ m/(\{\|.*?\|\})/sg ) {
-	my $table=$1;
-	$table =~ s/\s*//gs;
-	my $tmp = "\n".$table;
-	$table = quotemeta $table;
-	if ($tmp =~ m/(\[\[Image:)([[:print:]].*?)(\]\])/) {
-	    my $img_file = uri_unescape( $2 ) ;
-	    my $pic_name = $img_file;
-	    $pic_name =~ s/(.*?)(\|.*)/$1/;
-	    push (@$image_files,  "$dir/$pic_name");
-	    next if ($img_file =~ /\|/ );
-
-	    my $info = image_info("$dir/$img_file");
-	    if (my $error = $info->{error}) {
-		die "Can't parse in table image info ($img_file): $error.\t". (WikiCommons::get_time_diff) ."\n";
-	    } else {
-		my($w, $h) = dim($info);
-		if ( $w > 400 || $h > 400 ) {
-		    print "\tFixing size for image $img_file.\n";
-		    $tmp =~ s/(\[\[Image:)([[:print:]].*?)(\]\])/$1$2|400px$3/;
-		} else {
-		    $tmp =~ s/(\[\[Image:)([[:print:]].*?)(\]\])/$1$2|in_table$3/;
-		}
-	    }
-	}
-	$newwiki =~ s/$table/$tmp/;
-    }
-    $wiki = $newwiki;
-    return ($wiki, $image_files);
-}
-
-sub fix_wiki_images {
+sub get_wiki_images {
     my ($wiki, $image_files, $dir) = @_;
     print "\tFix images from wiki.\t". (WikiCommons::get_time_diff) ."\n";
-    ## fix images: center, max size 800px
-    my $newwiki = $wiki;
     while ($wiki =~ m/(\[\[Image:)([[:print:]].*?)(\]\])/g ) {
-	my $start=$1;
-	my $name=$2;
-	my $end=$3;
-	my $img_file = uri_unescape( $name );
-	my $pic_name = $img_file;
+	my $pic_name = uri_unescape( $2  );
 	$pic_name =~ s/(.*?)(\|.*)/$1/;
 	push (@$image_files,  "$dir/$pic_name");
-	$name = quotemeta $name;
-	next if ($name =~ /\|/ );
-
-	my $info = image_info("$dir/$img_file");
+	my $info = image_info("$dir/$pic_name");
 	if (my $error = $info->{error}) {
 	    die "Can't parse image info: $error.\t". (WikiCommons::get_time_diff) ."\n";
-	} else {
-	    my($w, $h) = dim($info);
-	    if ( $w > 800 || $h > 800 ) {
-		print "\tFixing size for image $img_file.\n";
-		$newwiki  =~ s/(\[\[Image:)($name)(\]\])/\n\n$1$2\|center\|800px$3\n\n/;
-	    } else {
-		$newwiki  =~ s/(\[\[Image:)($name)(\]\])/\n\n$1$2$3\n\n/;
-	    }
 	}
     }
-    $wiki = $newwiki;
-    return ($wiki, $image_files);
+    return $image_files;
 }
 
 sub fix_wiki_footers {
@@ -659,6 +587,143 @@ sub fix_wiki_link_to_sc {
 
 sub wiki_fix_lists {
     my ($wiki, $tag) = @_;
+# $wiki = '<ol><li>123</li>
+# <li>234
+#
+# {| {{prettytable}}
+# ! FELD 1
+# ! FELD 2
+# ! FELD 3
+# |-
+# | Element
+# | Element
+# Element
+# | Element
+# |-
+# | Element
+# <ul><li>321</li>
+# <li>432
+#
+# Element
+# Element
+# </li>
+# <li>543</li>
+# </ul>
+#
+# <ul><li>321</li>
+# <li>432</li>
+#
+# {| {{prettytable}}
+# ! FELD 1
+# ! FELD 2
+# ! FELD 3
+# |-
+# | Element
+# | Element
+# | Element
+# |-
+# | Element
+# | Element
+# | Element
+# |-
+# | Element
+# | Element
+# | Element
+# |}
+#
+# <li>543</li>
+# </ul>
+#
+# | Element
+# | Element
+# |-
+# | Element
+# | Element
+# | Element
+# |}
+#
+# </li>
+# <li>345</li>
+# </ol>
+#
+# <ul><li>321
+#
+# {| {{prettytable}}
+# ! FELD 1
+# ! FELD 2
+# ! FELD 3
+# |-
+# | Element
+# Element
+# <ol><li>321
+#
+# {| {{prettytable}}
+# ! FELD 1
+# ! FELD 2
+# ! FELD 3
+# |-
+# | Element
+# | Element
+# Element
+# Element
+# <ol><li>321</li>
+# <li>432</li>
+#
+# {| {{prettytable}}
+# ! FELD 1
+# ! FELD 2
+# ! FELD 3
+# |-
+# | Element
+# | Element
+# | Element
+# |-
+# | Element
+# | Element
+# | Element
+# |-
+# | Element
+# | Element
+# Element
+# | Element
+# |}
+#
+# <li>543</li>
+# </ol>
+#
+# | Element
+# |-
+# | Element
+# | Element
+# | Element
+# |-
+# | Element
+# | Element
+# | Element
+# |}
+#
+# </li>
+# <li>432</li>
+# <li>543</li>
+# </ol>
+#
+# | Element
+# | Element
+# |-
+# | Element
+# | Element
+# | Element
+# |-
+# | Element
+# | Element
+# | Element
+# |}
+#
+# </li>
+# <li>432</li>
+# <li>543</li>
+# </ul>
+# ';
     my $count = 0;
     my $newwiki = $wiki;
     my $extractor_li = gen_extract_tagged("<li>", "<\/li>");
@@ -680,10 +745,6 @@ sub wiki_fix_lists {
 	my @data = extract_tagged( $wiki, $type[0], $type[1]);
 # 	pos($wiki) = $found_string_end_pos + length($data[0]);
 	my $txt = $data[0];
-if (! $txt){
-    die "nothing for $type[0]\n";
-next;
-}
 	$txt =~ s/\n+/<br>/mg;
 	my @data_li = extract_multiple( $txt, [ $extractor_li]);
 	my $new_text = "";

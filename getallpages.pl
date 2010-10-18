@@ -44,6 +44,6 @@ sub print_articles {
     }
 }
 
-#all_pages
-all_links
+all_pages
+# all_links
 #all_deleted

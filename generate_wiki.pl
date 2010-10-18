@@ -82,8 +82,8 @@ use Mind_work::WikiMindSC;
 
 my $our_wiki;
 
-# my $path_prefix = "/media/share/Documentation/cfalcas/q/import_docs";
-my $path_prefix = "./";
+my $path_prefix = "/media/share/Documentation/cfalcas/q/import_docs";
+# my $path_prefix = "./";
 my $path_files = abs_path(shift);
 my $path_type = shift;
 our $wiki_dir = "$path_prefix/work/workfor_". (fileparse($path_files, qr/\.[^.]*/))[0] ."";
@@ -116,7 +116,7 @@ my $categories_pos = 4;
 
 my $count_files;
 our $coco;
-WikiCommons::is_remote("yes");
+WikiCommons::is_remote("no");
 
 sub create_wiki {
     my ($page_url, $doc_file, $zip_name) = @_;
@@ -163,6 +163,13 @@ sub create_wiki {
 	    print FILE "File:$zip_name.zip\n";
 	    close (FILE);
 	    print "\t+Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
+
+# 	    opendir(DIR,$work_dir) || die("Cannot open directory $work_dir.\n");
+# 	    my @files = readdir(DIR);
+# 	    closedir(DIR);
+# 	    foreach(@files) {
+# 		die "Extra files in $work_dir:$_.\n" if (-f $_);
+# 	    }
 
 	    WikiCommons::add_to_remove( $doc_file, "file" );
 	    WikiCommons::add_to_remove( $html_file, "file" );
