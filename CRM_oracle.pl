@@ -25,6 +25,7 @@ our $to_path = shift;
 WikiCommons::makedir ("$to_path");
 $to_path = abs_path("$to_path");
 
+my $update_all = "yes";
 my $dbh;
 my $event_codes = {};
 my $attributes = {};
@@ -33,6 +34,7 @@ my $staff = {};
 my $priorities = {};
 my $problem_categories = {};
 my $problem_types = {};
+my $servicestatus = {};
 
 sub print_coco {
     my $nr = shift;
@@ -46,6 +48,17 @@ sub write_file {
     open (FILE, ">$path") or die "can't open file $path for writing: $!\n";
     print FILE Encode::encode('utf8', "$text");
     close (FILE);
+}
+
+sub get_servicestatus {
+    my $SEL_INFO = '
+select t.rscservicestatuscode, t.rscservicestatusdesc
+  from tblscservicestatus t';
+    my $sth = $dbh->prepare($SEL_INFO);
+    $sth->execute();
+    while ( my @row=$sth->fetchrow_array() ) {
+	$servicestatus->{$row[0]} = $row[1];
+    }
 }
 
 sub get_eventscode {
@@ -88,7 +101,8 @@ select t.rsuppstaffenggcode,
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
-	$staff->{$row[0]}->{'name'} = $row[2]." ".$row[1];
+	$staff->{$row[0]}->{'last_name'} = $row[1];
+	$staff->{$row[0]}->{'first_name'} = $row[2];
 	$staff->{$row[0]}->{'email'} = $row[3];
     }
 }
@@ -199,7 +213,10 @@ select t.rsceventssrno,
        t.rsceventsdate,
        t.rsceventstime,
        t.rsceventscreator,
-       t.rsceventsshortdesc
+       t.rsceventsshortdesc,
+       t.rsceventsservicestatus,
+       t.rsceventsshowcustomer,
+       t.rsceventscustcontact
   from tblscevents t
  where t.rsceventscompanycode = :CUST_CODE
    and t.rsceventsscno = :SR_NR
@@ -211,13 +228,19 @@ select t.rsceventssrno,
     my $info = {};
     while ( my @row=$sth->fetchrow_array() ) {
 	$info->{$row[0]}->{'event'}->{$_} = $event_codes->{$row[1]}->{$_} foreach (keys %{$event_codes->{$row[1]}});
-	$info->{$row[0]}->{'date'} = $row[2]." ".$row[3];
+	$info->{$row[0]}->{'date'}->{'date'} = $row[2];
+	$info->{$row[0]}->{'date'}->{'time'} = $row[3];
+	$info->{$row[0]}->{'person'} = {};
 	$info->{$row[0]}->{'person'}->{$_} = $staff->{$row[4]}->{$_} foreach (keys %{$staff->{$row[4]}});
 	$info->{$row[0]}->{'short_description'} = $row[5];
 	my $desc = get_event_desc($sc_no, $row[0], $cust);
 	$info->{$row[0]}->{'description'} = $desc;
 	$desc = get_event_reference($sc_no, $row[0], $cust);
 	$info->{$row[0]}->{'reference'} = $desc;
+	$info->{$row[0]}->{'status'}->{'code'} = $row[6];
+	$info->{$row[0]}->{'status'}->{'value'} = $servicestatus->{$row[6]};
+	$info->{$row[0]}->{'show_to_customer'} = $row[7];
+	$info->{$row[0]}->{'customer_contact'} = get_customer_desc($cust, $row[8]);
     }
     return $info;
 }
@@ -248,12 +271,41 @@ select t.rscmainproblemdescription,
 	$info->{'description'} = $row[0];
 	$info->{'priority'}->{$_} = $priorities->{$row[1]}->{$_} foreach (keys %{$priorities->{$row[1]}});
 	$info->{'incharge'}->{$_} = $staff->{$row[2]}->{$_} foreach (keys %{$staff->{$row[2]}});
-	$info->{'date'} = $row[4]." ".$row[3];
+	$info->{'date'}->{'time'} = $row[4];
+	$info->{'date'}->{'date'} = $row[3];
 	$info->{'cust_category'} = $problem_categories->{$row[5]} || $row[5];
 	$info->{'type'} = $problem_types->{$row[6]};
 	$info->{'solution'} = $row[7];
 	$info->{'subject'} = $row[8];
 	$info->{'mind_category'} = $problem_categories->{$row[9]};
+    }
+    return $info;
+}
+
+sub get_customer_desc {
+    my ($cust, $code) = @_;
+    my $info = {};
+
+    my $SEL_INFO = '
+select t.rcustcontlastname,
+       t.rcustcontfirstname,
+       t.rcustcontemail,
+       t.rcustcontcustdept,
+       t.rcustcontposition
+  from tblcustomercontacts t
+ where t.rcustcontcompanycode = :CUSTOMER
+   and t.rcustcontactcode = :CODE';
+
+    my $sth = $dbh->prepare($SEL_INFO);
+    $sth->bind_param( ":CUSTOMER", $cust );
+    $sth->bind_param( ":CODE", $code );
+    $sth->execute();
+    while ( my @row=$sth->fetchrow_array() ) {
+	$info->{'last_name'} = $row[0];
+	$info->{'first_name'} = $row[1];
+	$info->{'email'} = $row[2];
+	$info->{'department'} = $row[3];
+	$info->{'position'} = $row[4];
     }
     return $info;
 }
@@ -377,6 +429,7 @@ get_staff();
 get_priorities();
 get_problem_categories();
 get_problem_types();
+get_servicestatus();
 print "+Get common info.\t". (WikiCommons::get_time_diff) ."\n";
 # get_sr_desc(100,1);
 # print Dumper($problem_types);
@@ -388,6 +441,7 @@ foreach my $cust (sort keys %$customers){
     my $crt_srs = get_allsrs($cust);
     my $prev_srs = get_previous("$to_path/".$customers->{$cust}->{'displayname'});
     foreach my $key (keys %$crt_srs) {
+	last if $update_all eq "yes";
 	my $str = $key."_".$crt_srs->{$key};
 	if (exists $prev_srs->{$str}) {
 	    delete $prev_srs->{$str} ;
