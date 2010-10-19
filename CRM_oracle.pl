@@ -26,6 +26,7 @@ WikiCommons::makedir ("$to_path");
 $to_path = abs_path("$to_path");
 
 my $update_all = "yes";
+my $ftp_addr = 'http://62.219.96.62/SupportFTP/';
 my $dbh;
 my $event_codes = {};
 my $attributes = {};
@@ -164,7 +165,6 @@ select t.attrib_isn, t.value_text
     $sth->bind_param( ":CUST_CODE", $code );
     $sth->execute();
     my $nr=0;
-    my $ftp_addr = 'http://62.219.96.62/SupportFTP/Attrib/';
     while ( my @row=$sth->fetchrow_array() ) {
 	my $data = "";
 	if (defined $attributes_options->{$row[0]}->{$row[1]}) {
@@ -175,7 +175,7 @@ select t.attrib_isn, t.value_text
 	$data =~ s/(^\s*)|(\s*$)//;
 	next if $data eq '';
 	if ( $row[0] == 23 || $row[0] == 9  || $row[0] == 6 ) {
-	    $data = $ftp_addr.$data;
+	    $data = $ftp_addr."/Attrib/".$data;
 	}
 	$info->{$attributes->{$row[0]}} = $data;
     }
@@ -275,7 +275,7 @@ select t.rscmainproblemdescription,
 	$info->{'date'}->{'date'} = $row[3];
 	$info->{'cust_category'} = $problem_categories->{$row[5]} || $row[5];
 	$info->{'type'} = $problem_types->{$row[6]};
-	$info->{'solution'} = $row[7];
+	$info->{'solution'} = substr $row[7], 2;
 	$info->{'subject'} = $row[8];
 	$info->{'mind_category'} = $problem_categories->{$row[9]};
     }
@@ -330,7 +330,9 @@ select t.rsceventdoctype,
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
 	die "too many rows: $scno, $srno, $customer\n" if exists $info->{$row[0]};
-	$info->{$row[0].$row[1]} = $row[2];
+	my $data = substr $row[2], 2;
+	$data = $ftp_addr.$data if $row[0] eq 'B';
+	$info->{$row[0].$row[1]} = $data;
     }
     return $info;
 }
@@ -436,7 +438,7 @@ print "+Get common info.\t". (WikiCommons::get_time_diff) ."\n";
 # exit 1;
 foreach my $cust (sort keys %$customers){
     print "\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
-# next if $customers->{$cust}->{'displayname'} ne "Nice";
+next if $customers->{$cust}->{'displayname'} ne "Kocnet";
     my $dir = write_customer ($customers->{$cust}, get_customer_attributes($cust));
     my $crt_srs = get_allsrs($cust);
     my $prev_srs = get_previous("$to_path/".$customers->{$cust}->{'displayname'});
