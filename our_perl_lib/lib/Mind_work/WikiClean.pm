@@ -115,7 +115,7 @@ sub html_clean_tables_in_menu {
 	$text =~ s/(<SDFIELD( [^>]*)?>)|(<\/SDFIELD>)//gsi;
 # 	$text =~ s/<A [^>]*>.*?<\/A>//gsi;
 	$text =~ s/(<SPAN( [^>]*)?>)|(<\/SPAN>)//gsi;
-	$text =~ s/(<STRONG>)|(<\/STRONG>)//gsi;
+	$text =~ s/(<STRONG( [^>]*)?>)|(<\/STRONG>)//gsi;
 	$text =~ s/(<EM>)|(<\/EM>)//gsi;
 
 	if ($text =~ m/(<([^>]*)>)/) {

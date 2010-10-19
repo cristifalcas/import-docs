@@ -400,6 +400,22 @@ sub write_sr {
                       RootName=>"info",
                      );
     write_file( "$name", $xml);
+    foreach my $key (keys %$info){
+	my $hash = $info->{$key};
+	if ($key == 0){
+	    print "$hash->{'solution'}\n\n\n";
+	    print "\n";
+	    print "\n";
+	    print "\n";
+	    print "\n";
+	    print "\n";
+	    print "\n";
+	    print "\n";
+	    print "\n";
+	    print "\n";
+	} else {
+	}
+    }
 }
 
 sub get_previous {
