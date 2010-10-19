@@ -73,6 +73,7 @@ sub clean_empty_tag {
 	}
     }
     my $cleaned = $tree->guts ? $tree->guts->as_HTML(undef, "\t") : "";
+    $tree = $tree->delete;
     return $cleaned;
 }
 

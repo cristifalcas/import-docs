@@ -1,32 +1,54 @@
-	description  text
-	priority  color text
+Long Call Duration on 28th of July and August
+
+incharge first name last name (email)	123559 20070130
+type Vendor problem	mind_category Vendor Network Element
+cust_category  Billing Application
+
+description
+solution
+
+
+	subject Long Call Duration on 28th of July and August
+
+	type Vendor problem
+	mind_category Vendor Network Element
+	cust_category  Billing Application
+
+	priority    color text
 		    description Urgent
+
 	incharge  last name
 		    first name
 		    email
 	date  date  20070130
 	    time 123559
-	cust_category  Billing Application
-	type Vendor problem
+
+	description  text
 	solution text
-	subject Long Call Duration on 28th of July and August
-	mind_category Vendor Network Element
 
 
+-----
+color="#888888"
+Description: Incoming Support Call from Sami Top�an	Date: 17:07:23 2010-08-04
+From first name last name (email), department = yahooID:sami_topcakan, position Billing
+Event: Change Of In Charge (KPS)	Status: New Letter Arrived (ARR)	Customer visible: Y
+-----
+color="#0000FF" - customer_contact
+color="#FF6600" - person
+Customer visible: N : text negru
+
+description T
+Ataatchements: B1, B2,...
+----
 
 	event  desc: Change Of In Charge
 	       status: KPS
+	status  code ARR
+		value New Letter Arrived
 	date date 20100804
 	     time 170723
 	short_description text
-
-	description type.nr link(type=R)/text
-	reference  ref1 B123456
-		   ref2
-	status  code ARR
-		value New Letter Arrived
 	show_to_customer 0/1
-
 	person last name Stroe
 		first name Adrian
 		email adrian.stroe@mindcti.com
@@ -36,3 +58,8 @@ sau
 			    email samit@koc.net;visp@koc.net
 			    department yahooID:sami_topcakan
 			    position Billing
+
+	description type.nr link(type=R)/text
+	reference  ref1 B123456
+		   ref2
+

@@ -231,6 +231,7 @@ select t.rsceventssrno,
 	$info->{$row[0]}->{'date'}->{'date'} = $row[2];
 	$info->{$row[0]}->{'date'}->{'time'} = $row[3];
 	$info->{$row[0]}->{'person'} = {};
+	$info->{$row[0]}->{'customer_contact'} = get_customer_desc($cust, $row[8]);
 	$info->{$row[0]}->{'person'}->{$_} = $staff->{$row[4]}->{$_} foreach (keys %{$staff->{$row[4]}});
 	$info->{$row[0]}->{'short_description'} = $row[5];
 	my $desc = get_event_desc($sc_no, $row[0], $cust);
@@ -240,7 +241,6 @@ select t.rsceventssrno,
 	$info->{$row[0]}->{'status'}->{'code'} = $row[6];
 	$info->{$row[0]}->{'status'}->{'value'} = $servicestatus->{$row[6]};
 	$info->{$row[0]}->{'show_to_customer'} = $row[7];
-	$info->{$row[0]}->{'customer_contact'} = get_customer_desc($cust, $row[8]);
     }
     return $info;
 }
@@ -390,6 +390,14 @@ sub write_customer {
     return $dir;
 }
 
+sub html_to_text {
+    my $html = shift;
+    my $tree = HTML::TreeBuilder->new_from_content(decode_utf8($html));
+    my $text = $tree->as_text;
+    $tree = $tree->delete;
+    return $text;
+}
+
 sub write_sr {
     my ($info, $name) = @_;
     my @keys = keys %$info;
@@ -402,18 +410,58 @@ sub write_sr {
     write_file( "$name", $xml);
     foreach my $key (keys %$info){
 	my $hash = $info->{$key};
+	my $time = (substr $hash->{'date'}->{'time'}, 0 , 2).":".(substr $hash->{'date'}->{'time'}, 2 , 4).":".(substr $hash->{'date'}->{'time'}, 4);
+	my $date = (substr $hash->{'date'}->{'date'}, 0 , 4)."-".(substr $hash->{'date'}->{'date'}, 4 , 6)."-".(substr $hash->{'date'}->{'date'}, 6);
 	if ($key == 0){
-	    print "$hash->{'solution'}\n\n\n";
-	    print "\n";
-	    print "\n";
-	    print "\n";
-	    print "\n";
-	    print "\n";
-	    print "\n";
-	    print "\n";
-	    print "\n";
-	    print "\n";
+	    print "<center>\'\'\'$hash->{'subject'}\'\'\'</center>\n\n";
+	    print "<p align=\"right\">$time $date</p>\n\n\n\n";
+	    print "Incharge: $hash->{'incharge'}->{'first_name'} $hash->{'incharge'}->{'last_name'} $hash->{'incharge'}->{'email'}\n\n";
+	    print "\'\'\'Type\'\'\': $hash->{'type'} \'\'\'Category\'\'\': $hash->{'mind_category'}\n\n";
+	    print "\'\'\'Customer category\'\'\': $hash->{'cust_category'}\n\n\n";
+	    print "\'\'\'Description\'\'\': $hash->{'description'}\n\n";
+	    print "\'\'\'Solution\'\'\': $hash->{'solution'}\n\n";
 	} else {
+	    my $color = "";
+	    my $name = "";
+	    if ($hash->{'person'} eq '') {
+		$color = "<font color=\"#0000FF\">\n";
+		$name = "$hash->{'customer_contact'}->{'first_name'} $hash->{'customer_contact'}->{'last_name'} ($hash->{'customer_contact'}->{'email'}); department = $hash->{'customer_contact'}->{'department'}; position = $hash->{'customer_contact'}->{'position'}";
+	    } else {
+		$color = "<font color=\"#FF6600\">\n";
+		$name = "$hash->{'person'}->{'first_name'} $hash->{'person'}->{'last_name'} ($hash->{'person'}->{'email'})";
+	    }
+	    if ($hash->{'show_to_customer'} eq 'Y') {
+		$color = "";
+	    }
+
+	    print "---\n";
+	    print "<font color=\"#888888\">\n";
+	    print "\'\'\'Description\'\'\': $hash->{'short_description'}<p align=\"right\">$time $date</p>\n\n";
+	    print "\'\'\'From\'\'\': $name\n\n";
+	    print "\'\'\'Event\'\'\': $hash->{'event'}->{'description'} ($hash->{'event'}->{'code'}) \'\'\'Status\'\'\': $hash->{'status'}->{'description'} ($hash->{'status'}->{'code'})<p align=\"right\">\'\'\'Customer visible\'\'\': $hash->{'show_to_customer'}</p>\n\n";
+	    print "</font>\n\n";
+	    print "---\n";
+	    print "$color\n";
+	    my $attachements = "";
+	    my $txt = HTML::TreeBuilder->new_from_content(decode_utf8($text));
+	    foreach my $desc (keys %{$hash->{'description'}}){
+		if ( $desc =~ m/^T/) {
+		} else {
+		    my $att = html_to_text($hash->{'description'}->{$desc});
+		    my @arr = split '/', $att;
+		    $attachements .= ."[$att $arr[#$arr]]";
+		}
+	    }
+	    print "</font>\n";
+	    print "\n";
+	    print "\n";
+	    print "\n";
+	    print "\n";
+	    print "\n";
+	    print "\n";
+	    print "\n";
+	    print "$hash->{'solution'}\n";
+	    print "---\n";
 	}
     }
 }
