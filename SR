@@ -1,6 +1,7 @@
 Long Call Duration on 28th of July and August
+		    123559 20070130
 
-incharge first name last name (email)	123559 20070130
+incharge first name last name (email)
 type Vendor problem	mind_category Vendor Network Element
 cust_category  Billing Application
 
@@ -42,7 +43,7 @@ Ataatchements: B1, B2,...
 ----
 
 	event  desc: Change Of In Charge
-	       status: KPS
+	       code: KPS
 	status  code ARR
 		value New Letter Arrived
 	date date 20100804

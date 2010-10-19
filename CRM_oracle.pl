@@ -17,7 +17,7 @@ use File::Copy;
 use Cwd 'abs_path','chdir';
 use File::Find::Rule;
 use Mind_work::WikiCommons;
-use XML::Simple;
+# use XML::Simple;
 use Encode;
 
 die "We need the destination path.\n" if ( $#ARGV != 0 );
@@ -443,24 +443,20 @@ sub write_sr {
 	    print "---\n";
 	    print "$color\n";
 	    my $attachements = "";
-	    my $txt = HTML::TreeBuilder->new_from_content(decode_utf8($text));
 	    foreach my $desc (keys %{$hash->{'description'}}){
 		if ( $desc =~ m/^T/) {
+		    my $text = html_to_text('http://62.219.96.62/SupportFTP//Attrib/6_221_0_0_$$Configuration Guide &amp; Connection Details.zip');
+		    $text =~ s/\n/\n\n/g;
+		    print "$text\n\n";
 		} else {
-		    my $att = html_to_text($hash->{'description'}->{$desc});
-		    my @arr = split '/', $att;
-		    $attachements .= ."[$att $arr[#$arr]]";
+# 		    my $att = html_to_text($hash->{'description'}->{$desc});
+		    my $text = html_to_text('http://62.219.96.62/SupportFTP//Attrib/6_221_0_0_$$Configuration Guide &amp; Connection Details.zip');
+		    my @arr = split '/', $text;
+		    $text = uri_escape( $text,"^A-Za-z\/:0-9\-\._~%" );
+		    $attachements .= "[$text $arr[-1]] ";
 		}
 	    }
 	    print "</font>\n";
-	    print "\n";
-	    print "\n";
-	    print "\n";
-	    print "\n";
-	    print "\n";
-	    print "\n";
-	    print "\n";
-	    print "$hash->{'solution'}\n";
 	    print "---\n";
 	}
     }
