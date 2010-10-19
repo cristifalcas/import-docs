@@ -1,0 +1,38 @@
+	description  text
+	priority  color text
+		    description Urgent
+	incharge  last name
+		    first name
+		    email
+	date  date  20070130
+	    time 123559
+	cust_category  Billing Application
+	type Vendor problem
+	solution text
+	subject Long Call Duration on 28th of July and August
+	mind_category Vendor Network Element
+
+
+
+	event  desc: Change Of In Charge
+	       status: KPS
+	date date 20100804
+	     time 170723
+	short_description text
+
+	description type.nr link(type=R)/text
+	reference  ref1 B123456
+		   ref2
+	status  code ARR
+		value New Letter Arrived
+	show_to_customer 0/1
+
+	person last name Stroe
+		first name Adrian
+		email adrian.stroe@mindcti.com
+sau
+	customer_contact    last name Topï¿½an
+			    first name Sami
+			    email samit@koc.net;visp@koc.net
+			    department yahooID:sami_topcakan
+			    position Billing
