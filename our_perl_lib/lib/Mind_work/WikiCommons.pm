@@ -62,7 +62,7 @@ sub write_file {
     $remove = 0 if not defined $remove;
     my ($name,$dir,$suffix) = fileparse($path, qr/\.[^.]*/);
     add_to_remove("$dir/$name$suffix", "file") if $remove ne 0;
-    print "\tWriting file $name$suffix.\n";
+    print "\tWriting file $name$suffix.\t". get_time_diff() ."\n";
     open (FILE, ">$path") or die "at generic write can't open file $path for writing: $!\n";
     print FILE "$text";
     close (FILE);
