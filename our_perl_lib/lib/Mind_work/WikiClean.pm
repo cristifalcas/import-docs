@@ -168,6 +168,7 @@ sub html_clean_menu_in_lists {
 	my $found_string_end_pos = pos($html);
 	pos($html) -= length($found_string);
 	my @type = ();
+print "found string for html_clean_menu_in_lists\t". (WikiCommons::get_time_diff) ."\n";
 	if ($found_string =~ m/<OL/i) {
 	    push @type, "<OL[^>]*>";
 	    push @type, "<\/OL>";
@@ -588,143 +589,7 @@ sub fix_wiki_link_to_sc {
 
 sub wiki_fix_lists {
     my ($wiki, $tag) = @_;
-# $wiki = '<ol><li>123</li>
-# <li>234
-#
-# {| {{prettytable}}
-# ! FELD 1
-# ! FELD 2
-# ! FELD 3
-# |-
-# | Element
-# | Element
-# Element
-# | Element
-# |-
-# | Element
-# <ul><li>321</li>
-# <li>432
-#
-# Element
-# Element
-# </li>
-# <li>543</li>
-# </ul>
-#
-# <ul><li>321</li>
-# <li>432</li>
-#
-# {| {{prettytable}}
-# ! FELD 1
-# ! FELD 2
-# ! FELD 3
-# |-
-# | Element
-# | Element
-# | Element
-# |-
-# | Element
-# | Element
-# | Element
-# |-
-# | Element
-# | Element
-# | Element
-# |}
-#
-# <li>543</li>
-# </ul>
-#
-# | Element
-# | Element
-# |-
-# | Element
-# | Element
-# | Element
-# |}
-#
-# </li>
-# <li>345</li>
-# </ol>
-#
-# <ul><li>321
-#
-# {| {{prettytable}}
-# ! FELD 1
-# ! FELD 2
-# ! FELD 3
-# |-
-# | Element
-# Element
-# <ol><li>321
-#
-# {| {{prettytable}}
-# ! FELD 1
-# ! FELD 2
-# ! FELD 3
-# |-
-# | Element
-# | Element
-# Element
-# Element
-# <ol><li>321</li>
-# <li>432</li>
-#
-# {| {{prettytable}}
-# ! FELD 1
-# ! FELD 2
-# ! FELD 3
-# |-
-# | Element
-# | Element
-# | Element
-# |-
-# | Element
-# | Element
-# | Element
-# |-
-# | Element
-# | Element
-# Element
-# | Element
-# |}
-#
-# <li>543</li>
-# </ol>
-#
-# | Element
-# |-
-# | Element
-# | Element
-# | Element
-# |-
-# | Element
-# | Element
-# | Element
-# |}
-#
-# </li>
-# <li>432</li>
-# <li>543</li>
-# </ol>
-#
-# | Element
-# | Element
-# |-
-# | Element
-# | Element
-# | Element
-# |-
-# | Element
-# | Element
-# | Element
-# |}
-#
-# </li>
-# <li>432</li>
-# <li>543</li>
-# </ul>
-# ';
+
     my $count = 0;
     my $newwiki = $wiki;
     my $extractor_li = gen_extract_tagged("<li>", "<\/li>");
@@ -734,6 +599,7 @@ sub wiki_fix_lists {
 	my @type = ();
 
 	pos($wiki) -= length($found_string);
+print "found string for wiki_fix_lists\t". (WikiCommons::get_time_diff) ."\n";
 	if ($found_string =~ m/^<ol/ ) {
 	    push @type, "<ol[^>]*>";
 	    push @type, "<\/ol>";
