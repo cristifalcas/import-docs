@@ -168,7 +168,7 @@ sub html_clean_menu_in_lists {
 	my $found_string_end_pos = pos($html);
 	pos($html) -= length($found_string);
 	my @type = ();
-print "found string for html_clean_menu_in_lists\t". (WikiCommons::get_time_diff) ."\n";
+print "found string for html_clean_menu_in_lists: $found_string_end_pos\t". (WikiCommons::get_time_diff) ."\n";
 	if ($found_string =~ m/<OL/i) {
 	    push @type, "<OL[^>]*>";
 	    push @type, "<\/OL>";
@@ -599,7 +599,7 @@ sub wiki_fix_lists {
 	my @type = ();
 
 	pos($wiki) -= length($found_string);
-print "found string for wiki_fix_lists\t". (WikiCommons::get_time_diff) ."\n";
+print "found string for wiki_fix_lists $found_string_end_pos\t". (WikiCommons::get_time_diff) ."\n";
 	if ($found_string =~ m/^<ol/ ) {
 	    push @type, "<ol[^>]*>";
 	    push @type, "<\/ol>";
