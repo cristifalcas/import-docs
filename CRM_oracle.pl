@@ -589,6 +589,27 @@ foreach my $cust (sort keys %$customers){
 	print_coco(++$nr);
     }
 }
+
+# &quot;			"
+# &amp;			&
+# &lt;			<
+# &gt;			>
+# &circ;			ˆ
+# &tilde;			˜
+# &ensp;
+# &emsp;
+# &ndash;			–
+# &mdash;			—
+# &lsquo;			‘
+# &rsquo;			’
+# &sbquo;			‚
+# &ldquo;			“
+# &rdquo;			”
+# &bdquo;			„
+# &lsaquo;		‹
+# &rsaquo;		›
+# &euro;			€
+
 # <div style="BACKGROUND-COLOR:silver">
 ### links url encoded
 $dbh->disconnect if defined($dbh);
