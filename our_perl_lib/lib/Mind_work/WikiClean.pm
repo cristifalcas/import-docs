@@ -168,7 +168,7 @@ sub html_clean_menu_in_lists {
 	my $found_string_end_pos = pos($html);
 	pos($html) -= length($found_string);
 	my @type = ();
-print "found string for html_clean_menu_in_lists: $found_string_end_pos\t". (WikiCommons::get_time_diff) ."\n";
+print "1. found string for html_clean_menu_in_lists: ".pos($html)."\t". (WikiCommons::get_time_diff) ."\n";
 	if ($found_string =~ m/<OL/i) {
 	    push @type, "<OL[^>]*>";
 	    push @type, "<\/OL>";
@@ -179,8 +179,10 @@ print "found string for html_clean_menu_in_lists: $found_string_end_pos\t". (Wik
 	    die "blabla: $found_string\n";
 	}
 	my @data = extract_tagged( $html, "$type[0]", "$type[1]");
+print "2. found string for html_clean_menu_in_lists: ".pos($html)."\t". (WikiCommons::get_time_diff) ."\n";
 # 	pos($html) = $found_string_end_pos - length($found_string) + length($data[0]);
 	next if $data[0] !~ m/(<H([0-9]{1,2})[^>]*>)(.*?)(<\/H\2>)/gsi;
+print "3. found string for html_clean_menu_in_lists: ".pos($html)."\t". (WikiCommons::get_time_diff) ."\n";
 	my $txt = $data[0];
 	my @data_h = extract_multiple( $txt, [ $extractor_h]);
 	print "\t\tdone.\t". (WikiCommons::get_time_diff) ."\n";
@@ -599,7 +601,7 @@ sub wiki_fix_lists {
 	my @type = ();
 
 	pos($wiki) -= length($found_string);
-print "found string for wiki_fix_lists $found_string_end_pos\t". (WikiCommons::get_time_diff) ."\n";
+print "1. found string for wiki_fix_lists ".pos($wiki)."\t". (WikiCommons::get_time_diff) ."\n";
 	if ($found_string =~ m/^<ol/ ) {
 	    push @type, "<ol[^>]*>";
 	    push @type, "<\/ol>";
@@ -614,6 +616,7 @@ print "found string for wiki_fix_lists $found_string_end_pos\t". (WikiCommons::g
 	my $txt = $data[0];
 	$txt =~ s/\n+/<br>/mg;
 	my @data_li = extract_multiple( $txt, [ $extractor_li]);
+print "2. found string for wiki_fix_lists ".pos($wiki)."\t". (WikiCommons::get_time_diff) ."\n";
 	my $new_text = "";
 	foreach my $h (@data_li) {
 	    if ($h =~ m/^(<li>)(.*?)(<\/li>)$/s) {
