@@ -141,7 +141,7 @@ sub create_wiki {
 	WikiCommons::generate_html_file($doc_file);
 	my $html_file = "$work_dir/$name.html";
 
-	if ( -f $html_file && ! -e ".~lock.$name.$suffix#") {
+	if ( 1 || -f $html_file && ! -e ".~lock.$name.$suffix#") {
 	    my ($wiki, $image_files) = WikiClean::make_wiki_from_html ( $html_file );
 	    my $dest = "$work_dir/$wiki_result";
 	    WikiCommons::add_to_remove ("$work_dir/$wiki_result", "dir");

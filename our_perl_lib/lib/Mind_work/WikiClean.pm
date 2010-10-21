@@ -56,20 +56,32 @@ sub clean_empty_tag {
     my ($text, $tag) = @_;
     my $tree = HTML::TreeBuilder->new_from_content(decode_utf8($text));
     foreach my $a_tag ($tree->guts->look_down(_tag => "$tag")) {
-	next unless $a_tag->look_down(sub { grep !ref && /\S/ => $_[0]->content_list });
-
 	my $some_ok_attr = 0;
 	my $tag_name = $a_tag->tag;
 	for my $attr_name ($a_tag->all_external_attr_names){
 	    my $attr_value = $a_tag->attr($attr_name);
 	    if ( tag_remove_attr($tag_name, $attr_name, $attr_value) ) {
-		$a_tag->attr("$attr_name", undef);
 	    } else {
 		++$some_ok_attr;
 	    }
 	}
-	foreach my $text ($a_tag->content_refs_list) {
-	    next if ref $$text;
+	my $some_ok_tags = 0;
+	foreach my $crt_text ($a_tag->content_refs_list) {
+	    if (ref $$crt_text){
+		$some_ok_tags++;
+		next ;
+	    }
+	    if ($$crt_text !~ m/(^\s*$)/){
+		$some_ok_tags++;
+	    }
+	}
+	if (!$some_ok_attr) {
+	    $a_tag->replace_with($a_tag->content_list());
+	    next;
+	}
+	if (!$some_ok_tags) {
+	    $a_tag->replace_with($a_tag->content_list());
+	    next;
 	}
     }
     my $cleaned = $tree->guts ? $tree->guts->as_HTML(undef, "\t") : "";
@@ -131,6 +143,35 @@ sub html_clean_tables_in_menu {
 }
 
 sub html_clean_menu_in_tables {
+    my ($text) = @_;
+    my $tree = HTML::TreeBuilder->new_from_content(decode_utf8($text));
+    foreach my $a_tag ($tree->guts->look_down(_tag => "table")) {
+	my $some_ok_tags = 0;
+	foreach my $crt_text ($a_tag->content_refs_list) {
+	    if (ref $$crt_text){
+		$some_ok_tags++;
+		next ;
+	    }
+	    if ($$crt_text !~ m/(^\s*$)/){
+		$some_ok_tags++;
+	    }
+	}
+	if (!$some_ok_attr) {
+	    $a_tag->replace_with($a_tag->content_list());
+	    next;
+	}
+	if (!$some_ok_tags) {
+	    $a_tag->replace_with($a_tag->content_list());
+	    next;
+	}
+    }
+    my $cleaned = $tree->guts ? $tree->guts->as_HTML(undef, "\t") : "";
+    $tree = $tree->delete;
+    return $cleaned;
+}
+
+
+sub html_clean_menu_in_tables1 {
     my $html = shift;
     print "\t-Fix in html menus in tables.\t". (WikiCommons::get_time_diff) ."\n";
     ## menus in tables
@@ -170,10 +211,12 @@ sub html_clean_menu_in_lists {
 	my @type = ();
 print "1. found string for html_clean_menu_in_lists: ".pos($html)."\t". (WikiCommons::get_time_diff) ."\n";
 	if ($found_string =~ m/<OL/i) {
-	    push @type, "<OL[^>]*>";
+# 	    push @type, "<OL[^>]*>";
+	    push @type, "<OL";
 	    push @type, "<\/OL>";
 	} elsif  ($found_string =~ m/<UL/i) {
-	    push @type, "<UL[^>]*>";
+# 	    push @type, "<UL[^>]*>";
+	    push @type, "<UL";
 	    push @type, "<\/UL>";
 	} else {
 	    die "blabla: $found_string\n";
@@ -226,10 +269,10 @@ sub cleanup_html {
     $html =~ s/&nbsp;/ /gs;
     $html = html_clean_tables_in_menu($html);
 WikiCommons::write_file("$dir/html_clean_tables_in_menu.$name.html", $html, 1);
-    $html = html_clean_menu_in_tables($html);
-WikiCommons::write_file("$dir/html_clean_menu_in_tables.$name.html", $html, 1);
-    $html = html_clean_menu_in_lists($html);
-WikiCommons::write_file("$dir/html_clean_menu_in_lists.$name.html", $html, 1);
+#     $html = html_clean_menu_in_tables($html);
+# WikiCommons::write_file("$dir/html_clean_menu_in_tables.$name.html", $html, 1);
+#     $html = html_clean_menu_in_lists($html);
+# WikiCommons::write_file("$dir/html_clean_menu_in_lists.$name.html", $html, 1);
     $html = clean_empty_tag($html, 'span');
 WikiCommons::write_file("$dir/html_clean_empty_tag_span.$name.html", $html, 1);
     $html = clean_empty_tag($html, 'font');
@@ -247,7 +290,8 @@ WikiCommons::write_file("$dir/html_tidy.$name.html", $html, 1);
 }
 
 sub make_wiki_from_html {
-    my $html_file = shift;
+#     my $html_file = shift;
+    my $html_file = "./MINDBill 6.60.003 Manager User Manual.html";
     my ($name,$dir,$suffix) = fileparse($html_file, qr/\.[^.]*/);
 
     open (FILEHANDLE, "$html_file") or die "at wiki from html Can't open file $html_file: ".$!."\n";
@@ -603,10 +647,12 @@ sub wiki_fix_lists {
 	pos($wiki) -= length($found_string);
 print "1. found string for wiki_fix_lists ".pos($wiki)."\t". (WikiCommons::get_time_diff) ."\n";
 	if ($found_string =~ m/^<ol/ ) {
-	    push @type, "<ol[^>]*>";
+# 	    push @type, "<ol[^>]*>";
+	    push @type, "<ol";
 	    push @type, "<\/ol>";
 	} elsif ($found_string =~ m/^<ul/ ) {
-	    push @type, "<ul[^>]*>";
+# 	    push @type, "<ul[^>]*>";
+	    push @type, "<ul";
 	    push @type, "<\/ul>";
 	} else {
 	    die "WRONG: $found_string\n";
