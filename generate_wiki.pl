@@ -67,7 +67,6 @@ use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
 use HTML::WikiConverter;
 use Data::Dumper;
 use Digest::MD5 qw(md5 md5_hex md5_base64);
-use HTML::Tidy;
 use Text::Balanced;
 use Encode;
 use URI::Escape;

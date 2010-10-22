@@ -8,6 +8,7 @@ use URI::Escape;
 use Image::Info qw(image_info dim);
 use Mind_work::WikiCommons;
 use Data::Dumper;
+use HTML::Tidy;
 use Text::Balanced qw (
     extract_tagged
     extract_multiple
@@ -16,6 +17,24 @@ use Text::Balanced qw (
 use Encode;
 
 our $debug = "yes";
+
+sub html_to_text {
+    my $html = shift;
+    print "\t-Transform html to text.\t". (WikiCommons::get_time_diff) ."\n";
+    $html =~ s/\r?\n+/combo_break/gm;
+    $html =~ s/[ \t\f]+/ /gm;
+    my $tree = HTML::TreeBuilder->new_from_content(decode_utf8($html));
+#     my $text = $tree->guts ? $tree->guts->as_text() : "";
+    my $text = $tree->guts ? $tree->guts->as_text_trimmed() : "";
+    $tree = $tree->delete;
+#     $text =~ s/combo_break/\n/gm;
+#     $text =~ s/://gm;
+#     $text =~ s/(^[ \t]*)|([ \t]*$)//gm;
+#     $text =~ s/\n+/\n/gs;
+#     $text =~ s/(^\n+)|(\n+$)//gs;
+    print "\t-Transform html to text.\t". (WikiCommons::get_time_diff) ."\n";
+    return Encode::encode('utf8', $text);
+}
 
 sub tag_remove_attr {
     my ($tag_name, $attr_name, $attr_value) = @_;
@@ -52,22 +71,64 @@ sub tag_remove_attr {
     }
 }
 
+# sub clean_empty_tag {
+#     my ($text, $tag) = @_;
+# # print "qqq .$text.\n";;
+# # $text=' c <IMG SRC="asdf">     ';
+# my $q=0;
+#     my $tree = HTML::TreeBuilder->new_from_content(decode_utf8($text));
+#     foreach my $a_tag ($tree->guts->look_down(_tag => "$tag")) {
+# 	my $some_ok_attr = 0;
+# 	my $tag_name = $a_tag->tag;
+# 	for my $attr_name ($a_tag->all_external_attr_names){
+# 	    my $attr_value = $a_tag->attr($attr_name);
+# 	    if ( tag_remove_attr($tag_name, $attr_name, $attr_value) ) {
+# 	    } else {
+# 		++$some_ok_attr;
+# 	    }
+# 	}
+# 	my $some_ok_tags = 0;
+# 	foreach my $crt_text ($a_tag->content_refs_list) {
+# 	    if (ref $$crt_text){
+# 		$some_ok_tags++;
+# 		next ;
+# 	    }
+# 	    if ($$crt_text !~ m/(^\s+)|(\s+$)/){
+# 		$some_ok_tags++;
+# 	    }
+# 	}
+# 	if (!$some_ok_attr) {
+# 	    $a_tag->replace_with($a_tag->content_list());
+# 	    next;
+# 	}
+# 	if (!$some_ok_tags) {
+# 	    $a_tag->replace_with($a_tag->content_list());
+# 	    next;
+# 	}
+#     }
+#     my $cleaned = $tree->guts ? $tree->guts->as_HTML(undef, "\t") : "";
+#     $tree = $tree->delete;
+#     return $cleaned;
+# }
+
 sub clean_empty_tag {
     my ($text, $tag) = @_;
+    print "\t-Clean tag $tag.\t". (WikiCommons::get_time_diff) ."\n";
     my $tree = HTML::TreeBuilder->new_from_content(decode_utf8($text));
     foreach my $a_tag ($tree->guts->look_down(_tag => "$tag")) {
 	my $some_ok_attr = 0;
 	my $tag_name = $a_tag->tag;
-	for my $attr_name ($a_tag->all_external_attr_names){
+	foreach my $attr_name ($a_tag->all_external_attr_names){
 	    my $attr_value = $a_tag->attr($attr_name);
 	    if ( tag_remove_attr($tag_name, $attr_name, $attr_value) ) {
+		$a_tag->attr("$attr_name", undef);
 	    } else {
 		++$some_ok_attr;
 	    }
 	}
 	my $some_ok_tags = 0;
 	foreach my $crt_text ($a_tag->content_refs_list) {
-	    if (ref $$crt_text){
+	    if (ref $crt_text){
 		$some_ok_tags++;
 		next ;
 	    }
@@ -75,21 +136,18 @@ sub clean_empty_tag {
 		$some_ok_tags++;
 	    }
 	}
-	if (!$some_ok_attr) {
-	    $a_tag->replace_with($a_tag->content_list());
-	    next;
-	}
-	if (!$some_ok_tags) {
+	if (!$some_ok_attr || !$some_ok_tags) {
 	    $a_tag->replace_with($a_tag->content_list());
 	    next;
 	}
     }
     my $cleaned = $tree->guts ? $tree->guts->as_HTML(undef, "\t") : "";
     $tree = $tree->delete;
-    return $cleaned;
+    print "\t+Clean tag $tag.\t". (WikiCommons::get_time_diff) ."\n";
+    return encode_utf8($cleaned);
 }
 
-sub html_clean_tables_in_menu {
+sub html_clean_menus {
     my $html = shift;
     print "\t-Fix in html tables in menus.\t". (WikiCommons::get_time_diff) ."\n";
     ## tables in menu
@@ -142,121 +200,185 @@ sub html_clean_tables_in_menu {
     return $newhtml;
 }
 
+sub html_clean_menu_in_lists {
+    my $text = shift;
+    print "\t-Fix in html menus in lists.\t". (WikiCommons::get_time_diff) ."\n";
+    ## replace menu with bold
+    my $tree = HTML::TreeBuilder->new_from_content(decode_utf8($text));
+    foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
+	foreach my $kid ($a_tag->descendants()){
+	    die $kid->tag."\n" if $kid->tag =~ m/^h[0-9]{1,2}/;
+	}
+# 	foreach my $b_tag ($a_tag->content_refs_list) {
+# die $$b_tag->tag."\n" if $$b_tag->tag =~ m/^h/;
+# 	}
+# 	my $some_ok_tags = 0;
+# 	foreach my $crt_text ($a_tag->content_refs_list) {
+# 	    if (ref $crt_text){
+# 		if ($$crt_text->tag =~ m/h([0-9]{1,2})/i) {
+# die $$crt_text->tag."\n";
+# 		}
+# 	    }
+# 	}
+    }
+    foreach my $a_tag ($tree->guts->look_down(_tag => "ol")) {
+	foreach my $kid ($a_tag->descendants()){
+	    die $kid->tag."\n" if $kid->tag =~ m/^h[0-9]{1,2}/;
+	}
+# 	foreach my $b_tag ($a_tag->look_down(_tag => "h")) {
+# die $b_tag->tag."\n";
+# 	}
+# 	my $some_ok_tags = 0;
+# 	foreach my $crt_text ($a_tag->content_refs_list) {
+# 	    if (ref $crt_text){
+# 		if ($$crt_text->tag =~ m/h([0-9]{1,2})/i) {
+# die $$crt_text->tag."\n";
+# 		}
+# 	    }
+# 	}
+    }
+    foreach my $a_tag ($tree->guts->look_down(_tag => "ul")) {
+	foreach my $kid ($a_tag->descendants()){
+	    die $kid->tag."\n" if $kid->tag =~ m/^h[0-9]{1,2}/;
+	}
+# 	my $some_ok_tags = 0;
+# 	foreach my $b_tag ($a_tag->look_down(_tag => "h")) {
+# die $b_tag->tag."\n";
+# 	}
+# 	foreach my $crt_text ($a_tag->content_refs_list) {
+# 	    if (ref $crt_text){
+# 		if ($$crt_text->tag =~ m/h([0-9]{1,2})/i) {
+# die $$crt_text->tag."\n";
+# 		}
+# 	    }
+# 	}
+    }
+    my $cleaned = $tree->guts ? $tree->guts->as_HTML(undef, "\t") : "";
+    $tree = $tree->delete;
+    print "\t+Fix in html menus in lists.\t". (WikiCommons::get_time_diff) ."\n";
+    return $cleaned;
+}
+
+# sub html_clean_menu_in_lists1 {
+#     my $html = shift;
+#     print "\t-Fix in html menus in lists.\t". (WikiCommons::get_time_diff) ."\n";
+#     # fix menus from lists
+#     my $count = 0;
+#     my $newhtml = $html;
+#     my $extractor_h = gen_extract_tagged("<H[0-9]{1,2}[^>]*>", "<\/H[0-9]{1,2}>");
+#     print "\tExtract menus from lists.\t". (WikiCommons::get_time_diff) ."\n";
+#     while ($html =~ m/(<((OL)|(UL))[^>]*>)/gsi ) {
+# 	my $found_string = $&;
+# 	my $found_string_end_pos = pos($html);
+# 	pos($html) -= length($found_string);
+# 	my @type = ();
+# print "1. found string for html_clean_menu_in_lists: ".pos($html)."\t". (WikiCommons::get_time_diff) ."\n";
+# 	if ($found_string =~ m/<OL/i) {
+# # 	    push @type, "<OL[^>]*>";
+# 	    push @type, "<OL";
+# 	    push @type, "<\/OL>";
+# 	} elsif  ($found_string =~ m/<UL/i) {
+# # 	    push @type, "<UL[^>]*>";
+# 	    push @type, "<UL";
+# 	    push @type, "<\/UL>";
+# 	} else {
+# 	    die "blabla: $found_string\n";
+# 	}
+# 	my @data = extract_tagged( $html, "$type[0]", "$type[1]");
+# print "2. found string for html_clean_menu_in_lists: ".pos($html)."\t". (WikiCommons::get_time_diff) ."\n";
+# # 	pos($html) = $found_string_end_pos - length($found_string) + length($data[0]);
+# 	next if $data[0] !~ m/(<H([0-9]{1,2})[^>]*>)(.*?)(<\/H\2>)/gsi;
+# print "3. found string for html_clean_menu_in_lists: ".pos($html)."\t". (WikiCommons::get_time_diff) ."\n";
+# 	my $txt = $data[0];
+# 	my @data_h = extract_multiple( $txt, [ $extractor_h]);
+# 	print "\t\tdone.\t". (WikiCommons::get_time_diff) ."\n";
+#
+# 	my $titles = "";
+# 	my $new_text = "";
+# 	foreach my $h (@data_h) {
+# 	    if ($h =~ m/^(<H[0-9]{1,2}[^>]*>.*?<\/H[0-9]{1,2}>)$/s) {
+# 		$titles .= $h."\n";
+# 	    } else {
+# 		$new_text .= $h."\n";
+# 	    }
+# 	}
+# 	$new_text = clean_empty_tag($new_text, "li");
+# 	$new_text = clean_empty_tag($new_text, "ol") if ($found_string =~ m/<OL/i);
+# 	$new_text = clean_empty_tag($new_text, "ul") if ($found_string =~ m/<UL/i);
+#
+# 	$new_text = "$titles$new_text";
+# 	substr($newhtml, $found_string_end_pos - length($found_string) + $count, length($data[0])) = "$new_text";
+# 	$count += length($new_text) - length($data[0]);
+#     }
+#     print "\t+Fix in html menus in lists.\t". (WikiCommons::get_time_diff) ."\n";
+#     return $newhtml;
+# }
+
 sub html_clean_menu_in_tables {
-    my ($text) = @_;
+    my $text = shift;
+    print "\t-Fix menus from tables.\t". (WikiCommons::get_time_diff) ."\n";
+    ## replace menu with bold
     my $tree = HTML::TreeBuilder->new_from_content(decode_utf8($text));
     foreach my $a_tag ($tree->guts->look_down(_tag => "table")) {
-	my $some_ok_tags = 0;
-	foreach my $crt_text ($a_tag->content_refs_list) {
-	    if (ref $$crt_text){
-		$some_ok_tags++;
-		next ;
-	    }
-	    if ($$crt_text !~ m/(^\s*$)/){
-		$some_ok_tags++;
-	    }
-	}
-	if (!$some_ok_attr) {
-	    $a_tag->replace_with($a_tag->content_list());
-	    next;
-	}
-	if (!$some_ok_tags) {
-	    $a_tag->replace_with($a_tag->content_list());
-	    next;
+	foreach my $kid ($a_tag->descendants()){
+	    $kid->tag('b') if $kid->tag =~ m/^h[0-9]{1,2}/;
 	}
     }
     my $cleaned = $tree->guts ? $tree->guts->as_HTML(undef, "\t") : "";
     $tree = $tree->delete;
+    print "\t+Fix menus from tables.\t". (WikiCommons::get_time_diff) ."\n";
     return $cleaned;
 }
 
-
-sub html_clean_menu_in_tables1 {
-    my $html = shift;
-    print "\t-Fix in html menus in tables.\t". (WikiCommons::get_time_diff) ."\n";
-    ## menus in tables
-    my $count = 0;
-    my $newhtml = $html;
-    while ($html =~ m/(<TABLE[^>]*>)(.*?)(<\/TABLE>)/gsi ) {
-	my $found_string = $&;
-	my $found_string_end_pos = pos($html);
-	my $start = $1; my $end = $3;
-	my $text = $2;
-
-	while ($text =~ m/(<h([0-9]{1,2})[^>]*>)(.*?)(<\/H\2>)/si) {
-	    my $s = quotemeta $1; my $e = quotemeta $4;
-	    $text =~ s/$s/<B>/;
-	    $text =~ s/$e/<\/B>/;
+sub remove_TOC {
+    my $text = shift;
+    print "\t-Clean table of contents.\t". (WikiCommons::get_time_diff) ."\n";
+    my $tree = HTML::TreeBuilder->new_from_content(decode_utf8($text));
+    my $found = 0;
+    foreach my $a_tag ($tree->guts->look_down(_tag => "div")) {
+	if (defined $a_tag->attr('id') && $a_tag->attr('id') =~ m/Table of Content.*/ ){
+	    print "\tfound TOC: ".$a_tag->attr('id')."\n" ;
+	    $a_tag->detach;
+	    $found++;
 	}
-	my $replacement = "$start$text$end";
-	substr($newhtml, $found_string_end_pos - length($found_string)+$count, length($found_string)) = "$replacement";
-	$count += length($replacement) - length($found_string);
+	die "Too many TOCs.\n" if $found > 1;
     }
-    print "\t+Fix in html menus in tables.\t". (WikiCommons::get_time_diff) ."\n";
-    return $newhtml;
+    $found = 0;
+    foreach my $a_tag ($tree->guts->look_down(_tag => "multicol")) {
+	if (defined $a_tag->attr('id') && $a_tag->attr('id') =~ m/Alphabetical Index.*/ ){
+	    print "\tfound index: ".$a_tag->attr('id')."\n" ;
+	    $a_tag->detach;
+	    $found++;
+	}
+	die "Too many indexes.\n" if $found > 1;
+    }
+    my $cleaned = $tree->guts ? $tree->guts->as_HTML(undef, "\t") : "";
+    $tree = $tree->delete;
+    print "\t+Clean table of contents.\t". (WikiCommons::get_time_diff) ."\n";
+    return $cleaned;
 }
 
-sub html_clean_menu_in_lists {
-    my $html = shift;
-    print "\t-Fix in html menus in lists.\t". (WikiCommons::get_time_diff) ."\n";
-    # fix menus from lists
-    my $count = 0;
-    my $newhtml = $html;
-    my $extractor_h = gen_extract_tagged("<H[0-9]{1,2}[^>]*>", "<\/H[0-9]{1,2}>");
-    print "\tExtract menus from lists.\t". (WikiCommons::get_time_diff) ."\n";
-    while ($html =~ m/(<((OL)|(UL))[^>]*>)/gsi ) {
-	my $found_string = $&;
-	my $found_string_end_pos = pos($html);
-	pos($html) -= length($found_string);
-	my @type = ();
-print "1. found string for html_clean_menu_in_lists: ".pos($html)."\t". (WikiCommons::get_time_diff) ."\n";
-	if ($found_string =~ m/<OL/i) {
-# 	    push @type, "<OL[^>]*>";
-	    push @type, "<OL";
-	    push @type, "<\/OL>";
-	} elsif  ($found_string =~ m/<UL/i) {
-# 	    push @type, "<UL[^>]*>";
-	    push @type, "<UL";
-	    push @type, "<\/UL>";
-	} else {
-	    die "blabla: $found_string\n";
-	}
-	my @data = extract_tagged( $html, "$type[0]", "$type[1]");
-print "2. found string for html_clean_menu_in_lists: ".pos($html)."\t". (WikiCommons::get_time_diff) ."\n";
-# 	pos($html) = $found_string_end_pos - length($found_string) + length($data[0]);
-	next if $data[0] !~ m/(<H([0-9]{1,2})[^>]*>)(.*?)(<\/H\2>)/gsi;
-print "3. found string for html_clean_menu_in_lists: ".pos($html)."\t". (WikiCommons::get_time_diff) ."\n";
-	my $txt = $data[0];
-	my @data_h = extract_multiple( $txt, [ $extractor_h]);
-	print "\t\tdone.\t". (WikiCommons::get_time_diff) ."\n";
-
-	my $titles = "";
-	my $new_text = "";
-	foreach my $h (@data_h) {
-	    if ($h =~ m/^(<H[0-9]{1,2}[^>]*>.*?<\/H[0-9]{1,2}>)$/s) {
-		$titles .= $h."\n";
-	    } else {
-		$new_text .= $h."\n";
-	    }
-	}
-	$new_text = clean_empty_tag($new_text, "li");
-	$new_text = clean_empty_tag($new_text, "ol") if ($found_string =~ m/<OL/i);
-	$new_text = clean_empty_tag($new_text, "ul") if ($found_string =~ m/<UL/i);
-
-	$new_text = "$titles$new_text";
-	substr($newhtml, $found_string_end_pos - length($found_string) + $count, length($data[0])) = "$new_text";
-	$count += length($new_text) - length($data[0]);
+sub html_clean_lists {
+    my $text = shift;
+    my $tree = HTML::TreeBuilder->new_from_content(decode_utf8($text));
+    foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
+# 	if (defined $a_tag->attr('id') && $a_tag->attr('id') =~ m/Alphabetical Index.*/ ){
+# 	    print "\tfound index: ".$a_tag->attr('id')."\n" ;
+# 	    $a_tag->detach;
+# 	}
+# 	print
     }
-    print "\t+Fix in html menus in lists.\t". (WikiCommons::get_time_diff) ."\n";
-    return $newhtml;
+    my $cleaned = $tree->guts ? $tree->guts->as_HTML('') : "";
+    $tree = $tree->delete;
+    return $cleaned;
 }
 
 sub html_tidy {
-    my ($html, $indent, $preserve) = @_;
+    my ($html, $indent) = @_;
 
     my $tidy = HTML::Tidy->new({ indent => "$indent", tidy_mark => 0, doctype => 'omit', quote_marks => 'no',
-	input_encoding => "utf8", output_encoding => "raw", clean => 'no', show_body_only => 1,
-	preserve_entities => "$preserve"});
+	input_encoding => "utf8", output_encoding => "raw", clean => 'no', show_body_only => 1,preserve_entities => 1});
+# ,	preserve_entities => 0
     $html = $tidy->clean($html);
     return Encode::encode('utf8', $html);
 }
@@ -265,27 +387,111 @@ sub cleanup_html {
     my ($html, $file_name) = @_;
     my ($name,$dir,$suffix) = fileparse($file_name, qr/\.[^.]*/);
 
+$html='
+asdf >
+asdf ><br />
+asd &
+<br />
+
+\'\'\'Table of Contents\'\'\'
+
+=Learning to Use MINDBill=
+
+\'\'\'MINDBill\'\'\' is based on an easy-to-use interface that requires minimal training. \'\'\'MINDBill\'\'\' software is documented with detailed user manuals and context-sensitive online Help.
+
+<center>[[Image:MINDBill%206.60.003%20Manager%20User%20Manual_html_m179450c0.png|553px]]</center>
+
+<center>\'\'MINDBill – Manager\'\'</center>
+
+The \'\'\'MINDBill Manager\'\'\' application is for the billing administrator and supports all the definitions and billing-related actions.
+<ol>
+<li>adf
+dasf&
+asdf<
+asdf>
+</li>
+<li>
+asdf
+asdf
+asd
+
+{| {{prettytable}}
+! FELD 1
+! FELD 2
+! FELD 3
+|-
+| Element
+| Element
+| Element
+|-
+| Element
+| Element
+| Element
+|-
+| Element
+| Element
+| Element
+|}
+</li>
+<li>
+</li>
+<li>
+</li>
+<li>
+</li>
+<li>
+</li>
+
+</ol>
+';
+    $html = html_tidy('<body>'.$html.'</body>', 1);
+WikiCommons::write_file("$dir/html_clean_lists.$name.html", $html, 1);
+exit 1;
+
     print "\t-Fix html file $name.html.\t". (WikiCommons::get_time_diff) ."\n";
     $html =~ s/&nbsp;/ /gs;
-    $html = html_clean_tables_in_menu($html);
-WikiCommons::write_file("$dir/html_clean_tables_in_menu.$name.html", $html, 1);
-#     $html = html_clean_menu_in_tables($html);
-# WikiCommons::write_file("$dir/html_clean_menu_in_tables.$name.html", $html, 1);
-#     $html = html_clean_menu_in_lists($html);
-# WikiCommons::write_file("$dir/html_clean_menu_in_lists.$name.html", $html, 1);
+    $html = html_tidy( $html, 0 );
+WikiCommons::write_file("$dir/html_tidy1.$name.html", $html, 1);
+    $html = '<body>'.$html.'</body>';
+    $html = remove_TOC($html);
+    my $text1 = html_to_text($html);
+WikiCommons::write_file("$dir/html_text1.$name.txt", $text1, 1);
     $html = clean_empty_tag($html, 'span');
 WikiCommons::write_file("$dir/html_clean_empty_tag_span.$name.html", $html, 1);
     $html = clean_empty_tag($html, 'font');
 WikiCommons::write_file("$dir/html_clean_empty_tag_font.$name.html", $html, 1);
-    $html =~ s/\n/ /gs;
-    $html = html_tidy( $html, 0, 1 );
-WikiCommons::write_file("$dir/html_tidy.$name.html", $html, 1);
+    $html = html_clean_menu_in_tables($html);
+WikiCommons::write_file("$dir/html_clean_menu_in_tables.$name.html", $html, 1);
+    $html = html_clean_menu_in_lists($html);
+WikiCommons::write_file("$dir/html_clean_menu_in_lists.$name.html", $html, 1);
+    $html = html_clean_lists($html);
+WikiCommons::write_file("$dir/html_clean_lists.$name.html", $html, 1);
 
-    my $just_test = html_clean_menu_in_tables($html);
-    die "shit menu in ol\n" if($html ne $just_test);
+    $html = html_clean_menus($html);
+WikiCommons::write_file("$dir/html_clean_menus.$name.html", $html, 1);
+    my $text2 = html_to_text('<body>'.$html.'</body>');
+WikiCommons::write_file("$dir/html_text2.$name.txt", $text2, 1);
+
+    ### testing
+    my $html_bkp = $html;
+    my $html_test = html_clean_menu_in_tables($html);
+    $html_bkp =~ s/[ \t\f]+/ /gm;
+    $html_test =~ s/[ \t\f]+/ /gm;
+    $html_bkp =~ s/(^[ \t]*)|([ \t]*$)//gm;
+    $html_test =~ s/(^[ \t]*)|([ \t]*$)//gm;
+    $html_bkp =~ s/\n+/\n/gs;
+    $html_test =~ s/\n+/\n/gs;
+WikiCommons::write_file("$dir/html_bkp.$name.html", $html_bkp, 1);
+WikiCommons::write_file("$dir/html_test.$name.html", $html_test, 1);
+    die "shit menu in ol\n" if($html_bkp ne $html_test);
+
+    $html =~ s/\n/ /gs;
+    $html = html_tidy( $html, 0 );
+WikiCommons::write_file("$dir/html_tidy2.$name.html", $html, 1);
+
     WikiCommons::write_file("$dir/$name.fixed.html", $html, 1);
     print "\t+Fix html file $name.html.\t". (WikiCommons::get_time_diff) ."\n";
-
+    die "Missing text after working on html file.\n" if $text1 ne $text2;
     return $html;
 }
 
@@ -334,8 +540,8 @@ WikiCommons::write_file("$dir/fix_wiki_link_to_sc.$name.txt", $wiki, 1);
 WikiCommons::write_file("$dir/fix_external_links.$name.txt", $wiki, 1);
     $wiki = fix_tabs( $wiki );
 WikiCommons::write_file("$dir/fix_tabs.$name.txt", $wiki, 1);
-    $wiki = wiki_fix_lists( $wiki );
-WikiCommons::write_file("$dir/fix_lists.$name.txt", $wiki, 1);
+#     $wiki = wiki_fix_lists( $wiki );
+# WikiCommons::write_file("$dir/fix_lists.$name.txt", $wiki, 1);
     $wiki = fix_wiki_menus( $wiki, $dir );
 WikiCommons::write_file("$dir/fix_wiki_menus.$name.txt", $wiki, 1);
     $wiki = fix_small_issues( $wiki );
