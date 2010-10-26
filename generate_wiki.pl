@@ -140,7 +140,7 @@ sub create_wiki {
 	WikiCommons::generate_html_file($doc_file);
 	my $html_file = "$work_dir/$name.html";
 
-	if ( 1 || -f $html_file && ! -e ".~lock.$name.$suffix#") {
+	if ( -f $html_file && ! -e ".~lock.$name.$suffix#") {
 	    my ($wiki, $image_files) = WikiClean::make_wiki_from_html ( $html_file );
 	    my $dest = "$work_dir/$wiki_result";
 	    WikiCommons::add_to_remove ("$work_dir/$wiki_result", "dir");
@@ -447,7 +447,7 @@ sub work_real {
     foreach my $url (sort keys %$pages_toimp_hash) {
 	next if ($pages_toimp_hash->{$url}[$link_type_pos] eq "link");
 	WikiCommons::reset_time();
-	print "\n*************************\nMaking real url for $url.\t". (WikiCommons::get_time_diff) ."\n";
+	print "\n*************************\nMaking real url for $url\n\t\t$path_files/$pages_toimp_hash->{$url}[$rel_path_pos].\t". (WikiCommons::get_time_diff) ."\n";
 	my $svn_url = $pages_toimp_hash->{$url}[$svn_url_pos];
 	$svn_url = uri_escape( $svn_url,"^A-Za-z\/:0-9\-\._~%" );
 	my $wiki = create_wiki($url, "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]");
@@ -483,7 +483,7 @@ sub work_link {
 
     foreach my $url (sort keys %$pages_toimp_hash) {
 	WikiCommons::reset_time();
-	print "\n*************************\nMaking link for url $url.\t". (WikiCommons::get_time_diff) ."\n";
+	print "\n*************************\nMaking link for url $url\n\t\t$path_files/$pages_toimp_hash->{$url}[$rel_path_pos].\t". (WikiCommons::get_time_diff) ."\n";
 	my $link_to = $md5_map->{$pages_toimp_hash->{$url}[$md5_pos]}->{"real"}[0];
 	die "We should have a url in to_keep.\n" if (scalar @{$pages_toimp_hash->{$url}} != scalar @{$to_keep->{$link_to}});
 	my ($link_name,$link_dir,$link_suffix) = fileparse($to_keep->{$link_to}[$rel_path_pos], qr/\.[^.]*/);

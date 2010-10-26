@@ -56,6 +56,8 @@ sub add_document {
 
     my @values = split('\/', $str);
 
+die "$dir_type $path_file values ".Dumper(@values) if scalar @values <=2 && ($dir_type ne 'Projects_Deployment' && $dir_type ne 'Projects_Deployment_Common' && $dir_type ne 'Projects_Deployment_Customization');
+
     $dir_type = "SC" if ($name =~ m/^B[[:digit:]]{4,}\s+/);
     ## when importing B12345: the url is B12345 - name and we will make a redirect from B12345
 
@@ -75,7 +77,13 @@ sub add_document {
         $basic_url = "$fixed_name$url_sep$ver_without_sp";
     }
     case "Projects_Deployment" {
-        ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers ($values[0], $values[1]);
+	my $tmp = "";
+	if ( scalar @values == 2 ) {
+	    $tmp = $values[0];
+	} else {
+	    $tmp = $values[1];
+	}
+        ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers ( $values[0], $tmp);
         $fixed_name = WikiCommons::fix_name ($name, $customer, $main, $ver);
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values], $main, $ver, $ver_fixed);
 #         $basic_url = "$fixed_name$url_sep$main$url_sep$ver_fixed";
@@ -112,7 +120,7 @@ sub add_document {
     case "Projects_Deployment_Common" {
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values]);
         $customer = "_Common for all customers_";
-        $fixed_name = WikiCommons::fix_name ($name, $customer);
+        $fixed_name = WikiCommons::fix_name ( $name, $customer );
         $basic_url = "$fixed_name";
     }
     case "SCDocs" {
