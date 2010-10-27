@@ -194,7 +194,8 @@ sub capitalize_string {
 }
 
 sub fix_name {
-    my ($fixed_name, $customer, $main, $ver) = @_;
+    my ($name, $customer, $main, $ver) = @_;
+    my $fixed_name = $name;
     $fixed_name = normalize_text($fixed_name);
 
     $fixed_name =~ s/^User Guide|User Guide$//i;
@@ -209,6 +210,9 @@ sub fix_name {
     $fixed_name =~ s/^\s?(MIND[-_ \t]?)?MINDBil[l]?//i;
     $fixed_name =~ s/^\s?mind[-_ \t]?//i;
 
+    $fixed_name =~ s/^\s?$customer[-_ \t]//i;
+    $fixed_name =~ s/[-_ \t]$customer\s*$//i;
+
     $fixed_name =~ s/jinny/Jinny/gi;
     $fixed_name =~ s/([[:digit:]])_/$1\./gi;
     $fixed_name =~ s/_/\ /gi;
@@ -222,6 +226,14 @@ sub fix_name {
 	$fixed_name =~ s/^\s?[v]?$main\s//i;
 	$fixed_name =~ s/\s+[v]?$main\s*$//i;
 	$fixed_name =~ s/\s+[v]?$ver\s*$//i;
+	my $aver = $ver;
+	my $amain = $main;
+	$aver =~ s/\.//g;
+	$amain =~ s/\.//g;
+	$fixed_name =~ s/^\s?[v]?$aver\s*//i;
+	$fixed_name =~ s/^\s?[v]?$amain\s*//i;
+	$fixed_name =~ s/\s+[v]?$amain\s*$//i;
+	$fixed_name =~ s/\s+[v]?$aver\s*$//i;
     }
 
     $fixed_name =~ s/^\s?//;
@@ -294,6 +306,8 @@ sub check_vers {
     #        ver is main, main is first x.y
     # case 2.2: else main is main, ver is main
     #Fix first version
+    $ver = $ver."0" if $ver =~ m/^v?[[:digit:]]{1,}(\.[[:digit:]])$/i;
+    $ver = $ver.".00" if $ver =~ m/^v?[[:digit:]]{1,}$/i;
     if ( ($ver !~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,}){0,}( )?[a-z]*?$/i) &&
 	    ($ver !~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,})*( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*$/i) ){
 	$ver = $main;

@@ -525,11 +525,11 @@ WikiCommons::write_file("$dir/html_text2.$name.txt", $text2, 1);
     $text1 =~ s/\s//gs;
     $text2 =~ s/\s//gs;
     die "Missing text after working on html file.\n" if $text1 ne $text2;
-#     $html = encode_utf8($html);
-    ### keep some spaces from dissapearing
-    $html =~ s/\n/ /gs;
-    $html = html_tidy( $html, 0 );
-WikiCommons::write_file("$dir/html_tidy2.$name.html", $html, 1);
+    ## do i need this?:
+#     ### keep some spaces from dissapearing
+#     $html =~ s/\n/ /gs;
+#     $html = html_tidy( $html, 0 );
+# WikiCommons::write_file("$dir/html_tidy2.$name.html", $html, 1);
 
     WikiCommons::write_file("$dir/$name.fixed.html", $html, 1);
     print "\t+Fix html file $name.html.\t". (WikiCommons::get_time_diff) ."\n";

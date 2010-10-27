@@ -80,9 +80,10 @@ use Mind_work::WikiMindSVN;
 use Mind_work::WikiMindSC;
 
 my $our_wiki;
-
-my $path_prefix = "/media/share/Documentation/cfalcas/q/import_docs";
-# my $path_prefix = "./";
+our $remote_work = "no";
+# my $path_prefix = "/media/share/Documentation/cfalcas/q/import_docs";
+# $path_prefix = abs_path($path_prefix);
+my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1];
 my $path_files = abs_path(shift);
 my $path_type = shift;
 our $wiki_dir = "$path_prefix/work/workfor_". (fileparse($path_files, qr/\.[^.]*/))[0] ."";
@@ -91,7 +92,7 @@ $wiki_dir = abs_path($wiki_dir);
 
 my $bad_dir = "$path_prefix/work/bad_dir";
 my $pid_file = "$path_prefix/work/mind_import_wiki.pid";
-my $remote_work_path = "./remote_batch_files";
+my $remote_work_path = "$path_prefix/remote_batch_files";
 
 my $wiki_result = "result";
 my $wiki_files_uploaded = "wiki_files_uploaded.txt";
@@ -115,7 +116,7 @@ my $categories_pos = 4;
 
 my $count_files;
 our $coco;
-WikiCommons::is_remote("no");
+WikiCommons::is_remote("$remote_work");
 
 sub create_wiki {
     my ($page_url, $doc_file, $zip_name) = @_;
@@ -250,7 +251,7 @@ sub generate_new_updated_pages {
 	    delete($pages_toimp_hash->{$url});
 	} else {
 	    if (exists $pages_toimp_hash->{$url}) {
-		print "Delete url $url because: \n\t\tcrt_md5 $pages_local_hash->{$url}[$md5_pos] <> $pages_toimp_hash->{$url}[$md5_pos] or \n\t\tcrt_rel_path $pages_local_hash->{$url}[$rel_path_pos] <> $pages_toimp_hash->{$url}[$rel_path_pos].\n";
+		print "Delete url $url because: \n\t\tcrt_md5\n\t\t\t$pages_local_hash->{$url}[$md5_pos] <> \n\t\t\t$pages_toimp_hash->{$url}[$md5_pos] or \n\t\tcrt_rel_path \n\t\t\t$pages_local_hash->{$url}[$rel_path_pos] <> \n\t\t\t$pages_toimp_hash->{$url}[$rel_path_pos].\n";
 	    } else {
 		print "Delete url $url because it doesn't exist anymore.\n";
 	    }
@@ -446,16 +447,19 @@ sub insertdata {
 
 sub work_real {
     my ($to_keep, $path_files) = @_;
+    my $total_nr = scalar keys %$pages_toimp_hash;
+    my $crt_nr = 0;
     foreach my $url (sort keys %$pages_toimp_hash) {
+	$crt_nr++;
 	next if ($pages_toimp_hash->{$url}[$link_type_pos] eq "link");
 	WikiCommons::reset_time();
-	print "\n*************************\nMaking real url for $url\n\t\t$path_files/$pages_toimp_hash->{$url}[$rel_path_pos].\t". (WikiCommons::get_time_diff) ."\n";
+	print "\n************************* $crt_nr of $total_nr\nMaking real url for $url\n\t\t$path_files/$pages_toimp_hash->{$url}[$rel_path_pos].\t". (WikiCommons::get_time_diff) ."\n";
 	my $svn_url = $pages_toimp_hash->{$url}[$svn_url_pos];
 	$svn_url = uri_escape( $svn_url,"^A-Za-z\/:0-9\-\._~%" );
 	my $wiki = create_wiki($url, "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]");
 	if (! defined $wiki ){
 	    $to_keep->{$url} = $pages_toimp_hash->{$url};
-unlink "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]";
+	    unlink "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]";
 	    delete($pages_toimp_hash->{$url});
 	    next;
 	}
@@ -488,10 +492,13 @@ sub work_link {
 	my $nr_link = scalar @{ $md5_map->{$md5}{"link"} } if (exists $md5_map->{$md5}{"link"});
 	die "We should only have ONE real link: real=$nr_real link=$nr_link.\n" if ($nr_real != 1 && $nr_link != 0);
     }
+    my $total_nr = scalar keys %$pages_toimp_hash;
+    my $crt_nr = 0;
 
     foreach my $url (sort keys %$pages_toimp_hash) {
+	$crt_nr++;
 	WikiCommons::reset_time();
-	print "\n*************************\nMaking link for url $url\n\t\t$path_files/$pages_toimp_hash->{$url}[$rel_path_pos].\t". (WikiCommons::get_time_diff) ."\n";
+	print "\n************************* $crt_nr of $total_nr\nMaking link for url $url\n\t\t$path_files/$pages_toimp_hash->{$url}[$rel_path_pos].\t". (WikiCommons::get_time_diff) ."\n";
 	my $link_to = $md5_map->{$pages_toimp_hash->{$url}[$md5_pos]}->{"real"}[0];
 	die "We should have a url in to_keep.\n" if (scalar @{$pages_toimp_hash->{$url}} != scalar @{$to_keep->{$link_to}});
 	my ($link_name,$link_dir,$link_suffix) = fileparse($to_keep->{$link_to}[$rel_path_pos], qr/\.[^.]*/);
@@ -550,12 +557,6 @@ sub work_for_docs {
     work_link($to_keep);
 }
 
-# 	my @oo_procs = `ps -ef | grep office | grep -v grep`;
-# 	die "OpenOffice is already running.\n" if (@oo_procs);
-# 	my $result = `/usr/bin/ooffice "$doc_file" -headless -invisible "macro:///Standard.Module1.runall()"`;
-# my @oo_procs = `ps -ef | grep '\\-accept=socket,host=127.0.0.1,port=2002;urp;StarOffice.ServiceManager' | grep -v grep`;
-# die "OpenOffice is NOT running: $#oo_procs.\t". (WikiCommons::get_time_diff) ."\n" if ($#oo_procs < 1);
-
 if (-f "$pid_file") {
     open (FH, "<$pid_file") or die "Could not read file $pid_file.\n";
     my @info = <FH>;
@@ -600,10 +601,13 @@ if ($path_type eq "mind_svn") {
     die "There are no links.\n" if scalar keys %$tmp;
 
     my $general_wiki_file = "General_info.wiki";
+    my $total_nr = scalar keys %$pages_toimp_hash;
+    my $crt_nr = 0;
     foreach my $url (sort keys %$pages_toimp_hash) {
+	$crt_nr++;
 #     next if "$url" ne "SC:B91991";
 	WikiCommons::reset_time();
-	print "\n*************************\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
+	print "\n************************* $crt_nr of $total_nr\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 
 	WikiCommons::makedir "$wiki_dir/$url/";
 	WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
