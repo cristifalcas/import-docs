@@ -191,6 +191,7 @@ sub html_clean_menus {
 	}
 	$text =~ s/<BR( [^>]*)?>//gsi;
 	$text =~ s/(<B>)|(<\/B>)//gsi;
+	$text =~ s/(<u>)|(<\/u>)//gsi;
 	$text =~ s/(<I>)|(<\/I>)//gsi;
 	$text =~ s/(<CENTER( [^>]*)?>)|(<\/CENTER>)//gsi;
 	$text =~ s/(<SDFIELD( [^>]*)?>)|(<\/SDFIELD>)//gsi;
@@ -200,7 +201,7 @@ sub html_clean_menus {
 	$text =~ s/(<EM>)|(<\/EM>)//gsi;
 
 	if ($text =~ m/(<([^>]*)>)/) {
-	    die "shit menu in html: $text: $1\nfrom $found_string.\n" if ("$1" ne "<U>") && ("$1" !~ m/^<SUP>$/i) && ("$1" !~ m/<font[^>]*>/i) && ("$1" !~ m/<span[^>]*>/i) && ("$1" !~ m/<a name[^>]*>/i) && ("$1" !~ m/<STRIKE>/i) && ("$1" !~ m/<A [^>]*>/i);
+	    die "shit menu in html: $text: $1\nfrom $found_string.\n" if ("$1" !~ m/^<SUP>$/i) && ("$1" !~ m/<font[^>]*>/i) && ("$1" !~ m/<span[^>]*>/i) && ("$1" !~ m/<a name[^>]*>/i) && ("$1" !~ m/<STRIKE>/i) && ("$1" !~ m/<A [^>]*>/i);
 	}
 	my $replacement = "\n$other\n$start$text$end\n";
 	substr($newhtml, $found_string_end_pos - length($found_string)+$count, length($found_string)) = "$replacement";
@@ -221,19 +222,21 @@ sub html_clean_menu_in_lists {
 	    if ($kid->tag =~ m/^h[0-9]{1,2}/ ){
 		my @tmp1 = $a_tag->look_up(_tag => "ol");
 		my @tmp2 = $a_tag->look_up(_tag => "ul");
-		die "too many lists: ".scalar @tmp1." ".scalar @tmp2."\n" if (scalar @tmp1 + scalar @tmp2) > 1;
-	die "html_clean_menu_in_lists\n";
-		my @tmp = (scalar @tmp1) ? @tmp1:@tmp2;
-		my $h = undef;
-		my $headings_nr = 0;
-		print $kid->tag." 1\n" ;
-		$h = $kid->detach;
-		$headings_nr++;
-		die "too many headings\n" if $headings_nr > 1;
-		if ($headings_nr == 1) {
-		    my $list = $tmp[0]->detach;
-		    $tmp[0]->push_content( $h, $list);
-		}
+		print "too many lists: ".scalar @tmp1." ".scalar @tmp2."\n" ;
+	print "html_clean_menu_in_lists\n";
+$tree = $tree->delete;
+return undef;
+# 		my @tmp = (scalar @tmp1) ? @tmp1:@tmp2;
+# 		my $h = undef;
+# 		my $headings_nr = 0;
+# 		print $kid->tag." 1\n" ;
+# 		$h = $kid->detach;
+# 		$headings_nr++;
+# 		die "too many headings\n" if $headings_nr > 1;
+# 		if ($headings_nr == 1) {
+# 		    my $list = $tmp[0]->detach;
+# 		    $tmp[0]->push_content( $h, $list);
+# 		}
 	    }
 	}
 # 	foreach my $b_tag ($a_tag->content_refs_list) {
@@ -494,7 +497,7 @@ WikiCommons::write_file("$dir/html_clean_empty_tag_span.$name.html", $html, 1);
 WikiCommons::write_file("$dir/html_clean_empty_tag_font.$name.html", $html, 1);
     $html = html_clean_menu_in_tables($html);
 WikiCommons::write_file("$dir/html_clean_menu_in_tables.$name.html", $html, 1);
-    $html = html_clean_menu_in_lists($html);
+    $html = html_clean_menu_in_lists($html) || return undef;
 WikiCommons::write_file("$dir/html_clean_menu_in_lists.$name.html", $html, 1);
     $html = html_clean_lists($html);
 WikiCommons::write_file("$dir/html_clean_lists.$name.html", $html, 1);
@@ -523,7 +526,8 @@ WikiCommons::write_file("$dir/html_text2.$name.txt", $text2, 1);
     $text2 =~ s/\s//gs;
     die "Missing text after working on html file.\n" if $text1 ne $text2;
 #     $html = encode_utf8($html);
-#     $html =~ s/\n/ /gs;
+    ### keep some spaces from dissapearing
+    $html =~ s/\n/ /gs;
     $html = html_tidy( $html, 0 );
 WikiCommons::write_file("$dir/html_tidy2.$name.html", $html, 1);
 
@@ -542,7 +546,7 @@ sub make_wiki_from_html {
     my $html = do { local $/; <FILEHANDLE> };
     close (FILEHANDLE);
 
-    $html = cleanup_html($html, $html_file);
+    $html = cleanup_html($html, $html_file) || return undef;
 
     print "\t-Generating wiki file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
     my $strip_tags = [ '~comment', 'head', 'script', 'style', 'strike'];
@@ -628,23 +632,13 @@ sub fix_small_issues {
     $wiki =~ s/\r\n?/\n/gs;
     $wiki =~ s/\{\|/\n\{\|/gs;
     $wiki =~ s/\|\}/\n\|\}/gs;
-    ## more new lines for menus and tables
-    $wiki =~ s/\n([ \t]*=+[ \t]*)(.*?)([ \t]*=+[ \t]*)\n/\n\n\n$1$2$3\n/gm;
-    $wiki =~ s/\|}\s*{\|/\|}\n\n\n{\|/mg;
-    $wiki =~ s/^[ \t]+//mg;
-#     my $newwiki = "";
-#     foreach my $line (split '\n', $wiki){
-# 	if ($line !~ m/(<\/?ol[^>]*>)|(<\/?li[^>]*>)|(<\/?ul[^>]*>)/) {
-# 	    $line =~ s/^\s+//;
-# 	    $line =~ s/\s+$//;
-# 	    $line =~ s/ +/ /gm;
-# 	}
-# 	$newwiki .= "$line\n";
-#     }
-#     $wiki = $newwiki;
-    $wiki =~ s/^[:\s]*$//gm;
     ## remove consecutive blank lines
     $wiki =~ s/(\n){4,}/\n\n/gs;
+    ## more new lines for menus and tables
+    $wiki =~ s/\n+([ \t]*=+[ \t]*)(.*?)([ \t]*=+[ \t]*)\n+/\n\n\n$1$2$3\n/gm;
+    $wiki =~ s/\|}\s*{\|/\|}\n\n\n{\|/mg;
+    $wiki =~ s/^[ \t]+//mg;
+    $wiki =~ s/^[:\s]*$//gm;
 
     ## FAST AND UGLY
     $wiki =~ s/(<span id="Frame[0-9]{1,}" style=")float: left;/$1/mg;

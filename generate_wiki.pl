@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 print "Start.\n";
-
+$SIG{__WARN__} = sub { die @_ };
 #soffice "-accept=socket,host=localhost,port=2002;urp;StarOffice.ServiceManager" -nologo -headless -nofirststartwizard
 
 # categories:
@@ -142,6 +142,8 @@ sub create_wiki {
 
 	if ( -f $html_file && ! -e ".~lock.$name.$suffix#") {
 	    my ($wiki, $image_files) = WikiClean::make_wiki_from_html ( $html_file );
+	    return undef if (! defined $wiki );
+
 	    my $dest = "$work_dir/$wiki_result";
 	    WikiCommons::add_to_remove ("$work_dir/$wiki_result", "dir");
 	    WikiCommons::makedir ("$dest");
@@ -451,6 +453,12 @@ sub work_real {
 	my $svn_url = $pages_toimp_hash->{$url}[$svn_url_pos];
 	$svn_url = uri_escape( $svn_url,"^A-Za-z\/:0-9\-\._~%" );
 	my $wiki = create_wiki($url, "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]");
+	if (! defined $wiki ){
+	    $to_keep->{$url} = $pages_toimp_hash->{$url};
+unlink "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]";
+	    delete($pages_toimp_hash->{$url});
+	    next;
+	}
 	my $head_text = "<center>\'\'\'This file was automatically imported from the following document: [[File:$url.zip|$url.zip]]\'\'\'\n\n";
 	$head_text .= "The original document can be found at [$svn_url this address]\n" if ($svn_url ne "");
 	$head_text .= "</center>\n----\n\n\n\n\n\n".$wiki."\n----\n\n";
@@ -623,6 +631,7 @@ if ($path_type eq "mind_svn") {
 	opendir(DIR, "$path_files/$rel_path") || die("Cannot open directory $path_files/$rel_path: $!.\n");
 	my @files = grep { (!/^\.\.?$/) && -f "$path_files/$rel_path/$_" && /(\.rtf)|(\.doc)/i } readdir(DIR);
 	closedir(DIR);
+	my $wrong = "";
 	foreach my $file (@files) {
 	    my $file = "$path_files/$rel_path/$file";
 	    my ($name,$dir,$suffix) = fileparse($file, qr/\.[^.]*/);
@@ -648,6 +657,13 @@ if ($path_type eq "mind_svn") {
 	    }
 	    print "\tWork for $file.\n";
 	    my $wiki_txt = create_wiki("$url/$url $name", "$file", "$url $name");
+	    if (! defined $wiki_txt ){
+		$to_keep->{$url} = $pages_toimp_hash->{$url};
+		delete($pages_toimp_hash->{$url});
+		$wrong = "yes";
+		print "Skip url $url\n";
+		last;
+	    }
 	    WikiCommons::add_to_remove("$wiki_dir/$url/$url $name", "dir");
 	    $wiki_txt =~ s/\n(=+)(.*?)(=+)\n/\n=$1$2$3=\n/g;
 
@@ -696,6 +712,7 @@ if ($path_type eq "mind_svn") {
 	    WikiCommons::add_to_remove("$wiki_dir/$url/$wiki_result", "dir");
 	    WikiCommons::copy_dir ("$wiki_dir/$url/$url $name/$wiki_result", "$wiki_dir/$url/$wiki_result") if ($suffix eq ".doc");
 	}
+	next if $wrong eq "yes";
 	my $full_wiki = "";
 	$full_wiki .= $wiki->{$_} foreach (sort {$a<=>$b} keys %$wiki);
 

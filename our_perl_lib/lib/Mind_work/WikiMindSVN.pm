@@ -63,14 +63,14 @@ die "$dir_type $path_file values ".Dumper(@values) if scalar @values <=2 && ($di
 
     switch ("$dir_type") {
     case "Projects" {
-        ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers ($values[0], $values[1]);
+        ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers ( $values[0], $values[1]);
         $fixed_name = WikiCommons::fix_name ($name, $customer, $main, $ver);
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values], $main, $ver, $ver_fixed);
 #         $basic_url = "$fixed_name$url_sep$main$url_sep$ver_fixed";
         $basic_url = "$fixed_name$url_sep$ver_without_sp";
     }
     case "Docs" {
-        ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers ($values[0], $values[1]);
+        ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers ( $values[0], $values[1]);
         $fixed_name = WikiCommons::fix_name ($name, $customer, $main, $ver);
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values], $main, $ver, $ver_fixed);
 #         $basic_url = "$fixed_name$url_sep$main$url_sep$ver_fixed";
@@ -90,7 +90,7 @@ die "$dir_type $path_file values ".Dumper(@values) if scalar @values <=2 && ($di
         $basic_url = "$fixed_name$url_sep$ver_without_sp";
     }
     case "Docs_Customizations" {
-        ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers ($values[1], $values[2]);
+        ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers ( $values[1], $values[2]);
         $customer = $values[0];        $str =~ s/^$customer\///;
         $fixed_name = WikiCommons::fix_name ($name, $customer, $main, $ver);
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values], $main, $ver, $ver_fixed);
@@ -98,7 +98,7 @@ die "$dir_type $path_file values ".Dumper(@values) if scalar @values <=2 && ($di
         $basic_url = "$fixed_name$url_sep$ver_without_sp$url_sep$customer";
     }
     case "Projects_Customizations" {
-        ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers ($values[1], $values[2]);
+        ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers ( $values[1], $values[2]);
         $customer = $values[0];        $str =~ s/^$customer\///;
         $fixed_name = WikiCommons::fix_name ($name, $customer, $main, $ver);
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values], $main, $ver, $ver_fixed);
@@ -174,9 +174,9 @@ die "$dir_type $path_file values ".Dumper(@values) if scalar @values <=2 && ($di
     die "No page for $doc_file.\n" if ($page_url eq "" );
 
     if (exists $pages_ver->{$page_url} && $pages_ver->{$page_url} gt "$ver_sp") {
-	print "Ignore new page $page_url from\n\t\t$rel_path\n\tbecause new SP $ver_sp is smaller then $pages_ver->{$page_url}.\n"
+# 	print "Ignore new page $page_url from\n\t\t$rel_path\n\tbecause new SP $ver_sp is smaller then $pages_ver->{$page_url}.\n"
     } else {
-	print "Replace old url $page_url from\n\t\t$pages_toimp_hash->{$page_url}[1]\n\twith the doc from\n\t\t$rel_path\n\tbecause new SP $ver_sp is bigger then $pages_ver->{$page_url}.\n" if (exists $pages_toimp_hash->{$page_url});
+# 	print "Replace old url $page_url from\n\t\t$pages_toimp_hash->{$page_url}[1]\n\twith the doc from\n\t\t$rel_path\n\tbecause new SP $ver_sp is bigger then $pages_ver->{$page_url}.\n" if (exists $pages_toimp_hash->{$page_url});
 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
 	$pages_ver->{$page_url} = "$ver_sp";
     }
