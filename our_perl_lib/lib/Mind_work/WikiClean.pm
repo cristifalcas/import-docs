@@ -200,8 +200,10 @@ sub html_clean_menus {
 	$text =~ s/(<STRONG( [^>]*)?>)|(<\/STRONG>)//gsi;
 	$text =~ s/(<EM>)|(<\/EM>)//gsi;
 
-	if ($text =~ m/(<([^>]*)>)/) {
-	    die "shit menu in html: $text: $1\nfrom $found_string.\n" if ("$1" !~ m/^<SUP>$/i) && ("$1" !~ m/<font[^>]*>/i) && ("$1" !~ m/<span[^>]*>/i) && ("$1" !~ m/<a name[^>]*>/i) && ("$1" !~ m/<STRIKE>/i) && ("$1" !~ m/<A [^>]*>/i);
+	if ($text =~ m/(<([^>]*)>)/ &&
+		("$1" !~ m/^<SUP>$/i) && ("$1" !~ m/<font[^>]*>/i) && ("$1" !~ m/<span[^>]*>/i) && ("$1" !~ m/<a name[^>]*>/i) && ("$1" !~ m/<STRIKE>/i) && ("$1" !~ m/<A [^>]*>/i)) {
+	    print "shit menu in html: $text: $1\nfrom $found_string.\n";
+	    return undef;
 	}
 	my $replacement = "\n$other\n$start$text$end\n";
 	substr($newhtml, $found_string_end_pos - length($found_string)+$count, length($found_string)) = "$replacement";
@@ -253,12 +255,18 @@ return undef;
     }
     foreach my $a_tag ($tree->guts->look_down(_tag => "ol")) {
 	foreach my $kid ($a_tag->descendants()){
-	    die $kid->tag." in ol\n" if $kid->tag =~ m/^h[0-9]{1,2}/;
+	    if ($kid->tag =~ m/^h[0-9]{1,2}/ ){
+		print $kid->tag." in ol\n";
+		return undef;
+	    }
 	}
     }
     foreach my $a_tag ($tree->guts->look_down(_tag => "ul")) {
 	foreach my $kid ($a_tag->descendants()){
-	    die $kid->tag." in ul\n" if $kid->tag =~ m/^h[0-9]{1,2}/;
+	    if ($kid->tag =~ m/^h[0-9]{1,2}/ ){
+		print $kid->tag." in ul\n";
+		return undef;
+	    }
 	}
     }
     my $cleaned = $tree->guts ? $tree->guts->as_HTML(undef, "\t") : "";
@@ -324,6 +332,13 @@ return undef;
 
 sub html_clean_menu_in_tables {
     my $text = shift;
+
+# # #
+# # # Maybe also remove style="border-top: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000"
+# # # style="border-top: 1px solid #000000; border-bottom: 1px solid #000000; border-left: 1px solid #000000; border-right: 1px solid #000000"
+# # # and {{prettytable}}  from wiki
+# # #
+
     print "\t-Fix menus from tables.\t". (WikiCommons::get_time_diff) ."\n";
     ## replace menu with bold
     my $tree = HTML::TreeBuilder->new();
@@ -402,6 +417,10 @@ print "got text in p ".$$crt_text.".\n" if ! ref $$crt_text;
 }
 
 sub html_clean_lists {
+
+# # #
+# # #   also remove empty lines?
+# # #
     my $text = shift;
 # WikiCommons::write_file("./1.txt", $text, 1);
     my $tree = HTML::TreeBuilder->new();
@@ -505,7 +524,7 @@ WikiCommons::write_file("$dir/html_clean_lists.$name.html", $html, 1);
 #     $html = html_fix_html_tabs($html);
 # WikiCommons::write_file("$dir/html_fix_html_tabs.$name.html", $html, 1);
 
-    $html = html_clean_menus($html);
+    $html = html_clean_menus($html) || return undef;
 WikiCommons::write_file("$dir/html_clean_menus.$name.html", $html, 1);
     my $text2 = html_to_text('<body>'.$html.'</body>');
 WikiCommons::write_file("$dir/html_text2.$name.txt", $text2, 1);
@@ -524,7 +543,10 @@ WikiCommons::write_file("$dir/html_text2.$name.txt", $text2, 1);
 #     die "shit menu in ol\n" if($html_bkp ne $html_test);
     $text1 =~ s/\s//gs;
     $text2 =~ s/\s//gs;
-    die "Missing text after working on html file.\n" if $text1 ne $text2;
+    if ($text1 ne $text2 ){
+	print "Missing text after working on html file.\n";
+	return undef;
+    }
     ## do i need this?:
 #     ### keep some spaces from dissapearing
 #     $html =~ s/\n/ /gs;

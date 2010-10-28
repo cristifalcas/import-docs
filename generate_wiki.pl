@@ -1,6 +1,7 @@
 #!/usr/bin/perl -w
 print "Start.\n";
 $SIG{__WARN__} = sub { die @_ };
+
 #soffice "-accept=socket,host=localhost,port=2002;urp;StarOffice.ServiceManager" -nologo -headless -nofirststartwizard
 
 # categories:
@@ -50,7 +51,7 @@ $SIG{__WARN__} = sub { die @_ };
 # eval 'exec /usr/bin/perl  -S $0 ${1+"$@"}'
 #     if 0; # not running under some shell
 
-die "We need the dir where the doc files are and the type of the dir: mind_svn, users, sc_docs.\n" if ( $#ARGV != 1 );
+die "We need the dir where the doc files are and the type of the dir: mind_svn, users, sc_docs.\n" if ( $#ARGV <= 1 );
 
 use warnings;
 use strict;
@@ -60,6 +61,7 @@ use File::Basename;
 use File::Copy;
 use File::Find;
 use Switch;
+use Getopt::Std;
 
 use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."./our_perl_lib/lib";
 
@@ -79,13 +81,19 @@ use Mind_work::WikiMindUsers;
 use Mind_work::WikiMindSVN;
 use Mind_work::WikiMindSC;
 
-my $our_wiki;
+# declare the perl command line flags/options we want to allow
+my $options = {};
+getopts("rd:n:", $options);
+
 our $remote_work = "no";
-# my $path_prefix = "/media/share/Documentation/cfalcas/q/import_docs";
-# $path_prefix = abs_path($path_prefix);
+if ($options->{'r'}){
+    $remote_work = "yes";
+}
+
+my $our_wiki;
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1];
-my $path_files = abs_path(shift);
-my $path_type = shift;
+my $path_files = abs_path($options->{'d'});
+my $path_type = $options->{'n'};
 our $wiki_dir = "$path_prefix/work/workfor_". (fileparse($path_files, qr/\.[^.]*/))[0] ."";
 WikiCommons::makedir $wiki_dir;
 $wiki_dir = abs_path($wiki_dir);
@@ -433,7 +441,7 @@ sub insertdata {
 	print "\tCopy files to $remote_work_path/$wiki_result\n";
 	WikiCommons::makedir("$remote_work_path/$wiki_result");
 	WikiCommons::copy_dir ("$work_dir/$wiki_result", "$remote_work_path/$wiki_result");
-	copy("$work_dir/$url.full.wiki","$remote_work_path/$url.wiki") or die "Copy failed for: $url.full.wiki to $remote_work_path: $!\t". (WikiCommons::get_time_diff) ."\n";
+	copy("$work_dir/$url.full.wiki","$remote_work_path/$url") or die "Copy failed for: $url.full.wiki to $remote_work_path: $!\t". (WikiCommons::get_time_diff) ."\n";
     }
 
     my $text = "md5 = $pages_toimp_hash->{$url}[$md5_pos]\n";
@@ -539,6 +547,7 @@ sub work_begin {
 	($to_delete, $to_keep) = generate_pages_to_delete_to_import;
     }
 
+# print Dumper($pages_toimp_hash);return ($to_delete, $to_keep);
     if (WikiCommons::is_remote ne "yes") {
 	foreach my $url (sort keys %$to_delete) {
 	    print "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";
@@ -716,7 +725,10 @@ if ($path_type eq "mind_svn") {
 	    WikiCommons::add_to_remove("$wiki_dir/$url/$wiki_result", "dir");
 	    WikiCommons::copy_dir ("$wiki_dir/$url/$url $name/$wiki_result", "$wiki_dir/$url/$wiki_result") if ($suffix eq ".doc");
 	}
-	next if $wrong eq "yes";
+	if ($wrong eq "yes" ){
+	    remove_tree("$path_files/$rel_path") || die "Can't remove dir $path_files/$rel_path: $?.\n";
+	    next ;
+	}
 	my $full_wiki = "";
 	$full_wiki .= $wiki->{$_} foreach (sort {$a<=>$b} keys %$wiki);
 

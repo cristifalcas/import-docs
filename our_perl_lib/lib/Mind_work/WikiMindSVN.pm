@@ -26,13 +26,14 @@ sub fix_rest_dirs {
     my ($rest, $filename, $main, $ver, $ver_fixed) = @_;
     $rest =~ s/\/$filename$//;
     if (defined $main || defined $ver || defined $ver_fixed) {
-	$rest =~ s/(^v?$main\/)|(\/v?$main$)//gi;
-	$rest =~ s/(^v?$ver\/)|(\/v?$ver$)//gi;
-	$rest =~ s/(^v?$ver_fixed\/)|(\/v?$ver_fixed$)//gi;
+	$rest =~ s/(^v?$main(\/|$))|((\/|^)v?$main$)//gi;
+	$rest =~ s/(^v?$ver(\/|$))|((\/|^)v?$ver$)//gi;
+	$rest =~ s/(^v?$ver_fixed(\/|$))|((\/|^)v?$ver_fixed$)//gi;
     }
     $rest =~ s/\/{1,}/\//g;
     $rest =~ s/^Documents\///;
     $rest =~ s/\//$url_sep/g;
+
     return $rest;
 }
 
@@ -196,6 +197,7 @@ sub get_documents {
 	print "-Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
 	$count_files = 0;
 	find sub { add_document ($File::Find::name, $append_dir, "$self->{path_files}", "$self->{url_sep}") if -f && (/(\.doc|\.docx|\.rtf)$/i) }, "$self->{path_files}/$append_dir" if  (-d "$self->{path_files}/$append_dir");
+	find sub { add_document ($File::Find::name, $append_dir, "$self->{path_files}", "$self->{url_sep}") if -f && /.*parameter.*Description.*\.xls$/i }, "$self->{path_files}/$append_dir" if  (-d "$self->{path_files}/$append_dir");
 	print "\tTotal number of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n";
 	print "+Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
     }
