@@ -69,7 +69,7 @@ use Data::Dumper;
 use Digest::MD5 qw(md5 md5_hex md5_base64);
 use HTML::Tidy;
 use Text::Balanced;
-use Encode;
+# use Encode;
 use URI::Escape;
 use File::Path qw(make_path remove_tree);
 
