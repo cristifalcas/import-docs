@@ -390,6 +390,7 @@ sub remove_TOC {
 sub html_fix_html_tabs {
     my $text = shift;
     my $tree = HTML::TreeBuilder->new();
+    print "\t-Fix tabs in html.\t". (WikiCommons::get_time_diff) ."\n";
     $tree->no_space_compacting(1);
     $tree = $tree->parse_content($text);
     foreach my $a_tag ($tree->guts->look_down(_tag => "p")) {
@@ -413,6 +414,7 @@ print "got text in p ".$$crt_text.".\n" if ! ref $$crt_text;
     my $cleaned = $tree->guts ? $tree->guts->as_HTML(undef, "\t") : "";
 # WikiCommons::write_file("./3.txt", $cleaned, 1);
     $tree = $tree->delete;
+    print "\t+Fix tabs in html.\t". (WikiCommons::get_time_diff) ."\n";
     return $cleaned;
 }
 
