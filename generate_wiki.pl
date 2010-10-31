@@ -63,6 +63,7 @@ use File::Find;
 use Switch;
 use Getopt::Std;
 
+my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."./our_perl_lib/lib";
 
 use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
@@ -91,7 +92,6 @@ if ($options->{'r'}){
 }
 
 my $our_wiki;
-my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1];
 my $path_files = abs_path($options->{'d'});
 my $path_type = $options->{'n'};
 our $wiki_dir = "$path_prefix/work/workfor_". (fileparse($path_files, qr/\.[^.]*/))[0] ."";
@@ -467,8 +467,11 @@ sub work_real {
 	my $wiki = create_wiki($url, "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]");
 	if (! defined $wiki ){
 	    $to_keep->{$url} = $pages_toimp_hash->{$url};
-	    unlink "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]";
 	    delete($pages_toimp_hash->{$url});
+	    print "Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
+	    my $name_bad = "$bad_dir/$url".time();
+	    WikiCommons::makedir("$name_bad");
+	    move("$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]","$name_bad");
 	    next;
 	}
 	my $head_text = "<center>\'\'\'This file was automatically imported from the following document: [[File:$url.zip|$url.zip]]\'\'\'\n\n";
