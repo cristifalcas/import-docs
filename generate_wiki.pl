@@ -136,7 +136,7 @@ sub create_wiki {
 	print "Path $work_dir already exists. Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
 	my $name_bad = "$bad_dir/$page_url".time();
 	WikiCommons::makedir("$name_bad");
-	move("$work_dir","$name_bad");
+	move("$work_dir","$name_bad") || die "Can't move dir $work_dir: $!.\n";
 	die "Directory still exists." if ( -d $work_dir);
     }
     WikiCommons::makedir ("$work_dir");
@@ -232,8 +232,8 @@ sub get_existing_pages {
 		print "\tThis is not a correct wiki dir: $dir\n";
 		my @q = split '/', $dir;
 		my $name_bad = "$bad_dir/$q[$#q]".time();
-		WikiCommons::makedir("$name_bad");
-		move("$dir","$name_bad");
+# 		WikiCommons::makedir("$name_bad");
+		move("$dir","$name_bad") || die "Can't move dir $dir to $name_bad: $!.\n";;
 		die "\tDirectory still exists." if ( -d $dir);
 	    }
 	} else {

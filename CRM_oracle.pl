@@ -2,25 +2,72 @@
 #LD_LIBRARY_PATH=./instantclient_11_2/ perl ./oracle.pl
 use warnings;
 use strict;
+$SIG{__WARN__} = sub { die @_ };
 
-use lib "./our_perl_lib/lib";
+#
+# hash:
+#     event number 0
+# 	$info->{'cust_category'}
+# 	$info->{'customer'}
+# 	$info->{'date'}->{'date'}
+# 	$info->{'date'}->{'time'}
+# 	$info->{'desc'}
+# 	$info->{'incharge'}->{'email'}
+# 	$info->{'incharge'}->{'first_name'}
+# 	$info->{'incharge'}->{'last_name'}
+# 	$info->{'incharge'}->{'job'}	-- not used
+# 	$info->{'last_date'}->{'date'}	-- not used
+# 	$info->{'last_date'}->{'time'}	-- not used
+# 	$info->{'mind_category'}
+# 	$info->{'number'}
+# 	$info->{'priority'}->{'color'}	-- not used
+# 	$info->{'priority'}->{'desc'}	-- not used
+# 	$info->{'solution'}
+# 	$info->{'subject'}
+# 	$info->{'type'}
+#
+#     event number N
+# 	$info->{N}->{'customer_contact'}->{'department'}
+# 	$info->{N}->{'customer_contact'}->{'email'}
+# 	$info->{N}->{'customer_contact'}->{'first_name'}
+# 	$info->{N}->{'customer_contact'}->{'last_name'}
+# 	$info->{N}->{'customer_contact'}->{'position'}
+# 	$info->{N}->{'date'}->{'date'}
+# 	$info->{N}->{'date'}->{'time'}
+# 	$info->{N}->{'description'}
+# 	$info->{N}->{'event'}->{'code'}
+# 	$info->{N}->{'event'}->{'desc'}
+# 	$info->{N}->{'person'}->{'email'}
+# 	$info->{N}->{'person'}->{'first_name'}
+# 	$info->{N}->{'person'}->{'last_name'}
+# 	$info->{N}->{'person'}->{'job'}	-- not used
+# 	$info->{N}->{'reference'}	-- not used
+# 	$info->{N}->{'short_desc'}
+# 	$info->{N}->{'show_to_customer'}
+# 	$info->{N}->{'status'}->{'code'}
+# 	$info->{N}->{'status'}->{'desc'}
+
+
+use Cwd 'abs_path','chdir';
+use File::Basename;
+use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."./our_perl_lib/lib";
 use DBI;
 use Net::FTP;
 use LWP::UserAgent;
 use File::Path qw(make_path remove_tree);
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
-use File::Basename;
 use File::Listing qw(parse_dir);
 use File::Find;
 use File::Copy;
-use Cwd 'abs_path','chdir';
 use File::Find::Rule;
 use Mind_work::WikiCommons;
 use XML::Simple;
 use Encode;
 use URI::Escape;
-# use HTML::TreeBuilder;
+use HTML::TreeBuilder;
+use Mind_work::WikiClean;
+use Mind_work::WikiWork;
 
 die "We need the destination path.\n" if ( $#ARGV != 0 );
 our $to_path = shift;
@@ -44,14 +91,30 @@ sub print_coco {
     my $nr = shift;
     my @array = qw( \ | / - );
     my $padded = sprintf("%05d", $nr);
-    print "running $padded ".$array[$nr%@array]."\r";
+    print "\t\t\t\trunning $padded ".$array[$nr%@array]."\r";
+}
+
+sub write_xml {
+    my ($info, $name) = @_;
+    my $xs = new XML::Simple;
+    my $xml = $xs->XMLout($info,
+                      NoAttr => 1,
+                      RootName=>"info",
+                     );
+    write_file( "$name.xml", $xml);
 }
 
 sub write_file {
-    my ($path,$text) = @_;
+    my ($path, $text) = @_;
     open (FILE, ">$path") or die "can't open file $path for writing: $!\n";
-    print FILE Encode::encode('utf8', "$text");
+#     $text = encode("cp1252", $text);
+    Encode::from_to( $text, "cp1252", "utf8");
+    print FILE "$text";
+s
     close (FILE);
+#     my $our_wiki = new WikiWork();
+#     print $path."\n";
+#     $our_wiki->wiki_edit_page("test", $text),exit 1 if $path =~ m/.wiki/;
 }
 
 sub get_servicestatus {
@@ -100,14 +163,17 @@ sub get_staff {
 select t.rsuppstaffenggcode,
        t.rsuppstafflastname,
        t.rsuppstafffirstname,
-       t.rsuppstaffemail
-  from tblsupportstaff t';
+       t.rsuppstaffemail,
+       p.rtechservjobsname
+  from tblsupportstaff t, tbltechservjobs p
+ where t.rsuppstaffjob = p.rtechservjobscode';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
 	$staff->{$row[0]}->{'last_name'} = $row[1];
 	$staff->{$row[0]}->{'first_name'} = $row[2];
 	$staff->{$row[0]}->{'email'} = $row[3];
+	$staff->{$row[0]}->{'job'} = $row[4];
     }
 }
 
@@ -235,13 +301,14 @@ select t.rsceventssrno,
 	$info->{$row[0]}->{'person'} = {};
 	$info->{$row[0]}->{'customer_contact'} = get_customer_desc($cust, $row[8]);
 	$info->{$row[0]}->{'person'}->{$_} = $staff->{$row[4]}->{$_} foreach (keys %{$staff->{$row[4]}});
+# print Dumper($info->{$row[0]}->{'person'});
 	$info->{$row[0]}->{'short_desc'} = $row[5];
 	my $desc = get_event_desc($sc_no, $row[0], $cust);
 	$info->{$row[0]}->{'description'} = $desc;
 	$desc = get_event_reference($sc_no, $row[0], $cust);
 	$info->{$row[0]}->{'reference'} = $desc;
 	$info->{$row[0]}->{'status'}->{'code'} = $row[6];
-	$info->{$row[0]}->{'status'}->{'desc'} = $servicestatus->{$row[6]};
+	$info->{$row[0]}->{'status'}->{'desc'} = $servicestatus->{$row[6]} || '';
 	$info->{$row[0]}->{'show_to_customer'} = $row[7];
     }
     return $info;
@@ -286,13 +353,14 @@ select t.rscmainproblemdescription,
 	$info->{'mind_category'} = $problem_categories->{$row[11]};
     }
     $info->{'number'} = $srscno;
-    $info->{'customer'} = $customer;
+    $info->{'customer'} = $customers->{$customer}->{'displayname'};
     return $info;
 }
 
 sub get_customer_desc {
     my ($cust, $code) = @_;
     my $info = {};
+    return $info if $code == 0;
 
     my $SEL_INFO = '
 select t.rcustcontlastname,
@@ -315,6 +383,7 @@ select t.rcustcontlastname,
 	$info->{'department'} = $row[3];
 	$info->{'position'} = $row[4];
     }
+    print "Customer code $code does not exists anymore.\n" if ! keys %$info;
     return $info;
 }
 
@@ -386,57 +455,46 @@ sub write_customer {
     my ($cust, $hash) = @_;
     print "\t-Get customer info.\t". (WikiCommons::get_time_diff) ."\n";
     $hash->{'names'} = $cust;
-#     my $xs = new XML::Simple;
-#     my $xml = $xs->XMLout($hash,
-#                       NoAttr => 1,
-#                       RootName=>$cust->{'name'},
-#                      );
     my $dir = "$to_path/".$cust->{'displayname'};
     WikiCommons::makedir ("$dir");
-#     write_file( "$dir/attributes.xml", $xml);
     print "\t+Get customer info.\t". (WikiCommons::get_time_diff) ."\n";
     return $dir;
 }
 
 sub parse_text {
     my ($text, $extra_info) = @_;
+
+    my $init_text = $text;
     $text =~ s/\r?\n/\n/g;
-
     if (defined $extra_info) {
+# print Dumper($extra_info);
 	my $tmp = quotemeta $extra_info->{'subject'};
-	$text =~ s/Subject: $tmp\nDate:     $extra_info->{'event_date'}\n\n//;
-	my $tmp = quotemeta("*************************************************");
+	$text =~ s/Subject:[ ]+$tmp\nDate:[ ]+$extra_info->{event_date}\n+//;
+	$tmp = quotemeta("*************************************************");
+	my $reg_exp = "MIND CTI Support Center\n+[a-zA-Z0-9 ]{1,}\n+$tmp\n+Service Call Data:\n+Number:[ ]+$extra_info->{'customer'} \/ $extra_info->{'sr_no'}\n+Received:[ ]+$extra_info->{sr_date}\n+Current Status:[ ]+[a-zA-Z0-9 ]{1,}\n+$tmp\n+PLEASE DO NOT REPLY TO THIS EMAIL - Use the CRM\n*";
 
-	$text =~ s/MIND CTI Support Center\n+((Support Specialist)|(Support Team Leader)|(Project Manager)|(Support Manager)|(Implementation Manag))\n+$tmp\n+Service Call Data:\n+Number:[ ]+$extra_info->{'customer'} \/ $extra_info->{'sr_no'}\n+Received:[ ]+$extra_info->{'sr_date'}\n+Current Status:[ ]+[a-zA-Z0-9 ]{1,}\n+$tmp\n+PLEASE DO NOT REPLY TO THIS EMAIL - Use the CRM\n*$//;
+	$text =~ s/$reg_exp//g;
+die "not good: $init_text\n$reg_exp\n" if $text =~ m/^PLEASE DO NOT REPLY TO THIS EMAIL/mg;
     }
-    $text =~ s/([^\n])\n/$1\n\n/g;
+    $text = WikiClean::fix_wiki_chars( $text );
+    $text = WikiClean::fix_wiki_url( $text );
+    $text = WikiClean::fix_wiki_link_to_sc( $text );
+    $text = WikiClean::fix_external_links( $text );
+    $text = WikiClean::fix_small_issues( $text );
+#     $text =~ s/([^\n])\n/$1\n\n/gm;
+    $text =~ s/([^\n])\n([^\n])/$1\n\n$2/gm;
     $text =~ s/\n([*#])/<br\/>$1/g;
-    $text =~ s/\n*$/\n/g;
+#     $text =~ s/\n*$/\n/gm;
     return $text;
 }
 
-sub write_sr {
-    my ($info, $name) = @_;
-    my @keys = keys %$info;
-    die "pai da de ce?\n".Dumper($info) if scalar keys %{$info->{$keys[0]}} < 2 ;
-    my $xs = new XML::Simple;
-    my $xml = $xs->XMLout($info,
-                      NoAttr => 1,
-                      RootName=>"info",
-                     );
-    write_file( "$name.xml", $xml);
-    my $extra_info = {};
-    my $wiki = "";
-    foreach my $key (sort {$a<=>$b} keys %$info){
-	my $hash = $info->{$key};
-	my $time = (substr $hash->{'date'}->{'time'}, 0 , 2).":".(substr $hash->{'date'}->{'time'}, 2 , 2).":".(substr $hash->{'date'}->{'time'}, 4);
-	my $date = (substr $hash->{'date'}->{'date'}, 6)."/".(substr $hash->{'date'}->{'date'}, 4 , 2)."/".(substr $hash->{'date'}->{'date'}, 0 , 4);
-	if ($key == 0){
-	    $wiki .=  "<center>\'\'\'$hash->{'subject'}\'\'\'</center>\n";
-	    $wiki .=  "<p align=\"right\">$time $date</p>\n\n";
-	    $wiki .=  "\'\'\'Incharge\'\'\': $hash->{'incharge'}->{'first_name'} $hash->{'incharge'}->{'last_name'} ([mailto:$hash->{'incharge'}->{'email'} $hash->{'incharge'}->{'email'}])\n" if (keys %{$hash->{'incharge'}});
-	    my $type = $hash->{'type'} || '';
-	    $wiki .="
+sub write_intro {
+    my ($hash, $date, $time) = @_;
+    my $wiki =  "<center>\'\'\'$hash->{'customer'} : $hash->{'subject'}\'\'\'</center>\n";
+    $wiki .=  "<p align=\"right\">$time $date</p>\n\n";
+    $wiki .=  "\'\'\'Incharge\'\'\': $hash->{'incharge'}->{'first_name'} $hash->{'incharge'}->{'last_name'} ([mailto:$hash->{'incharge'}->{'email'} $hash->{'incharge'}->{'email'}])\n" if (keys %{$hash->{'incharge'}});
+    my $type = $hash->{'type'} || '';
+    $wiki .="
 {| {{prettytable}}
 | \'\'\'Type\'\'\'
 | \'\'\'Category\'\'\'
@@ -446,54 +504,95 @@ sub write_sr {
 | $hash->{'mind_category'}
 | $hash->{'cust_category'}
 |}\n\n";
-	    my $text = parse_text($hash->{'solution'});
-	    $wiki .=  "\'\'\'Description\'\'\': $hash->{'desc'}\n\n";
-	    $wiki .=  "\'\'\'Solution\'\'\':\n\n$text\n----\n";
+    my $text = $hash->{'solution'};
+    my $tmp = parse_text($hash->{'desc'}, undef);
+    $wiki .=  "\'\'\'Description\'\'\': $tmp\n\n";
+    $wiki .=  "\'\'\'Solution\'\'\':\n\n$text\n----\n";
+    return $wiki;
+}
+
+sub get_time_date {
+    my $hash = shift;
+    my $time = (substr $hash->{'time'}, 0 , 2).":".(substr $hash->{'time'}, 2 , 2).":".(substr $hash->{'time'}, 4);
+    my $date = (substr $hash->{'date'}, 6)."/".(substr $hash->{'date'}, 4 , 2)."/".(substr $hash->{'date'}, 0 , 4);
+    return ($date, $time);
+}
+
+sub write_header {
+    my ($hash, $name, $date, $time, $key) = @_;
+#     $wiki .= "<font color=\"#888888\">\n";
+    my $wiki .= "<div style=\"background-color:#FDE4AD;\">\n<p>";
+    $wiki .= "\n----\n";
+    my $tmp = $hash->{'short_desc'};
+    chomp($tmp);
+    $wiki .= "\'\'\'Description\'\'\': $tmp ";
+    $wiki .= "<div style=\"float: right;\">$time $date</div>\n\n";
+    $wiki .= "\'\'\'From\'\'\': $name\n\n";
+    $wiki .= "\'\'\'Event $key\'\'\': $hash->{event}->{desc} ($hash->{event}->{code}) \'\'\'Status\'\'\': $hash->{status}->{desc} ($hash->{status}->{code}) <div style=\"float: right;\">\'\'\'Customer visible\'\'\': $hash->{show_to_customer}</div>\n\n";
+#     $wiki .= "</font>\n\n";
+    $wiki .= "----\n";
+    $wiki .= "</p>\n</div>\n\n";
+    return $wiki;
+}
+
+sub get_color {
+    my ($hash, $extra_info, $date, $time) = @_;
+    my $event_from_mind = 0;
+    my $name = "";
+    my $color = "";
+
+    $extra_info->{'event_date'} = "$date";
+    if ($hash->{'show_to_customer'} ne '1') {
+	### this is a mind message
+# 	$color = "<font color=\"#2B1B17\">\n";
+	$color = "<font color=\"grey\">\n";
+	$name = "$hash->{'person'}->{'first_name'} $hash->{'person'}->{'last_name'} ([mailto:$hash->{'person'}->{'email'} $hash->{'person'}->{'email'}])";
+	$event_from_mind = 1;
+    } elsif (keys %{$hash->{'person'}}) {
+	### this is a mind message
+	$color = "<font >\n";
+	$name = "$hash->{'person'}->{'first_name'} $hash->{'person'}->{'last_name'} ([mailto:$hash->{'person'}->{'email'} $hash->{'person'}->{'email'}])";
+	$event_from_mind = 1;
+    } elsif (keys %{$hash->{'customer_contact'}}) {
+	### this is a customer message
+	$color = "<font color=\"blue\">\n";
+	my $dept = "";
+	my $pos = "";
+	$dept = "department = $hash->{customer_contact}->{department}" if $hash->{'customer_contact'}->{'department'} ne ' ';
+	$pos = "position = $hash->{customer_contact}->{position}" if $hash->{'customer_contact'}->{'position'} ne ' ';
+	$name = "$hash->{'customer_contact'}->{'first_name'} $hash->{'customer_contact'}->{'last_name'} ([mailto:$hash->{'customer_contact'}->{'email'} $hash->{'customer_contact'}->{'email'}]); $dept $pos";
+    } else {
+	$color = "<font color=\"#0000FF\">\n";
+	print "\tNo customer and no mind engineer. Maybe a customer message.\n";
+    }
+    return ($name, $color, $event_from_mind);
+}
+
+sub write_sr {
+    my $info = shift;
+    my @keys = keys %$info;
+    die "pai da de ce?\n".Dumper($info) if scalar keys %{$info->{$keys[0]}} < 2 ;
+    my $extra_info = {};
+    my $wiki = "";
+    foreach my $key (sort {$a<=>$b} keys %$info){
+	my $hash = $info->{$key};
+	my ($date, $time) = get_time_date($hash->{'date'});
+	if ($key == 0){
+	    $wiki = write_intro($hash, $date, $time);
 	    $extra_info->{'sr_date'} = "$date";
-	    $extra_info->{'customer'} = "$customers->{$hash->{'customer'}}->{'displayname'}";
+	    $extra_info->{'customer'} = "$hash->{'customer'}";
 	    $extra_info->{'sr_no'} = "$hash->{'number'}";
 	    $extra_info->{'subject'} = "$hash->{'subject'}";
 	} else {
-	    my $color = "";
-	    my $name = "";
-	    my $event_from_mind = 0;
-	    if (!keys %{$hash->{'person'}}) {
-# 		$color = "<div style=\"BACKGROUND-COLOR:#aaffaa\">\n";
-		$color = "<font color=\"#0000FF\">\n";
-my $q1=$hash->{'customer_contact'}->{'first_name'}."";
-my $q2=$hash->{'customer_contact'}->{'last_name'}."";
-my $q3=$hash->{'customer_contact'}->{'email'}."";
-my $q4=$hash->{'customer_contact'}->{'department'}."";
-my $q5=$hash->{'customer_contact'}->{'position'}."";
-		$name = "$hash->{'customer_contact'}->{'first_name'} $hash->{'customer_contact'}->{'last_name'} ([mailto:$hash->{'customer_contact'}->{'email'} $hash->{'customer_contact'}->{'email'}]); department = $hash->{'customer_contact'}->{'department'}; position = $hash->{'customer_contact'}->{'position'}";
-	    } else {
-		$extra_info->{'event_date'} = "$date";
-# 		$color = "<div style=\"BACKGROUND-COLOR:#fde4ac\">\n";
-		$color = "<font color=\"#FF6600\">\n";
-		$name = "$hash->{'person'}->{'first_name'} $hash->{'person'}->{'last_name'} ([mailto:$hash->{'person'}->{'email'} $hash->{'person'}->{'email'}])";
-		$event_from_mind = 1;
+# print Dumper($hash);
+	    my ($name, $color, $event_from_mind) = get_color($hash, $extra_info, $date, $time);
+	    ### Header
+	    if ( ! defined $hash->{'event'} ){
+		print "No event code for event $key.\n";
+		$hash->{'event'}->{'code'} = '';
+		$hash->{'status'}->{'desc'} = '';
 	    }
-	    if ($hash->{'show_to_customer'} ne '1') {
-# 		$color = "<div style=\"BACKGROUND-COLOR:#efefef\">\n";
-		$color = "<font>\n";
-	    }
-	    $wiki .= "----\n";
-	    $wiki .= "<font color=\"#888888\">\n";
-# 	    $wiki .= "<div style=\"BACKGROUND-COLOR:gray\">\n";
-	    my $tmp = $hash->{'short_desc'};
-	    chomp($tmp);
-	    $wiki .= "\'\'\'Description\'\'\': $tmp ";
-	    $wiki .= "<div style=\"float: right;\">$time $date</div>\n\n";
-	    $wiki .= "\'\'\'From\'\'\': $name\n\n";
-my $q1=$hash->{'event'}->{'desc'}."";
-my $q2=$hash->{'event'}->{'code'}."";
-print "$info->{0}->{'number'}\n" if ! defined $hash->{'status'}->{'desc'};
-my $q4=$hash->{'status'}->{'code'}."";
-my $q5=$hash->{'show_to_customer'}."";
-	    $wiki .= "\'\'\'Event\'\'\': $hash->{'event'}->{'desc'} ($hash->{'event'}->{'code'}) \'\'\'Status\'\'\': $hash->{'status'}->{'desc'} ($hash->{'status'}->{'code'}) <div style=\"float: right;\">\'\'\'Customer visible\'\'\': $hash->{'show_to_customer'}</div>\n\n";
-	    $wiki .= "</div>\n\n";
-# 	    $wiki .= "</font>\n\n";
-	    $wiki .= "----\n";
+	    $wiki .= write_header($hash, $name, $date, $time, $key);
 
 	    my $attachements = "";
 	    my $sr_text = "";
@@ -506,9 +605,9 @@ my $q5=$hash->{'show_to_customer'}."";
 		    $text =~ s/&amp;/&/g;
 		    my @arr = split '/', $text;
 		    $text =~ s/ /%20/g;;
-		    $attachements .= "[$text $arr[-1]] ";
+		    $attachements .= "[$text $arr[-1]]\n\n";
 		} elsif ( $desc =~ m/^U2$/) {
-		    $attachements .= "$hash->{'description'}->{$desc} ";
+		    $attachements .= "$hash->{'description'}->{$desc}\n\n";
 		} elsif ( $desc =~ m/^ [1-9]{1}$/) {
 		    my $text = parse_text($hash->{'description'}->{$desc}, $event_from_mind?$extra_info:undef);
 		    $sr_text .= "$text\n\n";
@@ -521,7 +620,8 @@ my $q5=$hash->{'show_to_customer'}."";
 	    $wiki .= "----\n";
 	}
     }
-    write_file ( "$name.wiki", $wiki);
+    $wiki .= "\n\n[[Category:CRM]]\n[[Category:$info->{0}->{'customer'} -- CRM]]\n\n";
+    return $wiki;
 }
 
 sub get_previous {
@@ -560,7 +660,8 @@ print "+Get common info.\t". (WikiCommons::get_time_diff) ."\n";
 # exit 1;
 foreach my $cust (sort keys %$customers){
     print "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
-# next if $customers->{$cust}->{'displayname'} ne "Kocnet";
+# next if $customers->{$cust}->{'displayname'} ne "IRISTEL";
+next if $cust < 233;
     my $dir = write_customer ($customers->{$cust}, get_customer_attributes($cust));
     my $crt_srs = get_allsrs($cust);
     my $prev_srs = get_previous("$to_path/".$customers->{$cust}->{'displayname'});
@@ -580,12 +681,15 @@ foreach my $cust (sort keys %$customers){
     print "\tadd ".(scalar keys %$crt_srs)." new files.\n";
     my $nr = 0;
     foreach my $sr (sort {$a<=>$b} keys %$crt_srs) {
+print "$sr\n";next if $sr <445;
+# print "$sr\n";next if $sr <233;
 	my $info = {};
 	$info = get_sr($cust, $sr);
 	my $name = "$dir/".sprintf("%07d", $sr)."_".(scalar keys %$info);
-	my $desc = get_sr_desc($cust, $sr);
-	$info->{'0'} = $desc;
-	write_sr($info, $name);
+	$info->{'0'} = get_sr_desc($cust, $sr);
+	write_xml ($info, $name);
+	my $txt = write_sr($info);
+	write_file ( "$name.wiki", $txt);
 	print_coco(++$nr);
     }
 }
@@ -594,21 +698,21 @@ foreach my $cust (sort keys %$customers){
 # &amp;			&
 # &lt;			<
 # &gt;			>
-# &circ;			ˆ
-# &tilde;			˜
+# &circ;			?
+# &tilde;			?
 # &ensp;
 # &emsp;
-# &ndash;			–
-# &mdash;			—
-# &lsquo;			‘
-# &rsquo;			’
-# &sbquo;			‚
-# &ldquo;			“
-# &rdquo;			”
-# &bdquo;			„
-# &lsaquo;		‹
-# &rsaquo;		›
-# &euro;			€
+# &ndash;			?
+# &mdash;			?
+# &lsquo;			?
+# &rsquo;			?
+# &sbquo;			?
+# &ldquo;			?
+# &rdquo;			?
+# &bdquo;			?
+# &lsaquo;		?
+# &rsaquo;		?
+# &euro;			¤
 
 # <div style="BACKGROUND-COLOR:silver">
 ### links url encoded
