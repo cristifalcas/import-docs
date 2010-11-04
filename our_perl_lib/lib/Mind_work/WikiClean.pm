@@ -108,13 +108,14 @@ sub tag_remove_attr {
     } elsif ($tag_name eq "span"){
 	    if ($attr_name eq "lang" || $attr_name eq "id" || $attr_name eq "dir" ||
 		    ($attr_name eq "style" &&
-			($attr_value eq "text-decoration: none" ||
+			($attr_value eq "text-decoration: none" || $attr_value eq "FONT-WEIGHT: bold" ||
+			    $attr_value eq "FONT-STYLE: italic" ||
 			   $attr_value =~ m/position: absolute; top: -?[0-9.]{1,}in; left: -?[0-9.]{1,}in; width: [0-9.]{1,}px/ )) ||
 		    ($attr_name eq "class" && $attr_value eq "sd-abs-pos") ){
 		return 1;
 	    } elsif ( ($attr_name eq "style" && (
 		    $attr_value =~  m/background: #[a-f0-9]{6}/ ||
-		    $attr_value =~  m/font-(weight|style): normal/ ||
+		    $attr_value =~  m/font-(weight|style): normal/i ||
 		    $attr_value =~  m/background: transparent/  ))) {
 		return 0;
 	    } else {
@@ -520,12 +521,12 @@ sub fix_external_links {
 sub fix_wiki_chars {
     my $wiki = shift;
     ## fix strange characters
-    print "\tFix characters in wiki.\t". (WikiCommons::get_time_diff) ."\n";
-    ## decode utf8 character in hex: perl -e 'print sprintf("\\x{%x}", $_) foreach (unpack("C*", "�"));print"\n"'
+#     print "\tFix characters in wiki.\t". (WikiCommons::get_time_diff) ."\n";
+    ## decode utf8 character in hex: perl -e 'print sprintf("\\x{%x}", $_) foreach (unpack("C*", "Ó"));print"\n"'
     # copyright
 #     $wiki =~ s/\x{c3}\x{93}/\x{C2}\x{A9}/gs;
 ## old
-    ## get ascii hex values from http://www.mikezilla.com/exp0012.html  is ascii %EF%192%17E which is utf \x{e2}\x{87}\x{92}
+    ## get ascii hex values from http://www.mikezilla.com/exp0012.html ïƒž is ascii %EF%192%17E which is utf \x{e2}\x{87}\x{92}
     # numbers ??
 #     $wiki =~ s/\x{B2}/2/gs;
 #     $wiki =~ s/\x{B0}/0/gs;
@@ -533,59 +534,59 @@ sub fix_wiki_chars {
     # copyright
     $wiki =~ s/\x{EF}\x{192}\x{A3}/\x{C2}\x{A9}/gs;
     $wiki =~ s/\x{EF}\x{192}\x{201C}/\x{C2}\x{A9}/gs;
-    $wiki =~ s//\x{C2}\x{A9}/gs;
-    $wiki =~ s//\x{C2}\x{A9}/gs;
-    $wiki =~ s/ï/\x{C2}\x{A9}/gs;
+    $wiki =~ s/ïƒ“/\x{C2}\x{A9}/gs;
+    $wiki =~ s/ïƒ£/\x{C2}\x{A9}/gs;
+    $wiki =~ s/Ã¯Â’/\x{C2}\x{A9}/gs;
     ## registered
     $wiki =~ s/\x{EF}\x{192}\x{2019}/\x{C2}\x{AE}/gs;
-    $wiki =~ s//\x{C2}\x{AE}/gs;
-    $wiki =~ s/Â®/\x{C2}\x{AE}/gs;
+    $wiki =~ s/ïƒ’/\x{C2}\x{AE}/gs;
+    $wiki =~ s/Ã‚Â®/\x{C2}\x{AE}/gs;
     ## trademark
     $wiki =~ s/\x{EF}\x{192}\x{201D}/\x{E2}\x{84}\x{A2}/gs;
-    $wiki =~ s//\x{E2}\x{84}\x{A2}/gs;
+    $wiki =~ s/ïƒ”/\x{E2}\x{84}\x{A2}/gs;
     ## long line
     $wiki =~ s/\x{E2}\x{20AC}\x{201D}/\x{E2}\x{80}\x{93}/gs;
     $wiki =~ s/\x{E2}\x{20AC}\x{201C}/\x{E2}\x{80}\x{93}/gs;
-    $wiki =~ s/â¬/\x{E2}\x{80}\x{93}/gs;
+    $wiki =~ s/Ã¢Â¬/\x{E2}\x{80}\x{93}/gs;
     ## puiu / amanda
-    $wiki =~ s//\x{e2}\x{97}\x{bb}/gs;
-    $wiki =~ s/ï¿/\x{e2}\x{97}\x{bb}/gs;
+    $wiki =~ s/ïƒ¿/\x{e2}\x{97}\x{bb}/gs;
+    $wiki =~ s/Ã¯Â’Â¿/\x{e2}\x{97}\x{bb}/gs;
 
     ## RIGHTWARDS arrow
     $wiki =~ s/\x{EF}\x{192}\x{A8}/\x{e2}\x{86}\x{92}/gs;
     $wiki =~ s/\x{E2}\x{2020}\x{2019}/\x{e2}\x{86}\x{92}/gs;
     $wiki =~ s/\x{EF}\x{192}\x{A0}/\x{e2}\x{86}\x{92}/gs;
-    $wiki =~ s//\x{e2}\x{86}\x{92}/gs;
-    $wiki =~ s//\x{e2}\x{86}\x{92}/gs;
+    $wiki =~ s/ïƒ¨/\x{e2}\x{86}\x{92}/gs;
+    $wiki =~ s/ïƒ /\x{e2}\x{86}\x{92}/gs;
     ## LEFTWARDS arrow
     $wiki =~ s/\x{EF}\x{192}\x{178}/\x{e2}\x{86}\x{90}/gs;
-    $wiki =~ s//\x{e2}\x{86}\x{90}/gs;
+    $wiki =~ s/ïƒŸ/\x{e2}\x{86}\x{90}/gs;
     ## double arrow:
     $wiki =~ s/\x{EF}\x{192}\x{17E}/\x{e2}\x{87}\x{92}/gs;
     ## 3 points
     $wiki =~ s/\x{E2}\x{20AC}\x{A6}/.../gs;
     ## circle
     $wiki =~ s/\x{EF}\x{201A}\x{B7}/\x{e2}\x{97}\x{8f}/gs;
-    $wiki =~ s//\x{e2}\x{97}\x{8f}/gs;
+    $wiki =~ s/ï‚·/\x{e2}\x{97}\x{8f}/gs;
     ## black square %EF%201A%A7
-    $wiki =~ s//\x{e2}\x{96}\x{a0}/gs;
+    $wiki =~ s/ï‚§/\x{e2}\x{96}\x{a0}/gs;
     ## CHECK MARK
     $wiki =~ s/\x{EF}\x{81}\x{90}/\x{e2}\x{9c}\x{94}/gs;
     $wiki =~ s/\x{EF}\x{192}\x{BC}/\x{e2}\x{9c}\x{94}/gs;
-    $wiki =~ s//\x{e2}\x{9c}\x{94}/gs;
+    $wiki =~ s/ïƒ¼/\x{e2}\x{9c}\x{94}/gs;
     ## BALLOT X
     $wiki =~ s/\x{EF}\x{81}\x{8F}/\x{e2}\x{9c}\x{98}/gs;
     $wiki =~ s/\x{EF}\x{192}\x{BB}/\x{e2}\x{9c}\x{98}/gs;
-    $wiki =~ s//\x{e2}\x{9c}\x{98}/gs;
+    $wiki =~ s/ïƒ»/\x{e2}\x{9c}\x{98}/gs;
     ## CIRCLE BACKSLASH
     $wiki =~ s/\x{EF}\x{81}\x{2014}/\x{e2}\x{9c}\x{98}/gs;
-    $wiki =~ s//\x{e2}\x{83}\x{A0}/gs;
+    $wiki =~ s/ï—/\x{e2}\x{83}\x{A0}/gs;
     ## apostrof
-    $wiki =~ s/â¬"/'/gs;
-    $wiki =~ s/â¬Ü/'/gs;
+    $wiki =~ s/Ã¢Â¬"/'/gs;
+    $wiki =~ s/Ã¢Â¬Ãœ/'/gs;
     ## ghilimele
-    $wiki =~ s/â¬S/"/gs;
-    $wiki =~ s/â¬/"/gs;
+    $wiki =~ s/Ã¢Â¬S/"/gs;
+    $wiki =~ s/Ã¢Â¬/"/gs;
 
     return $wiki;
 }
@@ -641,12 +642,12 @@ sub get_wiki_images {
     my ($wiki, $image_files, $dir) = @_;
     print "\tFix images from wiki.\t". (WikiCommons::get_time_diff) ."\n";
     while ($wiki =~ m/(\[\[Image:)([[:print:]].*?)(\]\])/g ) {
-	my $pic_name = uri_unescape( $2  );
+	my $pic_name = uri_unescape( $2 );
 	$pic_name =~ s/(.*?)(\|.*)/$1/;
 	push (@$image_files,  "$dir/$pic_name");
 	my $info = image_info("$dir/$pic_name");
 	if (my $error = $info->{error}) {
-	    die "Can't parse image info: $error.\t". (WikiCommons::get_time_diff) ."\n";
+	    die "Can't parse image info for $dir $pic_name: $error.\t". (WikiCommons::get_time_diff) ."\n";
 	}
     }
     return $image_files;
@@ -704,7 +705,7 @@ sub fix_wiki_links_menus {
 sub fix_wiki_url {
     my $wiki = shift;
     ### fix url links
-    print "\tFix urls from wiki.\t". (WikiCommons::get_time_diff) ."\n";
+#     print "\tFix urls from wiki.\t". (WikiCommons::get_time_diff) ."\n";
     my $newwiki = $wiki;
     while ($wiki =~ m/(http:\/\/.*?)\s+/g) {
 	my $q = $1;
@@ -719,7 +720,7 @@ sub fix_wiki_url {
 sub fix_wiki_link_to_sc {
     my $wiki = shift;
     ## for every B1111 make it a link
-    print "\tFix links to SC.\t". (WikiCommons::get_time_diff) ."\n";
+#     print "\tFix links to SC.\t". (WikiCommons::get_time_diff) ."\n";
     my $newwiki = $wiki;
     my $count = 0;
     while ($wiki =~ m/(\[\[Image:[[:print:]]*?B[[:digit:]]{4,}[[:print:]]*?\]\])|(\bB[[:digit:]]{4,}\b)/g ) {
