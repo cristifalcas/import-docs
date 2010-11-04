@@ -51,7 +51,7 @@ $SIG{__WARN__} = sub { die @_ };
 # eval 'exec /usr/bin/perl  -S $0 ${1+"$@"}'
 #     if 0; # not running under some shell
 
-die "We need the dir where the doc files are and the type of the dir: mind_svn, users, sc_docs.\n" if ( $#ARGV <= 1 );
+# die "We need the dir where the doc files are and the type of the dir: mind_svn, users, sc_docs.\n" if ( $#ARGV <= 1 );
 
 use warnings;
 use strict;
@@ -67,7 +67,6 @@ my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."./our_perl_lib/lib";
 
 use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
-use HTML::WikiConverter;
 use Data::Dumper;
 use Digest::MD5 qw(md5 md5_hex md5_base64);
 use Text::Balanced;
@@ -81,6 +80,7 @@ use Mind_work::WikiClean;
 use Mind_work::WikiMindUsers;
 use Mind_work::WikiMindSVN;
 use Mind_work::WikiMindSC;
+use Mind_work::WikiMindCRM;
 
 # declare the perl command line flags/options we want to allow
 my $options = {};
@@ -297,7 +297,7 @@ sub generate_real_and_links {
 	if ( $nr_real > 1 ) {
 	    my $q = $md5_map->{$md5}{"real"};
 	    for (my $i=0; $i < $nr_real - 1; $i++) {
-		print "Remove real url @$q[$i]} because of too many real links: $nr_real.\n";
+		print "Remove real url @$q[$i] because of too many real links: $nr_real.\n";
 		print Dumper(@$q[$i]);
 		$to_delete->{@$q[$i]} = $to_keep->{@$q[$i]};
 		$pages_toimp_hash->{@$q[$i]} = $to_keep->{@$q[$i]};
@@ -346,7 +346,7 @@ sub generate_cleaned_real_and_links {
 }
 
 sub generate_pages_to_delete_to_import {
-    my ( $to_delete, $to_keep ) = @_;
+    my ( $to_delete, $to_keep ) = {};
     print "Start generating new/updated/to_delete/to_keep urls.\t". (WikiCommons::get_time_diff) ."\n";
     ($to_delete, $to_keep) = generate_new_updated_pages($to_delete, $to_keep);
     print "Done generating new/updated urls.\t". (WikiCommons::get_time_diff) ."\n";
@@ -586,6 +586,36 @@ if ($path_type eq "mind_svn") {
 } elsif ($path_type eq "users") {
     $coco = new WikiMindUsers("$path_files", WikiCommons::get_urlsep);
     work_for_docs("$path_files");
+} elsif ($path_type eq "crm_docs") {
+    $all_real = "yes";
+    $coco = new WikiMindCRM("$path_files", WikiCommons::get_urlsep);
+
+    my ($to_delete, $to_keep) = work_begin;
+# print Dumper($pages_toimp_hash);die;
+
+    my $total_nr = scalar keys %$pages_toimp_hash;
+    my $crt_nr = 0;
+    foreach my $url (sort keys %$pages_toimp_hash) {
+	$crt_nr++;
+#     next if "$url" ne "SC:B91991";
+	WikiCommons::reset_time();
+	print "\n************************* $crt_nr of $total_nr\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
+
+	WikiCommons::makedir "$wiki_dir/$url/";
+	my $rel_path = "$pages_toimp_hash->{$url}[$rel_path_pos]";
+
+	print "$path_files/$rel_path\n";
+	local( $/, *FH ) ;
+	open(FH, "$path_files/$rel_path") || die("Could not open file: $!");
+	my $wiki_txt = <FH>;
+	close (FH);
+
+	WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
+	WikiCommons::add_to_remove("$wiki_dir/$url/$wiki_result", "dir");
+	my $work_dir = "$wiki_dir/$url";
+	WikiCommons::write_file("$work_dir/$url.wiki", $wiki_txt);
+	insertdata ($url, $wiki_txt);
+    }
 } elsif ($path_type eq "sc_docs") {
     $all_real = "yes";
     my $info_h = {};
@@ -604,7 +634,6 @@ if ($path_type eq "mind_svn") {
     $ftp_links->{'FTP_market_attach'} = "ftp://$info_h->{'FTP_USER'}:$info_h->{'FTP_PASS'}\@$info_h->{'FTP_IP'}/$info_h->{'FTP_market_attach'}";
     $ftp_links->{'FTP_test_attach'} = "ftp://$info_h->{'FTP_USER'}:$info_h->{'FTP_PASS'}\@$info_h->{'FTP_IP'}/$info_h->{'FTP_test_attach'}";
 
-#     my $url_sep = WikiCommons::get_urlsep;
     $coco = new WikiMindSC("$path_files", WikiCommons::get_urlsep);
     my ($to_delete, $to_keep) = work_begin;
     make_categories;
@@ -624,7 +653,6 @@ if ($path_type eq "mind_svn") {
 	WikiCommons::makedir "$wiki_dir/$url/";
 	WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
 	my $rel_path = "$pages_toimp_hash->{$url}[$rel_path_pos]";
-
 	my $info_crt_h = $pages_toimp_hash->{$url}[$svn_url_pos];
 
 	my $wiki = {};
@@ -751,6 +779,46 @@ if ($path_type eq "mind_svn") {
 	insertdata($url, $full_wiki);
     }
 }
+
+
+sub quick_and_dirty_html_to_wiki {
+    my $url = "Installing SSL certificate";
+    my $work_dir = "$wiki_dir/$url";
+    $wiki_result = "result";
+    my $dest = "$work_dir/$wiki_result";
+    WikiCommons::makedir ("$dest");
+    `cp -R "./installing ssl certificate_files/"* "$work_dir"`;
+    my $html_file = "$work_dir/installing ssl certificate.htm";
+
+    my ($name,$dir,$suffix) = fileparse($html_file, qr/\.[^.]*/);
+    my $zip_name = $name;
+    my ($wiki, $image_files) = WikiClean::make_wiki_from_html ( $html_file );
+    return undef if (! defined $wiki );
+
+
+    WikiCommons::add_to_remove ("$work_dir/$wiki_result", "dir");
+    WikiCommons::makedir ("$dest");
+    my %seen = ();
+    open (FILE, ">>$work_dir/$wiki_files_uploaded") or die "at create wiki can't open file $work_dir/$wiki_files_uploaded for writing: $!\t". (WikiCommons::get_time_diff) ."\n";
+    print "\t-Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
+    foreach my $img (@$image_files){
+	move ("$img", "$dest") or die "Moving file \"$img\" failed: $!\t". (WikiCommons::get_time_diff) ."\n" unless $seen{$img}++;
+	my ($img_name,$img_dir,$img_suffix) = fileparse($img, qr/\.[^.]*/);
+	print FILE "File:$img_name$img_suffix\n";
+    }
+    $image_files = ();
+
+    my $zip = Archive::Zip->new();
+    $zip->addFile( "$work_dir/$name$suffix", "$name$suffix") or die "Error adding file $name$suffix to zip.\t". (WikiCommons::get_time_diff) ."\n";
+    die "Write error for zip file.\t". (WikiCommons::get_time_diff) ."\n" if $zip->writeToFileNamed( "$dest/$zip_name.zip" ) != AZ_OK;
+    print FILE "File:$zip_name.zip\n";
+    close (FILE);
+    print "\t+Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
+    WikiCommons::add_to_remove( $html_file, "file" );
+    insertdata($url, $wiki);
+    WikiCommons::cleanup;
+}
+
 
 print "End.\n";
 unlink("$pid_file") or die "Could not delete the file $pid_file: ".$!."\n";

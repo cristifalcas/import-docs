@@ -522,7 +522,7 @@ sub fix_wiki_chars {
     my $wiki = shift;
     ## fix strange characters
 #     print "\tFix characters in wiki.\t". (WikiCommons::get_time_diff) ."\n";
-    ## decode utf8 character in hex: perl -e 'print sprintf("\\x{%x}", $_) foreach (unpack("C*", "Ã“"));print"\n"'
+    ## decode utf8 character in hex: perl -e 'print sprintf("\\x{%x}", $_) foreach (unpack("C*", "Ó"));print"\n"'
     # copyright
 #     $wiki =~ s/\x{c3}\x{93}/\x{C2}\x{A9}/gs;
 ## old
