@@ -63,13 +63,14 @@ use File::Find;
 use Switch;
 use Getopt::Std;
 
+my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."./our_perl_lib/lib";
 
 use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
 use Data::Dumper;
 use Digest::MD5 qw(md5 md5_hex md5_base64);
 use Text::Balanced;
-use Encode;
+# use Encode;
 use URI::Escape;
 use File::Path qw(make_path remove_tree);
 
@@ -91,7 +92,6 @@ if ($options->{'r'}){
 }
 
 my $our_wiki;
-my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1];
 my $path_files = abs_path($options->{'d'});
 my $path_type = $options->{'n'};
 our $wiki_dir = "$path_prefix/work/workfor_". (fileparse($path_files, qr/\.[^.]*/))[0] ."";
@@ -136,7 +136,7 @@ sub create_wiki {
 	print "Path $work_dir already exists. Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
 	my $name_bad = "$bad_dir/$page_url".time();
 	WikiCommons::makedir("$name_bad");
-	move("$work_dir","$name_bad");
+	move("$work_dir","$name_bad") || die "Can't move dir $work_dir: $!.\n";
 	die "Directory still exists." if ( -d $work_dir);
     }
     WikiCommons::makedir ("$work_dir");
@@ -232,8 +232,8 @@ sub get_existing_pages {
 		print "\tThis is not a correct wiki dir: $dir\n";
 		my @q = split '/', $dir;
 		my $name_bad = "$bad_dir/$q[$#q]".time();
-		WikiCommons::makedir("$name_bad");
-		move("$dir","$name_bad");
+# 		WikiCommons::makedir("$name_bad");
+		move("$dir","$name_bad") || die "Can't move dir $dir to $name_bad: $!.\n";;
 		die "\tDirectory still exists." if ( -d $dir);
 	    }
 	} else {
@@ -443,7 +443,7 @@ sub insertdata {
 	WikiCommons::copy_dir ("$work_dir/$wiki_result", "$remote_work_path/$wiki_result");
 	copy("$work_dir/$url.full.wiki","$remote_work_path/$url") or die "Copy failed for: $url.full.wiki to $remote_work_path: $!\t". (WikiCommons::get_time_diff) ."\n";
     }
-print Dumper($pages_toimp_hash->{$url});
+
     my $text = "md5 = $pages_toimp_hash->{$url}[$md5_pos]\n";
     $text .= "rel_path = $pages_toimp_hash->{$url}[$rel_path_pos]\n";
     $text .= "svn_url = $pages_toimp_hash->{$url}[$svn_url_pos]\n";
@@ -467,8 +467,11 @@ sub work_real {
 	my $wiki = create_wiki($url, "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]");
 	if (! defined $wiki ){
 	    $to_keep->{$url} = $pages_toimp_hash->{$url};
-	    unlink "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]";
 	    delete($pages_toimp_hash->{$url});
+	    print "Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
+	    my $name_bad = "$bad_dir/$url".time();
+	    WikiCommons::makedir("$name_bad");
+	    move("$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]","$name_bad");
 	    next;
 	}
 	my $head_text = "<center>\'\'\'This file was automatically imported from the following document: [[File:$url.zip|$url.zip]]\'\'\'\n\n";
