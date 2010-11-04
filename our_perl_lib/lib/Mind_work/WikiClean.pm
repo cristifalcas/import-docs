@@ -9,6 +9,7 @@ use Image::Info qw(image_info dim);
 use Mind_work::WikiCommons;
 use Data::Dumper;
 use HTML::Tidy;
+use HTML::WikiConverter;
 use Text::Balanced qw (
     extract_tagged
     extract_multiple
@@ -54,13 +55,14 @@ sub tag_remove_attr {
     } elsif ($tag_name eq "span"){
 	    if ($attr_name eq "lang" || $attr_name eq "id" || $attr_name eq "dir" ||
 		    ($attr_name eq "style" &&
-			($attr_value eq "text-decoration: none" ||
+			($attr_value eq "text-decoration: none" || $attr_value eq "FONT-WEIGHT: bold" ||
+			    $attr_value eq "FONT-STYLE: italic" ||
 			   $attr_value =~ m/position: absolute; top: -?[0-9.]{1,}in; left: -?[0-9.]{1,}in; width: [0-9.]{1,}px/ )) ||
 		    ($attr_name eq "class" && $attr_value eq "sd-abs-pos") ){
 		return 1;
 	    } elsif ( ($attr_name eq "style" && (
 		    $attr_value =~  m/background: #[a-f0-9]{6}/ ||
-		    $attr_value =~  m/font-(weight|style): normal/ ||
+		    $attr_value =~  m/font-(weight|style): normal/i ||
 		    $attr_value =~  m/background: transparent/  ))) {
 		return 0;
 	    } else {
@@ -561,16 +563,10 @@ WikiCommons::write_file("$dir/html_text2.$name.txt", $text2, 1);
     return $html;
 }
 
-sub make_wiki_from_html {
-    my $html_file = shift;
-#     my $html_file = "./MINDBill 6.60.003 Manager User Manual.html";
-    my ($name,$dir,$suffix) = fileparse($html_file, qr/\.[^.]*/);
-
-    open (FILEHANDLE, "$html_file") or die "at wiki from html Can't open file $html_file: ".$!."\n";
-    my $html = do { local $/; <FILEHANDLE> };
-    close (FILEHANDLE);
-
+sub make_wiki_from_html_work {
+    my ($html, $html_file) = @_;
     $html = cleanup_html($html, $html_file) || return undef;
+    my ($name,$dir,$suffix) = fileparse($html_file, qr/\.[^.]*/);
 
     print "\t-Generating wiki file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
     my $strip_tags = [ '~comment', 'head', 'script', 'style', 'strike'];
@@ -617,6 +613,18 @@ WikiCommons::write_file("$dir/fix_small_issues.$name.txt", $wiki, 1);
     print "\t+Fixing wiki.\t". (WikiCommons::get_time_diff) ."\n";
 
     return ($wiki, $image_files);
+}
+
+sub make_wiki_from_html {
+    my $html_file = shift;
+#     my $html_file = "./MINDBill 6.60.003 Manager User Manual.html";
+
+    open (FILEHANDLE, "$html_file") or die "at wiki from html Can't open file $html_file: ".$!."\n";
+    my $html = do { local $/; <FILEHANDLE> };
+    close (FILEHANDLE);
+
+
+    return make_wiki_from_html_work($html, $html_file);
 }
 
 sub fix_tabs {
@@ -681,7 +689,7 @@ sub fix_external_links {
 sub fix_wiki_chars {
     my $wiki = shift;
     ## fix strange characters
-    print "\tFix characters in wiki.\t". (WikiCommons::get_time_diff) ."\n";
+#     print "\tFix characters in wiki.\t". (WikiCommons::get_time_diff) ."\n";
     ## decode utf8 character in hex: perl -e 'print sprintf("\\x{%x}", $_) foreach (unpack("C*", "Ó"));print"\n"'
     # copyright
 #     $wiki =~ s/\x{c3}\x{93}/\x{C2}\x{A9}/gs;
@@ -802,12 +810,12 @@ sub get_wiki_images {
     my ($wiki, $image_files, $dir) = @_;
     print "\tFix images from wiki.\t". (WikiCommons::get_time_diff) ."\n";
     while ($wiki =~ m/(\[\[Image:)([[:print:]].*?)(\]\])/g ) {
-	my $pic_name = uri_unescape( $2  );
+	my $pic_name = uri_unescape( $2 );
 	$pic_name =~ s/(.*?)(\|.*)/$1/;
 	push (@$image_files,  "$dir/$pic_name");
 	my $info = image_info("$dir/$pic_name");
 	if (my $error = $info->{error}) {
-	    die "Can't parse image info: $error.\t". (WikiCommons::get_time_diff) ."\n";
+	    die "Can't parse image info for $dir $pic_name: $error.\t". (WikiCommons::get_time_diff) ."\n";
 	}
     }
     return $image_files;
@@ -865,7 +873,7 @@ sub fix_wiki_links_menus {
 sub fix_wiki_url {
     my $wiki = shift;
     ### fix url links
-    print "\tFix urls from wiki.\t". (WikiCommons::get_time_diff) ."\n";
+#     print "\tFix urls from wiki.\t". (WikiCommons::get_time_diff) ."\n";
     my $newwiki = $wiki;
     while ($wiki =~ m/(http:\/\/.*?)\s+/g) {
 	my $q = $1;
@@ -880,7 +888,7 @@ sub fix_wiki_url {
 sub fix_wiki_link_to_sc {
     my $wiki = shift;
     ## for every B1111 make it a link
-    print "\tFix links to SC.\t". (WikiCommons::get_time_diff) ."\n";
+#     print "\tFix links to SC.\t". (WikiCommons::get_time_diff) ."\n";
     my $newwiki = $wiki;
     my $count = 0;
     while ($wiki =~ m/(\[\[Image:[[:print:]]*?B[[:digit:]]{4,}[[:print:]]*?\]\])|(\bB[[:digit:]]{4,}\b)/g ) {
