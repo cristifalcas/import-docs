@@ -4,13 +4,6 @@ use warnings;
 use strict;
 $SIG{__WARN__} = sub { die @_ };
 
-<<<<<<< HEAD
-# $info->{'desc'}
-# $info->{'solution'}
-# $info->{T,B,.N}
-
-=======
->>>>>>> 26a423f4828fe47cf8d41b335989409df1a942e5
 #
 # hash:
 #     event number 0
@@ -19,6 +12,7 @@ $SIG{__WARN__} = sub { die @_ };
 # 	$info->{'date'}->{'date'}
 # 	$info->{'date'}->{'time'}
 # 	$info->{'desc'}
+# 	$info->{T,B,.N}
 # 	$info->{'incharge'}->{'email'}
 # 	$info->{'incharge'}->{'first_name'}
 # 	$info->{'incharge'}->{'last_name'}
@@ -135,16 +129,9 @@ sub write_xml {
 sub write_file {
     my ($path, $text) = @_;
     open (FILE, ">$path") or die "can't open file $path for writing: $!\n";
-<<<<<<< HEAD
     $text = encode("utf8", $text);
 #     Encode::from_to( $text, "cp1252", "utf8");
     print FILE "$text";
-=======
-#     $text = encode("cp1252", $text);
-    Encode::from_to( $text, "cp1252", "utf8");
-    print FILE "$text";
-s
->>>>>>> 26a423f4828fe47cf8d41b335989409df1a942e5
     close (FILE);
 #     my $our_wiki = new WikiWork();
 #     print $path."\n";
@@ -499,11 +486,8 @@ sub write_customer {
 
 sub parse_text {
     my ($text, $extra_info) = @_;
-<<<<<<< HEAD
     return $text if $text =~ m/^\s*$/;
-=======
 
->>>>>>> 26a423f4828fe47cf8d41b335989409df1a942e5
     my $init_text = $text;
     $text =~ s/\r?\n/\n/g;
     if (defined $extra_info) {
@@ -511,7 +495,6 @@ sub parse_text {
 	my $tmp = quotemeta $extra_info->{'subject'};
 	$text =~ s/Subject:[ ]+$tmp\nDate:[ ]+$extra_info->{event_date}\n+//;
 	$tmp = quotemeta("*************************************************");
-<<<<<<< HEAD
 	my $reg_exp = "MIND CTI Support Center\n+[a-zA-Z0-9 ]{0,}\n+$tmp\n+Service Call Data:\n+Number:[ ]+$extra_info->{'customer'} \/ $extra_info->{'sr_no'}\n+Received:[ ]+$extra_info->{sr_date}\n+Current Status:[ ]+[a-zA-Z0-9 ]{1,}\n+$tmp\n+PLEASE DO NOT REPLY TO THIS EMAIL - Use the CRM\n*";
 
 	$text =~ s/$reg_exp//gs;
@@ -524,11 +507,11 @@ sub parse_text {
 
 
     my $enc = get_encoding($text);
-unlink('./1');unlink('./2');unlink('./3');
+# unlink('./1');unlink('./2');unlink('./3');
 # print "\nenc: ".$enc."\n";
 # write_file('./2',$text);
 #     $text = Encode::from_to($text,'cp1251', 'cp1251');
-write_file('./1',$text);
+# write_file('./1',$text);
 #     $text =~ s//\'/gm;
     if ($enc eq "utf8"){
 	$text = encode ("utf8", $text);
@@ -554,32 +537,13 @@ write_file('./1',$text);
 #     use HTML::Entities;
 #     $text = encode_entities($text);
 #     $text =~ s/^([*#])/<br\/>$1/gm;
-=======
-	my $reg_exp = "MIND CTI Support Center\n+[a-zA-Z0-9 ]{1,}\n+$tmp\n+Service Call Data:\n+Number:[ ]+$extra_info->{'customer'} \/ $extra_info->{'sr_no'}\n+Received:[ ]+$extra_info->{sr_date}\n+Current Status:[ ]+[a-zA-Z0-9 ]{1,}\n+$tmp\n+PLEASE DO NOT REPLY TO THIS EMAIL - Use the CRM\n*";
-
-	$text =~ s/$reg_exp//g;
-die "not good: $init_text\n$reg_exp\n" if $text =~ m/^PLEASE DO NOT REPLY TO THIS EMAIL/mg;
-    }
-    $text = WikiClean::fix_wiki_chars( $text );
-    $text = WikiClean::fix_wiki_url( $text );
-    $text = WikiClean::fix_wiki_link_to_sc( $text );
-    $text = WikiClean::fix_external_links( $text );
-    $text = WikiClean::fix_small_issues( $text );
-#     $text =~ s/([^\n])\n/$1\n\n/gm;
-    $text =~ s/([^\n])\n([^\n])/$1\n\n$2/gm;
-    $text =~ s/\n([*#])/<br\/>$1/g;
->>>>>>> 26a423f4828fe47cf8d41b335989409df1a942e5
 #     $text =~ s/\n*$/\n/gm;
     return $text;
 }
 
 sub write_intro {
     my ($hash, $date, $time) = @_;
-<<<<<<< HEAD
     my $wiki =  "<center>\'\'\'$hash->{'subject'}\'\'\'</center>\n";
-=======
-    my $wiki =  "<center>\'\'\'$hash->{'customer'} : $hash->{'subject'}\'\'\'</center>\n";
->>>>>>> 26a423f4828fe47cf8d41b335989409df1a942e5
     $wiki .=  "<p align=\"right\">$time $date</p>\n\n";
     $wiki .=  "\'\'\'Incharge\'\'\': $hash->{'incharge'}->{'first_name'} $hash->{'incharge'}->{'last_name'} ([mailto:$hash->{'incharge'}->{'email'} $hash->{'incharge'}->{'email'}])\n" if (keys %{$hash->{'incharge'}});
     my $type = $hash->{'type'} || '';
@@ -593,11 +557,7 @@ sub write_intro {
 | $hash->{'mind_category'}
 | $hash->{'cust_category'}
 |}\n\n";
-<<<<<<< HEAD
     my $text = parse_text($hash->{'solution'}, undef);
-=======
-    my $text = $hash->{'solution'};
->>>>>>> 26a423f4828fe47cf8d41b335989409df1a942e5
     my $tmp = parse_text($hash->{'desc'}, undef);
     $wiki .=  "\'\'\'Description\'\'\': $tmp\n\n";
     $wiki .=  "\'\'\'Solution\'\'\':\n\n$text\n----\n";
@@ -617,11 +577,8 @@ sub write_header {
     my $wiki .= "<div style=\"background-color:#FDE4AD;\">\n<p>";
     $wiki .= "\n----\n";
     my $tmp = $hash->{'short_desc'};
-<<<<<<< HEAD
     $tmp = parse_text($tmp, undef);
-=======
-    chomp($tmp);
->>>>>>> 26a423f4828fe47cf8d41b335989409df1a942e5
+
     $wiki .= "\'\'\'Description\'\'\': $tmp ";
     $wiki .= "<div style=\"float: right;\">$time $date</div>\n\n";
     $wiki .= "\'\'\'From\'\'\': $name\n\n";
@@ -643,13 +600,9 @@ sub get_color {
 	### this is a mind message
 # 	$color = "<font color=\"#2B1B17\">\n";
 	$color = "<font color=\"grey\">\n";
-<<<<<<< HEAD
 	if (scalar keys %{$hash->{'person'}}) {
 	    $name = "$hash->{'person'}->{'first_name'} $hash->{'person'}->{'last_name'} ([mailto:$hash->{'person'}->{'email'} $hash->{'person'}->{'email'}])";
 	}
-=======
-	$name = "$hash->{'person'}->{'first_name'} $hash->{'person'}->{'last_name'} ([mailto:$hash->{'person'}->{'email'} $hash->{'person'}->{'email'}])";
->>>>>>> 26a423f4828fe47cf8d41b335989409df1a942e5
 	$event_from_mind = 1;
     } elsif (keys %{$hash->{'person'}}) {
 	### this is a mind message
@@ -668,10 +621,7 @@ sub get_color {
 	$color = "<font color=\"#0000FF\">\n";
 	print "\tNo customer and no mind engineer. Maybe a customer message.\n";
     }
-<<<<<<< HEAD
     $name = parse_text($name, undef);
-=======
->>>>>>> 26a423f4828fe47cf8d41b335989409df1a942e5
     return ($name, $color, $event_from_mind);
 }
 
@@ -691,20 +641,12 @@ sub write_sr {
 	    $extra_info->{'sr_no'} = "$hash->{'number'}";
 	    $extra_info->{'subject'} = "$hash->{'subject'}";
 	} else {
-<<<<<<< HEAD
-=======
-# print Dumper($hash);
->>>>>>> 26a423f4828fe47cf8d41b335989409df1a942e5
 	    my ($name, $color, $event_from_mind) = get_color($hash, $extra_info, $date, $time);
 	    ### Header
 	    if ( ! defined $hash->{'event'} ){
 		print "No event code for event $key.\n";
 		$hash->{'event'}->{'code'} = '';
-<<<<<<< HEAD
 		$hash->{'event'}->{'desc'} = '';
-=======
-		$hash->{'status'}->{'desc'} = '';
->>>>>>> 26a423f4828fe47cf8d41b335989409df1a942e5
 	    }
 	    $wiki .= write_header($hash, $name, $date, $time, $key);
 
@@ -718,15 +660,10 @@ sub write_sr {
 		    my $text = $hash->{'description'}->{$desc};
 		    $text =~ s/&amp;/&/g;
 		    my @arr = split '/', $text;
-<<<<<<< HEAD
 		    $text =~ s/ /%20/g;
 		    my $see = $arr[-1];
 		    $see =~ s/^[0-9]{1,}-//;
 		    $attachements .= "[$text $see]\n\n";
-=======
-		    $text =~ s/ /%20/g;;
-		    $attachements .= "[$text $arr[-1]]\n\n";
->>>>>>> 26a423f4828fe47cf8d41b335989409df1a942e5
 		} elsif ( $desc =~ m/^U2$/) {
 		    $attachements .= "$hash->{'description'}->{$desc}\n\n";
 		} elsif ( $desc =~ m/^ [1-9]{1}$/) {
@@ -782,13 +719,8 @@ print "+Get common info.\t". (WikiCommons::get_time_diff) ."\n";
 # exit 1;
 foreach my $cust (sort keys %$customers){
     print "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
-<<<<<<< HEAD
 # next if $customers->{$cust}->{'displayname'} ne "Artelecom";
 # next if $cust != 381;
-=======
-# next if $customers->{$cust}->{'displayname'} ne "IRISTEL";
-next if $cust < 233;
->>>>>>> 26a423f4828fe47cf8d41b335989409df1a942e5
     my $dir = write_customer ($customers->{$cust}, get_customer_attributes($cust));
     my $crt_srs = get_allsrs($cust);
     my $prev_srs = get_previous("$to_path/".$customers->{$cust}->{'displayname'});
@@ -808,13 +740,8 @@ next if $cust < 233;
     print "\tadd ".(scalar keys %$crt_srs)." new files.\n";
     my $nr = 0;
     foreach my $sr (sort {$a<=>$b} keys %$crt_srs) {
-<<<<<<< HEAD
 # print "$sr\n";next if $sr <804;
 # print "$sr\n";next if $sr < 22;
-=======
-print "$sr\n";next if $sr <445;
-# print "$sr\n";next if $sr <233;
->>>>>>> 26a423f4828fe47cf8d41b335989409df1a942e5
 	my $info = {};
 	$info = get_sr($cust, $sr);
 	my $name = "$dir/".sprintf("%07d", $sr)."_".(scalar keys %$info);
