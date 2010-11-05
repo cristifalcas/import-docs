@@ -670,7 +670,7 @@ sub fix_wiki_chars {
     # copyright
 #     $wiki =~ s/\x{c3}\x{93}/\x{C2}\x{A9}/gs;
 ## old
-    ## get ascii hex values from http://www.mikezilla.com/exp0012.html  is ascii %EF%192%17E which is utf \x{e2}\x{87}\x{92}
+    ## get ascii hex values from http://www.mikezilla.com/exp0012.html ïƒž is ascii %EF%192%17E which is utf \x{e2}\x{87}\x{92}
     # numbers ??
 #     $wiki =~ s/\x{B2}/2/gs;
 #     $wiki =~ s/\x{B0}/0/gs;
