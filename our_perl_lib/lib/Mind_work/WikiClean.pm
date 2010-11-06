@@ -417,6 +417,8 @@ sub tree_clean_tables {
 	    if ( $attr_name eq "border"
 		    || $attr_name eq "bordercolor"
 		    || $attr_name eq "cellspacing"
+		    || $attr_name eq "frame"
+		    || $attr_name eq "rules"
 		    || $attr_name eq "width"){
 		$a_tag->attr("$attr_name", undef);
 	    } elsif ($attr_name eq "cellpadding") {
@@ -463,7 +465,7 @@ sub tree_clean_tables {
 				|| $attr_name eq "height"
 				|| $attr_name eq "valign"){
 			    $c_tag->attr("$attr_name", undef);
-			} elsif ($attr_name eq "bgcolor" || $attr_name eq "colspan") {
+			} elsif ($attr_name eq "bgcolor" || $attr_name eq "colspan" || $attr_name eq "rowspan") {
 			} else {
 			    die "Unknown attr in $tag: $attr_name = $attr_value.\n";
 			}
