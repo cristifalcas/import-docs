@@ -196,10 +196,11 @@ sub tree_clean_empty_tag {
 		$some_ok_tags++;
 	    }
 	}
-	if (!$some_ok_attr && !$some_ok_tags) {
+	if (!($some_ok_attr || $some_ok_tags)) {
 	    $a_tag->replace_with($a_tag->content_list());
 	    next;
 	}
+	$a_tag->detach if ($a_tag->is_empty);
     }
     return $tree;
 }
@@ -340,16 +341,18 @@ sub tree_clean_headings {
 	    foreach my $attr_name ($a_tag->all_external_attr_names){
 		my $attr_value = $a_tag->attr($attr_name);
 		if ( $attr_name eq "style" &&
-			    ( $attr_value =~ "^page-break-before" ||
+			    ( $attr_value =~ "^page-break-(before|after)" ||
 			    $attr_value =~ "^margin-left:" ||
-			    $attr_value eq "font-weight: normal")
+			    $attr_value =~ m/^font-(weight|style): normal$/||
+			    $attr_value =~ m/^page-break-inside: avoid$/)
 			|| $attr_name eq "class" && ( $attr_value eq "western" || $attr_value eq "toc-heading-western")
 			|| $attr_name eq "align" && ( $attr_value =~ m/^JUSTIFY$/i)
-			|| $attr_name eq "lang") {
+			|| $attr_name eq "lang"
+			|| $attr_name eq "dir") {
 		    $a_tag->attr("$attr_name", undef);
 # 		} elsif ($attr_name eq "cellpadding") {
 		} else {
-		    die "Unknown attr in h: $attr_name = $attr_value.\n";
+		    die "Unknown attr in heading: $attr_name = $attr_value.\n";
 		}
 	    }
 
@@ -398,6 +401,10 @@ sub tree_clean_headings {
 		}
 	    } elsif ($dad->tag eq "td") {
 		$a_tag->tag("b");
+	    } elsif ($dad->tag eq "span" && $grandpa->tag eq "body" && $grandgrandpa->tag eq "html") {
+		my $clone = $a_tag->clone();
+		$a_tag->detach();
+		$dad->preinsert($clone);
 	    } else {
 		my $q = $dad->tag;
 		die "h in dad: $q => $heading_txt\n";
@@ -422,7 +429,9 @@ sub tree_clean_tables {
 		    || $attr_name eq "cellspacing"
 		    || $attr_name eq "frame"
 		    || $attr_name eq "rules"
-		    || $attr_name eq "width"){
+		    || $attr_name eq "width"
+		    || $attr_name eq "dir"
+		    || $attr_name eq "align"){
 		$a_tag->attr("$attr_name", undef);
 	    } elsif ($attr_name eq "cellpadding") {
 	    } else {
@@ -653,9 +662,6 @@ sub fix_small_issues {
     $wiki =~ s/^\{\|(.*?)$/\n\{\| $1 {{prettytable}}/gm;
     $wiki =~ s/^[ \t]+//mg;
     $wiki =~ s/^[:\s]*$//gm;
-
-    ## FAST AND UGLY
-    $wiki =~ s/(<span id="Frame[0-9]{1,}" style=")float: left;/$1/mg;
 
     return $wiki;
 }
