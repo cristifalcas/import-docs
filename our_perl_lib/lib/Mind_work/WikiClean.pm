@@ -89,10 +89,29 @@ WikiCommons::write_file("$dir/".++$i.". tree_clean_lists.$name.html", tree_to_ht
     my $text2 = tree_to_text($tree);
 WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
 
-    $text1 =~ s/\s//gs;
-    $text2 =~ s/\s//gs;
-    if ($text1 ne $text2 ) {
-	die "Missing text after working on html file.\n";
+    ### special cases:
+    if ($dir =~ m/SC:B04021\/SC:B04021 STP document\/$/ ){
+# . \ + * ? [ ^ ] ( $ )
+	my $q1 = "\\+ interest1\\.21\\.2\\.2nd Invoice";
+	my $q2 = "\+ interest1\.21\.2\.";
+	$text2 =~ s/$q1/$q2/mg;
+WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
+	$q1 = " P\\)\\+\\(Y\\+I\\)1\\.21\\.3.3rd Invoice";
+	$q2 = " P\)\+\(Y\+I\)2nd Invoice1\.21\.3\.3rd Invoice";
+	$text2 =~ s/$q1/$q2/mg;
+WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
+    }
+# #     if ($dir =~ m/Archive Inspector -- Archive Inspector.doc\/$/ ){
+# WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
+#     }
+    $text1 =~ s/[\s]//gs;
+    $text2 =~ s/[\s]//gs;
+    $text1 =~ s/\x{c2}\x{a0}//gs;
+    $text2 =~ s/\x{c2}\x{a0}//gs;
+	if ($text1 ne $text2 ) {
+WikiCommons::write_file("$dir/".++$i." html_text1.$name.txt", $text1, 1);
+WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
+	die "Missing text after working on html file in dir $dir.\n";
 	return undef;
     }
     ## here we remove text, so we use it last
@@ -323,14 +342,14 @@ sub tree_clean_headings {
 	    foreach my $b_tag ($a_tag->content_list){
 		if (ref $b_tag ){
 		    my $tag = $b_tag->tag();
-		    if ($tag eq "img") {
+		    if ($tag eq "img" || $tag eq "table" ) {
 			my $img = $b_tag->clone;
 			$b_tag->detach;
 			$a_tag->postinsert($img);
 		    } elsif ($tag eq "br" || $tag eq "a") {
 			$b_tag->detach;
-# 		    } elsif () {
-		    } elsif ($tag eq "span" || $tag eq "font" || $tag eq "u") {
+		    } elsif ($tag eq "sup" ) {
+		    } elsif ( $tag eq "span" || $tag eq "font" || $tag eq "u") {
 			$b_tag->replace_with( $b_tag->detach_content() );
 		    } else {
 			die "reference in heading: $tag\n";
@@ -340,13 +359,16 @@ sub tree_clean_headings {
 	    ## clean up attributes
 	    foreach my $attr_name ($a_tag->all_external_attr_names){
 		my $attr_value = $a_tag->attr($attr_name);
-		if ( $attr_name eq "style" &&
-			    ( $attr_value =~ "^page-break-(before|after)" ||
-			    $attr_value =~ "^margin-left:" ||
-			    $attr_value =~ m/^font-(weight|style): normal$/||
-			    $attr_value =~ m/^page-break-inside: avoid$/)
-			|| $attr_name eq "class" && ( $attr_value eq "western" || $attr_value eq "toc-heading-western")
-			|| $attr_name eq "align" && ( $attr_value =~ m/^JUSTIFY$/i)
+		if ( $attr_name eq "style"
+# 			    && ( $attr_value =~ "page-break-(before|after|inside)" ||
+# 			    $attr_value =~ "^margin-left:" ||
+# 			    $attr_value =~ m/^font-(weight|style): normal$/||
+# 			    $attr_value =~ m/^page-break-inside: avoid$/)
+			|| $attr_name eq "class" &&
+				( $attr_value eq "western"
+				    || $attr_value eq "toc-heading-western"
+				    || $attr_value eq "heading-3-after-table-western" )
+			|| $attr_name eq "align"
 			|| $attr_name eq "lang"
 			|| $attr_name eq "dir") {
 		    $a_tag->attr("$attr_name", undef);
@@ -431,7 +453,11 @@ sub tree_clean_tables {
 		    || $attr_name eq "rules"
 		    || $attr_name eq "width"
 		    || $attr_name eq "dir"
-		    || $attr_name eq "align"){
+		    || $attr_name eq "align"
+		    || $attr_name eq "style"
+# 			&& ( $attr_value =~ "page-break-(before|after|inside)")
+		    || $attr_name eq "hspace"
+		    || $attr_name eq "vspace"){
 		$a_tag->attr("$attr_name", undef);
 	    } elsif ($attr_name eq "cellpadding") {
 	    } else {
