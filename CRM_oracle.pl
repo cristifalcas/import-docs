@@ -110,10 +110,10 @@ sub get_encoding {
 }
 
 sub print_coco {
-    my $nr = shift;
+    my ($nr, $total) = @_;
     my @array = qw( \ | / - );
     my $padded = sprintf("%05d", $nr);
-    print "\t\t\t\trunning $padded ".$array[$nr%@array]."\r";
+    print "\t\t\t\trunning $padded out of $total".$array[$nr%@array]." \r";
 }
 
 sub write_xml {
@@ -268,6 +268,7 @@ select t.attrib_isn, t.value_text
 	$info->{$attributes->{$row[0]}} = $data;
     }
     $info->{'customer_id'} = $code;
+    $info->{'names'} = $customers->{$code};
     return $info;
 }
 
@@ -282,7 +283,7 @@ select t1.rsceventsscno, count(t1.rsceventssrno)
           from tblscmainrecord t
          where t.rscmainreccustcode = :CUST_CODE
 	   and t.rscmainrecdeptcode = 1
-           and t.rscmainreclasteventdate >= \'20070101\')
+           and t.rscmainreclasteventdate >= \'20000101\')
  group by t1.rsceventsscno';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->bind_param( ":CUST_CODE", $cust );
@@ -389,7 +390,9 @@ select t.rcustcontlastname,
        t.rcustcontfirstname,
        t.rcustcontemail,
        t.rcustcontcustdept,
-       t.rcustcontposition
+       t.rcustcontposition,
+       t.rcustcontdirectphone,
+       t.rcustcontmobilephno
   from tblcustomercontacts t
  where t.rcustcontcompanycode = :CUSTOMER
    and t.rcustcontactcode = :CODE';
@@ -404,6 +407,8 @@ select t.rcustcontlastname,
 	$info->{'email'} = $row[2];
 	$info->{'department'} = $row[3];
 	$info->{'position'} = $row[4];
+	$info->{'phone'} = $row[5];
+	$info->{'phone_mobile'} = $row[6];
     }
     print "Customer code $code does not exists anymore.\n" if ! keys %$info;
     return $info;
@@ -475,11 +480,12 @@ sub sql_connect {
 }
 
 sub write_customer {
-    my ($cust, $hash) = @_;
+    my ($hash) = @_;
     print "\t-Get customer info.\t". (WikiCommons::get_time_diff) ."\n";
-    $hash->{'names'} = $cust;
-    my $dir = "$to_path/".$cust->{'displayname'};
+#     $hash->{'names'} = $cust;
+    my $dir = "$to_path/".$hash->{'names'}->{'displayname'};
     WikiCommons::makedir ("$dir");
+    write_xml($hash, "$dir/attributes");
     print "\t+Get customer info.\t". (WikiCommons::get_time_diff) ."\n";
     return $dir;
 }
@@ -616,7 +622,7 @@ sub get_color {
 	my $pos = "";
 	$dept = "department = $hash->{customer_contact}->{department}" if $hash->{'customer_contact'}->{'department'} ne ' ';
 	$pos = "position = $hash->{customer_contact}->{position}" if $hash->{'customer_contact'}->{'position'} ne ' ';
-	$name = "$hash->{'customer_contact'}->{'first_name'} $hash->{'customer_contact'}->{'last_name'} ([mailto:$hash->{'customer_contact'}->{'email'} $hash->{'customer_contact'}->{'email'}]); $dept $pos";
+	$name = "$hash->{'customer_contact'}->{'first_name'} $hash->{'customer_contact'}->{'last_name'} ([mailto:$hash->{'customer_contact'}->{'email'} $hash->{'customer_contact'}->{'email'}]);\nPhone = $hash->{'customer_contact'}->{'phone'}; Mobile phone = $hash->{'customer_contact'}->{'phone_mobile'}\n$dept; $pos";
     } else {
 	$color = "<font color=\"#0000FF\">\n";
 	print "\tNo customer and no mind engineer. Maybe a customer message.\n";
@@ -653,10 +659,10 @@ sub write_sr {
 	    my $attachements = "";
 	    my $sr_text = "";
 	    foreach my $desc (sort keys %{$hash->{'description'}}){
-		if ( $desc =~ m/^T[1-9]{1}$/) {
+		if ( $desc =~ m/^T[0-9]{1}$/) {
 		    my $text = parse_text($hash->{'description'}->{$desc}, $event_from_mind?$extra_info:undef);
 		    $sr_text .= "$text\n\n";
-		} elsif ( $desc =~ m/^B[1-9]{1,2}$/) {
+		} elsif ( $desc =~ m/^B[0-9]{1,2}$/) {
 		    my $text = $hash->{'description'}->{$desc};
 		    $text =~ s/&amp;/&/g;
 		    my @arr = split '/', $text;
@@ -686,7 +692,7 @@ sub get_previous {
     my $dir = shift;
     my $info = {};
     opendir(DIR, "$dir") || die "Cannot open directory $dir: $!.\n";
-    my @files = grep { (!/^\.\.?$/) && -f "$dir/$_" && "$_" ne "attributes.xml"} readdir(DIR);
+    my @files = grep { (!/^\.\.?$/) && -f "$dir/$_" && "$_" ne "attributes.xml" && "$_" =~ m/\.wiki$/} readdir(DIR);
     closedir(DIR);
     foreach my $file (@files){
 	my $str = $file;
@@ -721,7 +727,10 @@ foreach my $cust (sort keys %$customers){
     print "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
 # next if $customers->{$cust}->{'displayname'} ne "Artelecom";
 # next if $cust != 381;
-    my $dir = write_customer ($customers->{$cust}, get_customer_attributes($cust));
+    my $cust_info = get_customer_attributes($cust);
+    next if ! defined $cust_info->{'Latest Version'} || $cust_info->{'Latest Version'} lt "5.00";
+
+    my $dir = write_customer ($cust_info);
     my $crt_srs = get_allsrs($cust);
     my $prev_srs = get_previous("$to_path/".$customers->{$cust}->{'displayname'});
     foreach my $key (keys %$crt_srs) {
@@ -737,7 +746,8 @@ foreach my $cust (sort keys %$customers){
     foreach my $key (keys %$prev_srs) {
 	unlink("$dir/$prev_srs->{$key}") or die "Could not delete the file $dir/$prev_srs->{$key}: ".$!."\n";
     }
-    print "\tadd ".(scalar keys %$crt_srs)." new files.\n";
+    my $total = scalar keys %$crt_srs;
+    print "\tadd $total new files.\n";
     my $nr = 0;
     foreach my $sr (sort {$a<=>$b} keys %$crt_srs) {
 # print "$sr\n";next if $sr <804;
@@ -746,10 +756,10 @@ foreach my $cust (sort keys %$customers){
 	$info = get_sr($cust, $sr);
 	my $name = "$dir/".sprintf("%07d", $sr)."_".(scalar keys %$info);
 	$info->{'0'} = get_sr_desc($cust, $sr);
-	write_xml ($info, $name);
+# 	write_xml ($info, $name);
 	my $txt = write_sr($info);
 	write_file ( "$name.wiki", $txt);
-	print_coco(++$nr);
+	print_coco(++$nr, $total);
     }
 }
 
