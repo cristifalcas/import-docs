@@ -2,6 +2,7 @@
 print "Start.\n";
 $SIG{__WARN__} = sub { die @_ };
 
+
 #soffice "-accept=socket,host=localhost,port=2002;urp;StarOffice.ServiceManager" -nologo -headless -nofirststartwizard
 
 # categories:

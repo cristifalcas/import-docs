@@ -329,17 +329,20 @@ sub tree_clean_headings {
 		    } elsif ($tag eq "br" || $tag eq "a") {
 			$b_tag->detach;
 # 		    } elsif () {
-		    } elsif ($tag eq "span" || $tag eq "font") {
+		    } elsif ($tag eq "span" || $tag eq "font" || $tag eq "u") {
 			$b_tag->replace_with( $b_tag->detach_content() );
 		    } else {
-			die "reference in html: $tag\n";
+			die "reference in heading: $tag\n";
 		    }
 		}
 	    }
 	    ## clean up attributes
 	    foreach my $attr_name ($a_tag->all_external_attr_names){
 		my $attr_value = $a_tag->attr($attr_name);
-		if ( $attr_name eq "style" && ( $attr_value =~ "^page-break-before" ||  $attr_value =~ "^margin-left:")
+		if ( $attr_name eq "style" &&
+			    ( $attr_value =~ "^page-break-before" ||
+			    $attr_value =~ "^margin-left:" ||
+			    $attr_value eq "font-weight: normal")
 			|| $attr_name eq "class" && ( $attr_value eq "western" || $attr_value eq "toc-heading-western")
 			|| $attr_name eq "align" && ( $attr_value =~ m/^JUSTIFY$/i)
 			|| $attr_name eq "lang") {
@@ -440,7 +443,7 @@ sub tree_clean_tables {
 	foreach my $b_tag ($a_tag->content_list){
 	    die "not reference in table\n" if ! ref $b_tag;
 	    my $tag = $b_tag->tag;
-	    if ( $tag eq "col" ){
+	    if ( $tag eq "col" || $tag eq "colgroup"){
 		$b_tag->detach;
 	    } elsif ( $tag eq "tr" ){
 		### clean tr attributes
@@ -477,7 +480,7 @@ sub tree_clean_tables {
 		}
 		$b_tag->detach if ($all_lines_empty == 0);
 	    } else {
-		die "Unknown tag: $tag.\n";
+		die "Unknown tag in table: $tag.\n";
 	    }
 	}
     }
@@ -520,6 +523,7 @@ sub tree_clean_lists {
     my $tree = shift;
     ### remove empty lists from body
     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
+	next if ! $a_tag->is_empty();
 	my $not_ok = 0;
 	my $last = "";
 	foreach my $parent ($a_tag->lineage()){
@@ -644,9 +648,9 @@ sub fix_small_issues {
     ## remove consecutive blank lines
     $wiki =~ s/(\n){4,}/\n\n/gs;
     ## more new lines for menus and tables
-    $wiki =~ s/^\n+([ \t]*=+[ \t]*)(.*?)([ \t]*=+[ \t]*)\n+$/\n\n$1$2$3\n/gm;
+    $wiki =~ s/^([ \t]*=+[ \t]*)(.*?)([ \t]*=+[ \t]*)$/\n\n$1$2$3\n/gm;
     $wiki =~ s/\|}\s*{\|/\|}\n\n\n{\|/mg;
-    $wiki =~ s/^\{\|(.*?)$/\n\{\| $1 {{prettytable}} /gm;
+    $wiki =~ s/^\{\|(.*?)$/\n\{\| $1 {{prettytable}}/gm;
     $wiki =~ s/^[ \t]+//mg;
     $wiki =~ s/^[:\s]*$//gm;
 
