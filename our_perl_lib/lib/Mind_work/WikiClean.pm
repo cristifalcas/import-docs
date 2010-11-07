@@ -41,11 +41,13 @@ sub tree_clean_div {
 		    || $attr_name eq "title"
 		    || $attr_name eq "align") {
 		$a_tag->attr("$attr_name", undef);
-	    } elsif (($attr_name eq "type" && $attr_value =~ m/^FOOTER$/i) || $attr_name eq "style" ) {
+	    } elsif (($attr_name eq "type" && $attr_value =~ m/^FOOTER$/i) || $attr_name eq "style"
+		|| $attr_name eq "href") {
 	    } elsif ($attr_name eq "id" ) {
 		$id++;
 	    } else {
-		die "Unknown tag in div: $attr_name = $attr_value\n";
+		print "Unknown tag in div: $attr_name = $attr_value\n";
+		return undef;
 	    }
 	}
 	my $nr_attr = scalar $a_tag->all_external_attr_names();
@@ -99,7 +101,7 @@ WikiCommons::write_file("$dir/".++$i.". tree_remove_TOC.$name.html", tree_to_htm
     my $text1 = tree_to_text($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_text1.$name.txt", $text1, 1);
     ## after TOC, because in TOC we use div
-    $tree = tree_clean_div($tree);
+    $tree = tree_clean_div($tree) || return undef;
 WikiCommons::write_file("$dir/".++$i.". tree_clean_div.$name.html", tree_to_html($tree), 1);
     $tree = tree_clean_empty_p($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_clean_empty_p.$name.html", tree_to_html($tree), 1);
@@ -107,7 +109,7 @@ WikiCommons::write_file("$dir/".++$i.". tree_clean_empty_p.$name.html", tree_to_
 WikiCommons::write_file("$dir/".++$i.". tree_clean_empty_tag_span.$name.html", tree_to_html($tree), 1);
     $tree = tree_clean_empty_tag($tree, 'font');
 WikiCommons::write_file("$dir/".++$i.". tree_clean_empty_tag_font.$name.html", tree_to_html($tree), 1);
-    $tree = tree_clean_tables($tree);
+    $tree = tree_clean_tables($tree) || return undef;
 WikiCommons::write_file("$dir/".++$i.". tree_clean_tables.$name.html", tree_to_html($tree), 1);
 
     $tree = tree_clean_headings($tree) || return undef;
@@ -283,10 +285,12 @@ sub tree_clean_headings {
 		    } elsif ($tag eq "br" || $tag eq "a") {
 			$b_tag->detach;
 		    } elsif ($tag eq "sup" ) {
-		    } elsif ( $tag eq "span" || $tag eq "font" || $tag eq "u" || $tag eq "b") {
+		    } elsif ( $tag eq "span" || $tag eq "font" || $tag eq "u" || $tag eq "b" || $tag eq "em"
+			|| $tag eq "center" || $tag eq "i") {
 			$b_tag->replace_with( $b_tag->detach_content() );
 		    } else {
-			die "reference in heading: $tag\n";
+			print "reference in heading: $tag\n";
+			return undef;
 		    }
 		}
 	    }
@@ -310,7 +314,8 @@ sub tree_clean_headings {
 		    $a_tag->attr("$attr_name", undef);
 # 		} elsif ($attr_name eq "cellpadding") {
 		} else {
-		    die "Unknown attr in heading: $attr_name = $attr_value.\n";
+		    print "Unknown attr in heading: $attr_name = $attr_value.\n";
+		    return undef;
 		}
 	    }
 
@@ -348,7 +353,8 @@ sub tree_clean_headings {
 		    }
 		    if ($not_ok) {
 			my $q = $grandgrandpa->tag;
-			print "h in li with grandgrandpa: $q => $heading_txt\n";
+			print "h in li with grandgrandpa: $q => ". encode('utf8', $heading_txt) ."\n";
+			return undef;
 		    } else {
 # 			print $last->tag." ".$last->parent->tag." \n";
 			my $clone = $a_tag->clone();
@@ -365,7 +371,8 @@ sub tree_clean_headings {
 		$dad->preinsert($clone);
 	    } else {
 		my $q = $dad->tag;
-		die "h in dad: $q => $heading_txt\n";
+		print "h in dad: $q => $heading_txt\n";
+		return undef;
 	    }
 	}
     }
@@ -377,7 +384,6 @@ sub tree_clean_headings {
 sub tree_clean_tables {
     my $tree = shift;
 
-    print "\t-Fix tables.\t". (WikiCommons::get_time_diff) ."\n";
     foreach my $a_tag ($tree->guts->look_down(_tag => "table")) {
 	### clean table attributes
 	foreach my $attr_name ($a_tag->all_external_attr_names){
@@ -397,7 +403,8 @@ sub tree_clean_tables {
 		$a_tag->attr("$attr_name", undef);
 	    } elsif ($attr_name eq "cellpadding") {
 	    } else {
-		die "Unknown attr in table: $attr_name = $attr_value.\n";
+		print "Unknown attr in table: $attr_name = $attr_value.\n";
+		return undef;
 	    }
 	}
 	### replace thead and tbody wqith content
@@ -423,7 +430,8 @@ sub tree_clean_tables {
 		    if ( $attr_name eq "valign"){
 			$a_tag->attr("$attr_name", undef);
 		    } else {
-			die "Unknown attr in tr: $attr_name = $attr_value.\n";
+			print "Unknown attr in tr: $attr_name = $attr_value.\n";
+			return undef;
 		    }
 		}
 		### expect only td in tr
@@ -431,7 +439,7 @@ sub tree_clean_tables {
 		foreach my $c_tag ($b_tag->content_list){
 		    die "not reference in tr\n" if ! ref $c_tag;
 		    my $tag = $c_tag->tag;
-		    die "Unknown tag\n" if $tag ne "td";
+		    die "Unknown tag: $tag\n" if $tag ne "td" && $tag ne "th";
 		    ### clean td attributes
 		    foreach my $attr_name ($c_tag->all_external_attr_names){
 			my $attr_value = $c_tag->attr($attr_name);
@@ -441,7 +449,8 @@ sub tree_clean_tables {
 			    $c_tag->attr("$attr_name", undef);
 			} elsif ($attr_name eq "bgcolor" || $attr_name eq "colspan" || $attr_name eq "rowspan") {
 			} else {
-			    die "Unknown attr in $tag: $attr_name = $attr_value.\n";
+			    print "Unknown attr in $tag: $attr_name = $attr_value.\n";
+			    return undef;
 			}
 		    }
 		    ### remove empty td
@@ -451,11 +460,11 @@ sub tree_clean_tables {
 		}
 		$b_tag->detach if ($all_lines_empty == 0);
 	    } else {
-		die "Unknown tag in table: $tag.\n";
+		print "Unknown tag in table: $tag.\n";
+		return undef;
 	    }
 	}
     }
-    print "\t+Fix tables.\t". (WikiCommons::get_time_diff) ."\n";
     return $tree;
 }
 

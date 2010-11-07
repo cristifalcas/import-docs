@@ -36,7 +36,7 @@ sub fix_rest_dirs {
 
     return $rest;
 }
-our $q=0;
+
 sub add_document {
     my ($doc_file,$dir_type, $path_file, $url_sep) = @_;
 
@@ -185,7 +185,7 @@ sub add_document {
     } else {
 # 	print "Replace old url $page_url from\n\t\t$pages_toimp_hash->{$page_url}[1]\n\twith the doc from\n\t\t$rel_path\n\tbecause new SP $ver_sp is bigger then $pages_ver->{$page_url}.\n" if (exists $pages_toimp_hash->{$page_url});
 # 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
-$pages_toimp_hash->{$page_url} = [$q++, $rel_path, $svn_url, "link", \@categories];
+$pages_toimp_hash->{$page_url} = ["$page_url", $rel_path, $svn_url, "link", \@categories];
 	$pages_ver->{$page_url} = "$ver_sp";
     }
 #     push(@{$pages_ver->{"$fixed_name$url_sep$ver_without_sp"}}, $ver_sp);
