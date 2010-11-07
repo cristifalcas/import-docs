@@ -260,11 +260,11 @@ sub generate_new_updated_pages {
 	    delete($pages_toimp_hash->{$url});
 	} else {
 	    if (exists $pages_toimp_hash->{$url}) {
-		print "Delete url $url because: \n\t\tcrt_md5\n\t\t\t$pages_local_hash->{$url}[$md5_pos] <> \n\t\t\t$pages_toimp_hash->{$url}[$md5_pos] or \n\t\tcrt_rel_path \n\t\t\t$pages_local_hash->{$url}[$rel_path_pos] <> \n\t\t\t$pages_toimp_hash->{$url}[$rel_path_pos].\n";
+		print "Url $url will be updated because: \n\t\tcrt_md5\n\t\t\t$pages_local_hash->{$url}[$md5_pos] <> \n\t\t\t$pages_toimp_hash->{$url}[$md5_pos] or \n\t\tcrt_rel_path \n\t\t\t$pages_local_hash->{$url}[$rel_path_pos] <> \n\t\t\t$pages_toimp_hash->{$url}[$rel_path_pos].\n";
 	    } else {
 		print "Delete url $url because it doesn't exist anymore.\n";
+		$to_delete->{$url} = $pages_local_hash->{$url};
 	    }
-	    $to_delete->{$url} = $pages_local_hash->{$url};
 	}
     }
     return ($to_delete, $to_keep);
@@ -468,11 +468,11 @@ sub work_real {
 	my $wiki = create_wiki($url, "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]");
 	if (! defined $wiki ){
 	    $to_keep->{$url} = $pages_toimp_hash->{$url};
-	    delete($pages_toimp_hash->{$url});
 	    print "Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
 	    my $name_bad = "$bad_dir/$url".time();
 	    WikiCommons::makedir("$name_bad");
 	    move("$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]","$name_bad");
+	    delete($pages_toimp_hash->{$url});
 	    next;
 	}
 	my $head_text = "<center>\'\'\'This file was automatically imported from the following document: [[File:$url.zip|$url.zip]]\'\'\'\n\n";
