@@ -187,6 +187,7 @@ sub add_document {
 # 	print "Ignore new page $page_url from\n\t\t$rel_path\n\tbecause new SP $ver_sp is smaller then $pages_ver->{$page_url}.\n"
     } else {
 # 	print "Replace old url $page_url from\n\t\t$pages_toimp_hash->{$page_url}[1]\n\twith the doc from\n\t\t$rel_path\n\tbecause new SP $ver_sp is bigger then $pages_ver->{$page_url}.\n" if (exists $pages_toimp_hash->{$page_url});
+	$page_url = WikiCommons::normalize_text( $page_url );
 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
 # $pages_toimp_hash->{$page_url} = ["$page_url", $rel_path, $svn_url, "link", \@categories];
 	$pages_ver->{$page_url} = "$ver_sp";

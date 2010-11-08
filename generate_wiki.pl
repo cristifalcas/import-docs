@@ -215,6 +215,7 @@ sub get_existing_pages {
 		}
 		my $md5 = (split ('=', $info_text[$md5_pos]))[1];
 		my $rel_path = (split ('=', $info_text[$rel_path_pos]))[1];
+		$rel_path = Encode::decode ('utf8', $rel_path);
 		my $svn_url = (split ('=', $info_text[$svn_url_pos]))[1];
 		my $url_type = (split ('=', $info_text[$link_type_pos]))[1];
 		if (!(defined $md5 && defined $rel_path && defined $url_type && defined $svn_url)){
