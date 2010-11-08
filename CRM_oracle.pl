@@ -728,7 +728,8 @@ foreach my $cust (sort keys %$customers){
 # next if $customers->{$cust}->{'displayname'} ne "Artelecom";
 # next if $cust != 381;
     my $cust_info = get_customer_attributes($cust);
-    next if ! defined $cust_info->{'Latest Version'} || $cust_info->{'Latest Version'} lt "5.00";
+    next if (! defined $cust_info->{'Latest Version'} || $cust_info->{'Latest Version'} lt "5.00")
+	    && $customers->{$cust}->{'displayname'} ne "Billing";
 
     my $dir = write_customer ($cust_info);
     my $crt_srs = get_allsrs($cust);

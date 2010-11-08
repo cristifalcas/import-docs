@@ -2,7 +2,6 @@
 print "Start.\n";
 $SIG{__WARN__} = sub { die @_ };
 
-
 #soffice "-accept=socket,host=localhost,port=2002;urp;StarOffice.ServiceManager" -nologo -headless -nofirststartwizard
 
 # categories:
@@ -100,6 +99,7 @@ WikiCommons::makedir $wiki_dir;
 $wiki_dir = abs_path($wiki_dir);
 
 my $bad_dir = "$path_prefix/work/bad_dir";
+WikiCommons::makedir $bad_dir;
 my $pid_file = "$path_prefix/work/mind_import_wiki.pid";
 my $remote_work_path = "$path_prefix/remote_batch_files";
 
@@ -441,7 +441,6 @@ sub insertdata {
     } else {
 	print "\tCopy files to $remote_work_path/$wiki_result\n";
 	WikiCommons::makedir("$remote_work_path/$wiki_result");
-	WikiCommons::copy_dir ("$work_dir/$wiki_result", "$remote_work_path/$wiki_result");
 	copy("$work_dir/$url.full.wiki","$remote_work_path/$url") or die "Copy failed for: $url.full.wiki to $remote_work_path: $!\t". (WikiCommons::get_time_diff) ."\n";
     }
 

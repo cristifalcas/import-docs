@@ -217,7 +217,6 @@ sub fix_name {
     $fixed_name =~ s/jinny/Jinny/gi;
     $fixed_name =~ s/([[:digit:]])_/$1\./gi;
     $fixed_name =~ s/_/\ /gi;
-    $fixed_name =~ s/\s+ver\s*$//gi;
     my $yet_another_version_style = $ver;
     if (defined $ver && defined $main) {
 	no warnings;
@@ -237,6 +236,7 @@ sub fix_name {
 	$fixed_name =~ s/\s+[v]?$amain\s*$//i;
 	$fixed_name =~ s/\s+[v]?$aver\s*$//i;
     }
+    $fixed_name =~ s/\s+ver\s*$//i;
 
     $fixed_name =~ s/^\s?//;
     $fixed_name =~ s/\s?$//;
@@ -310,13 +310,14 @@ sub check_vers {
     #Fix first version
     $ver = $ver."0" if $ver =~ m/^v?[[:digit:]]{1,}(\.[[:digit:]])$/i;
     $ver = $ver.".00" if $ver =~ m/^v?[[:digit:]]{1,}$/i;
+
     if ( ($ver !~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,}){0,}( )?[a-z]*?$/i) &&
 	    ($ver !~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,})*( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*$/i) ){
 	$ver = $main;
-	if ( ($main =~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,}){0,}( )?[a-z]{0,}$/i) ||
-	    ($main =~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,})*( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*$/i) ){
-	    $main =~ s/^([v])?([[:digit:]]{1,}\.[[:digit:]]{1,})(.*)?/$2/gi;
-	}
+    }
+    if ( ($main =~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,}){0,}( )?[a-z]{0,}$/i) ||
+	($main =~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,})*( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*$/i) ){
+	$main =~ s/^([v])?([[:digit:]]{1,}\.[[:digit:]]{1,})(.*)?/$2/gi;
     }
     $main =~ s/^v//gi;
     $ver =~ s/^v//gi;
@@ -325,9 +326,9 @@ sub check_vers {
     if ($ver_fixed =~ /[[:digit:]]{1,}(\.[[:digit:]]{1,})*?( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*/i) {
 	$ver_fixed =~ s/([[:digit:]]{1,}(\.[[:digit:]]{1,})*?)( )?(sp[[::digit]]{1,})(\.[[:digit:]]{1,})*/$1 $4$5/gi;
 	$ver_sp = $ver;
-	$ver_sp =~ s/^(.*?)( )?(sp.*)$/$3/gi;
+	$ver_sp =~ s/^(.*?)( )?(sp[[:digit:]]{1,}(\.[[:digit:]]{1,})*)$/$3/gi;
 	$ver_without_sp = $ver;
-	$ver_without_sp =~ s/^(.*?)( )?(sp.*)$/$1/gi;
+	$ver_without_sp =~ s/^(.*?)( )?(sp[[:digit:]]{1,}(\.[[:digit:]]{1,})*)$/$1/gi;
 # 	$ver_fixed = $ver_without_sp;
     } else {
 	$ver_fixed =~ s/([[:digit:]]{1,}(\.[[:digit:]]{1,})*?)( )?([a-z]{1,})/$1 $4/gi;
@@ -336,9 +337,9 @@ sub check_vers {
     $big_ver =~ s/^(.*?)\.(.*)/$1/;
 
     if ( ($ver !~ /^$main/)
-    || !( ($ver =~ /^[[:digit:]]{1,}(\.[[:digit:]]{1,})*?[ a-z]*?$/i)
-    || ($ver =~ /^[[:digit:]]{1,}(\.[[:digit:]]{1,})*( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*$/i) )
-    || ($main !~ /^[[:digit:]]{1,}(\.[[:digit:]]{1,})*?$/) ) {
+    || !(  ($ver =~ /^[[:digit:]]{1,}(\.[[:digit:]]{1,})*?[ a-z]*?$/i)
+	|| ($ver =~ /^[[:digit:]]{1,}(\.[[:digit:]]{1,})*( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*$/i) )
+	|| ($main !~ /^[[:digit:]]{1,}(\.[[:digit:]]{1,})*?$/) ) {
 	die "Version $ver should contain main $main.\n";
     }
     $ver_without_sp = $ver_fixed if $ver_without_sp eq "";

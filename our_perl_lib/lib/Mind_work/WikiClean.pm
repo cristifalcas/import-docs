@@ -46,7 +46,7 @@ sub tree_clean_div {
 	    } elsif ($attr_name eq "id" ) {
 		$id++;
 	    } else {
-		print "Unknown tag in div: $attr_name = $attr_value\n";
+		die "Unknown tag in div: $attr_name = $attr_value\n";
 		return undef;
 	    }
 	}
@@ -152,7 +152,7 @@ WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
 	if ($text1 ne $text2 ) {
 WikiCommons::write_file("$dir/".++$i." html_text1.$name.txt", $text1, 1);
 WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
-	print "Missing text after working on html file in dir $dir.\n";
+	die "Missing text after working on html file in dir $dir.\n";
 	return undef;
     }
     ## here we remove text, so we use it last
@@ -173,6 +173,7 @@ sub tree_fix_numbers_in_headings {
 	    foreach my $b_tag ($a_tag->content_refs_list){
 		if (! ref $$b_tag ){
 		    $$b_tag =~ s/^\s*([0-9]{1,}\.)+\s*//;
+		    $$b_tag =~ s/^\s*[0-9]{1,}([a-z])\s*/$1/i;
 		    last;
 		}
 	    }
@@ -257,7 +258,7 @@ sub tree_clean_empty_tag {
 	    }
 	}
 	if (!($some_ok_attr || $some_ok_tags)) {
-	    $a_tag->replace_with($a_tag->content_list());
+	    $a_tag->replace_with_content;
 	    next;
 	}
 	$a_tag->detach if ($a_tag->is_empty);
@@ -271,29 +272,36 @@ sub tree_clean_headings {
     print "\t-Fix headings.\t". (WikiCommons::get_time_diff) ."\n";
     foreach my $a_tag ($tree->descendants()) {
 	if ($a_tag->tag =~ m/^h[0-9]{1,2}$/) {
+	    $a_tag->postinsert("\n");
 	    my $dad = $a_tag->parent;
 	    my $grandpa = $dad->parent;
 	    my $grandgrandpa = $grandpa->parent;
+
 	    ## extract images from heading and put it after it. Remove other attr
 	    foreach my $b_tag ($a_tag->content_list){
 		if (ref $b_tag ){
 		    my $tag = $b_tag->tag();
-		    if ($tag eq "img" || $tag eq "table" ) {
+		    if ($tag eq "img" || $tag eq "table") {
+die "table in h\n" if $tag eq "table";
 			my $img = $b_tag->clone;
 			$b_tag->detach;
-			$a_tag->postinsert($img);
+# 			$a_tag->postinsert($img);
+			$a_tag->preinsert($img);
 		    } elsif ($tag eq "br" || $tag eq "a") {
 			$b_tag->detach;
 		    } elsif ($tag eq "sup" ) {
 		    } elsif ( $tag eq "span" || $tag eq "font" || $tag eq "u" || $tag eq "b" || $tag eq "em"
 			|| $tag eq "center" || $tag eq "i") {
-			$b_tag->replace_with( $b_tag->detach_content() );
+			$b_tag->replace_with_content;
 		    } else {
-			print "reference in heading: $tag\n";
+			die "reference in heading: $tag\n";
 			return undef;
 		    }
 		}
 	    }
+
+
+
 	    ## clean up attributes
 	    foreach my $attr_name ($a_tag->all_external_attr_names){
 		my $attr_value = $a_tag->attr($attr_name);
@@ -314,10 +322,13 @@ sub tree_clean_headings {
 		    $a_tag->attr("$attr_name", undef);
 # 		} elsif ($attr_name eq "cellpadding") {
 		} else {
-		    print "Unknown attr in heading: $attr_name = $attr_value.\n";
+		    die "Unknown attr in heading: $attr_name = $attr_value.\n";
 		    return undef;
 		}
 	    }
+
+
+
 
 	    ### remove empty headings
 	    my $heading_txt = $a_tag->as_text();
@@ -329,34 +340,45 @@ sub tree_clean_headings {
 		next;
 	    }
 
+
+
+
 	    if ( ($dad->tag eq "body" && $grandpa->tag eq "html" && not($grandgrandpa)) ||
-		    ($dad->tag eq "div" && $grandpa->tag eq "body" && $grandgrandpa->tag eq "html") ) {
+		    (($dad->tag eq "div" | $dad->tag eq "a") && $grandpa->tag eq "body" && $grandgrandpa->tag eq "html") ) {
 		next;
 	    } elsif ($dad->tag eq "li" && $grandpa->tag =~ m/^(ol|ul)$/) {
-		if ($grandgrandpa->tag eq "body"){
+# print "Me: ".$a_tag->as_text."\n";
+# print "Dad: ".$dad->tag." number elements: ". (scalar $dad->content_list()) ."\n";
+# print "Granpa: ".$grandpa->tag." number elements: ". (scalar $grandpa->content_list()) ."\n";
+		if ($grandgrandpa->tag eq "body" && (scalar $dad->content_list() == 1) && (scalar $grandpa->content_list() == 1)){
 		    my $clone = $a_tag->clone();
 		    $a_tag->detach();
 		    $grandpa->preinsert($clone);
-# 		} elsif () {
+# 		} elsif ($grandgrandpa->tag eq "body" && (scalar $dad->content_list() > 1 || scalar $grandpa->content_list() > 1)) {
+# 		    $a_tag->replace_with_content();
 		} else {
-		    ### check if all parents are only lists
 		    my $not_ok = 0;
 		    my $last = "";
+		    my $only_lists = 0;
+		    ### check if all parents are only lists
 		    foreach my $parent ($grandpa->lineage()){
-			if ( $not_ok || ($parent->tag !~ m/^(ul|ol|body|html)$/) ||
-				($parent->tag =~ m/^(ul|ol)$/ && scalar $parent->content_list() > 1)) {
+			if ( ! $not_ok && ($parent->tag =~ m/^(ul|ol|li|body|html)$/ && scalar $parent->content_list() > 1)){
+			    $only_lists++;
+# 			    last;
+			} elsif ( $not_ok || ($parent->tag !~ m/^(ul|li|ol|body|html)$/)) {
 			    print $parent->tag." ". scalar $parent->content_list() ."\n";
 			    $not_ok++;
-# 			    last;
 			}
 			$last = $parent if $parent->tag !~ m/^(body|html)$/;
 		    }
 		    if ($not_ok) {
 			my $q = $grandgrandpa->tag;
-			print "h in li with grandgrandpa: $q => ". encode('utf8', $heading_txt) ."\n";
+			die "h in li with grandgrandpa: $q => ". encode('utf8', $heading_txt) ."\n";
 			return undef;
+		    } elsif ($only_lists) {
+			$a_tag->replace_with_content();
 		    } else {
-# 			print $last->tag." ".$last->parent->tag." \n";
+			print $last->tag." in ".$last->parent->tag." \n";
 			my $clone = $a_tag->clone();
 			$a_tag->detach();
 			$last->preinsert($clone);
@@ -371,7 +393,7 @@ sub tree_clean_headings {
 		$dad->preinsert($clone);
 	    } else {
 		my $q = $dad->tag;
-		print "h in dad: $q => $heading_txt\n";
+		die "h in dad: $q => $heading_txt with: grandpa = ".$grandpa->tag." and grandgrandpa = ".$grandgrandpa->tag.";\n";
 		return undef;
 	    }
 	}
@@ -397,13 +419,14 @@ sub tree_clean_tables {
 		    || $attr_name eq "dir"
 		    || $attr_name eq "align"
 		    || $attr_name eq "style"
+		    || $attr_name eq "cols"
 # 			&& ( $attr_value =~ "page-break-(before|after|inside)")
 		    || $attr_name eq "hspace"
 		    || $attr_name eq "vspace"){
 		$a_tag->attr("$attr_name", undef);
 	    } elsif ($attr_name eq "cellpadding") {
 	    } else {
-		print "Unknown attr in table: $attr_name = $attr_value.\n";
+		die "Unknown attr in table: $attr_name = $attr_value.\n";
 		return undef;
 	    }
 	}
@@ -412,7 +435,7 @@ sub tree_clean_tables {
 	    if (ref $b_tag){
 		my $tag = $b_tag->tag;
 		if ( $tag eq "thead" || $tag eq "tbody"){
-		    $b_tag->replace_with( $b_tag->detach_content() );
+		    $b_tag->replace_with_content;
 		}
 	    }
 	}
@@ -430,7 +453,7 @@ sub tree_clean_tables {
 		    if ( $attr_name eq "valign"){
 			$a_tag->attr("$attr_name", undef);
 		    } else {
-			print "Unknown attr in tr: $attr_name = $attr_value.\n";
+			die "Unknown attr in tr: $attr_name = $attr_value.\n";
 			return undef;
 		    }
 		}
@@ -445,11 +468,15 @@ sub tree_clean_tables {
 			my $attr_value = $c_tag->attr($attr_name);
 			if ( $attr_name eq "width"
 				|| $attr_name eq "height"
+				|| $attr_name eq "align"
+				|| $attr_name eq "style"
+				|| $attr_name eq "sdnum"
+				|| $attr_name eq "sdval"
 				|| $attr_name eq "valign"){
 			    $c_tag->attr("$attr_name", undef);
 			} elsif ($attr_name eq "bgcolor" || $attr_name eq "colspan" || $attr_name eq "rowspan") {
 			} else {
-			    print "Unknown attr in $tag: $attr_name = $attr_value.\n";
+			    die "Unknown attr in $tag: $attr_name = $attr_value.\n";
 			    return undef;
 			}
 		    }
@@ -460,7 +487,7 @@ sub tree_clean_tables {
 		}
 		$b_tag->detach if ($all_lines_empty == 0);
 	    } else {
-		print "Unknown tag in table: $tag.\n";
+		die "Unknown tag in table: $tag.\n";
 		return undef;
 	    }
 	}
@@ -502,6 +529,9 @@ sub tree_clean_tables {
 sub tree_clean_lists {
     my $tree = shift;
     ### remove empty lists from body
+    foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
+	$a_tag->detach() if $a_tag->is_empty();
+    }
     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
 	next if ! $a_tag->is_empty();
 	my $not_ok = 0;
@@ -627,14 +657,14 @@ sub fix_small_issues {
     $wiki =~ s/(<center>)|(<\/center>)/\n\n/gmi;
 
     $wiki =~ s/\r\n?/\n/gs;
-    $wiki =~ s/\|\}/\n\|\}/gs;
+#     $wiki =~ s/\|\}/\n\|\}/gs;
     ## remove consecutive blank lines
     $wiki =~ s/(\n){4,}/\n\n/gs;
+    $wiki =~ s/^[ \t]+//mg;
     ## more new lines for menus and tables
     $wiki =~ s/^([ \t]*=+[ \t]*)(.*?)([ \t]*=+[ \t]*)$/\n\n$1$2$3\n/gm;
+    $wiki =~ s/^\{\|(.*)$/\n\{\|$1 {{prettytable}} /mg;
     $wiki =~ s/\|}\s*{\|/\|}\n\n\n{\|/mg;
-    $wiki =~ s/^\{\|(.*?)$/\n\{\| $1 {{prettytable}}/gm;
-    $wiki =~ s/^[ \t]+//mg;
     $wiki =~ s/^[:\s]*$//gm;
 
     return $wiki;

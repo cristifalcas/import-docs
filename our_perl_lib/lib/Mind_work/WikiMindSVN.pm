@@ -103,9 +103,8 @@ sub add_document {
 	if ( scalar @values == 2 ) {
 	    $rest = "";
 	} else {
-	    $ver = $values[1], $main = $ver if $values[1] =~ m/^v?[[:digit:]]{1,}(\.[[:digit:]]{1,}){0,}( )?[a-z]*?$/i;
-	    $ver = $values[$#values-1], $main = $ver if $values[$#values-1] =~ m/^v?[[:digit:]]{1,}(\.[[:digit:]]{1,}){0,}( )?[a-z]*?$/i;
-
+	    $ver = $values[1], $main = $ver if $values[1] =~ m/^v?[[:digit:]]{1,}(\.[[:digit:]]{1,}){0,}( )?([a-z]*?[[:digit:]]{1,})$/i;
+	    $ver = $values[$#values-1], $main = $ver if $values[$#values-1] =~ m/^v?[[:digit:]]{1,}(\.[[:digit:]]{1,}){0,}( )?([a-z]*?[[:digit:]]{0,})$/i;
 	    if ($ver ne '' ){
 		($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers ( $main, $ver);
 		$rest = fix_rest_dirs ($str, quotemeta $values[$#values], $main, $ver, $ver_fixed);
@@ -184,8 +183,8 @@ sub add_document {
 # 	print "Ignore new page $page_url from\n\t\t$rel_path\n\tbecause new SP $ver_sp is smaller then $pages_ver->{$page_url}.\n"
     } else {
 # 	print "Replace old url $page_url from\n\t\t$pages_toimp_hash->{$page_url}[1]\n\twith the doc from\n\t\t$rel_path\n\tbecause new SP $ver_sp is bigger then $pages_ver->{$page_url}.\n" if (exists $pages_toimp_hash->{$page_url});
-# 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
-$pages_toimp_hash->{$page_url} = ["$page_url", $rel_path, $svn_url, "link", \@categories];
+	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
+# $pages_toimp_hash->{$page_url} = ["$page_url", $rel_path, $svn_url, "link", \@categories];
 	$pages_ver->{$page_url} = "$ver_sp";
     }
 #     push(@{$pages_ver->{"$fixed_name$url_sep$ver_without_sp"}}, $ver_sp);
