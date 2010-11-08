@@ -64,7 +64,7 @@ sub write_file {
     add_to_remove("$dir/$name$suffix", "file") if $remove ne 0;
     print "\tWriting file $name$suffix.\t". get_time_diff() ."\n";
     open (FILE, ">$path") or die "at generic write can't open file $path for writing: $!\n";
-    print FILE "$text";
+    print FILE Encode::encode ('utf8', "$text");
     close (FILE);
 }
 

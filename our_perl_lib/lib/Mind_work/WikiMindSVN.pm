@@ -126,7 +126,11 @@ sub add_document {
         $basic_url = "$fixed_name";
     }
     case "Projects_Deployment_Common" {
-        $rest = fix_rest_dirs ($str, quotemeta $values[$#values]);
+	if ( scalar @values == 1 ) {
+	    $rest = "";
+	} else {
+	    $rest = fix_rest_dirs ($str, quotemeta $values[$#values]);
+	}
         $customer = "_Common for all customers_";
         $fixed_name = WikiCommons::fix_name ( $name, $customer );
         $basic_url = "$fixed_name";

@@ -273,6 +273,7 @@ sub tree_clean_headings {
     foreach my $a_tag ($tree->descendants()) {
 	if ($a_tag->tag =~ m/^h[0-9]{1,2}$/) {
 	    $a_tag->postinsert("\n");
+	    $a_tag->preinsert("\n");
 	    my $dad = $a_tag->parent;
 	    my $grandpa = $dad->parent;
 	    my $grandgrandpa = $grandpa->parent;
