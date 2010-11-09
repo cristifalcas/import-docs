@@ -13,12 +13,12 @@
 BASEDIR=$(cd $(dirname "$0"); pwd)
 MY_DIR=$BASEDIR
 
-IC_PATH="/media/share/Documentation/cfalcas/q/import_docs/instantclient_11_2"
-ORA_USER="scview"
-ORA_PASS="scview"
-COL_SEP='|'
-export LD_LIBRARY_PATH=$IC_PATH
-export TWO_TASK=//10.0.0.103:1521/SCROM
+# IC_PATH="/media/share/Documentation/cfalcas/q/import_docs/instantclient_11_2"
+# ORA_USER="scview"
+# ORA_PASS="scview"
+# COL_SEP='|'
+# export LD_LIBRARY_PATH=$IC_PATH
+# export TWO_TASK=//10.0.0.103:1521/SCROM
 
 SVN_INFO_FILE="svn_helper_trunk_info.txt"
 SVN_LOCAL_BASE_PATH="$MY_DIR/svn_docs"
@@ -34,11 +34,11 @@ function update_svn() {
 }
 
 function update_from_svn() {
-    SQL_FILE="$MY_DIR/select_active_versions.sql"
-    SQL_OUTPUT_FILE="$MY_DIR/select_active_versions.out"
+#     SQL_FILE="$MY_DIR/select_active_versions.sql"
+#     SQL_OUTPUT_FILE="$MY_DIR/select_active_versions.out"
 
     mkdir -p $SVN_LOCAL_BASE_PATH
-    $IC_PATH/sqlplus -S $ORA_USER/$ORA_PASS @$SQL_FILE $COL_SEP $SQL_OUTPUT_FILE
+#     $IC_PATH/sqlplus -S $ORA_USER/$ORA_PASS @$SQL_FILE $COL_SEP $SQL_OUTPUT_FILE
 
     if [ $? -ne 0 ]; then
 	echo "query failed"
@@ -51,14 +51,14 @@ function update_from_svn() {
     echo "Projects"
     SVN_BASE_URL="http://10.10.4.4:8080/svn/repos/trunk/Projects/iPhonEX"
     APPEND_DIR_ARRAY=( "Documents" "Scripts")
-    while IFS=$COL_SEP read main; do
-	main=$(echo $main)
+#     while IFS=$COL_SEP read main; do
+# 	main=$(echo $main)
 	for i in ${!APPEND_DIR_ARRAY[@]}; do
 	    SVN_URL="$SVN_BASE_URL/$main/${APPEND_DIR_ARRAY[i]}"
 	    LOCAL_SVN_PATH="$SVN_LOCAL_BASE_PATH/Projects/$main/${APPEND_DIR_ARRAY[i]}"
 	    time update_svn "$SVN_URL" "$LOCAL_SVN_PATH"
 	done
-    done <$SQL_OUTPUT_FILE
+#     done <$SQL_OUTPUT_FILE
 
     echo "Projects_Common"
     SVN_URL="$SVN_BASE_URL/Common/Documents/"

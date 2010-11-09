@@ -2,6 +2,7 @@
 #LD_LIBRARY_PATH=./instantclient_11_2/ perl ./oracle.pl
 use warnings;
 use strict;
+$SIG{__WARN__} = sub { die @_ };
 
 ## ~ 10 hours first run
 use lib "./our_perl_lib/lib";
@@ -16,7 +17,7 @@ use File::Find;
 use File::Copy;
 use Cwd 'abs_path','chdir';
 use XML::Simple;
-use File::Find::Rule;
+# use File::Find::Rule;
 use Data::Compare;
 use Mind_work::WikiCommons;
 
@@ -612,7 +613,7 @@ sub write_control_file {
     }
 
     $text .= "SC_info;$hash->{'SC_info'}->{'name'};$hash->{'SC_info'}->{'size'};$hash->{'SC_info'}->{'revision'}\n";
-    $text .= "Categories;". (join ';',@$categories). ";"x(3-(scalar @$categories))."\n";
+    $text .= "Categories;". (join ';',@$categories). ";"x(3-(scalar @$categories))."\n" if scalar @$categories;
 
     write_file("$dir/$files_info", "$text");
 }

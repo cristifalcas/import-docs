@@ -155,6 +155,8 @@ sub add_document {
 	$simple_url = "$basic_url";
     }
     my $page_url = $simple_url;
+    chomp $page_url;
+    die "No page for $doc_file.\n" if ($page_url eq "" );
 
     ### Release Notes
     if ($dir =~ /\/(.*? )?Release Notes\//i && $dir_type ne "SC") {
@@ -163,7 +165,7 @@ sub add_document {
 	$big_ver = $big_ver.$url_sep."RN" if $big_ver ne "";
 	$customer = $customer.$url_sep."RN" if $customer ne "";
 	$page_url =~ s/(($url_sep)($customer )?Release Notes)|(($url_sep)All Release Notes)//g;
-	$page_url = "Release Notes".$url_sep.$page_url;
+	$page_url = "RN:$page_url";
 	$basic_url = "$page_url$url_sep$customer";
 	$rest =~ s/(($url_sep)($customer )?Release Notes)|(($customer )?Release Notes$url_sep)|(^($customer )?Release Notes$)|(($url_sep)All Release Notes)//g;
     }
@@ -179,9 +181,6 @@ sub add_document {
 
     ++$count_files;
     print "\tNumber of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n" if ($count_files%100 == 0);
-
-    chomp $page_url;
-    die "No page for $doc_file.\n" if ($page_url eq "" );
 
     if (exists $pages_ver->{$page_url} && $pages_ver->{$page_url} gt "$ver_sp") {
 # 	print "Ignore new page $page_url from\n\t\t$rel_path\n\tbecause new SP $ver_sp is smaller then $pages_ver->{$page_url}.\n"

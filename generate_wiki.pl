@@ -213,9 +213,10 @@ sub get_existing_pages {
 		    print "\tFile $dir/$wiki_files_info does not have the correct number of entries.\n";
 		    next;
 		}
+
 		my $md5 = (split ('=', $info_text[$md5_pos]))[1];
 		my $rel_path = (split ('=', $info_text[$rel_path_pos]))[1];
-		$rel_path = Encode::decode ('utf8', $rel_path);
+# 		$rel_path = Encode::decode ('utf8', $rel_path);
 		my $svn_url = (split ('=', $info_text[$svn_url_pos]))[1];
 		my $url_type = (split ('=', $info_text[$link_type_pos]))[1];
 		if (!(defined $md5 && defined $rel_path && defined $url_type && defined $svn_url)){
@@ -261,6 +262,7 @@ sub generate_new_updated_pages {
 	    delete($pages_toimp_hash->{$url});
 	} else {
 	    if (exists $pages_toimp_hash->{$url}) {
+# print Dumper($pages_local_hash->{$url});die;
 		print "Url $url will be updated because: \n\t\tcrt_md5\n\t\t\t$pages_local_hash->{$url}[$md5_pos] <> \n\t\t\t$pages_toimp_hash->{$url}[$md5_pos] or \n\t\tcrt_rel_path \n\t\t\t$pages_local_hash->{$url}[$rel_path_pos] <> \n\t\t\t$pages_toimp_hash->{$url}[$rel_path_pos].\n";
 	    } else {
 		print "Delete url $url because it doesn't exist anymore.\n";
@@ -300,7 +302,6 @@ sub generate_real_and_links {
 	    my $q = $md5_map->{$md5}{"real"};
 	    for (my $i=0; $i < $nr_real - 1; $i++) {
 		print "Remove real url @$q[$i] because of too many real links: $nr_real.\n";
-		print Dumper(@$q[$i]);
 		$to_delete->{@$q[$i]} = $to_keep->{@$q[$i]};
 		$pages_toimp_hash->{@$q[$i]} = $to_keep->{@$q[$i]};
 		delete($to_keep->{@$q[$i]});

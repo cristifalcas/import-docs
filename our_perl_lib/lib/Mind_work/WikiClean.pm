@@ -191,7 +191,7 @@ sub tree_to_text {
 sub tree_to_html {
     my $tree = shift;
     my $text = $tree->guts ? $tree->guts->as_HTML(undef, "\t") : "";
-    return $text;
+    return encode('utf8',$text);
 }
 
 sub tag_remove_attr {
@@ -283,14 +283,19 @@ sub tree_clean_headings {
 		if (ref $b_tag ){
 		    my $tag = $b_tag->tag();
 		    if ($tag eq "img" || $tag eq "table") {
-die "table in h\n" if $tag eq "table";
+# die "table in h\n" if $tag eq "table";
 			my $img = $b_tag->clone;
 			$b_tag->detach;
 # 			$a_tag->postinsert($img);
 			$a_tag->preinsert($img);
 		    } elsif ($tag eq "br" || $tag eq "a") {
 			$b_tag->detach;
-		    } elsif ($tag eq "sup" ) {
+		    } elsif ($tag eq "sup") {
+# 			|| $tag eq "style"
+# 			|| $tag eq "class"
+# 			|| $attr_name eq "align"
+# 			|| $attr_name eq "lang"
+# 			|| $attr_name eq "dir"
 		    } elsif ( $tag eq "span" || $tag eq "font" || $tag eq "u" || $tag eq "b" || $tag eq "em"
 			|| $tag eq "center" || $tag eq "i") {
 			$b_tag->replace_with_content;
@@ -300,6 +305,85 @@ die "table in h\n" if $tag eq "table";
 		    }
 		}
 	    }
+
+
+
+	    ### remove empty headings
+	    my $heading_txt = $a_tag->as_text();
+	    $heading_txt =~ s/\s+/ /gm;
+# 	    $txt =~ s/\s*//gs;
+	    if ( $heading_txt =~ m/^\s*$/) {
+# 		print "remove empty heading.\n";
+		$a_tag->detach;
+		next;
+	    }
+
+
+
+
+	    if ( ($dad->tag eq "body" && $grandpa->tag eq "html" && not($grandgrandpa)) ||
+		    (($dad->tag eq "div" | $dad->tag eq "a") && $grandpa->tag eq "body" && $grandgrandpa->tag eq "html") ) {
+		next;
+	    } elsif ($dad->tag =~ m/(li|ol|ul)/ && $grandpa->tag =~ m/^(ol|ul)$/) {
+# print "Me: ".$a_tag->as_text."\n";
+# print "Dad: ".$dad->tag." number elements: ". (scalar $dad->content_list()) ."\n";
+# print "Granpa: ".$grandpa->tag." number elements: ". (scalar $grandpa->content_list()) ."\n";
+		if ($grandgrandpa->tag eq "body" && (scalar $dad->content_list() == 1) && (scalar $grandpa->content_list() == 1)){
+		    my $clone = $a_tag->clone();
+		    $a_tag->detach();
+		    $grandpa->preinsert($clone);
+# 		} elsif ($grandgrandpa->tag eq "body" && (scalar $dad->content_list() > 1 || scalar $grandpa->content_list() > 1)) {
+# 		    $a_tag->replace_with_content();
+		} else {
+		    my $not_ok = 0;
+		    my $last = "";
+		    my $only_lists = 0;
+		    my $parents = "";
+		    ### check if all parents are only lists
+		    foreach my $parent ($grandpa->lineage()){
+			if ( ! $not_ok && ($parent->tag =~ m/^(ul|ol|li|body|html)$/ && scalar $parent->content_list() > 1)){
+			    $only_lists++;
+# 			    last;
+			} elsif ( $not_ok || ($parent->tag !~ m/^(ul|li|ol|body|html)$/)) {
+			    $parents .= $parent->tag." ". scalar $parent->content_list() ."\t";
+			    $not_ok++;
+			}
+			$last = $parent if $parent->tag !~ m/^(body|html)$/;
+		    }
+		    if ($not_ok) {
+			my $q = $grandgrandpa->tag;
+			print "h in li with lineage: ".
+			    $dad->tag." ". scalar $dad->content_list() ."\t".
+			    $grandpa->tag." ". scalar $grandpa->content_list() ."\t".
+			    $grandgrandpa->tag." ". scalar $grandgrandpa->content_list() ."\t".
+			    "$parents.\n Grandgrandpa: $q => ". encode('utf8', $heading_txt) ."\n";
+			$a_tag->tag("b");
+			next;
+		    } elsif ($only_lists) {
+			$a_tag->replace_with_content();
+			next;
+		    } else {
+			print $last->tag." in ".$last->parent->tag." \n";
+			my $clone = $a_tag->clone();
+			$a_tag->detach();
+			$last->preinsert($clone);
+		    }
+		}
+	    } elsif ($dad->tag eq "td" || $grandpa->tag eq "td") {
+		## if we are in list,
+		$a_tag->tag("b");
+		next;
+	    } elsif ($dad->tag =~ m/^(span|ol|ul)$/ && $grandpa->tag eq "body" && $grandgrandpa->tag eq "html") {
+		my $clone = $a_tag->clone();
+		$a_tag->detach();
+		$dad->preinsert($clone);
+	    } else {
+		my $q = $dad->tag;
+		die "h ".$a_tag->tag." in dad: $q => $heading_txt with: grandpa = ".$grandpa->tag." and grandgrandpa = ".$grandgrandpa->tag.";\n";
+		return undef;
+	    }
+
+
 
 
 
@@ -326,76 +410,6 @@ die "table in h\n" if $tag eq "table";
 		    die "Unknown attr in heading: $attr_name = $attr_value.\n";
 		    return undef;
 		}
-	    }
-
-
-
-
-	    ### remove empty headings
-	    my $heading_txt = $a_tag->as_text();
-	    $heading_txt =~ s/\s+/ /gm;
-# 	    $txt =~ s/\s*//gs;
-	    if ( $heading_txt =~ m/^\s*$/) {
-# 		print "remove empty heading.\n";
-		$a_tag->detach;
-		next;
-	    }
-
-
-
-
-	    if ( ($dad->tag eq "body" && $grandpa->tag eq "html" && not($grandgrandpa)) ||
-		    (($dad->tag eq "div" | $dad->tag eq "a") && $grandpa->tag eq "body" && $grandgrandpa->tag eq "html") ) {
-		next;
-	    } elsif ($dad->tag eq "li" && $grandpa->tag =~ m/^(ol|ul)$/) {
-# print "Me: ".$a_tag->as_text."\n";
-# print "Dad: ".$dad->tag." number elements: ". (scalar $dad->content_list()) ."\n";
-# print "Granpa: ".$grandpa->tag." number elements: ". (scalar $grandpa->content_list()) ."\n";
-		if ($grandgrandpa->tag eq "body" && (scalar $dad->content_list() == 1) && (scalar $grandpa->content_list() == 1)){
-		    my $clone = $a_tag->clone();
-		    $a_tag->detach();
-		    $grandpa->preinsert($clone);
-# 		} elsif ($grandgrandpa->tag eq "body" && (scalar $dad->content_list() > 1 || scalar $grandpa->content_list() > 1)) {
-# 		    $a_tag->replace_with_content();
-		} else {
-		    my $not_ok = 0;
-		    my $last = "";
-		    my $only_lists = 0;
-		    ### check if all parents are only lists
-		    foreach my $parent ($grandpa->lineage()){
-			if ( ! $not_ok && ($parent->tag =~ m/^(ul|ol|li|body|html)$/ && scalar $parent->content_list() > 1)){
-			    $only_lists++;
-# 			    last;
-			} elsif ( $not_ok || ($parent->tag !~ m/^(ul|li|ol|body|html)$/)) {
-			    print $parent->tag." ". scalar $parent->content_list() ."\n";
-			    $not_ok++;
-			}
-			$last = $parent if $parent->tag !~ m/^(body|html)$/;
-		    }
-		    if ($not_ok) {
-			my $q = $grandgrandpa->tag;
-			die "h in li with grandgrandpa: $q => ". encode('utf8', $heading_txt) ."\n";
-			return undef;
-		    } elsif ($only_lists) {
-			$a_tag->replace_with_content();
-		    } else {
-			print $last->tag." in ".$last->parent->tag." \n";
-			my $clone = $a_tag->clone();
-			$a_tag->detach();
-			$last->preinsert($clone);
-		    }
-		}
-	    } elsif ($dad->tag eq "td") {
-		## if we are in list,
-		$a_tag->tag("b");
-	    } elsif ($dad->tag eq "span" && $grandpa->tag eq "body" && $grandgrandpa->tag eq "html") {
-		my $clone = $a_tag->clone();
-		$a_tag->detach();
-		$dad->preinsert($clone);
-	    } else {
-		my $q = $dad->tag;
-		die "h in dad: $q => $heading_txt with: grandpa = ".$grandpa->tag." and grandgrandpa = ".$grandgrandpa->tag.";\n";
-		return undef;
 	    }
 	}
     }
@@ -683,7 +697,7 @@ sub fix_wiki_chars {
     my $wiki = shift;
     ## fix strange characters
 #     print "\tFix characters in wiki.\t". (WikiCommons::get_time_diff) ."\n";
-    ## decode utf8 character in hex: perl -e 'print sprintf("\\x{%x}", $_) foreach (unpack("C*", "Ó"));print"\n"'
+    ## decode character in hex: perl -e 'print sprintf("\\x{%x}", $_) foreach (unpack("C*", "Ó"));print"\n"'
     # copyright
 #     $wiki =~ s/\x{c3}\x{93}/\x{C2}\x{A9}/gs;
 ## old
@@ -696,6 +710,7 @@ sub fix_wiki_chars {
     $wiki =~ s/\x{EF}\x{192}\x{A3}/\x{C2}\x{A9}/gs;
     $wiki =~ s/\x{EF}\x{192}\x{201C}/\x{C2}\x{A9}/gs;
     $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{e2}\x{80}\x{9c}/\x{C2}\x{A9}/gs;
+    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{e2}\x{80}\x{9c}\x{20}/\x{C2}\x{A9} /gs;
     $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{a3}/\x{C2}\x{A9}/gs;
 #     $wiki =~ s/Ã¯Â’/\x{C2}\x{A9}/gs;
     ## registered
