@@ -135,17 +135,17 @@ sub add_document {
         $fixed_name = WikiCommons::fix_name ( $name, $customer );
         $basic_url = "$fixed_name";
     }
-    case "SCDocs" {
-        $rest = fix_rest_dirs ($str, quotemeta $values[$#values]);
-        $customer = "$dir_type$url_sep$rest";
-        $fixed_name = WikiCommons::fix_name ($name, $customer);
-        $basic_url = "$fixed_name";
-    }
+#     case "SCDocs" {
+#         $rest = fix_rest_dirs ($str, quotemeta $values[$#values]);
+#         $customer = "$dir_type$url_sep$rest";
+#         $fixed_name = WikiCommons::fix_name ($name, $customer);
+#         $basic_url = "$fixed_name";
+#     }
     case "SC" {
 	$basic_url = "$name";
 	return 1;
     }
-    else { print "Unknown document type: $dir_type.\n" }
+    else { die "Unknown document type: $dir_type.\n" }
     }
 
     my $simple_url = "";
@@ -160,18 +160,31 @@ sub add_document {
 
     ### Release Notes
     if ($dir =~ /\/(.*? )?Release Notes\//i && $dir_type ne "SC") {
-	$ver_without_sp = $ver_without_sp.$url_sep."RN" if $ver_without_sp ne "";
 	$main = $main.$url_sep."RN" if $main ne "";
 	$big_ver = $big_ver.$url_sep."RN" if $big_ver ne "";
 	$customer = $customer.$url_sep."RN" if $customer ne "";
 	$page_url =~ s/(($url_sep)($customer )?Release Notes)|(($url_sep)All Release Notes)//g;
+my $q=$basic_url;
+$q=~s/$url_sep$ver_without_sp\s*\s*//;
+# print "$q $ver_without_sp\t";
+my $nodot_ver = $ver_without_sp;
+$nodot_ver =~ s/\.//g;
+$q =~ s/RN$nodot_ver\s*//;
+# $q =~ s/\s*-?\s*(Changes|Bugs)//i;
+$q = "RN:$ver_without_sp $q$url_sep$rest";
+$q =~ s/$url_sep(Release Notes|PDF|All Release Notes)//gi;
+# print "$q $customer\n\t\t\t";
 	$page_url = "RN:$page_url";
-	$basic_url = "$page_url$url_sep$customer";
-	$rest =~ s/(($url_sep)($customer )?Release Notes)|(($customer )?Release Notes$url_sep)|(^($customer )?Release Notes$)|(($url_sep)All Release Notes)//g;
+# print "$dir_type $page_url\n";
+$page_url=$q;
+	$ver_without_sp = $ver_without_sp.$url_sep."RN" if $ver_without_sp ne "";
+# 	$basic_url = "$page_url$url_sep$customer";
+# 	$page_url = "RN:$basic_url";
+# 	$rest =~ s/(($url_sep)($customer )?Release Notes)|(($customer )?Release Notes$url_sep)|(^($customer )?Release Notes$)|(($url_sep)All Release Notes)//g;
     }
 
-    die "Same SP already exists.\n" if exists $pages_ver->{$page_url} && "$pages_ver->{$page_url}" eq "$ver_sp";
-
+    die "Same SP already exists from $page_url: $ver_sp = $pages_ver->{$page_url}.\n" if exists $pages_ver->{$page_url} && "$pages_ver->{$page_url}" eq "$ver_sp";
+    return 1 if $ver_without_sp lt "5.00";
     my @categories = ();
     push @categories, $ver_without_sp;
     push @categories, $main;

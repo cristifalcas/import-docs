@@ -376,7 +376,7 @@ sub sql_get_all_changes {
     my $SEL_CHANGES = "select changeid, nvl(crc,0), status
 	from scchange
 	where projectcode = \'B\'
-	and version > \'5.2\'
+	and version >= \'5.0\'
 	and status <> \'Cancel\'
 	and status<> \'Inform-Cancel\'
 	and status <> \'Market-Cancel\'

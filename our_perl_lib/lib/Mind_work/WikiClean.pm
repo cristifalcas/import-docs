@@ -84,6 +84,17 @@ sub tree_only_one_body {
     }
 }
 
+sub heading_new_line {
+    my $tree = shift;
+    foreach my $a_tag ($tree->descendants()) {
+	if ($a_tag->tag =~ m/^h[0-9]{1,2}$/) {
+	    $a_tag->postinsert("\n");
+	    $a_tag->preinsert("\n");
+	}
+    }
+    return $tree;
+}
+
 sub cleanup_html {
     my ($html, $file_name) = @_;
     my ($name,$dir,$suffix) = fileparse($file_name, qr/\.[^.]*/);
@@ -97,26 +108,27 @@ sub cleanup_html {
 
     my $i = 0;
     $tree = tree_remove_TOC($tree);
-WikiCommons::write_file("$dir/".++$i.". tree_remove_TOC.$name.html", tree_to_html($tree), 1);
+WikiCommons::write_file("$dir/".++$i.". tree_remove_TOC.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
+    $tree = heading_new_line($tree) if $debug eq "yes";
     my $text1 = tree_to_text($tree);
-WikiCommons::write_file("$dir/".++$i.". tree_text1.$name.txt", $text1, 1);
+WikiCommons::write_file("$dir/".++$i.". tree_text1.$name.txt", $text1, 1) if $debug eq "yes";
     ## after TOC, because in TOC we use div
     $tree = tree_clean_div($tree) || return undef;
-WikiCommons::write_file("$dir/".++$i.". tree_clean_div.$name.html", tree_to_html($tree), 1);
+WikiCommons::write_file("$dir/".++$i.". tree_clean_div.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
     $tree = tree_clean_empty_p($tree);
-WikiCommons::write_file("$dir/".++$i.". tree_clean_empty_p.$name.html", tree_to_html($tree), 1);
+WikiCommons::write_file("$dir/".++$i.". tree_clean_empty_p.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
     $tree = tree_clean_empty_tag($tree, 'span');
-WikiCommons::write_file("$dir/".++$i.". tree_clean_empty_tag_span.$name.html", tree_to_html($tree), 1);
+WikiCommons::write_file("$dir/".++$i.". tree_clean_empty_tag_span.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
     $tree = tree_clean_empty_tag($tree, 'font');
-WikiCommons::write_file("$dir/".++$i.". tree_clean_empty_tag_font.$name.html", tree_to_html($tree), 1);
+WikiCommons::write_file("$dir/".++$i.". tree_clean_empty_tag_font.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
     $tree = tree_clean_tables($tree) || return undef;
-WikiCommons::write_file("$dir/".++$i.". tree_clean_tables.$name.html", tree_to_html($tree), 1);
+WikiCommons::write_file("$dir/".++$i.". tree_clean_tables.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
 
     $tree = tree_clean_headings($tree) || return undef;
-WikiCommons::write_file("$dir/".++$i.". tree_clean_headings.$name.html", tree_to_html($tree), 1);
+WikiCommons::write_file("$dir/".++$i.". tree_clean_headings.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
 
     $tree = tree_clean_lists($tree);
-WikiCommons::write_file("$dir/".++$i.". tree_clean_lists.$name.html", tree_to_html($tree), 1);
+WikiCommons::write_file("$dir/".++$i.". tree_clean_lists.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
 
 ## can't do it
 #     $html = html_fix_html_tabs($html);
@@ -128,23 +140,8 @@ WikiCommons::write_file("$dir/".++$i.". tree_clean_lists.$name.html", tree_to_ht
 # WikiCommons::write_file("$dir/html_tidy2.$name.html", $html, 1);
 
     my $text2 = tree_to_text($tree);
-WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
+WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1) if $debug eq "yes";
 
-    ### special cases:
-    if ($dir =~ m/SC:B04021\/SC:B04021 STP document\/$/ ){
-# . \ + * ? [ ^ ] ( $ )
-	my $q1 = "\\+ interest1\\.21\\.2\\.2nd Invoice";
-	my $q2 = "\+ interest1\.21\.2\.";
-	$text2 =~ s/$q1/$q2/mg;
-WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
-	$q1 = " P\\)\\+\\(Y\\+I\\)1\\.21\\.3.3rd Invoice";
-	$q2 = " P\)\+\(Y\+I\)2nd Invoice1\.21\.3\.3rd Invoice";
-	$text2 =~ s/$q1/$q2/mg;
-WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
-    }
-# #     if ($dir =~ m/Archive Inspector -- Archive Inspector.doc\/$/ ){
-# WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
-#     }
     $text1 =~ s/[\s]//gs;
     $text2 =~ s/[\s]//gs;
     $text1 =~ s/\x{c2}\x{a0}//gs;
@@ -157,12 +154,12 @@ WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
     }
     ## here we remove text, so we use it last
     $tree = tree_fix_numbers_in_headings($tree);
-WikiCommons::write_file("$dir/".++$i.". tree_fix_numbers_in_headings.$name.html", tree_to_html($tree), 1);
+WikiCommons::write_file("$dir/".++$i.". tree_fix_numbers_in_headings.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
 
     my $html_res = tree_to_html($tree);
     print "\t+Fix html file $name.html.\t". (WikiCommons::get_time_diff) ."\n";
     $tree = $tree->delete;
-    WikiCommons::write_file("$dir/$name.fixed.html", $html_res, 1);
+    WikiCommons::write_file("$dir/$name.fixed.html", $html_res, 1) if $debug eq "yes";
     return Encode::encode('utf8', $html_res);
 }
 
@@ -297,7 +294,7 @@ sub tree_clean_headings {
 # 			|| $attr_name eq "lang"
 # 			|| $attr_name eq "dir"
 		    } elsif ( $tag eq "span" || $tag eq "font" || $tag eq "u" || $tag eq "b" || $tag eq "em"
-			|| $tag eq "center" || $tag eq "i") {
+			|| $tag eq "center" || $tag eq "i" || $tag eq "strong") {
 			$b_tag->replace_with_content;
 		    } else {
 			die "reference in heading: $tag\n";
@@ -597,31 +594,30 @@ sub make_wiki_from_html {
 	strip_tags => $strip_tags,
     );
     my $wiki = $wc->html2wiki($html);
-    WikiCommons::write_file("$dir/original.$name.wiki", $wiki, 1);
+    WikiCommons::write_file("$dir/original.$name.wiki", $wiki, 1) if $debug eq "yes";
 
-    if ($debug eq "yes") {
-	my $parsed_html = $wc->parsed_html;
-	WikiCommons::write_file("$dir/parsed.$name.html", $parsed_html, 1);
-    }
+    my $parsed_html = $wc->parsed_html;
+    WikiCommons::write_file("$dir/parsed.$name.html", $parsed_html, 1) if $debug eq "yes";
+
     print "\t+Generating wiki file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
 
     my $image_files = ();
     print "\t-Fixing wiki.\t". (WikiCommons::get_time_diff) ."\n";
 #     $wiki =~ s/[ ]{8}/\t/gs;
     $wiki = fix_wiki_chars($wiki);
-WikiCommons::write_file("$dir/fix_wiki_chars.$name.txt", $wiki, 1);
+WikiCommons::write_file("$dir/fix_wiki_chars.$name.txt", $wiki, 1) if $debug eq "yes";
     $image_files = get_wiki_images( $wiki, $image_files, $dir );
-WikiCommons::write_file("$dir/get_wiki_images.$name.txt", $wiki, 1);
+WikiCommons::write_file("$dir/get_wiki_images.$name.txt", $wiki, 1) if $debug eq "yes";
     $wiki = fix_wiki_footers( $wiki );
-WikiCommons::write_file("$dir/fix_wiki_footers.$name.txt", $wiki, 1);
+WikiCommons::write_file("$dir/fix_wiki_footers.$name.txt", $wiki, 1) if $debug eq "yes";
     $wiki = fix_wiki_links_menus( $wiki );
-WikiCommons::write_file("$dir/fix_wiki_links_menus.$name.txt", $wiki, 1);
+WikiCommons::write_file("$dir/fix_wiki_links_menus.$name.txt", $wiki, 1) if $debug eq "yes";
     $wiki = fix_wiki_url( $wiki );
-WikiCommons::write_file("$dir/fix_wiki_url.$name.txt", $wiki, 1);
+WikiCommons::write_file("$dir/fix_wiki_url.$name.txt", $wiki, 1) if $debug eq "yes";
     $wiki = fix_wiki_link_to_sc( $wiki );
-WikiCommons::write_file("$dir/fix_wiki_link_to_sc.$name.txt", $wiki, 1);
+WikiCommons::write_file("$dir/fix_wiki_link_to_sc.$name.txt", $wiki, 1) if $debug eq "yes";
     $wiki = fix_external_links( $wiki );
-WikiCommons::write_file("$dir/fix_external_links.$name.txt", $wiki, 1);
+WikiCommons::write_file("$dir/fix_external_links.$name.txt", $wiki, 1) if $debug eq "yes";
 #     $wiki = fix_tabs( $wiki );
 # WikiCommons::write_file("$dir/fix_tabs.$name.txt", $wiki, 1);
 #     $wiki = wiki_fix_lists( $wiki );
@@ -629,7 +625,7 @@ WikiCommons::write_file("$dir/fix_external_links.$name.txt", $wiki, 1);
 #     $wiki = fix_wiki_menus( $wiki, $dir );
 # WikiCommons::write_file("$dir/fix_wiki_menus.$name.txt", $wiki, 1);
     $wiki = fix_small_issues( $wiki );
-WikiCommons::write_file("$dir/fix_small_issues.$name.txt", $wiki, 1);
+WikiCommons::write_file("$dir/fix_small_issues.$name.txt", $wiki, 1) if $debug eq "yes";
 
     WikiCommons::write_file("$dir/$name.wiki", $wiki);
     print "\t+Fixing wiki.\t". (WikiCommons::get_time_diff) ."\n";
