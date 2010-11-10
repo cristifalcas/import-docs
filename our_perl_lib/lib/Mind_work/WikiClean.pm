@@ -275,24 +275,17 @@ sub tree_clean_headings {
 	    my $grandpa = $dad->parent;
 	    my $grandgrandpa = $grandpa->parent;
 
-	    ## extract images from heading and put it after it. Remove other attr
+	    ## extract images from heading and put it before it. Remove other attr
 	    foreach my $b_tag ($a_tag->content_list){
 		if (ref $b_tag ){
 		    my $tag = $b_tag->tag();
 		    if ($tag eq "img" || $tag eq "table") {
-# die "table in h\n" if $tag eq "table";
 			my $img = $b_tag->clone;
 			$b_tag->detach;
-# 			$a_tag->postinsert($img);
 			$a_tag->preinsert($img);
 		    } elsif ($tag eq "br" || $tag eq "a") {
 			$b_tag->detach;
 		    } elsif ($tag eq "sup") {
-# 			|| $tag eq "style"
-# 			|| $tag eq "class"
-# 			|| $attr_name eq "align"
-# 			|| $attr_name eq "lang"
-# 			|| $attr_name eq "dir"
 		    } elsif ( $tag eq "span" || $tag eq "font" || $tag eq "u" || $tag eq "b" || $tag eq "em"
 			|| $tag eq "center" || $tag eq "i" || $tag eq "strong") {
 			$b_tag->replace_with_content;
@@ -308,78 +301,36 @@ sub tree_clean_headings {
 	    ### remove empty headings
 	    my $heading_txt = $a_tag->as_text();
 	    $heading_txt =~ s/\s+/ /gm;
-# 	    $txt =~ s/\s*//gs;
 	    if ( $heading_txt =~ m/^\s*$/) {
-# 		print "remove empty heading.\n";
 		$a_tag->detach;
 		next;
 	    }
 
 
 
-
+##if we have a heading in a list and it's lists all the way down, extract content
+## else, make it bold and leave
 	    if ( ($dad->tag eq "body" && $grandpa->tag eq "html" && not($grandgrandpa)) ||
 		    (($dad->tag eq "div" | $dad->tag eq "a") && $grandpa->tag eq "body" && $grandgrandpa->tag eq "html") ) {
+		## we're cool
 		next;
-	    } elsif ($dad->tag =~ m/(li|ol|ul)/ && $grandpa->tag =~ m/^(ol|ul)$/) {
-# print "Me: ".$a_tag->as_text."\n";
-# print "Dad: ".$dad->tag." number elements: ". (scalar $dad->content_list()) ."\n";
-# print "Granpa: ".$grandpa->tag." number elements: ". (scalar $grandpa->content_list()) ."\n";
-		if ($grandgrandpa->tag eq "body" && (scalar $dad->content_list() == 1) && (scalar $grandpa->content_list() == 1)){
-		    my $clone = $a_tag->clone();
-		    $a_tag->detach();
-		    $grandpa->preinsert($clone);
-# 		} elsif ($grandgrandpa->tag eq "body" && (scalar $dad->content_list() > 1 || scalar $grandpa->content_list() > 1)) {
-# 		    $a_tag->replace_with_content();
-		} else {
-		    my $not_ok = 0;
-		    my $last = "";
-		    my $only_lists = 0;
-		    my $parents = "";
-		    ### check if all parents are only lists
-		    foreach my $parent ($grandpa->lineage()){
-			if ( ! $not_ok && ($parent->tag =~ m/^(ul|ol|li|body|html)$/ && scalar $parent->content_list() > 1)){
-			    $only_lists++;
-# 			    last;
-			} elsif ( $not_ok || ($parent->tag !~ m/^(ul|li|ol|body|html)$/)) {
-			    $parents .= $parent->tag." ". scalar $parent->content_list() ."\t";
-			    $not_ok++;
-			}
-			$last = $parent if $parent->tag !~ m/^(body|html)$/;
-		    }
-		    if ($not_ok) {
-			my $q = $grandgrandpa->tag;
-			print "h in li with lineage: ".
-			    $dad->tag." ". scalar $dad->content_list() ."\t".
-			    $grandpa->tag." ". scalar $grandpa->content_list() ."\t".
-			    $grandgrandpa->tag." ". scalar $grandgrandpa->content_list() ."\t".
-			    "$parents.\n Grandgrandpa: $q => ". encode('utf8', $heading_txt) ."\n";
-			$a_tag->tag("b");
-			next;
-		    } elsif ($only_lists) {
-			$a_tag->replace_with_content();
-			next;
+	    } elsif ($dad->tag =~ m/(li|ol|ul)/) {
+		my @ancestors = ();
+		foreach my $parent ($dad->lineage()){
+		    if ( $parent->tag =~ m/^(ul|ol|li|body|html|div|a)$/){
+			push @ancestors, $parent
 		    } else {
-			print $last->tag." in ".$last->parent->tag." \n";
-			my $clone = $a_tag->clone();
-			$a_tag->detach();
-			$last->preinsert($clone);
+			@ancestors = ();
+			last
 		    }
 		}
-	    } elsif ($dad->tag eq "td" || $grandpa->tag eq "td") {
-		## if we are in list,
-		$a_tag->tag("b");
-		next;
-	    } elsif ($dad->tag =~ m/^(span|ol|ul)$/ && $grandpa->tag eq "body" && $grandgrandpa->tag eq "html") {
-		my $clone = $a_tag->clone();
-		$a_tag->detach();
-		$dad->preinsert($clone);
-	    } else {
-		my $q = $dad->tag;
-		die "h ".$a_tag->tag." in dad: $q => $heading_txt with: grandpa = ".$grandpa->tag." and grandgrandpa = ".$grandgrandpa->tag.";\n";
-		return undef;
+		if ( scalar @ancestors ) {
+		    die "all lists here\n";
+		} else {
+		    die "not all lists here\n";
+		    $a_tag->tag("b");
+		}
 	    }
-
 
 
 
