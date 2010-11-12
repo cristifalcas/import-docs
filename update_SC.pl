@@ -3,6 +3,20 @@
 use warnings;
 use strict;
 $SIG{__WARN__} = sub { die @_ };
+BEGIN {
+    my $need= "./instantclient_11_2/";
+    my $ld= $ENV{LD_LIBRARY_PATH};
+    if(  ! $ld  ) {
+        $ENV{LD_LIBRARY_PATH}= $need;
+    } elsif(  $ld !~ m#(^|:)\Q$need\E(:|$)#  ) {
+        $ENV{LD_LIBRARY_PATH} .= ':' . $need;
+    } else {
+        $need= "";
+    }
+    if(  $need  ) {
+        exec 'env', $^X, $0, @ARGV;
+    }
+}
 
 ## ~ 10 hours first run
 use lib "./our_perl_lib/lib";
@@ -25,8 +39,8 @@ die "We need the temp path and the destination path.\n" if ( $#ARGV != 1 );
 our ($tmp_path, $to_path) = @ARGV;
 
 remove_tree("$tmp_path");
-makedir ("$tmp_path");
-makedir ("$to_path");
+WikiCommons::makedir ("$tmp_path");
+WikiCommons::makedir ("$to_path");
 $tmp_path = abs_path("$tmp_path");
 $to_path = abs_path("$to_path");
 
@@ -59,18 +73,18 @@ if ($force_sc_update eq "yes"){
     $bulk_svn_update = "no";
 }
 
-sub makedir {
-    my $dir = shift;
-    make_path ("$dir", {owner=>'wiki', group=>'nobody', error => \my $err});
-    if (@$err) {
-	for my $diag (@$err) {
-	    my ($file, $message) = %$diag;
-	    if ($file eq '') { die "general error: $message.\n"; }
-	    else { die "problem unlinking $file: $message.\n"; }
-	}
-	die "Can't make dir $dir.\n";
-    }
-}
+# sub makedir {
+#     my $dir = shift;
+#     make_path ("$dir", {owner=>'wiki', group=>'nobody', error => \my $err});
+#     if (@$err) {
+# 	for my $diag (@$err) {
+# 	    my ($file, $message) = %$diag;
+# 	    if ($file eq '') { die "general error: $message.\n"; }
+# 	    else { die "problem unlinking $file: $message.\n"; }
+# 	}
+# 	die "Can't make dir $dir.\n";
+#     }
+# }
 
 sub write_rtf {
     my ($name, $data) = @_;

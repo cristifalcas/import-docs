@@ -1,6 +1,20 @@
 #!/usr/bin/perl -w
 print "Start.\n";
 $SIG{__WARN__} = sub { die @_ };
+BEGIN {
+    my $need= "./instantclient_11_2/";
+    my $ld= $ENV{LD_LIBRARY_PATH};
+    if(  ! $ld  ) {
+        $ENV{LD_LIBRARY_PATH}= $need;
+    } elsif(  $ld !~ m#(^|:)\Q$need\E(:|$)#  ) {
+        $ENV{LD_LIBRARY_PATH} .= ':' . $need;
+    } else {
+        $need= "";
+    }
+    if(  $need  ) {
+        exec 'env', $^X, $0, @ARGV;
+    }
+}
 
 #soffice "-accept=socket,host=localhost,port=2002;urp;StarOffice.ServiceManager" -nologo -headless -nofirststartwizard
 

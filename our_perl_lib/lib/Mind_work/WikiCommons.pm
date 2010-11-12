@@ -401,4 +401,30 @@ sub array_diff {
     return \@only_in_arr1,  \@only_in_arr2,  \@intersection;
 }
 
+sub get_active_customers {
+    use DBI;
+    $ENV{NLS_LANG} = 'AMERICAN_AMERICA.AL32UTF8';
+    my $dbh;
+    my $customers = {};
+    $dbh=DBI->connect("dbi:Oracle:host=10.0.0.232;sid=BILL1022", "service25", "service25")|| die( $DBI::errstr . "\n" );
+    $dbh->{AutoCommit}    = 0;
+    $dbh->{RaiseError}    = 1;
+    $dbh->{ora_check_sql} = 1;
+    $dbh->{RowCacheSize}  = 0;
+#     $dbh->{LongReadLen}   = 52428800;
+    $dbh->{LongReadLen} = 1024 * 1024;
+    $dbh->{LongTruncOk}   = 0;
+    my $SEL_INFO = '
+select t.rcustcompanycode, t.rcustcompanyname, t.rcustiddisplay
+  from tblcustomers t
+ where t.rcuststatus = \'A\'';
+    my $sth = $dbh->prepare($SEL_INFO);
+    $sth->execute();
+    while ( my @row=$sth->fetchrow_array() ) {
+	die "Already have this id for cust.\n" if exists $customers->{$row[0]};
+	$customers->{$row[0]}->{'name'} = $row[1];
+	$customers->{$row[0]}->{'displayname'} = $row[2];
+    }
+}
+
 return 1;

@@ -313,7 +313,6 @@ sub tree_clean_headings {
 	    if ( ($dad->tag eq "body" && $grandpa->tag eq "html" && not($grandgrandpa)) ||
 		    (($dad->tag eq "div" | $dad->tag eq "a") && $grandpa->tag eq "body" && $grandgrandpa->tag eq "html") ) {
 		## we're cool
-		next;
 	    } elsif ($dad->tag =~ m/(li|ol|ul)/) {
 		my @ancestors = ();
 		foreach my $parent ($dad->lineage()){
@@ -329,6 +328,7 @@ sub tree_clean_headings {
 		} else {
 		    die "not all lists here\n";
 		    $a_tag->tag("b");
+		    next;
 		}
 	    }
 
