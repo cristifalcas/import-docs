@@ -1,20 +1,8 @@
 #!/usr/bin/perl -w
 print "Start.\n";
+use warnings;
+use strict;
 $SIG{__WARN__} = sub { die @_ };
-BEGIN {
-    my $need= "./instantclient_11_2/";
-    my $ld= $ENV{LD_LIBRARY_PATH};
-    if(  ! $ld  ) {
-        $ENV{LD_LIBRARY_PATH}= $need;
-    } elsif(  $ld !~ m#(^|:)\Q$need\E(:|$)#  ) {
-        $ENV{LD_LIBRARY_PATH} .= ':' . $need;
-    } else {
-        $need= "";
-    }
-    if(  $need  ) {
-        exec 'env', $^X, $0, @ARGV;
-    }
-}
 
 #soffice "-accept=socket,host=localhost,port=2002;urp;StarOffice.ServiceManager" -nologo -headless -nofirststartwizard
 
@@ -67,9 +55,6 @@ BEGIN {
 
 # die "We need the dir where the doc files are and the type of the dir: mind_svn, users, sc_docs.\n" if ( $#ARGV <= 1 );
 
-use warnings;
-use strict;
-
 use Cwd 'abs_path';
 use File::Basename;
 use File::Copy;
@@ -78,10 +63,13 @@ use Switch;
 use Getopt::Std;
 
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
+# print "$path_prefix\n";
+# my $real_path = abs_path($0);
 use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."./our_perl_lib/lib";
 
 use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
 use Data::Dumper;
+$Data::Dumper::Sortkeys = 1;
 use Digest::MD5 qw(md5 md5_hex md5_base64);
 use Text::Balanced;
 # use Encode;
@@ -140,6 +128,7 @@ my $categories_pos = 4;
 my $count_files;
 our $coco;
 WikiCommons::is_remote("$remote_work");
+WikiCommons::set_real_path($path_prefix);
 
 sub create_wiki {
     my ($page_url, $doc_file, $zip_name) = @_;

@@ -8,17 +8,40 @@ use Unicode::Normalize 'NFD','NFC','NFKD','NFKC';
 use File::Basename;
 use File::Copy;
 use Data::Dumper;
+use XML::Simple;
 
 our $start_time = 0;
 our $clean_up = {};
 our $url_sep = " -- ";
 our $general_categories_hash = {};
 our $remote_work = "no";
+our $real_path;
+
+sub set_real_path {
+    $real_path = shift;
+}
 
 sub is_remote {
     my $q=shift;
     $remote_work = $q || $remote_work;
     return $remote_work;
+}
+
+sub xmlfile_to_hash {
+    my $file = shift;
+    my $xml = new XML::Simple;
+    return $xml->XMLin("$file");
+}
+
+sub hash_to_xmlfile {
+    my ($hash, $name, $root_name) = @_;
+    $root_name = "out" if ! defined $root_name;
+    my $xs = new XML::Simple();
+    my $xml = $xs->XMLout($hash,
+		    NoAttr => 1,
+		    RootName=>$root_name,
+		    OutputFile => $name
+		    );
 }
 
 sub cleanup {
@@ -300,7 +323,35 @@ sub fix_name {
 sub check_vers {
     my ($main, $ver) = @_;
     die "main $main or ver $ver is not defined.\n" if (! defined $main || ! defined $ver);
+    my $regexp_main = qr/^\s*v?[0-9]{1,}(\.[0-9]{1,})*\s*(SP\s*[0-9]{1,}(\.[0-9]{1,})*)?$/is;
+    my $regexp_ver = qr/^\s*v?[0-9]{1,}(\.[0-9]{1,})*\s*([a-z0-9]{1,})?\s*(SP\s*[0-9]{1,}(\.[0-9]{1,})*)?\s*(demo)?\s*$/is;
     my $ver_fixed = ""; my $ver_sp = ""; my $ver_without_sp = "";
+print "$main\t\t$ver\t\t\t\t";
+$ver = $main if $ver eq "MIND-iPhonEX 5.31 SLT Reports User Guide.doc" || $ver eq "Product Description" || $ver eq "User Manuals" || $ver eq "Whitepapers" || $ver eq "Quarterly Release Notes" || $ver eq "Documents" || $ver eq "Modules"  || $ver eq "Database";
+    die "Main version $main is not correct.\n" if $main !~ m/$regexp_main/i;
+    die "Ver version $ver is not correct.\n" if $ver !~ m/$regexp_ver/i;
+
+    $main = $main."0" if $main =~ m/^v?[[:digit:]]{1,}\.[[:digit:]]$/i;
+    $main = $main.".00" if $main =~ m/^v?[[:digit:]]{1,}$/i;
+    $main =~ s/\s*v//i;
+#     my $main_sp = $1 if $main
+    $ver = $ver."0" if $ver =~ m/^v?[[:digit:]]{1,}\.[[:digit:]]$/i;
+    $ver = $ver.".00" if $ver =~ m/^v?[[:digit:]]{1,}$/i;
+    $ver =~ s/\s*v//i;
+#     $ver = $ver.".00" if $ver =~ m/^v?[[:digit:]]{1,}$/i;
+# (?!123)
+print "$main\t\t$ver\n";
+
+#     ver:
+#     V7.00.001 SP28 DEMO
+#     V5.01.008OMP
+#     V5.31.006 GN SP01.004.2
+#     User Manuals
+
+#     main:
+#     5.31.006
+#     V6.01.003 SP40
+
     #case 1: ver is a real version:
     # ver could be 5.55.111QQ or 5.55.111 QQ or V6.01.004 SP47.004
     # main is corect
@@ -309,8 +360,6 @@ sub check_vers {
     #        ver is main, main is first x.y
     # case 2.2: else main is main, ver is main
     #Fix first version
-    $ver = $ver."0" if $ver =~ m/^v?[[:digit:]]{1,}(\.[[:digit:]])$/i;
-    $ver = $ver.".00" if $ver =~ m/^v?[[:digit:]]{1,}$/i;
 
     if ( ($ver !~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,}){0,}( )?[a-z]*?$/i) &&
 	    ($ver !~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,})*( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*$/i) ){
@@ -401,30 +450,27 @@ sub array_diff {
     return \@only_in_arr1,  \@only_in_arr2,  \@intersection;
 }
 
-sub get_active_customers {
-    use DBI;
-    $ENV{NLS_LANG} = 'AMERICAN_AMERICA.AL32UTF8';
-    my $dbh;
-    my $customers = {};
-    $dbh=DBI->connect("dbi:Oracle:host=10.0.0.232;sid=BILL1022", "service25", "service25")|| die( $DBI::errstr . "\n" );
-    $dbh->{AutoCommit}    = 0;
-    $dbh->{RaiseError}    = 1;
-    $dbh->{ora_check_sql} = 1;
-    $dbh->{RowCacheSize}  = 0;
-#     $dbh->{LongReadLen}   = 52428800;
-    $dbh->{LongReadLen} = 1024 * 1024;
-    $dbh->{LongTruncOk}   = 0;
-    my $SEL_INFO = '
-select t.rcustcompanycode, t.rcustcompanyname, t.rcustiddisplay
-  from tblcustomers t
- where t.rcuststatus = \'A\'';
-    my $sth = $dbh->prepare($SEL_INFO);
-    $sth->execute();
-    while ( my @row=$sth->fetchrow_array() ) {
-	die "Already have this id for cust.\n" if exists $customers->{$row[0]};
-	$customers->{$row[0]}->{'name'} = $row[1];
-	$customers->{$row[0]}->{'displayname'} = $row[2];
+sub get_correct_customer{
+    my $name = shift;
+    return $name if $name =~ m/^\s*$/;
+    return "MSTelcom" if $name eq "MSTelecom";
+    return $name if $name eq "MINDUK_EMP";
+    return "Mobee" if $name eq "MobeeTel";
+    return "CWP" if $name eq "CWPanama";
+    return "EastLink" if $name eq "EastLink";
+
+    my $customers = WikiCommons::xmlfile_to_hash ("$real_path/customers.xml");
+    my $crm_name = "";
+    foreach my $nr (sort keys %$customers){
+	$crm_name = $customers->{$nr}->{'displayname'};
+	if ($crm_name =~ m/$name/i){
+	    $crm_name = $name;
+	    last;
+	}
     }
+# print "$name\t$crm_name\n";
+    print "Customer $name could not be found in customers list.\n", return $name if $crm_name ne $name;
+    return $crm_name;
 }
 
 return 1;

@@ -2,7 +2,9 @@
 #LD_LIBRARY_PATH=./instantclient_11_2/ perl ./oracle.pl
 use warnings;
 use strict;
+
 $SIG{__WARN__} = sub { die @_ };
+
 BEGIN {
     my $need= "./instantclient_11_2/";
     my $ld= $ENV{LD_LIBRARY_PATH};

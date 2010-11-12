@@ -86,20 +86,35 @@ sub add_document {
     }
     case "Docs_Customizations" {
         ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers ( $values[1], $values[2]);
-        $customer = $values[0];        $str =~ s/^$customer\///;
+        $customer = $values[0];
+        $str =~ s/^$customer\///;
+	$customer = WikiCommons::get_correct_customer($customer);
+        $str =~ s/^$customer\///;
+
         $fixed_name = WikiCommons::fix_name ( $name, $customer, $main, $ver);
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values], $main, $ver, $ver_fixed);
         $basic_url = "$fixed_name$url_sep$ver_without_sp$url_sep$customer";
     }
     case "Projects_Customizations" {
         ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers ( $values[1], $values[2]);
-        $customer = $values[0];        $str =~ s/^$customer\///;
+        $customer = $values[0];
+        $str =~ s/^$customer\///;
+	$customer = WikiCommons::get_correct_customer($customer);
+        $str =~ s/^$customer\///;
+
         $fixed_name = WikiCommons::fix_name ($name, $customer, $main, $ver);
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values], $main, $ver, $ver_fixed);
         $basic_url = "$fixed_name$url_sep$ver_without_sp$url_sep$customer";
     }
     case "Projects_Deployment_Customization" {
-        $customer = $values[0];        $str =~ s/^$customer\///;
+        $customer = $values[0];
+        $str =~ s/^$customer\///;
+	$customer = WikiCommons::get_correct_customer($customer);
+        $str =~ s/^$customer\///;
+
+	$customer = WikiCommons::get_correct_customer($customer);
+        $str =~ s/^$customer\///;
+
 	if ( scalar @values == 2 ) {
 	    $rest = "";
 	} else {

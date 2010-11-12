@@ -46,11 +46,13 @@ sub add_document {
 	$customer = (split ('=', $text[1]))[1];
 	if ( defined $customer ) {
 	    $customer =~ s/(^\s+|\s+$)//g;
-	    $customer = WikiCommons::capitalize_string( $customer, "first"  );
+# 	    $customer = WikiCommons::capitalize_string( $customer, "first"  );
+	    $customer = WikiCommons::get_correct_customer($customer);
 	    push @categories, $customer;
 	} else {
 	    $customer = "";
 	}
+
 	my $done = (split ('=', $text[3]))[1]; $done =~ s/(^\s+|\s+$)//g;
 	if ($done eq "yes") {
 	    ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers ( $version, $version) if ($version ne "" );
