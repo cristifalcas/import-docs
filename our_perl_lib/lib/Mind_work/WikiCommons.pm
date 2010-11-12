@@ -323,26 +323,7 @@ sub fix_name {
 sub check_vers {
     my ($main, $ver) = @_;
     die "main $main or ver $ver is not defined.\n" if (! defined $main || ! defined $ver);
-    my $regexp_main = qr/^\s*v?[0-9]{1,}(\.[0-9]{1,})*\s*(SP\s*[0-9]{1,}(\.[0-9]{1,})*)?$/is;
-    my $regexp_ver = qr/^\s*v?[0-9]{1,}(\.[0-9]{1,})*\s*([a-z0-9]{1,})?\s*(SP\s*[0-9]{1,}(\.[0-9]{1,})*)?\s*(demo)?\s*$/is;
-    my $ver_fixed = ""; my $ver_sp = ""; my $ver_without_sp = "";
-print "$main\t\t$ver\t\t\t\t";
-$ver = $main if $ver eq "MIND-iPhonEX 5.31 SLT Reports User Guide.doc" || $ver eq "Product Description" || $ver eq "User Manuals" || $ver eq "Whitepapers" || $ver eq "Quarterly Release Notes" || $ver eq "Documents" || $ver eq "Modules"  || $ver eq "Database";
-    die "Main version $main is not correct.\n" if $main !~ m/$regexp_main/i;
-    die "Ver version $ver is not correct.\n" if $ver !~ m/$regexp_ver/i;
-
-    $main = $main."0" if $main =~ m/^v?[[:digit:]]{1,}\.[[:digit:]]$/i;
-    $main = $main.".00" if $main =~ m/^v?[[:digit:]]{1,}$/i;
-    $main =~ s/\s*v//i;
-#     my $main_sp = $1 if $main
-    $ver = $ver."0" if $ver =~ m/^v?[[:digit:]]{1,}\.[[:digit:]]$/i;
-    $ver = $ver.".00" if $ver =~ m/^v?[[:digit:]]{1,}$/i;
-    $ver =~ s/\s*v//i;
-#     $ver = $ver.".00" if $ver =~ m/^v?[[:digit:]]{1,}$/i;
-# (?!123)
-print "$main\t\t$ver\n";
-
-#     ver:
+    #     ver:
 #     V7.00.001 SP28 DEMO
 #     V5.01.008OMP
 #     V5.31.006 GN SP01.004.2
@@ -351,6 +332,57 @@ print "$main\t\t$ver\n";
 #     main:
 #     5.31.006
 #     V6.01.003 SP40
+#
+#     my $regexp_main = qr/^\s*v?[0-9]{1,}(\.[0-9]{1,})*\s*(SP\s*[0-9]{1,}(\.[0-9]{1,})*)?$/is;
+#     my $regexp_ver = qr/^\s*v?[0-9]{1,}(\.[0-9]{1,})*\s*([a-z0-9 ]{1,})?\s*(SP\s*[0-9]{1,}(\.[0-9]{1,})*)?\s*(demo)?\s*$/is;
+#
+    my $ver_fixed = ""; my $ver_sp = ""; my $ver_without_sp = ""; my $ver_id = ""; my $main_sp = "";
+    my $main_v = ""; my $ver_v = "";
+#
+# print "om=$main|\tov=$ver|\t\t";
+# # $ver = $main if $ver eq "MIND-iPhonEX 5.31 SLT Reports User Guide.doc" || $ver eq "Product Description" || $ver eq "User Manuals" || $ver eq "Whitepapers" || $ver eq "Quarterly Release Notes" || $ver eq "Documents" || $ver eq "Modules"  || $ver eq "Database";
+#
+#     die "Main version $main is not correct.\n" if $main !~ m/$regexp_main/i;
+#     die "Ver version $ver is not correct.\n" if $ver !~ m/$regexp_ver/i;
+#
+#     $main = $main."0" if $main =~ m/^v?[[:digit:]]{1,}\.[[:digit:]]$/i;
+#     $main = $main.".00" if $main =~ m/^v?[[:digit:]]{1,}$/i;
+#     $main =~ s/\s*v//i;
+#     $main_sp = $2 if $main =~ m/^(.*)?(SP\s*[0-9]{1,}(\.[0-9]{1,})*)(.*)?$/i;
+#     $main =~ s/$main_sp// if $main_sp ne "";
+#     if ($main =~ m/^([0-9]{1,}(\.[0-9]{1,})*)\s*([a-z0-9 ]{1,})?(.*)?$/i){
+# 	$main_v = "$1";
+# 	$main_v .= " $3" if defined $3;
+#     }
+#
+#     $ver = $ver."0" if $ver =~ m/^v?[[:digit:]]{1,}\.[[:digit:]]$/i;
+#     $ver = $ver.".00" if $ver =~ m/^v?[[:digit:]]{1,}$/i;
+#     $ver =~ s/\s*v//i;
+#     $ver_sp = $2 if $ver =~ m/^(.*)?(SP\s*[0-9]{1,}(\.[0-9]{1,})*)(.*)?$/i;
+#     $ver =~ s/\s*$ver_sp\s*// if $ver_sp ne "";
+#     if ($ver =~ m/^([0-9]{1,}(\.[0-9]{1,})*)\s*([a-z0-9 ]{1,})?(.*)?$/i){
+# 	$ver_v = "$1";
+# 	$ver_v .= " $3" if defined $3;
+# 	$ver_v =~ s/(^\s*)|(\s*$)//g;
+# 	$ver_id = $3 if defined $3;
+# 	$ver_id =~ s/(^\s*)|(\s*$)//g;
+#     }
+# print "m=$main|\tv=$ver|\tms=$main_sp|\tvs=$ver_sp|\tmv=$main_v|\tvv=$ver_v|\tvi=$ver_id|\n";
+#
+#     die "Main $main is not like version $ver.\n" if $ver !~ m/^$main/;
+
+#     big_ver		: 6
+#     main_ver		: 6.60
+#     ver			: 6.60.001 GN SP100
+#     ver_fixed		: 6.60.001 GN
+#     ver_sp		: SP100
+#     ver_without_sp	:
+
+$main	, $ver		, $ver_fixed		, $big_ver, 	$ver_sp	, $ver_without_sp
+5.40	, 5.40.007GL	, 5.40.007 GL		, 5		, 	, 5.40.007 GL;
+6.00	, 6.00.003 SP31.3, 6.00.003 SP31.3	, 6		, SP31.3, 6.00.003;
+6.00	, 6.00.003SP05	, 6.00.003SP05		, 6		, SP05	, 6.00.003;
+
 
     #case 1: ver is a real version:
     # ver could be 5.55.111QQ or 5.55.111 QQ or V6.01.004 SP47.004
@@ -393,6 +425,7 @@ print "$main\t\t$ver\n";
 	die "Version $ver should contain main $main.\n";
     }
     $ver_without_sp = $ver_fixed if $ver_without_sp eq "";
+print "$main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp;\n";
     return $main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp;
 }
 
