@@ -8,6 +8,7 @@ use URI::Escape;
 use Image::Info qw(image_info dim);
 use Mind_work::WikiCommons;
 use Data::Dumper;
+$Data::Dumper::Sortkeys = 1;
 use HTML::TreeBuilder;
 use HTML::WikiConverter;
 # use HTML::Tidy;
@@ -104,7 +105,8 @@ sub cleanup_html {
     print "\t-Fix html file $name.html.\t". (WikiCommons::get_time_diff) ."\n";
 
     my $tree = HTML::TreeBuilder->new();
-    $tree->no_space_compacting(1);
+
+    $tree->no_space_compacting(0);
     $tree = $tree->parse_content(decode_utf8($html));
     tree_only_one_body($tree);
 
@@ -113,8 +115,12 @@ WikiCommons::write_file("$dir/".++$i.". original.$name.html", tree_to_html($tree
     $tree = tree_remove_TOC($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_remove_TOC.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
     $tree = heading_new_line($tree) if $debug eq "yes";
+
+    $tree->no_space_compacting(1);
     my $text1 = tree_to_text($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_text1.$name.txt", $text1, 1) if $debug eq "yes";
+    $tree->no_space_compacting(0);
+
     ## after TOC, because in TOC we use div
     $tree = tree_clean_div($tree) || return undef;
 WikiCommons::write_file("$dir/".++$i.". tree_clean_div.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
@@ -148,8 +154,11 @@ WikiCommons::write_file("$dir/".++$i.". tree_clean_lists.$name.html", tree_to_ht
 #     $html = html_tidy( $html, 0 );
 # WikiCommons::write_file("$dir/html_tidy2.$name.html", $html, 1);
 
+
+    $tree->no_space_compacting(1);
     my $text2 = tree_to_text($tree);
 WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1) if $debug eq "yes";
+    $tree->no_space_compacting(0);
 
     $text1 =~ s/[\s]//gs;
     $text2 =~ s/[\s]//gs;
@@ -200,45 +209,6 @@ sub tree_to_html {
     return encode('utf8',$text);
 }
 
-# sub tag_remove_attr {
-#     my ($tag_name, $attr_name, $attr_value) = @_;
-#     if ($tag_name eq "font") {
-# 	if ($attr_name eq "size" ||
-# 	    $attr_name eq "face" ||
-# 	    ($attr_name eq "style" && $attr_value =~ m/font-size: [0-9]{1,}pt/)) {
-# 		return 1;
-# 	    } elsif ($attr_name eq "color") {
-# 		return 0;
-# 	    } else {
-# 		die "Unknown attribute for font: $attr_name = $attr_value.\n";
-# 	    }
-#     } elsif ($tag_name eq "span"){
-# 	    if ($attr_name eq "lang" || $attr_name eq "id" || $attr_name eq "dir" ||
-# 		    ($attr_name eq "style" &&
-# 			($attr_value eq "text-decoration: none" || $attr_value eq "FONT-WEIGHT: bold" ||
-# 			    $attr_value eq "FONT-STYLE: italic" ||
-# 			   $attr_value =~ m/position: absolute; top: -?[0-9.]{1,}in; left: -?[0-9.]{1,}in; width: [0-9.]{1,}px/ )) ||
-# 		    ($attr_name eq "class" && $attr_value eq "sd-abs-pos") ){
-# 		return 1;
-# 	    } elsif ( ($attr_name eq "style" && (
-# 		    $attr_value =~  m/background: #[a-f0-9]{6}/ ||
-# 		    $attr_value =~  m/font-(weight|style): normal/i ||
-# 		    $attr_value =~  m/background: transparent/  ))) {
-# 		return 0;
-# 	    } else {
-# 		die "Unknown attribute for span: $attr_name = $attr_value.\n";
-# 	    }
-#     } elsif ($tag_name eq "ol") {
-# 	if ($attr_name eq "start" || $attr_name eq "type" ) {
-# 	    return 0;
-# 	} else {
-# 	    die "Unknown attribute for tag $tag_name: $attr_name = $attr_value.\n";
-# 	}
-#     }else {
-# 	die "Unknown attribute for tag $tag_name: $attr_name = $attr_value.\n";
-#     }
-# }
-
 sub tree_clean_font {
     my ($tree, $tag) = @_;
     foreach my $a_tag ($tree->guts->look_down(_tag => "font")) {
@@ -252,6 +222,10 @@ sub tree_clean_font {
 		next;
 	    }
 	    die "Attr name for font: $attr_name = $attr_value.\n";
+	}
+	if ( $a_tag->as_text =~ m/^\s*$/) {
+	    $a_tag->detach;
+	    next;
 	}
     }
     return $tree;
@@ -268,13 +242,18 @@ sub tree_clean_span {
 		my @attr = split ';', $attr_value;
 		my $res = undef;
 		foreach my $att (@attr) {
-		    if ($att =~ m/^\s*(background: #[0-9a-fA-F]{6})\s*$/i) {
-			$res .= $att;
+		    if ($att =~ m/^\s*(background: #[0-9a-fA-F]{6})\s*$/i
+			|| $att =~ m/^\s*(font-(weight|style): (normal|normal))\s*$/i ) {
+			$res .= $att.";";
 		    } else {
-			next if $att =~ m/^\s*float: (left|right)\s*$/i
+			next if $att =~ m/^\s*float: (top|left|right)\s*$/i
 				    || $att =~ m/^\s*(width|height): [0-9.]{1,}in\s*$/i
+				    || $att =~ m/^\s*text-decoration:/i
+				    || $att =~ m/^\s*position: absolute\s*$/i
+				    || $att =~ m/^\s*(top|left|right): [0-9]{1,}in\s*$/i
 				    || $att =~ m/^\s*(border|padding)/i;
 die "Attr name for span_style = $att.\n";
+			$res .= $att.";";
 		    }
 		}
 		$a_tag->attr("$attr_name", $res);
@@ -283,42 +262,13 @@ die "Attr name for span_style = $att.\n";
 		|| $attr_name eq "style" );
 	    die "Attr name for span: $attr_name = $attr_value.\n";
 	}
+	if ( $a_tag->as_text =~ m/^\s*$/) {
+	    $a_tag->detach;
+	    next;
+	}
     }
     return $tree;
 }
-
-# sub tree_clean_empty_tag {
-#     my ($tree, $tag) = @_;
-#     print "\t-Clean tag $tag.\t". (WikiCommons::get_time_diff) ."\n";
-#     foreach my $a_tag ($tree->guts->look_down(_tag => "$tag")) {
-# 	my $some_ok_attr = 0;
-# 	my $tag_name = $a_tag->tag;
-# 	foreach my $attr_name ($a_tag->all_external_attr_names){
-# 	    my $attr_value = $a_tag->attr($attr_name);
-# 	    if ( tag_remove_attr($tag_name, $attr_name, $attr_value) ) {
-# 		$a_tag->attr("$attr_name", undef);
-# 	    } else {
-# 		++$some_ok_attr;
-# 	    }
-# 	}
-# 	my $some_ok_tags = 0;
-# 	foreach my $crt_text ($a_tag->content_refs_list) {
-# 	    if (ref $crt_text){
-# 		$some_ok_tags++;
-# 		next ;
-# 	    }
-# 	    if ($$crt_text !~ m/(^\s*$)/){
-# 		$some_ok_tags++;
-# 	    }
-# 	}
-# 	if (!($some_ok_attr || $some_ok_tags)) {
-# 	    $a_tag->replace_with_content;
-# 	    next;
-# 	}
-# 	$a_tag->detach if ($a_tag->is_empty);
-#     }
-#     return $tree;
-# }
 
 sub tree_clean_headings {
     my $tree = shift;
@@ -332,32 +282,7 @@ sub tree_clean_headings {
 	    my $grandpa = $dad->parent;
 	    my $grandgrandpa = $grandpa->parent;
 
-	    ## extract images from heading and put it before it. Remove other attr
-	    foreach my $b_tag ($a_tag->content_refs_list){
-		next if ! ref $$b_tag;
-		my $tag = $$b_tag->tag();
-		if ($tag eq "img" || $tag eq "table") {
-		    my $img = $$b_tag->clone;
-		    $$b_tag->detach;
-		    $a_tag->preinsert($img);
-		} elsif ($tag eq "br" || $tag eq "a") {
-		    $$b_tag->detach;
-		} elsif ($tag eq "sup") {
-		} elsif ( $tag eq "span" || $tag eq "font" || $tag eq "u" || $tag eq "b" || $tag eq "em"
-		    || $tag eq "center" || $tag eq "i" || $tag eq "strong") {
-		    $$b_tag->replace_with_content;
-		} else {
-		    die "reference in heading: $tag\n";
-		    return undef;
-		}
-	    }
-
-	    foreach my $b_tag ($a_tag->content_refs_list){
-		next if ref $$b_tag;
-		$$b_tag =~ s/\s+/ /gm;
-	    }
-
-
+	    tree_headings_clean_content($a_tag);
 
 	    ### remove empty headings
 	    my $heading_txt = $a_tag->as_text();
@@ -367,70 +292,94 @@ sub tree_clean_headings {
 		next;
 	    }
 
-
-
 ##if we have a heading in a list and it's lists all the way down, extract content
 ## else, make it bold and leave
 	    if ( ($dad->tag eq "body" && $grandpa->tag eq "html" && not($grandgrandpa)) ||
 		    (($dad->tag eq "div" | $dad->tag eq "a") && $grandpa->tag eq "body" && $grandgrandpa->tag eq "html") ) {
 		## we're cool
 	    } elsif ($dad->tag =~ m/(li|ol|ul)/) {
-		my @ancestors = ();
-		foreach my $parent ($a_tag->lineage()){
-		    if ( $parent->tag =~ m/^(ul|ol|li|body|html|div|a)$/){
-			push @ancestors, $parent
-		    } else {
-			@ancestors = ();
-			last
-		    }
-		}
-		if ( scalar @ancestors ) {
-		    print "all lists here:\n\t";
-		    foreach my $parent (@ancestors) {
-			print "".$parent->tag."\t";
-			last if $parent->tag eq "body";
-			$parent->replace_with_content;
-		    }
-		    print "\n";
-		} else {
-		    die "not all lists here\n";
-		    $a_tag->tag("b");
-		    next;
-		}
+		tree_headings_in_lists($a_tag);
 	    }
 
-
-
-
-	    ## clean up attributes
-	    foreach my $attr_name ($a_tag->all_external_attr_names){
-		my $attr_value = $a_tag->attr($attr_name);
-		if ( $attr_name eq "style"
-# 			    && ( $attr_value =~ "page-break-(before|after|inside)" ||
-# 			    $attr_value =~ "^margin-left:" ||
-# 			    $attr_value =~ m/^font-(weight|style): normal$/||
-# 			    $attr_value =~ m/^page-break-inside: avoid$/)
-			|| $attr_name eq "class"
-# 				&&( $attr_value eq "western"
-# 				    || $attr_value =~ m/(toc|contents)-heading-western/
-# 				    || $attr_value =~ m/heading-[0-9]/
-# 				    || $attr_value eq "heading4-western"
-# 				    || $attr_value eq "heading4-western")
-			|| $attr_name eq "align"
-			|| $attr_name eq "lang"
-			|| $attr_name eq "dir") {
-		    $a_tag->attr("$attr_name", undef);
-# 		} elsif ($attr_name eq "cellpadding") {
-		} else {
-		    die "Unknown attr in heading: $attr_name = $attr_value.\n";
-		    return undef;
-		}
-	    }
+	    tree_headings_clean_attr($a_tag);
 	}
     }
 
     print "\t+Fix headings.\t". (WikiCommons::get_time_diff) ."\n";
     return $tree;
+}
+
+sub tree_headings_clean_content {
+    my $a_tag = shift;
+## extract images from heading and put it before it. Remove other attr
+    foreach my $b_tag ($a_tag->content_refs_list){
+	next if ! ref $$b_tag;
+	my $tag = $$b_tag->tag();
+	if ($tag eq "img" || $tag eq "table") {
+	    my $img = $$b_tag->clone;
+	    $$b_tag->detach;
+	    $a_tag->preinsert($img);
+	} elsif ($tag eq "br" || $tag eq "a") {
+	    $$b_tag->detach;
+	} elsif ($tag eq "sup") {
+	} elsif ( $tag eq "span" || $tag eq "font" || $tag eq "u" || $tag eq "b" || $tag eq "em"
+	    || $tag eq "center" || $tag eq "i" || $tag eq "strong") {
+	    $$b_tag->replace_with_content;
+	} else {
+	    die "reference in heading: $tag\n";
+	    return undef;
+	}
+    }
+
+    foreach my $b_tag ($a_tag->content_refs_list){
+	next if ref $$b_tag;
+	$$b_tag =~ s/\s+/ /gm;
+    }
+}
+
+sub tree_headings_clean_attr {
+## clean up attributes
+    my $a_tag = shift;
+    foreach my $attr_name ($a_tag->all_external_attr_names){
+	my $attr_value = $a_tag->attr($attr_name);
+	if ( $attr_name eq "style"
+		|| $attr_name eq "class"
+		|| $attr_name eq "align"
+		|| $attr_name eq "lang"
+		|| $attr_name eq "dir") {
+	    $a_tag->attr("$attr_name", undef);
+# 		} elsif ($attr_name eq "cellpadding") {
+	} else {
+	    die "Unknown attr in heading: $attr_name = $attr_value.\n";
+	    return undef;
+	}
+    }
+}
+
+sub tree_headings_in_lists {
+    my $a_tag = shift;
+    my @ancestors = ();
+    foreach my $parent ($a_tag->lineage()){
+	if ( $parent->tag =~ m/^(ul|ol|li|body|html|div|a)$/){
+	    push @ancestors, $parent
+	} else {
+	    @ancestors = ();
+	    last
+	}
+    }
+    if ( scalar @ancestors ) {
+	print "all lists here: ".Encode::encode('utf8', $a_tag->as_text)."\n\t";
+	foreach my $parent (@ancestors) {
+	    print "".$parent->tag."\t";
+	    last if $parent->tag eq "body";
+	    $parent->replace_with_content;
+	}
+	print "\n";
+    } else {
+	die "not all lists here: ".Encode::encode('utf8', $a_tag->as_text)."\n";
+	$a_tag->tag("b");
+	next;
+    }
 }
 
 sub tree_clean_tables {
@@ -525,42 +474,11 @@ sub tree_clean_tables {
     return $tree;
 }
 
-# sub html_fix_html_tabs {
-#     my $text = shift;
-#     my $tree = HTML::TreeBuilder->new();
-#     print "\t-Fix tabs in html.\t". (WikiCommons::get_time_diff) ."\n";
-#     $tree->no_space_compacting(1);
-#     $tree = $tree->parse_content($text);
-#     foreach my $a_tag ($tree->guts->look_down(_tag => "p")) {
-# 	## we only care if the text is STARTING with tab or spaces, so we skeep everything after the first element
-# 	foreach my $crt_text ($a_tag->content_refs_list) {
-# 	    if (! ref $$crt_text && $$crt_text =~ m/^([ ]{4}|[\t]{1,})(.*)/s){
-# 		my $spaces = $1;
-# 		my $rest = $2;
-# 		$spaces =~ s/[ ]{4}/\t/;
-# 		$spaces =~ s/^\t//;
-# 		$spaces =~ s/\t/<br id="tab"\/>/g;
-# 		$spaces =~ s/ //g;
-# 		$crt_text->replace_with( $spaces.$rest );
-# print "new text in p $$crt_text.\n";
-# 	    last;
-# 	    }
-# print "got ref in p ".$$crt_text->tag.".\n" if ref $$crt_text;
-# print "got text in p ".$$crt_text.".\n" if ! ref $$crt_text;
-# 	}
-#     }
-#     my $cleaned = $tree->guts ? $tree->guts->as_HTML(undef, "\t") : "";
-# # WikiCommons::write_file("./3.txt", $cleaned, 1);
-#     $tree = $tree->delete;
-#     print "\t+Fix tabs in html.\t". (WikiCommons::get_time_diff) ."\n";
-#     return $cleaned;
-# }
-
 sub tree_clean_lists {
     my $tree = shift;
     ### remove empty lists from body
     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
-	$a_tag->detach() if $a_tag->is_empty();
+	$a_tag->detach() if $a_tag->is_empty() || $a_tag->as_text =~ m/^\s*$/;
     }
     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
 	next if ! $a_tag->is_empty();

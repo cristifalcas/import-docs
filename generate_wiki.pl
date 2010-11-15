@@ -401,7 +401,7 @@ sub make_categories {
 
     return if ($delete_everything eq "yes");
     print "-Making categories.\t". (WikiCommons::get_time_diff) ."\n";
-    my $general_categories_hash = WikiCommons::get_categories;
+    my $general_categories_hash = $coco->get_categories;
     foreach my $key (sort keys %$general_categories_hash) {
 	my $text = "----\n\n";
 	$url = "Category:$key";
@@ -587,14 +587,14 @@ WikiCommons::write_file($pid_file,"$$\n$path_type\n");
 
 $our_wiki = new WikiWork();
 if ($path_type eq "mind_svn") {
-    $coco = new WikiMindSVN("$path_files", WikiCommons::get_urlsep);
+    $coco = new WikiMindSVN("$path_files");
     work_for_docs("$path_files");
 } elsif ($path_type eq "users") {
-    $coco = new WikiMindUsers("$path_files", WikiCommons::get_urlsep);
+    $coco = new WikiMindUsers("$path_files");
     work_for_docs("$path_files");
 } elsif ($path_type eq "crm_docs") {
     $all_real = "yes";
-    $coco = new WikiMindCRM("$path_files", WikiCommons::get_urlsep);
+    $coco = new WikiMindCRM("$path_files");
 
     my ($to_delete, $to_keep) = work_begin;
 # print Dumper($pages_toimp_hash);die;

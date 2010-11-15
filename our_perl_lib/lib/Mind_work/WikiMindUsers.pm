@@ -7,8 +7,10 @@ use File::Find;
 use File::Basename;
 use Cwd 'abs_path';
 use Data::Dumper;
+$Data::Dumper::Sortkeys = 1;
 
 our $pages_toimp_hash = {};
+our $general_categories_hash = {};
 
 sub new {
     my $class = shift;
@@ -17,17 +19,42 @@ sub new {
     return $self;
 }
 
+sub get_categories {
+    return $general_categories_hash;
+}
+
+sub generate_categories {
+    my ($ver, $main, $big_ver, $customer, $dir_type) = @_;
+    ## $general_categories_hash->{5.01.019}->{5.01} means that 5.01.019 will be in 5.01 category
+    $general_categories_hash->{$ver}->{$main} = 1 if $ver ne "" && $ver ne $main;
+    $general_categories_hash->{$ver}->{$big_ver} = 1 if $ver ne "" && $big_ver ne "";
+    $general_categories_hash->{$ver}->{$customer} = 1 if $big_ver ne "" && $customer ne "";
+    $general_categories_hash->{$ver}->{$dir_type} = 1 if $big_ver ne "" && $dir_type ne "";
+
+    $general_categories_hash->{$main}->{$big_ver} = 1 if $main ne "" && $big_ver ne "";
+    $general_categories_hash->{$main}->{$customer} = 1 if $main ne "" && $customer ne "";
+    $general_categories_hash->{$main}->{$dir_type} = 1 if $main ne "" && $dir_type ne "";
+    $general_categories_hash->{$main}->{'Mind Documentation autoimport'} = 1 if $main ne "";
+
+    $general_categories_hash->{$customer}->{$dir_type} = 1 if $customer ne "" && $dir_type ne "";
+    $general_categories_hash->{$customer}->{'MIND_Customers'} = 1 if $customer ne "";
+    $general_categories_hash->{$customer}->{'Mind Documentation autoimport'} = 1 if $customer ne "";
+
+    $general_categories_hash->{$big_ver}->{'Mind Documentation autoimport'} = 1 if $big_ver ne "";
+    $general_categories_hash->{$dir_type}->{'Mind Documentation autoimport'} = 1 if $dir_type ne "";
+}
+
 sub add_document {
     my $doc_file = abs_path(shift);
     my $path_files = shift;
-    my $url_sep = shift;
+
     my $rel_path = "$doc_file";
     $rel_path =~ s/^$path_files\///;
     my ($name,$dir,$suffix) = fileparse("$doc_file", qr/\.[^.]*/);
     my $customer = "";
     my $page_url = "";
     my @categories = ();
-    my $main = ""; my $ver = ""; my $ver_fixed = ""; my $big_ver = ""; my $ver_sp = ""; my $ver_without_sp = "";
+    my $main = ""; my $ver = ""; my $ver_fixed = ""; my $big_ver = ""; my $ver_sp = ""; my $ver_id = "";
 
     if (-f "$dir/$name.txt") {
 	open (FILEHANDLE, "$dir/$name.txt") or die $!."\t". (WikiCommons::get_time_diff) ."\n";
@@ -53,15 +80,16 @@ sub add_document {
 	    $customer = "";
 	}
 
+	my $url_sep = WikiCommons::get_urlsep;
 	my $done = (split ('=', $text[3]))[1]; $done =~ s/(^\s+|\s+$)//g;
 	if ($done eq "yes") {
-	    ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers ( $version, $version) if ($version ne "" );
+	    ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $version, $version) if ($version ne "" );
 # 	    WikiCommons::generate_categories($ver_fixed, $main, $big_ver, $customer, "Users documents");
-	    WikiCommons::generate_categories($ver_without_sp, $main, $big_ver, $customer, "Users documents");
+	    generate_categories($ver_fixed, $main, $big_ver, $customer, "Users documents");
 	    my $fixed_name = $name;
-	    $fixed_name = WikiCommons::fix_name ($name, $customer, $main, $ver) if ($version ne "" );
+	    $fixed_name = WikiCommons::fix_name ($name, $customer, $main, $ver, $ver_sp, $ver_id) if ($version ne "" );
 # 	    $page_url = "$fixed_name$url_sep$main$url_sep$ver_fixed$url_sep$customer";
-	    $page_url = "$fixed_name$url_sep$ver_without_sp$url_sep$customer";
+	    $page_url = "$fixed_name$url_sep$ver_fixed$url_sep$customer";
 	    $page_url =~ s/($url_sep){2,}/$url_sep/g;
 	    $page_url =~ s/(^$url_sep)|($url_sep$)//;
 	} else {

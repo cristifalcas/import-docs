@@ -4,18 +4,24 @@ use warnings;
 use strict;
 
 use Data::Dumper;
+$Data::Dumper::Sortkeys = 1;
 use File::Find;
 use Cwd 'abs_path';
 use File::Basename;
 
 our $pages_toimp_hash = {};
+our $general_categories_hash = {};
 our $count_files;
 
 sub new {
     my $class = shift;
-    my $self = { path_files => shift , url_sep => shift};
+    my $self = { path_files => shift };
     bless($self, $class);
     return $self;
+}
+
+sub get_categories {
+    return $general_categories_hash;
 }
 
 sub add_document{
@@ -51,8 +57,9 @@ sub add_document{
 sub get_documents {
     my $self = shift;
     my $path_files = $self->{path_files};
+    my $url_sep = WikiCommons::get_urlsep;
     print "-Searching for files in CRM dir.\t". (WikiCommons::get_time_diff) ."\n";
-    find sub { add_document ($File::Find::name, "$self->{path_files}", "$self->{url_sep}") if -f && (/\.wiki$/i) }, "$self->{path_files}/" if  (-d "$self->{path_files}");
+    find sub { add_document ($File::Find::name, "$self->{path_files}", "$url_sep") if -f && (/\.wiki$/i) }, "$self->{path_files}/" if  (-d "$self->{path_files}");
     print "+Searching for files in CRM dir.\t". (WikiCommons::get_time_diff) ."\n";
     return $pages_toimp_hash;
 }

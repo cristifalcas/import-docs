@@ -50,11 +50,13 @@ our $svn_pass = 'svncheckout';
 our $svn_user = 'svncheckout';
 our $files_info = "files_info.txt";
 our $general_template_file = "./SC_template.txt";
-my $bulk_svn_update = "yes";
+my $bulk_svn_update = "no";
 my $svn_update = "yes";
 my $force_sc_update = "no";
 our $time = time();
 my $url_sep = WikiCommons::get_urlsep;
+my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
+WikiCommons::set_real_path($path_prefix);
 
 our $dbh;
 our $request;
@@ -125,19 +127,35 @@ sub general_info {
     }
     $general =~ s/%tester%/$tmp/g;
     $tmp = @$info[$index->{'customer'}];
-    $tmp = WikiCommons::capitalize_string( $tmp, "all" );
-    if ($tmp !~ m/^\s*$/ && $tmp ne "All") {
-	$general =~ s/%customer%/\'\'\'Customer\'\'\': \[\[:Category:$tmp\|$tmp\]\]/;
+    my @all_custs = split ',', @$info[$index->{'customer'}];
+
+    foreach my $cust (@all_custs) {
+	next if $cust =~ m/^\s*$/;
+	$cust =~ s/(^\s*)|(\s*$)//;
+	my $q = WikiCommons::get_correct_customer($cust);
+	push @categories, "customer $cust";
+	$cust = "\[\[:Category:$cust\|$cust\]\]";
+    }
+
+    if (scalar @all_custs){
+	$tmp = join ' ', @all_custs;
+	$general =~ s/%customer%/\'\'\'Customer\'\'\': $tmp/;
     } else {
 	$general =~ s/%customer%//;
     }
-    push @categories, "customer $tmp";
-    if (@$info[$index->{'customer_bug'}] eq 'Y') {
+
+    if (@$info[$index->{'customer_bug'}] eq 'Y' && @$info[$index->{'crmid'}] !~ m/^\s*$/) {
 	$tmp = @$info[$index->{'crmid'}];
-	$tmp =~ s/\s+/ /g;
 	$tmp =~ s/(^\s+)|(\s+$)//g;
-	$tmp = WikiCommons::capitalize_string( $tmp, "first"  );
-	$tmp =~ s/\//$url_sep/;
+	$tmp =~ s/\s+/ /g;
+	if ($tmp =~ m/^\s*(.*)?(\s*\/\s*|\s+)([0-9]{1,})\s*$/){
+	    my $q = $1;
+	    my $w = $2;
+	    $q = WikiCommons::get_correct_customer( $q );
+	    $tmp = "CRM:$q -- $w";
+	} else {
+	    die "Strange customer bug string: $tmp.\n" ;
+	}
 	$general =~ s/%customer_bug%/\'\'\'Customer bug\'\'\' (CRM ID): [[$tmp]]/;
     } else {
 	$general =~ s/%customer_bug%//;
@@ -149,8 +167,14 @@ sub general_info {
     $general =~ s/%full_status%/@$info[$index->{'fullstatus'}]/;
     $general =~ s/%status%/@$info[$index->{'status'}]/;
     $tmp = @$info[$index->{'fixversion'}];
-    $general =~ s/%fix_version%/[[:Category:$tmp|$tmp]]/g if $tmp && $tmp ne '';;
+    $tmp =~ s/(^\s*)|(\s*$)//;
+    if ($tmp && $tmp ne ''){
+	my ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers($tmp, $tmp);
+	$general =~ s/%fix_version%/[[:Category:$ver_fixed|$ver_fixed]]/g;
+    }
+
     push @categories, "version ". @$info[$index->{'version'}];
+
     $general =~ s/%version%/@$info[$index->{'version'}]/;
     $general =~ s/%build_version%/@$info[$index->{'buildversion'}]/;
     $general =~ s/%prod_version%/@$info[$index->{'prodversion'}]/;
@@ -605,7 +629,7 @@ sub write_common_info {
 sub svn_info {
     my $path = shift;
     print "\t-SVN info for $path.\t". (time() - $time)."\n";
-    my $xml = `svn list --xml --non-interactive --no-auth-cache --trust-server-cert --password $svn_pass --username $svn_user $path 2> /dev/null`;
+    my $xml = `svn list --xml --non-interactive --no-auth-cache --trust-server-cert --password $svn_pass --username $svn_user \'$path\' 2> /dev/null`;
     if ($?) {
 	print "\tError $? for svn.\n";
 	return;
@@ -630,7 +654,6 @@ sub write_control_file {
 
     $text .= "SC_info;$hash->{'SC_info'}->{'name'};$hash->{'SC_info'}->{'size'};$hash->{'SC_info'}->{'revision'}\n";
     $text .= "Categories;". (join ';',@$categories). ";"x(3-(scalar @$categories))."\n" if scalar @$categories;
-
     write_file("$dir/$files_info", "$text");
 }
 
@@ -696,7 +719,7 @@ my ($index, $SEL_INFO) = sql_generate_select_changeinfo();
 my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id ne "B94932";
+#     next if $change_id ne "B02315";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -732,7 +755,7 @@ foreach my $change_id (sort keys %$crt_hash){
     $todo->{'SC_info'} = $change_id if ! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'});
     next if Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) && $svn_update eq "no" && $force_sc_update ne "yes";
     foreach my $key (sort keys %$svn_docs) {
-	if ($force_sc_update eq "yes") {
+	if ($force_sc_update eq "yes" && defined $prev_info->{'SC_info'}) {
 	    $crt_info = $prev_info;
 	    last;
 	}
@@ -764,7 +787,7 @@ foreach my $change_id (sort keys %$crt_hash){
     }
 
     next if Compare($crt_info, $prev_info) && $force_sc_update ne "yes";
-    makedir("$work_dir");
+    WikiCommons::makedir("$work_dir");
     foreach my $key (keys %$svn_docs) {
 	if ( exists $todo->{$key} ) {
 	    print "\tUpdate svn http for $key.\n";
@@ -784,9 +807,10 @@ foreach my $change_id (sort keys %$crt_hash){
     if (defined $todo->{'SC_info'} || $force_sc_update eq "yes") {
  	print "\tUpdate SC info.\n";
 	my $prev = $prev_info->{'SC_info'}->{'size'} || 'NULL';
-	print "\tChanged CRC: $crt_info->{'SC_info'}->{'size'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'size'} || $crt_info->{'SC_info'}->{'size'} ne $prev);
+
+	print "\tChanged CRC: $crt_info->{'SC_info'}->{'size'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'size'} && $crt_info->{'SC_info'}->{'size'} ne $prev);
 	$prev = $prev_info->{'SC_info'}->{'revision'} || 'NULL';
-	print "\tChanged status: $crt_info->{'SC_info'}->{'revision'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'revision'} || $crt_info->{'SC_info'}->{'revision'} ne $prev);
+	print "\tChanged status: $crt_info->{'SC_info'}->{'revision'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'revision'} && $crt_info->{'SC_info'}->{'revision'} ne $prev);
 	my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
 	my $modules = sql_get_modules( split ',', @$info_ret[$index->{'modules'}] ) if defined @$info_ret[$index->{'modules'}];
 	my $tester = sql_get_workers_names( split ',', @$info_ret[$index->{'tester'}] ) if defined @$info_ret[$index->{'tester'}];
@@ -806,7 +830,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	write_rtf ("$work_dir/5 Architecture_SC.rtf", @$info_ret[$index->{'Architecture_SC'}]);
     }
 
-    $cat = [ $prev_info->{'Categories'}->{'name'}, $prev_info->{'Categories'}->{'size'}, $prev_info->{'Categories'}->{'revision'} ] if ! defined $cat;
+    $cat = [ $prev_info->{'Categories'}->{'name'} || "", $prev_info->{'Categories'}->{'size'} || "", $prev_info->{'Categories'}->{'revision'} || "" ] if ! defined $cat;
 
     write_control_file($crt_info, $work_dir, $cat);
     move_dir("$work_dir", "$to_path/$change_id/");

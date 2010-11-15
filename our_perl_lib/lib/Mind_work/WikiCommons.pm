@@ -8,12 +8,12 @@ use Unicode::Normalize 'NFD','NFC','NFKD','NFKC';
 use File::Basename;
 use File::Copy;
 use Data::Dumper;
+$Data::Dumper::Sortkeys = 1;
 use XML::Simple;
 
 our $start_time = 0;
 our $clean_up = {};
 our $url_sep = " -- ";
-our $general_categories_hash = {};
 our $remote_work = "no";
 our $real_path;
 
@@ -94,39 +94,6 @@ sub write_file {
 
 sub get_time_diff {
     return (time() - $start_time);
-}
-
-sub generate_categories {
-    my ($ver, $main, $big_ver, $customer, $dir_type) = @_;
-    ## $general_categories_hash->{5.01.019}->{5.01} means that 5.01.019 will be in 5.01 category
-    $general_categories_hash->{$ver}->{$main} = 1 if $ver ne "" && $ver ne $main;
-    $general_categories_hash->{$ver}->{$big_ver} = 1 if $ver ne "" && $big_ver ne "";
-    $general_categories_hash->{$ver}->{$customer} = 1 if $big_ver ne "" && $customer ne "";
-    $general_categories_hash->{$ver}->{$dir_type} = 1 if $big_ver ne "" && $dir_type ne "";
-
-    $general_categories_hash->{$main}->{$big_ver} = 1 if $main ne "" && $big_ver ne "";
-    $general_categories_hash->{$main}->{$customer} = 1 if $main ne "" && $customer ne "";
-    $general_categories_hash->{$main}->{$dir_type} = 1 if $main ne "" && $dir_type ne "";
-    $general_categories_hash->{$main}->{'Mind Documentation autoimport'} = 1 if $main ne "";
-
-    $general_categories_hash->{$customer}->{$dir_type} = 1 if $customer ne "" && $dir_type ne "";
-    $general_categories_hash->{$customer}->{'MIND_Customers'} = 1 if $customer ne "";
-    $general_categories_hash->{$customer}->{'Mind Documentation autoimport'} = 1 if $customer ne "";
-
-    $general_categories_hash->{$big_ver}->{'Mind Documentation autoimport'} = 1 if $big_ver ne "";
-    $general_categories_hash->{$dir_type}->{'Mind Documentation autoimport'} = 1 if $dir_type ne "";
-    ## Release Notes categories
-    $general_categories_hash->{$main}->{'Release Notes'} = 1 if $main =~ /$url_sep(RN)$/;
-    $general_categories_hash->{$customer}->{'Release Notes'} = 1 if $customer =~ /$url_sep(RN)$/;
-    $general_categories_hash->{$big_ver}->{'Release Notes'} = 1 if $big_ver =~ /$url_sep(RN)$/;
-    ## SC
-    $general_categories_hash->{$main}->{'SCDocs'} = 1 if $main =~ /$url_sep(SC)$/;
-    $general_categories_hash->{$customer}->{'SCDocs'} = 1 if $customer =~ /$url_sep(SC)$/;
-    $general_categories_hash->{$big_ver}->{'SCDocs'} = 1 if $big_ver =~ /$url_sep(SC)$/;
-}
-
-sub get_categories {
-    return $general_categories_hash;
 }
 
 sub get_urlsep {
@@ -219,7 +186,8 @@ sub capitalize_string {
 }
 
 sub fix_name {
-    my ($name, $customer, $main, $ver) = @_;
+    my ($name, $customer, $big_ver, $main, $ver, $ver_sp, $ver_id) = @_;
+
     my $fixed_name = $name;
     $fixed_name = normalize_text($fixed_name);
 
@@ -243,27 +211,21 @@ sub fix_name {
     $fixed_name =~ s/_/\ /gi;
     my $yet_another_version_style = $ver;
     if (defined $ver && defined $main) {
-	no warnings;
-	$yet_another_version_style =~ s/([[:digit:]]{1,}\.)*?( )?([a-z]{1,})/$1 $3/gi;
-	$fixed_name =~ s/^\s?[v]?$yet_another_version_style\s?//i;
-	use warnings;
-	$fixed_name =~ s/^\s?[v]?$ver\s//i;
-	$fixed_name =~ s/^\s?[v]?$main\s//i;
-	$fixed_name =~ s/\s+[v]?$main\s*$//i;
-	$fixed_name =~ s/\s+[v]?$ver\s*$//i;
+	$fixed_name =~ s/(^\s?[v]?$ver\s*$ver_id\s*$ver_sp\s+)|(\s+[v]?$ver\s*$ver_id\s*$ver_sp\s+$)//i;
+	$fixed_name =~ s/(^\s?[v]?$ver\s*$ver_sp\s+)|(\s+[v]?$ver\s*$ver_sp\s+$)//i;
+	$fixed_name =~ s/(^\s?[v]?$ver\s*$ver_id\s+)|(\s+[v]?$ver\s*$ver_id\s+$)//i;
+	$fixed_name =~ s/(^\s?[v]?$ver\s+)|(\s+[v]?$ver\s*$)//i;
+	$fixed_name =~ s/(^\s?[v]?$main\s+)|(\s+[v]?$main\s*$)//i;
+	$fixed_name =~ s/(^\s?[v]?$big_ver\s+)|(\s+[v]?$big_ver\s*$)//i;
 	my $aver = $ver;
 	my $amain = $main;
 	$aver =~ s/\.//g;
 	$amain =~ s/\.//g;
-	$fixed_name =~ s/^\s?[v]?$aver\s*//i;
-	$fixed_name =~ s/^\s?[v]?$amain\s*//i;
-	$fixed_name =~ s/\s+[v]?$amain\s*$//i;
-	$fixed_name =~ s/\s+[v]?$aver\s*$//i;
+	$fixed_name =~ s/(^\s?[v]?$aver\s*)|(\s+[v]?$aver\s*$)//i;
+	$fixed_name =~ s/(^\s?[v]?$amain\s*)|(\s+[v]?$amain\s*$)//i;
     }
     $fixed_name =~ s/\s+ver\s*$//i;
 
-    $fixed_name =~ s/^\s?//;
-    $fixed_name =~ s/\s?$//;
     $fixed_name =~ s/^\s*-\s+//;
     $fixed_name =~ s/\s+/ /g;
 
@@ -316,6 +278,22 @@ sub fix_name {
     $fixed_name = "User Activity" if ($fixed_name eq "UserActivity5 30");
     $fixed_name = "IPE Monitor$1" if ($fixed_name =~ "IPEMonitor(.*)");
     $fixed_name = "Radius Paramaters$1" if ($fixed_name =~ "RadiusParamaters(.*)");
+    $fixed_name = "Checkpoint LEA Configuration" if ($fixed_name eq "Checkpoint LEAconfiguration");
+    $fixed_name = "High Availability" if ($fixed_name eq "HighAvailability");
+    $fixed_name = "LEA Client Installation" if ($fixed_name eq "LEAClientInstallation");
+    $fixed_name = "Load Balancing" if ($fixed_name eq "LoadBalancing");
+    $fixed_name = "Parsing Rules" if ($fixed_name eq "ParsingRules");
+    $fixed_name = "Plugin Point In Recalc" if ($fixed_name eq "PluginPointInRecalc");
+    $fixed_name = "Processor Logs Files" if ($fixed_name eq "ProcessorLogsFiles");
+    $fixed_name = "Proxy Manager Server" if ($fixed_name eq "ProxyManagerServer");
+    $fixed_name = "Statistics Description" if ($fixed_name eq "StatisticsDescription");
+    $fixed_name = "CallShop Manuel D\'Utilisation" if ($fixed_name eq "5.31.005 CallShop Manuel D\'Utilisation");
+    $fixed_name = "DB Documentation$1" if ($fixed_name =~ "6.00 DB Documentation(.*)");
+    $fixed_name = "DB Import" if ($fixed_name eq "DBImport");
+    $fixed_name = "Display CDR Field Instructions" if ($fixed_name eq "DisplayCDRFieldInstructions");
+    $fixed_name = "Fix Invoice XML Deployment" if ($fixed_name eq "FixInvoiceXML Deployment");
+
+    $fixed_name =~ s/(^\s*)|(\s*$)//;
 
     return $fixed_name;
 }
@@ -323,7 +301,7 @@ sub fix_name {
 sub check_vers {
     my ($main, $ver) = @_;
     die "main $main or ver $ver is not defined.\n" if (! defined $main || ! defined $ver);
-    #     ver:
+#     ver:
 #     V7.00.001 SP28 DEMO
 #     V5.01.008OMP
 #     V5.31.006 GN SP01.004.2
@@ -333,100 +311,59 @@ sub check_vers {
 #     5.31.006
 #     V6.01.003 SP40
 #
-#     my $regexp_main = qr/^\s*v?[0-9]{1,}(\.[0-9]{1,})*\s*(SP\s*[0-9]{1,}(\.[0-9]{1,})*)?$/is;
-#     my $regexp_ver = qr/^\s*v?[0-9]{1,}(\.[0-9]{1,})*\s*([a-z0-9 ]{1,})?\s*(SP\s*[0-9]{1,}(\.[0-9]{1,})*)?\s*(demo)?\s*$/is;
-#
-    my $ver_fixed = ""; my $ver_sp = ""; my $ver_without_sp = ""; my $ver_id = ""; my $main_sp = "";
-    my $main_v = ""; my $ver_v = "";
-#
-# print "om=$main|\tov=$ver|\t\t";
-# # $ver = $main if $ver eq "MIND-iPhonEX 5.31 SLT Reports User Guide.doc" || $ver eq "Product Description" || $ver eq "User Manuals" || $ver eq "Whitepapers" || $ver eq "Quarterly Release Notes" || $ver eq "Documents" || $ver eq "Modules"  || $ver eq "Database";
-#
-#     die "Main version $main is not correct.\n" if $main !~ m/$regexp_main/i;
+    my $ver_fixed = ""; my $ver_sp = ""; my $ver_id = ""; my $main_sp = "";
+    my $main_v = ""; my $ver_v = ""; my $big_ver = "";
+
+    my $regexp_main = qr/^\s*v?[0-9]{1,}(\.[0-9]{1,})*\s*([a-z0-9 ]{1,})?\s*(SP\s*[0-9]{1,}(\.[0-9]{1,})*)?$/is;
+    my $regexp_ver = qr/^\s*v?[0-9]{1,}(\.[0-9]{1,})*\s*([a-z0-9 ]{1,})?\s*(SP\s*[0-9]{1,}(\.[0-9]{1,})*)?\s*(demo)?\s*$/is;
+
+    die "Main version $main is not correct.\n" if $main !~ m/$regexp_main/i;
 #     die "Ver version $ver is not correct.\n" if $ver !~ m/$regexp_ver/i;
-#
-#     $main = $main."0" if $main =~ m/^v?[[:digit:]]{1,}\.[[:digit:]]$/i;
-#     $main = $main.".00" if $main =~ m/^v?[[:digit:]]{1,}$/i;
-#     $main =~ s/\s*v//i;
-#     $main_sp = $2 if $main =~ m/^(.*)?(SP\s*[0-9]{1,}(\.[0-9]{1,})*)(.*)?$/i;
-#     $main =~ s/$main_sp// if $main_sp ne "";
-#     if ($main =~ m/^([0-9]{1,}(\.[0-9]{1,})*)\s*([a-z0-9 ]{1,})?(.*)?$/i){
-# 	$main_v = "$1";
-# 	$main_v .= " $3" if defined $3;
-#     }
-#
-#     $ver = $ver."0" if $ver =~ m/^v?[[:digit:]]{1,}\.[[:digit:]]$/i;
-#     $ver = $ver.".00" if $ver =~ m/^v?[[:digit:]]{1,}$/i;
-#     $ver =~ s/\s*v//i;
-#     $ver_sp = $2 if $ver =~ m/^(.*)?(SP\s*[0-9]{1,}(\.[0-9]{1,})*)(.*)?$/i;
-#     $ver =~ s/\s*$ver_sp\s*// if $ver_sp ne "";
-#     if ($ver =~ m/^([0-9]{1,}(\.[0-9]{1,})*)\s*([a-z0-9 ]{1,})?(.*)?$/i){
-# 	$ver_v = "$1";
-# 	$ver_v .= " $3" if defined $3;
-# 	$ver_v =~ s/(^\s*)|(\s*$)//g;
-# 	$ver_id = $3 if defined $3;
-# 	$ver_id =~ s/(^\s*)|(\s*$)//g;
-#     }
-# print "m=$main|\tv=$ver|\tms=$main_sp|\tvs=$ver_sp|\tmv=$main_v|\tvv=$ver_v|\tvi=$ver_id|\n";
-#
-#     die "Main $main is not like version $ver.\n" if $ver !~ m/^$main/;
+    $ver =$main if $ver !~ m/$regexp_ver/i;
 
-#     big_ver		: 6
-#     main_ver		: 6.60
-#     ver			: 6.60.001 GN SP100
-#     ver_fixed		: 6.60.001 GN
-#     ver_sp		: SP100
-#     ver_without_sp	:
+    ### make versions like N.NN and remove any leading v
+    $main = $main."0" if $main =~ m/^v?[[:digit:]]{1,}\.[[:digit:]]$/i;
+    $main = $main.".00" if $main =~ m/^v?[[:digit:]]{1,}$/i;
+    $main =~ s/\s*v//i;
+    $ver = $ver."0" if $ver =~ m/^v?[[:digit:]]{1,}\.[[:digit:]]$/i;
+    $ver = $ver.".00" if $ver =~ m/^v?[[:digit:]]{1,}$/i;
+    $ver =~ s/\s*v//i;
 
-$main	, $ver		, $ver_fixed		, $big_ver, 	$ver_sp	, $ver_without_sp
-5.40	, 5.40.007GL	, 5.40.007 GL		, 5		, 	, 5.40.007 GL;
-6.00	, 6.00.003 SP31.3, 6.00.003 SP31.3	, 6		, SP31.3, 6.00.003;
-6.00	, 6.00.003SP05	, 6.00.003SP05		, 6		, SP05	, 6.00.003;
+    ### extract SPN.NN.NNN and remove it from versions
+    $main_sp = $2 if $main =~ m/^(.*)?(SP\s*[0-9]{1,}(\.[0-9]{1,})*)(.*)?$/i;
+    $main =~ s/$main_sp// if $main_sp ne "";
+    $ver_sp = $2 if $ver =~ m/^(.*)?(SP\s*[0-9]{1,}(\.[0-9]{1,})*)(.*)?$/i;
+    $ver =~ s/\s*$ver_sp\s*// if $ver_sp ne "";
 
-
-    #case 1: ver is a real version:
-    # ver could be 5.55.111QQ or 5.55.111 QQ or V6.01.004 SP47.004
-    # main is corect
-    #case 2: ver is NOT a real ver (does not exist)
-    # case 2.1: main is like a version
-    #        ver is main, main is first x.y
-    # case 2.2: else main is main, ver is main
-    #Fix first version
-
-    if ( ($ver !~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,}){0,}( )?[a-z]*?$/i) &&
-	    ($ver !~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,})*( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*$/i) ){
-	$ver = $main;
+    ### from main keep only N.NN
+    if ($main =~ m/^([0-9]{1,}\.[0-9]{2})(\.[0-9]{1,})*\s*([a-z0-9 ]{1,})?(.*)?$/i){
+	$main_v = "$1";
     }
-    if ( ($main =~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,}){0,}( )?[a-z]{0,}$/i) ||
-	($main =~ /^v?[[:digit:]]{1,}(\.[[:digit:]]{1,})*( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*$/i) ){
-	$main =~ s/^([v])?([[:digit:]]{1,}\.[[:digit:]]{1,})(.*)?/$2/gi;
+
+    ### from ver extract any identificator
+    if ($ver =~ m/^([0-9]{1,}(\.[0-9]{1,})*)\s*([a-z0-9 ]{1,})?$/i){
+	$ver_v = "$1";
+	$ver_id = "$3" if defined $3;
     }
-    $main =~ s/^v//gi;
-    $ver =~ s/^v//gi;
-    # ver could be 5.55.111QQ or 5.55.111 QQ. Fix first version
-    $ver_fixed = $ver;
-    if ($ver_fixed =~ /[[:digit:]]{1,}(\.[[:digit:]]{1,})*?( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*/i) {
-	$ver_fixed =~ s/([[:digit:]]{1,}(\.[[:digit:]]{1,})*?)( )?(sp[[::digit]]{1,})(\.[[:digit:]]{1,})*/$1 $4$5/gi;
-	$ver_sp = $ver;
-	$ver_sp =~ s/^(.*?)( )?(sp[[:digit:]]{1,}(\.[[:digit:]]{1,})*)$/$3/gi;
-	$ver_without_sp = $ver;
-	$ver_without_sp =~ s/^(.*?)( )?(sp[[:digit:]]{1,}(\.[[:digit:]]{1,})*)$/$1/gi;
-# 	$ver_fixed = $ver_without_sp;
+
+    ### if we don't have an identificator, ver_fixed will be main, otherwise $ver
+    if ($ver_id ne "" ){
+	$ver_fixed = "$ver_v $ver_id";
     } else {
-	$ver_fixed =~ s/([[:digit:]]{1,}(\.[[:digit:]]{1,})*?)( )?([a-z]{1,})/$1 $4/gi;
+	$ver_fixed = "$main_v";
     }
-    my $big_ver = $main;
-    $big_ver =~ s/^(.*?)\.(.*)/$1/;
 
-    if ( ($ver !~ /^$main/)
-    || !(  ($ver =~ /^[[:digit:]]{1,}(\.[[:digit:]]{1,})*?[ a-z]*?$/i)
-	|| ($ver =~ /^[[:digit:]]{1,}(\.[[:digit:]]{1,})*( )?(sp[[:digit:]]{1,})(\.[[:digit:]]{1,})*$/i) )
-	|| ($main !~ /^[[:digit:]]{1,}(\.[[:digit:]]{1,})*?$/) ) {
-	die "Version $ver should contain main $main.\n";
-    }
-    $ver_without_sp = $ver_fixed if $ver_without_sp eq "";
-print "$main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp;\n";
-    return $main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp;
+    $big_ver = $1 if $main =~ m/^([0-9]{1,})((\.[0-9]{1,})*)(.*)$/i;
+
+    $big_ver =~ s/(^\s*|\s*$)//g;
+    $main_v =~ s/(^\s*|\s*$)//g;
+    $ver_v =~ s/(^\s*|\s*$)//g;
+    $ver_fixed =~ s/(^\s*|\s*$)//g;
+    $ver_sp =~ s/(^\s*|\s*$)//g;
+
+    die "Main $main_v is not like version $ver_v.\n" if $ver_v !~ m/^$main_v/;
+
+    return $big_ver, $main_v, $ver_v, $ver_fixed, $ver_sp, $ver_id;
 }
 
 sub generate_html_file {
