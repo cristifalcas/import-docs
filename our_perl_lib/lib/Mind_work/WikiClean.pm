@@ -237,30 +237,34 @@ sub tree_clean_span {
 	$a_tag->detach, next if $a_tag->is_empty();
 	foreach my $attr_name ($a_tag->all_external_attr_names){
 	    my $attr_value = $a_tag->attr($attr_name);
-	    $a_tag->attr("$attr_name", undef), next if $attr_name eq "dir" || $attr_name eq "lang";
 	    if ( $attr_name eq "style") {
 		my @attr = split ';', $attr_value;
 		my $res = undef;
 		foreach my $att (@attr) {
 		    if ($att =~ m/^\s*(background: #[0-9a-fA-F]{6})\s*$/i
-			|| $att =~ m/^\s*(font-(weight|style): (normal|normal))\s*$/i ) {
+			|| $att =~ m/^\s*(font-(weight|style): (normal|normal))\s*$/i
+			|| $att =~ m/^\s*(width|height): [0-9.]{1,}px\s*$/i ) {
 			$res .= $att.";";
 		    } else {
 			next if $att =~ m/^\s*float: (top|left|right)\s*$/i
 				    || $att =~ m/^\s*(width|height): [0-9.]{1,}in\s*$/i
 				    || $att =~ m/^\s*text-decoration:/i
 				    || $att =~ m/^\s*position: absolute\s*$/i
-				    || $att =~ m/^\s*(top|left|right): [0-9]{1,}in\s*$/i
+				    || $att =~ m/^\s*(top|left|right): -?[0-9]{1,}(\.[0-9]{1,})?in\s*$/i
 				    || $att =~ m/^\s*(border|padding)/i;
 die "Attr name for span_style = $att.\n";
 			$res .= $att.";";
 		    }
 		}
 		$a_tag->attr("$attr_name", $res);
+	    } elsif ( $attr_name eq "id"
+		|| $attr_name eq "style" ) {
+	    } elsif ( $attr_name eq "class"
+		    || $attr_name eq "dir" || $attr_name eq "lang") {
+		$a_tag->attr("$attr_name", undef);
+	    } else {
+		die "Attr name for span: $attr_name = $attr_value.\n";
 	    }
-	    next if ( $attr_name eq "id"
-		|| $attr_name eq "style" );
-	    die "Attr name for span: $attr_name = $attr_value.\n";
 	}
 	if ( $a_tag->as_text =~ m/^\s*$/) {
 	    $a_tag->detach;
@@ -359,10 +363,12 @@ sub tree_headings_clean_attr {
 sub tree_headings_in_lists {
     my $a_tag = shift;
     my @ancestors = ();
+my @q=();
     foreach my $parent ($a_tag->lineage()){
 	if ( $parent->tag =~ m/^(ul|ol|li|body|html|div|a)$/){
 	    push @ancestors, $parent
 	} else {
+@q=@ancestors if $parent->tag =~ m/^(tr|td|table)$/;
 	    @ancestors = ();
 	    last
 	}
@@ -376,9 +382,8 @@ sub tree_headings_in_lists {
 	}
 	print "\n";
     } else {
-	die "not all lists here: ".Encode::encode('utf8', $a_tag->as_text)."\n";
+	die "not all lists here: ".Encode::encode('utf8', $a_tag->as_text)."\n".Dumper(@q) if ! scalar @q;
 	$a_tag->tag("b");
-	next;
     }
 }
 

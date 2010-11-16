@@ -50,10 +50,14 @@ our $svn_pass = 'svncheckout';
 our $svn_user = 'svncheckout';
 our $files_info = "files_info.txt";
 our $general_template_file = "./SC_template.txt";
+my $svn_update = "no";
+my $force_db_update = "yes";
 my $bulk_svn_update = "no";
-my $svn_update = "yes";
-my $force_sc_update = "no";
+
+$svn_update = "no" if ($force_db_update eq "yes");
+
 our $time = time();
+my $svn_info_all = {};
 my $url_sep = WikiCommons::get_urlsep;
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 WikiCommons::set_real_path($path_prefix);
@@ -72,10 +76,6 @@ our @doc_types = (
 'Test document',
 'STP document'
 );
-
-if ($force_sc_update eq "yes"){
-    $bulk_svn_update = "no";
-}
 
 # sub makedir {
 #     my $dir = shift;
@@ -152,11 +152,10 @@ sub general_info {
 	    my $q = $1;
 	    my $w = $2;
 	    $q = WikiCommons::get_correct_customer( $q );
-	    $tmp = "CRM:$q -- $w";
+	    $general =~ s/%customer_bug%/\'\'\'Customer bug\'\'\' (CRM ID): [[CRM:$q -- $w]]/;
 	} else {
-	    die "Strange customer bug string: $tmp.\n" ;
+	    $general =~ s/%customer_bug%/\'\'\'Customer bug\'\'\' (CRM ID): $tmp/;
 	}
-	$general =~ s/%customer_bug%/\'\'\'Customer bug\'\'\' (CRM ID): [[$tmp]]/;
     } else {
 	$general =~ s/%customer_bug%//;
     }
@@ -168,7 +167,8 @@ sub general_info {
     $general =~ s/%status%/@$info[$index->{'status'}]/;
     $tmp = @$info[$index->{'fixversion'}];
     $tmp =~ s/(^\s*)|(\s*$)//;
-    if ($tmp && $tmp ne ''){
+    if ($tmp && $tmp ne '' && $tmp ne "Deployment"){
+	$tmp =~ s/\(Last Sources\)//i;
 	my ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers($tmp, $tmp);
 	$general =~ s/%fix_version%/[[:Category:$ver_fixed|$ver_fixed]]/g;
     }
@@ -627,16 +627,22 @@ sub write_common_info {
 }
 
 sub svn_info {
-    my $path = shift;
-    print "\t-SVN info for $path.\t". (time() - $time)."\n";
-    my $xml = `svn list --xml --non-interactive --no-auth-cache --trust-server-cert --password $svn_pass --username $svn_user \'$path\' 2> /dev/null`;
-    if ($?) {
-	print "\tError $? for svn.\n";
-	return;
+    my ($dir, $file) = @_;
+    print "\t-SVN info for $file.\t". (time() - $time)."\n";
+    my $res;
+    if (exists $svn_info_all->{$dir}) {
+	$res = $svn_info_all->{$dir}->{'list'}->{'entry'}->{$file};
+    } else {
+	my $xml = `svn list --xml --non-interactive --no-auth-cache --trust-server-cert --password $svn_pass --username $svn_user \'$dir/$file\' 2> /dev/null`;
+	if ($?) {
+	    print "\tError $? for svn.\n";
+	    return;
+	}
+	my $hash = XMLin($xml);
+	$res = $hash->{'list'}->{'entry'};
     }
-    my $hash = XMLin($xml);
-    print "\t+SVN info for $path.\t". (time() - $time)."\n";
-    return $hash;
+    print "\t+SVN info for $file.\t". (time() - $time)."\n";
+    return $res;
 }
 
 sub write_control_file {
@@ -672,6 +678,40 @@ sub move_dir {
 	remove_tree("$src");
     }
 }
+
+sub clean_existing_dir {
+    my ($change_id, $svn_docs, $prev_info) = @_;
+#     my $prev_info = {};
+    # get all doc files from "$to_path/$change_id" and remove them if they are not in $svn_docs
+    if (-e "$to_path/$change_id/$files_info"){
+# 	$prev_info = get_previous("$to_path/$change_id/$files_info");
+	opendir(DIR, "$to_path/$change_id") || die "Cannot open directory $to_path/$change_id: $!.\n";
+	my @files = grep { (!/^\.\.?$/) && -f "$to_path/$change_id/$_" && "$_" =~ /\.doc$/} readdir(DIR);
+	closedir(DIR);
+	foreach my $file (@files){
+	    my ($name,$dir,$suffix) = fileparse($file, qr/\.[^.]*/);
+	    if ( ! exists $svn_docs->{$name}) {
+		print "\tDelete file $file because it doesn't exist on svn anymore.\n";
+		unlink("$to_path/$change_id/$file") or die "Could not delete the file $file: $!\n" ;
+	    }
+	}
+    }
+#     return $prev_info;
+}
+
+sub remove_old_dirs {
+    my @scdirs = @_;
+    ## remove not needed directories
+    opendir(DIR, "$to_path") || die "Cannot open directory $to_path: $!.\n";
+    my @dirs = grep { (!/^\.\.?$/) && -d "$to_path/$_"} readdir(DIR);
+    closedir(DIR);
+    my ($only_in_sc, $only_in_dirs, $common) = WikiCommons::array_diff( \@scdirs, \@dirs);
+    foreach my $dir (@$only_in_dirs) {
+	print "Remove old dir $dir.\n";
+	remove_tree("$to_path/$dir");
+    }
+}
+
 # 10.0.0.232 service25, service25
 #     select * from tblscmainrecord t where rscmainreccustcode=477 and rscmainrecscno=124;
 #     select * from tblscevents t where rsceventscompanycode=477 and rsceventsscno=124;
@@ -687,18 +727,11 @@ sql_connect('10.0.0.103', 'SCROM', 'scview', 'scview');
 my ($index_comm, $info_comm) = sql_get_common_info();
 write_common_info ($index_comm, $info_comm);
 my $crt_hash = sql_get_all_changes();
-## remove not needed directories
-opendir(DIR, "$to_path") || die "Cannot open directory $to_path: $!.\n";
-my @dirs = grep { (!/^\.\.?$/) && -d "$to_path/$_"} readdir(DIR);
-closedir(DIR);
-my @scdirs = keys %$crt_hash;
-my ($only_in_sc, $only_in_dirs, $common) = WikiCommons::array_diff( \@scdirs, \@dirs);
-foreach my $dir (@$only_in_dirs) {
-    print "Remove old dir $dir.\n";
-    remove_tree("$to_path/$dir");
-}
+my ($index, $SEL_INFO) = sql_generate_select_changeinfo();
 
-my $svn_info_all = {};
+remove_old_dirs(keys %$crt_hash);
+
+
 if ($bulk_svn_update eq "yes"){
     foreach my $key (sort keys %$index_comm) {
 	my $retries = 0;
@@ -714,7 +747,6 @@ if ($bulk_svn_update eq "yes"){
     };
 }
 
-my ($index, $SEL_INFO) = sql_generate_select_changeinfo();
 ## (scalar @dirs) - (scalar @$only_in_dirs)
 my $count = 0;
 my $total = scalar (keys %$crt_hash);
@@ -724,93 +756,32 @@ foreach my $change_id (sort keys %$crt_hash){
 ## special chars: B06390
 ## docs B71488
     $count++;
-    my $work_dir = "$tmp_path/$change_id";
     my $dif = time() - $time;
-    my $svn_docs = sql_get_svn_docs($change_id);
-    my $prev_info = {};
+    my $work_dir = "$tmp_path/$change_id";
+    WikiCommons::makedir("$work_dir");
+    my $todo = {};
+    my $missing_documents = {};
     my $crt_info = {};
     print "*************\n-Start working for $change_id: nr $count of $total.\t$dif\n";
 
-    # get all doc files from "$to_path/$change_id" and remove them if they are not in $svn_docs
-    if (-e "$to_path/$change_id/$files_info"){
-	$prev_info = get_previous("$to_path/$change_id/$files_info");
-	opendir(DIR, "$to_path/$change_id") || die "Cannot open directory $to_path/$change_id: $!.\n";
-	my @files = grep { (!/^\.\.?$/) && -f "$to_path/$change_id/$_" && "$_" =~ /\.doc$/} readdir(DIR);
-	closedir(DIR);
-	foreach my $file (@files){
-	    my ($name,$dir,$suffix) = fileparse($file, qr/\.[^.]*/);
-	    if ( ! exists $svn_docs->{$name}) {
-		print "\tDelete file $file because it doesn't exist on svn anymore.\n";
-		unlink("$to_path/$change_id/$file") or die "Could not delete the file $file: $!\n" ;
-	    }
-	}
-    }
-
-    my $missing_documents = {};
+    ## db update
+    my $prev_info = get_previous("$to_path/$change_id/$files_info");
     my $arr = $crt_hash->{$change_id};
     $crt_info->{'SC_info'}->{'name'} = @$arr[0];
     $crt_info->{'SC_info'}->{'size'} = @$arr[1];
     $crt_info->{'SC_info'}->{'revision'} = @$arr[2];
-    my $todo = {};
-    $todo->{'SC_info'} = $change_id if ! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'});
-    next if Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) && $svn_update eq "no" && $force_sc_update ne "yes";
-    foreach my $key (sort keys %$svn_docs) {
-	if ($force_sc_update eq "yes" && defined $prev_info->{'SC_info'}) {
-	    $crt_info = $prev_info;
-	    last;
-	}
-
-	next if (! exists $svn_docs->{$key});
-	my $res = {};
-	if ($bulk_svn_update eq "yes") {
-	    $res = $svn_info_all->{@$info_comm[$index_comm->{$key}]}->{'list'}->{'entry'}->{$svn_docs->{$key}};
-	} else {
-	    $res = svn_info("@$info_comm[$index_comm->{$key}]/$svn_docs->{$key}");
-	    $res = $res->{'list'}->{'entry'};
-	}
-	my ($doc_rev, $doc_size);
-	if (defined $res) {
-	    $doc_rev = $res->{'commit'}->{'revision'};
-	    $doc_size = $res->{'size'};
-	}
-	delete $prev_info->{$key} if (!(-e "$to_path/$change_id/$key.doc" && -s "$to_path/$change_id/$key.doc" == $doc_size));
-	if (! defined $doc_rev && ! defined $doc_size) {
-	    print "\tSC $change_id says we have document for $key, but we don't have anything on svn.\n";
-	    my $svn_dir = @$info_comm[$index_comm->{$key}];
-	    $missing_documents->{$key} = "$svn_dir/$svn_docs->{$key}";
-	    next;
-	}
-	$crt_info->{$key}->{'name'} = $svn_docs->{$key};
-	$crt_info->{$key}->{'size'} = $doc_size;
-	$crt_info->{$key}->{'revision'} = $doc_rev;
-	$todo->{$key} = "$svn_docs->{$key}" if (! Compare($crt_info->{$key}, $prev_info->{$key}) );
-    }
-
-    next if Compare($crt_info, $prev_info) && $force_sc_update ne "yes";
-    WikiCommons::makedir("$work_dir");
-    foreach my $key (keys %$svn_docs) {
-	if ( exists $todo->{$key} ) {
-	    print "\tUpdate svn http for $key.\n";
-	    my $svn_dir = @$info_comm[$index_comm->{$key}];
-	    $request = HTTP::Request->new(GET => "$svn_dir");
-	    $request->authorization_basic("$svn_user", "$svn_pass");
-	    my $file = http_svn_get("$svn_dir/$svn_docs->{$key}", "$work_dir");
-	    if (! defined $file){
-		$missing_documents->{$key} = "$svn_dir/$svn_docs->{$key}";
-	    } else {
-		move("$file", "$work_dir/$key.doc") || die "can't move file $file to $work_dir/$key.doc: $!.\n";
-	    }
-	}
-    }
-
     my $cat = ();
-    if (defined $todo->{'SC_info'} || $force_sc_update eq "yes") {
+    if ( ! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) || $force_db_update eq "yes" ) {
  	print "\tUpdate SC info.\n";
-	my $prev = $prev_info->{'SC_info'}->{'size'} || 'NULL';
 
-	print "\tChanged CRC: $crt_info->{'SC_info'}->{'size'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'size'} && $crt_info->{'SC_info'}->{'size'} ne $prev);
-	$prev = $prev_info->{'SC_info'}->{'revision'} || 'NULL';
-	print "\tChanged status: $crt_info->{'SC_info'}->{'revision'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'revision'} && $crt_info->{'SC_info'}->{'revision'} ne $prev);
+	my $prev = 'NULL';
+	$prev = $prev_info->{'SC_info'}->{'size'} if defined $prev_info->{'SC_info'}->{'size'};
+	print "\tChanged CRC: $crt_info->{'SC_info'}->{'size'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'size'} && "$crt_info->{'SC_info'}->{'size'}" ne "$prev");
+
+	$prev = 'NULL';
+	$prev = $prev_info->{'SC_info'}->{'revision'} if defined $prev_info->{'SC_info'}->{'revision'};
+	print "\tChanged status: $crt_info->{'SC_info'}->{'revision'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'revision'} && "$crt_info->{'SC_info'}->{'revision'}" ne "$prev");
+
 	my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
 	my $modules = sql_get_modules( split ',', @$info_ret[$index->{'modules'}] ) if defined @$info_ret[$index->{'modules'}];
 	my $tester = sql_get_workers_names( split ',', @$info_ret[$index->{'tester'}] ) if defined @$info_ret[$index->{'tester'}];
@@ -833,7 +804,39 @@ foreach my $change_id (sort keys %$crt_hash){
     $cat = [ $prev_info->{'Categories'}->{'name'} || "", $prev_info->{'Categories'}->{'size'} || "", $prev_info->{'Categories'}->{'revision'} || "" ] if ! defined $cat;
 
     write_control_file($crt_info, $work_dir, $cat);
+
+    next if ($svn_update eq "no");
+    ### svn updates
+    my $svn_docs = sql_get_svn_docs($change_id);
+    clean_existing_dir($change_id, $svn_docs, $prev_info);
+    foreach my $key (sort keys %$svn_docs) {
+	my $dir = @$info_comm[$index_comm->{$key}];
+	my $file = $svn_docs->{$key};
+	my $res = svn_info("$dir", "$file");
+
+	my $doc_rev = $res->{'commit'}->{'revision'};
+	my $doc_size = $res->{'size'};
+	if ( ! defined $res || ! defined $doc_rev && ! defined $doc_size) {
+	    print "\tSC $change_id says we have document for $key, but we don't have anything on svn.\n";
+	    $missing_documents->{$key} = "$dir/$file";
+	    next;
+	}
+	delete $prev_info->{$key} if (!(-e "$to_path/$change_id/$key.doc" && -s "$to_path/$change_id/$key.doc" == $doc_size));
+	$crt_info->{$key}->{'name'} = $svn_docs->{$key};
+	$crt_info->{$key}->{'size'} = $doc_size;
+	$crt_info->{$key}->{'revision'} = $doc_rev;
+
+	if ( ! Compare($crt_info->{$key}, $prev_info->{$key}) ) {
+	    print "\tUpdate svn http for $key.\n";
+	    $request = HTTP::Request->new(GET => "$dir");
+	    $request->authorization_basic("$svn_user", "$svn_pass");
+	    my $file = http_svn_get("$dir/$file", "$work_dir");
+	    move("$file", "$work_dir/$key.doc") || die "can't move file $file to $work_dir/$key.doc: $!.\n";
+	}
+    }
+
     move_dir("$work_dir", "$to_path/$change_id/");
     print "+Finish working for $change_id: nr $count of $total.\t$dif\n";
 }
+
 $dbh->disconnect if defined($dbh);
