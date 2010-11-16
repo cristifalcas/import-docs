@@ -223,12 +223,24 @@ sub tree_clean_font {
 	    }
 	    die "Attr name for font: $attr_name = $attr_value.\n";
 	}
-	if ( $a_tag->as_text =~ m/^\s*$/  && (scalar $a_tag->content_list() <= 1) ) {
-	    $a_tag->detach;
-	    next;
-	}
+	tree_remove_empty_element($a_tag);
     }
     return $tree;
+}
+
+sub tree_remove_empty_element {
+    my $a_tag = shift;
+    my $has_content = 0;
+    foreach my $b_tag ($a_tag->content_list()){
+	if (ref $b_tag){
+	    $has_content++;
+	    last;
+	}
+    }
+
+    if ( $a_tag->as_text =~ m/^\s*$/ && !$has_content ) {
+	$a_tag->detach;
+    }
 }
 
 sub tree_clean_span {
@@ -241,7 +253,7 @@ sub tree_clean_span {
 		my @attr = split ';', $attr_value;
 		my $res = undef;
 		foreach my $att (@attr) {
-		    if ($att =~ m/^\s*(background: (#[0-9a-fA-F]{6}))|(transparent.)\s*$/i
+		    if ($att =~ m/^\s*(background: (#[0-9a-fA-F]{6}))|(transparent)\s*$/i
 			|| $att =~ m/^\s*(font-(weight|style): (normal|normal))\s*$/i
 			|| $att =~ m/^\s*(width|height): [0-9.]{1,}px\s*$/i ) {
 			$res .= $att.";";
@@ -266,10 +278,7 @@ die "Attr name for span_style = $att.\n";
 		die "Attr name for span: $attr_name = $attr_value.\n";
 	    }
 	}
-	if ( $a_tag->as_text =~ m/^\s*$/ && (scalar $a_tag->content_list() <= 1) ) {
-	    $a_tag->detach;
-	    next;
-	}
+	tree_remove_empty_element($a_tag);
     }
     return $tree;
 }
@@ -414,7 +423,7 @@ sub tree_clean_tables {
 		return undef;
 	    }
 	}
-	### replace thead and tbody wqith content
+	### replace thead and tbody with content
 	foreach my $b_tag ($a_tag->content_list){
 	    if (ref $b_tag){
 		my $tag = $b_tag->tag;
@@ -442,7 +451,7 @@ sub tree_clean_tables {
 		    }
 		}
 		### expect only td in tr
-		my $all_lines_empty = 0;
+		my $has_content = 0;
 		foreach my $c_tag ($b_tag->content_list){
 		    die "not reference in tr\n" if ! ref $c_tag;
 		    my $tag = $c_tag->tag;
@@ -461,15 +470,24 @@ sub tree_clean_tables {
 			} elsif ($attr_name eq "bgcolor" || $attr_name eq "colspan" || $attr_name eq "rowspan") {
 			} else {
 			    die "Unknown attr in $tag: $attr_name = $attr_value.\n";
-			    return undef;
 			}
 		    }
-		    ### remove empty td
+		    ### remove empty td, add new lines
+		    foreach my $d_tag ($c_tag->content_refs_list){
+			if ( ref $$d_tag && $$d_tag->tag eq "p" ) {
+			    $$d_tag->postinsert(['br']);
+			} elsif ( ref $$d_tag ) {
+			    $has_content++, next ;
+			} else {
+			    $$d_tag =~ s/$/\n/gm;
+			}
+		    }
+		    next if $has_content;
 		    my $txt = $c_tag->as_text();
 		    $txt =~ s/\s*//gs;
-		    $all_lines_empty++ if ( $txt ne '');
+		    $has_content++ if ( $txt ne '');
 		}
-		$b_tag->detach if ($all_lines_empty == 0);
+		$b_tag->detach if ( ! $has_content );
 	    } else {
 		die "Unknown tag in table: $tag.\n";
 		return undef;
@@ -487,19 +505,24 @@ sub tree_clean_lists {
     }
     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
 	next if ! $a_tag->is_empty();
-	my $not_ok = 0;
+	my $has_content = 0;
 	my $last = "";
+	### remove all lists that have no data
 	foreach my $parent ($a_tag->lineage()){
 	    if ( ($parent->tag !~ m/^(ul|ol|body|html)$/) ||
 		    ($parent->tag =~ m/^(ul|ol)$/ && scalar $parent->content_list() > 1)) {
-		$not_ok++;
+		$has_content++;
 		last;
 	    }
 	    $last = $parent if $parent->tag !~ m/^(body|html)$/;
 	}
-	if (! $not_ok) {
+	if (! $has_content) {
 	    $a_tag->detach() if $a_tag->is_empty();
 	    $last->detach();
+	}
+	foreach my $b_tag ($a_tag->content_refs_list()){
+	    next if ref $$b_tag;
+	    $$b_tag =~ s/\n/\n<br>/mg;
 	}
     }
     return $tree;
