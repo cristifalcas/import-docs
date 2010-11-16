@@ -114,12 +114,12 @@ sub makedir {
     my ($name_user, $pass_user, $uid_user, $gid_user, $quota_user, $comment_user, $gcos_user, $dir_user, $shell_user, $expire_user) = getpwnam scalar getpwuid $<;
     make_path ("$dir", {owner=>"$name_user", group=>"nobody", error => \my $err});
     if (@$err) {
-    for my $diag (@$err) {
-        my ($file, $message) = %$diag;
-        if ($file eq '') { print "general error: $message.\n"; }
-        else { print "problem unlinking $file: $message.\n"; }
-    }
-    die "Can't make dir $dir.\n";
+	for my $diag (@$err) {
+	    my ($file, $message) = %$diag;
+	    if ($file eq '') { print "general error: $message.\n"; }
+	    else { print "problem unlinking $file: $message.\n"; }
+	}
+	die "Can't make dir $dir: $!.\n";
     }
 }
 

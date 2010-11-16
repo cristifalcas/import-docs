@@ -100,6 +100,7 @@ WikiCommons::makedir $wiki_dir;
 $wiki_dir = abs_path($wiki_dir);
 
 my $bad_dir = "$path_prefix/work/bad_dir";
+WikiCommons::makedir $bad_dir;
 my $pid_file = "$path_prefix/work/mind_import_wiki.pid";
 my $remote_work_path = "$path_prefix/remote_batch_files";
 
@@ -188,7 +189,7 @@ sub create_wiki {
 	} else {
 	    die "OpenOffice could not create the html file.\t". (WikiCommons::get_time_diff) ."\n";
 	}
-	} else {
+    } else {
 	die "Strange, can't find the doc file in $work_dir.\t". (WikiCommons::get_time_diff) ."\n";
     }
 }

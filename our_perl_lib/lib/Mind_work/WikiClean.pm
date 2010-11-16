@@ -47,7 +47,7 @@ sub tree_clean_div {
 		$id++;
 	    } else {
 		print "Unknown tag in div: $attr_name = $attr_value\n";
-		return undef;
+		return $tree;
 	    }
 	}
 	my $nr_attr = scalar $a_tag->all_external_attr_names();
@@ -190,7 +190,7 @@ sub tree_to_text {
 sub tree_to_html {
     my $tree = shift;
     my $text = $tree->guts ? $tree->guts->as_HTML(undef, "\t") : "";
-    return $text;
+    return Encode::encode('utf8', $text);
 }
 
 sub tag_remove_attr {
@@ -203,7 +203,8 @@ sub tag_remove_attr {
 	    } elsif ($attr_name eq "color") {
 		return 0;
 	    } else {
-		die "Unknown attribute for font: $attr_name = $attr_value.\n";
+		print "Unknown attribute for font: $attr_name = $attr_value.\n";
+		return 0;
 	    }
     } elsif ($tag_name eq "span"){
 	    if ($attr_name eq "lang" || $attr_name eq "id" || $attr_name eq "dir" ||
@@ -219,16 +220,19 @@ sub tag_remove_attr {
 		    $attr_value =~  m/background: transparent/  ))) {
 		return 0;
 	    } else {
-		die "Unknown attribute for span: $attr_name = $attr_value.\n";
+		print "Unknown attribute for span: $attr_name = $attr_value.\n";
+		return 0;
 	    }
     } elsif ($tag_name eq "ol") {
 	if ($attr_name eq "start" || $attr_name eq "type" ) {
 	    return 0;
 	} else {
-	    die "Unknown attribute for tag $tag_name: $attr_name = $attr_value.\n";
+	    print "Unknown attribute for tag $tag_name: $attr_name = $attr_value.\n";
+	    return 0;
 	}
     }else {
-	die "Unknown attribute for tag $tag_name: $attr_name = $attr_value.\n";
+	print "Unknown attribute for tag $tag_name: $attr_name = $attr_value.\n";
+	return 0;
     }
 }
 
@@ -290,7 +294,7 @@ sub tree_clean_headings {
 			$b_tag->replace_with( $b_tag->detach_content() );
 		    } else {
 			print "reference in heading: $tag\n";
-			return undef;
+			return $tree;
 		    }
 		}
 	    }
@@ -315,7 +319,7 @@ sub tree_clean_headings {
 # 		} elsif ($attr_name eq "cellpadding") {
 		} else {
 		    print "Unknown attr in heading: $attr_name = $attr_value.\n";
-		    return undef;
+		    return $tree;
 		}
 	    }
 
@@ -354,7 +358,7 @@ sub tree_clean_headings {
 		    if ($not_ok) {
 			my $q = $grandgrandpa->tag;
 			print "h in li with grandgrandpa: $q => ". encode('utf8', $heading_txt) ."\n";
-			return undef;
+			return $tree;
 		    } else {
 # 			print $last->tag." ".$last->parent->tag." \n";
 			my $clone = $a_tag->clone();
@@ -372,7 +376,7 @@ sub tree_clean_headings {
 	    } else {
 		my $q = $dad->tag;
 		print "h in dad: $q => $heading_txt\n";
-		return undef;
+		return $tree;
 	    }
 	}
     }
@@ -404,7 +408,7 @@ sub tree_clean_tables {
 	    } elsif ($attr_name eq "cellpadding") {
 	    } else {
 		print "Unknown attr in table: $attr_name = $attr_value.\n";
-		return undef;
+		return $tree;
 	    }
 	}
 	### replace thead and tbody wqith content
@@ -419,7 +423,7 @@ sub tree_clean_tables {
 
 	### expect only col and tr
 	foreach my $b_tag ($a_tag->content_list){
-	    die "not reference in table\n" if ! ref $b_tag;
+	    print "not reference in table\n", return $tree if ! ref $b_tag;
 	    my $tag = $b_tag->tag;
 	    if ( $tag eq "col" || $tag eq "colgroup"){
 		$b_tag->detach;
@@ -431,15 +435,15 @@ sub tree_clean_tables {
 			$a_tag->attr("$attr_name", undef);
 		    } else {
 			print "Unknown attr in tr: $attr_name = $attr_value.\n";
-			return undef;
+			return $tree;
 		    }
 		}
 		### expect only td in tr
 		my $all_lines_empty = 0;
 		foreach my $c_tag ($b_tag->content_list){
-		    die "not reference in tr\n" if ! ref $c_tag;
+		    print "not reference in tr\n", return $tree if ! ref $c_tag;
 		    my $tag = $c_tag->tag;
-		    die "Unknown tag: $tag\n" if $tag ne "td" && $tag ne "th";
+		    print "Unknown tag: $tag\n", return $tree if $tag ne "td" && $tag ne "th";
 		    ### clean td attributes
 		    foreach my $attr_name ($c_tag->all_external_attr_names){
 			my $attr_value = $c_tag->attr($attr_name);
@@ -450,7 +454,7 @@ sub tree_clean_tables {
 			} elsif ($attr_name eq "bgcolor" || $attr_name eq "colspan" || $attr_name eq "rowspan") {
 			} else {
 			    print "Unknown attr in $tag: $attr_name = $attr_value.\n";
-			    return undef;
+			    return $tree;
 			}
 		    }
 		    ### remove empty td
@@ -461,7 +465,7 @@ sub tree_clean_tables {
 		$b_tag->detach if ($all_lines_empty == 0);
 	    } else {
 		print "Unknown tag in table: $tag.\n";
-		return undef;
+		return $tree;
 	    }
 	}
     }
