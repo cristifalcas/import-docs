@@ -223,7 +223,7 @@ sub tree_clean_font {
 	    }
 	    die "Attr name for font: $attr_name = $attr_value.\n";
 	}
-	if ( $a_tag->as_text =~ m/^\s*$/) {
+	if ( $a_tag->as_text =~ m/^\s*$/  && (scalar $a_tag->content_list() <= 1) ) {
 	    $a_tag->detach;
 	    next;
 	}
@@ -241,7 +241,7 @@ sub tree_clean_span {
 		my @attr = split ';', $attr_value;
 		my $res = undef;
 		foreach my $att (@attr) {
-		    if ($att =~ m/^\s*(background: #[0-9a-fA-F]{6})\s*$/i
+		    if ($att =~ m/^\s*(background: (#[0-9a-fA-F]{6}))|(transparent.)\s*$/i
 			|| $att =~ m/^\s*(font-(weight|style): (normal|normal))\s*$/i
 			|| $att =~ m/^\s*(width|height): [0-9.]{1,}px\s*$/i ) {
 			$res .= $att.";";
@@ -266,7 +266,7 @@ die "Attr name for span_style = $att.\n";
 		die "Attr name for span: $attr_name = $attr_value.\n";
 	    }
 	}
-	if ( $a_tag->as_text =~ m/^\s*$/) {
+	if ( $a_tag->as_text =~ m/^\s*$/ && (scalar $a_tag->content_list() <= 1) ) {
 	    $a_tag->detach;
 	    next;
 	}
@@ -483,7 +483,7 @@ sub tree_clean_lists {
     my $tree = shift;
     ### remove empty lists from body
     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
-	$a_tag->detach() if $a_tag->is_empty() || $a_tag->as_text =~ m/^\s*$/;
+	$a_tag->detach() if $a_tag->is_empty() || ( $a_tag->as_text =~ m/^\s*$/  && (scalar $a_tag->content_list() <= 1) );
     }
     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
 	next if ! $a_tag->is_empty();
