@@ -198,6 +198,9 @@ sub add_document {
 
     my $page_url = $simple_url;
     chomp $page_url;
+    $page_url = WikiCommons::normalize_text( $page_url );
+    $page_url = WikiCommons::capitalize_string( $page_url, 'all' );
+    my $page_url_caps = WikiCommons::capitalize_string( $page_url, 'first' );
     die "No page for $doc_file.\n" if ($page_url eq "" );
 
     ### Release Notes
@@ -229,10 +232,8 @@ sub add_document {
 	return 0;
     }
 
-    $page_url = WikiCommons::normalize_text( $page_url );
-
     my $full_ver = "$ver $ver_id $ver_sp";
-    die "Same SP already exists from $rel_path, url $page_url: $full_ver = $pages_ver->{$page_url}.\n".Dumper($pages_toimp_hash->{$page_url}) if exists $pages_ver->{$page_url} && "$pages_ver->{$page_url}" eq "$full_ver";
+    die "Same SP already exists from $rel_path, url $page_url: $full_ver = $pages_ver->{$page_url_caps}.\n".Dumper($pages_toimp_hash->{$page_url}) if exists $pages_ver->{$page_url_caps} && "$pages_ver->{$page_url_caps}" eq "$full_ver";
     return 1 if $ver_fixed lt "5.00" && $ver_fixed ne "";
 
     my @categories = ();
@@ -245,13 +246,13 @@ sub add_document {
     ++$count_files;
     print "\tNumber of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n" if ($count_files%100 == 0);
 
-    if (exists $pages_ver->{$page_url} && $pages_ver->{$page_url} gt "$full_ver") {
-# 	print "Ignore new page $page_url from\n\t\t$rel_path\n\tbecause new SP $ver_sp is smaller then $pages_ver->{$page_url}.\n"
+    if (exists $pages_ver->{$page_url_caps} && $pages_ver->{$page_url_caps} gt "$full_ver") {
+# 	print "Ignore new page $page_url from\n\t\t$rel_path\n\tbecause new SP $ver_sp is smaller then $pages_ver->{$page_url_caps}.\n"
     } else {
-# 	print "Replace old url $page_url from\n\t\t$pages_toimp_hash->{$page_url}[1]\n\twith the doc from\n\t\t$rel_path\n\tbecause new SP $ver_sp is bigger then $pages_ver->{$page_url}.\n" if (exists $pages_toimp_hash->{$page_url});
+# 	print "Replace old url $page_url from\n\t\t$pages_toimp_hash->{$page_url}[1]\n\twith the doc from\n\t\t$rel_path\n\tbecause new SP $ver_sp is bigger then $pages_ver->{$page_url_caps}.\n" if (exists $pages_toimp_hash->{$page_url});
 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
 # $pages_toimp_hash->{$page_url} = ["1", $rel_path, $svn_url, "link", \@categories];
-	$pages_ver->{$page_url} = "$full_ver";
+	$pages_ver->{$page_url_caps} = "$full_ver";
     }
 #     push(@{$pages_ver->{"$fixed_name$url_sep$ver_without_sp"}}, $ver_sp);
 }

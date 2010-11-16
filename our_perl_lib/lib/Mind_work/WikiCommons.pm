@@ -273,6 +273,7 @@ sub fix_name {
     $fixed_name = "WebClient" if ($fixed_name eq "WebClient5.0-Rev11");
     $fixed_name = "WebClient" if ($fixed_name eq "WebClient5.30");
     $fixed_name = "WebClient" if ($fixed_name eq "WebClient5.01-Rev11");
+    $fixed_name = "Billing User Manual Vodafone" if ($fixed_name eq "BillingUserManual5.02-rev14Vodafone");
     $fixed_name = "Dialup CDR And Invoice Generation" if ($fixed_name eq "Dialup CDR And Invoice Generation 521");
     $fixed_name = "Vendors Support" if ($fixed_name eq "VendorsSupport");
     $fixed_name = "User Activity" if ($fixed_name eq "UserActivity5 30");
