@@ -1,7 +1,8 @@
 #!/usr/bin/perl -w
 print "Start.\n";
+use warnings;
+use strict;
 $SIG{__WARN__} = sub { die @_ };
-
 
 #soffice "-accept=socket,host=localhost,port=2002;urp;StarOffice.ServiceManager" -nologo -headless -nofirststartwizard
 
@@ -54,9 +55,6 @@ $SIG{__WARN__} = sub { die @_ };
 
 # die "We need the dir where the doc files are and the type of the dir: mind_svn, users, sc_docs.\n" if ( $#ARGV <= 1 );
 
-use warnings;
-use strict;
-
 use Cwd 'abs_path';
 use File::Basename;
 use File::Copy;
@@ -65,10 +63,13 @@ use Switch;
 use Getopt::Std;
 
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
+# print "$path_prefix\n";
+# my $real_path = abs_path($0);
 use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."./our_perl_lib/lib";
 
 use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
 use Data::Dumper;
+$Data::Dumper::Sortkeys = 1;
 use Digest::MD5 qw(md5 md5_hex md5_base64);
 use Text::Balanced;
 # use Encode;
@@ -127,6 +128,7 @@ my $categories_pos = 4;
 my $count_files;
 our $coco;
 WikiCommons::is_remote("$remote_work");
+WikiCommons::set_real_path($path_prefix);
 
 sub create_wiki {
     my ($page_url, $doc_file, $zip_name) = @_;
@@ -214,8 +216,10 @@ sub get_existing_pages {
 		    print "\tFile $dir/$wiki_files_info does not have the correct number of entries.\n";
 		    next;
 		}
+
 		my $md5 = (split ('=', $info_text[$md5_pos]))[1];
 		my $rel_path = (split ('=', $info_text[$rel_path_pos]))[1];
+# 		$rel_path = Encode::decode ('utf8', $rel_path);
 		my $svn_url = (split ('=', $info_text[$svn_url_pos]))[1];
 		my $url_type = (split ('=', $info_text[$link_type_pos]))[1];
 		if (!(defined $md5 && defined $rel_path && defined $url_type && defined $svn_url)){
@@ -261,6 +265,7 @@ sub generate_new_updated_pages {
 	    delete($pages_toimp_hash->{$url});
 	} else {
 	    if (exists $pages_toimp_hash->{$url}) {
+# print Dumper($pages_local_hash->{$url});die;
 		print "Url $url will be updated because: \n\t\tcrt_md5\n\t\t\t$pages_local_hash->{$url}[$md5_pos] <> \n\t\t\t$pages_toimp_hash->{$url}[$md5_pos] or \n\t\tcrt_rel_path \n\t\t\t$pages_local_hash->{$url}[$rel_path_pos] <> \n\t\t\t$pages_toimp_hash->{$url}[$rel_path_pos].\n";
 	    } else {
 		print "Delete url $url because it doesn't exist anymore.\n";
@@ -300,7 +305,6 @@ sub generate_real_and_links {
 	    my $q = $md5_map->{$md5}{"real"};
 	    for (my $i=0; $i < $nr_real - 1; $i++) {
 		print "Remove real url @$q[$i] because of too many real links: $nr_real.\n";
-		print Dumper(@$q[$i]);
 		$to_delete->{@$q[$i]} = $to_keep->{@$q[$i]};
 		$pages_toimp_hash->{@$q[$i]} = $to_keep->{@$q[$i]};
 		delete($to_keep->{@$q[$i]});
@@ -397,7 +401,7 @@ sub make_categories {
 
     return if ($delete_everything eq "yes");
     print "-Making categories.\t". (WikiCommons::get_time_diff) ."\n";
-    my $general_categories_hash = WikiCommons::get_categories;
+    my $general_categories_hash = $coco->get_categories;
     foreach my $key (sort keys %$general_categories_hash) {
 	my $text = "----\n\n";
 	$url = "Category:$key";
@@ -442,7 +446,7 @@ sub insertdata {
     } else {
 	print "\tCopy files to $remote_work_path/$wiki_result\n";
 	WikiCommons::makedir("$remote_work_path/$wiki_result");
-	WikiCommons::copy_dir ("$work_dir/$wiki_result", "$remote_work_path/$wiki_result");
+	WikiCommons::copy_dir ("$work_dir/$wiki_result", "$remote_work_path/$wiki_result") if -e "$work_dir/$wiki_result";
 	copy("$work_dir/$url.full.wiki","$remote_work_path/$url") or die "Copy failed for: $url.full.wiki to $remote_work_path: $!\t". (WikiCommons::get_time_diff) ."\n";
     }
 
@@ -583,14 +587,14 @@ WikiCommons::write_file($pid_file,"$$\n$path_type\n");
 
 $our_wiki = new WikiWork();
 if ($path_type eq "mind_svn") {
-    $coco = new WikiMindSVN("$path_files", WikiCommons::get_urlsep);
+    $coco = new WikiMindSVN("$path_files");
     work_for_docs("$path_files");
 } elsif ($path_type eq "users") {
-    $coco = new WikiMindUsers("$path_files", WikiCommons::get_urlsep);
+    $coco = new WikiMindUsers("$path_files");
     work_for_docs("$path_files");
 } elsif ($path_type eq "crm_docs") {
     $all_real = "yes";
-    $coco = new WikiMindCRM("$path_files", WikiCommons::get_urlsep);
+    $coco = new WikiMindCRM("$path_files");
 
     my ($to_delete, $to_keep) = work_begin;
 # print Dumper($pages_toimp_hash);die;

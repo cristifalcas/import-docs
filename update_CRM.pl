@@ -2,7 +2,23 @@
 #LD_LIBRARY_PATH=./instantclient_11_2/ perl ./oracle.pl
 use warnings;
 use strict;
+
 $SIG{__WARN__} = sub { die @_ };
+
+BEGIN {
+    my $need= "./instantclient_11_2/";
+    my $ld= $ENV{LD_LIBRARY_PATH};
+    if(  ! $ld  ) {
+        $ENV{LD_LIBRARY_PATH}= $need;
+    } elsif(  $ld !~ m#(^|:)\Q$need\E(:|$)#  ) {
+        $ENV{LD_LIBRARY_PATH} .= ':' . $need;
+    } else {
+        $need= "";
+    }
+    if(  $need  ) {
+        exec 'env', $^X, $0, @ARGV;
+    }
+}
 
 #
 # hash:
@@ -130,12 +146,8 @@ sub write_file {
     my ($path, $text) = @_;
     open (FILE, ">$path") or die "can't open file $path for writing: $!\n";
     $text = encode("utf8", $text);
-#     Encode::from_to( $text, "cp1252", "utf8");
     print FILE "$text";
     close (FILE);
-#     my $our_wiki = new WikiWork();
-#     print $path."\n";
-#     $our_wiki->wiki_edit_page("test", $text),exit 1 if $path =~ m/.wiki/;
 }
 
 sub get_servicestatus {
@@ -474,7 +486,6 @@ sub sql_connect {
     $dbh->{RaiseError}    = 1;
     $dbh->{ora_check_sql} = 1;
     $dbh->{RowCacheSize}  = 0;
-#     $dbh->{LongReadLen}   = 52428800;
     $dbh->{LongReadLen} = 1024 * 1024;
     $dbh->{LongTruncOk}   = 0;
 }
@@ -482,7 +493,6 @@ sub sql_connect {
 sub write_customer {
     my ($hash) = @_;
     print "\t-Get customer info.\t". (WikiCommons::get_time_diff) ."\n";
-#     $hash->{'names'} = $cust;
     my $dir = "$to_path/".$hash->{'names'}->{'displayname'};
     WikiCommons::makedir ("$dir");
     write_xml($hash, "$dir/attributes");
@@ -497,53 +507,29 @@ sub parse_text {
     my $init_text = $text;
     $text =~ s/\r?\n/\n/g;
     if (defined $extra_info) {
-# print Dumper($extra_info);
 	my $tmp = quotemeta $extra_info->{'subject'};
 	$text =~ s/Subject:[ ]+$tmp\nDate:[ ]+$extra_info->{event_date}\n+//;
 	$tmp = quotemeta("*************************************************");
 	my $reg_exp = "MIND CTI Support Center\n+[a-zA-Z0-9 ]{0,}\n+$tmp\n+Service Call Data:\n+Number:[ ]+$extra_info->{'customer'} \/ $extra_info->{'sr_no'}\n+Received:[ ]+$extra_info->{sr_date}\n+Current Status:[ ]+[a-zA-Z0-9 ]{1,}\n+$tmp\n+PLEASE DO NOT REPLY TO THIS EMAIL - Use the CRM\n*";
 
 	$text =~ s/$reg_exp//gs;
-# die "not good: $init_text\n$reg_exp\n$text\n$reg_exp\n" if $text =~ m/^PLEASE DO NOT REPLY TO THIS EMAIL/mg;
     }
-
-# use Encode::Detect::Detector;
-# my $encoding_name = Encode::Detect::Detector::detect( $text ) || '';
-# # print "\naaa ".$encoding_name."\n";
-
 
     my $enc = get_encoding($text);
-# unlink('./1');unlink('./2');unlink('./3');
-# print "\nenc: ".$enc."\n";
-# write_file('./2',$text);
-#     $text = Encode::from_to($text,'cp1251', 'cp1251');
-# write_file('./1',$text);
-#     $text =~ s//\'/gm;
     if ($enc eq "utf8"){
 	$text = encode ("utf8", $text);
-# 	$text =~ s/�/'/gs;
 	$text = WikiClean::fix_wiki_chars( $text );
-# 	use Text::Unidecode;
-# 	$text = unidecode($text);
     }
 
 
 
-#     $text = decode ("iso-8859-1", $text);
-# write_file('./3',$text);
-#     $text = WikiClean::fix_wiki_url( $text );
     $text = WikiClean::fix_wiki_link_to_sc( $text );
-#     $text = WikiClean::fix_external_links( $text );
     $text = WikiClean::fix_small_issues( $text );
     $text =~ s/([^\n])\n([^\n])/$1\n\n$2/gm;
     $text =~ s/^=/<br\/>=/gm;
     $text =~ s/^\*/<br\/>*/gm;
     $text =~ s/^#/<br\/>#/gm;
     $text =~ s/^(~+)([^~])/<nowiki>$1<\/nowiki>$2/gm;
-#     use HTML::Entities;
-#     $text = encode_entities($text);
-#     $text =~ s/^([*#])/<br\/>$1/gm;
-#     $text =~ s/\n*$/\n/gm;
     return $text;
 }
 
@@ -728,7 +714,8 @@ foreach my $cust (sort keys %$customers){
 # next if $customers->{$cust}->{'displayname'} ne "Artelecom";
 # next if $cust != 381;
     my $cust_info = get_customer_attributes($cust);
-    next if ! defined $cust_info->{'Latest Version'} || $cust_info->{'Latest Version'} lt "5.00";
+    next if (! defined $cust_info->{'Latest Version'} || $cust_info->{'Latest Version'} lt "5.00")
+	    && $customers->{$cust}->{'displayname'} ne "Billing";
 
     my $dir = write_customer ($cust_info);
     my $crt_srs = get_allsrs($cust);

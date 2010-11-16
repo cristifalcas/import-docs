@@ -5,6 +5,7 @@ use strict;
 
 use Mind_work::WikiCommons;
 use Data::Dumper;
+$Data::Dumper::Sortkeys = 1;
 use MediaWiki::API;
 
 our $wiki_site_path = "/var/www/html/wiki/";
