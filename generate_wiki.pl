@@ -462,9 +462,16 @@ sub insertdata {
     my @files = grep { (!/^\.\.?$/) } readdir(DIR);
     closedir(DIR);
     my $fail = 0;
-    print "Dir $work_dir doesn't have the correct number of files.\n",$fail = 1 if (scalar @files != 3 );
+    if (scalar @files != 3 ) {
+	print "Dir $work_dir doesn't have the correct number of files.\n";
+	$fail = 1;
+    }
     foreach my $file (@files){
-	print "File $file from $work_dir should not exist.\n", $fail = 1, last if ($file ne $wiki_files_uploaded && $file ne $wiki_files_info && $file !~ m/\.wiki$/ );
+	if ($file ne $wiki_files_uploaded && $file ne $wiki_files_info && $file !~ m/\.wiki$/ ) {
+	    print "File $file from $work_dir should not exist.\n";
+	    $fail = 1;
+	    last ;
+	}
     }
     if ($fail){
 	my $name_bad = "$bad_dir/$url".time();
