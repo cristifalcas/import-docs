@@ -1,0 +1,1234 @@
+<customers>
+  <nr100>
+    <name>Orbistel S.A. - IPTEL</name>
+    <displayname>Orbistel</displayname>
+  </nr100>
+  <nr106>
+    <name>MindBill</name>
+    <displayname>mindbill</displayname>
+  </nr106>
+  <nr107>
+    <name>Evercom</name>
+    <displayname>Evercom</displayname>
+  </nr107>
+  <nr111>
+    <name>Insotel</name>
+    <displayname>teleimpex</displayname>
+  </nr111>
+  <nr112>
+    <name>Mind Holland</name>
+    <displayname>Mind Holland</displayname>
+  </nr112>
+  <nr114>
+    <name>Matra Nortel Communications Danmark A/S</name>
+    <displayname>matra nortel dk</displayname>
+  </nr114>
+  <nr116>
+    <name>Norsk NTS</name>
+    <displayname>Norsk Nts</displayname>
+  </nr116>
+  <nr117>
+    <name>Verizon - Lab - MD</name>
+    <displayname>Bell Atlantic</displayname>
+  </nr117>
+  <nr119>
+    <name>Nice</name>
+    <displayname>Nice</displayname>
+  </nr119>
+  <nr121>
+    <name>CTI Billing Systems</name>
+    <displayname>CTIBS</displayname>
+  </nr121>
+  <nr122>
+    <name>Teka Telekom Ltd.</name>
+    <displayname>TEKA</displayname>
+  </nr122>
+  <nr123>
+    <name>Business Systems</name>
+    <displayname>BUSINESS SYSTEMS</displayname>
+  </nr123>
+  <nr124>
+    <name>MIND CTI Inc -USA</name>
+    <displayname>MINDUSA</displayname>
+  </nr124>
+  <nr128>
+    <name>Siemens Latvia</name>
+    <displayname>Siemens-Latvia</displayname>
+  </nr128>
+  <nr129>
+    <name>CSFB - London</name>
+    <displayname>CSFB-LONDON</displayname>
+  </nr129>
+  <nr130>
+    <name>Getronics</name>
+    <displayname>GETRONICS</displayname>
+  </nr130>
+  <nr131>
+    <name>Antigua Public Utilities Authority</name>
+    <displayname>APUA</displayname>
+  </nr131>
+  <nr132>
+    <name>SouthEast Telephone</name>
+    <displayname>SET</displayname>
+  </nr132>
+  <nr133>
+    <name>Telefonia Bonairiano N.V.</name>
+    <displayname>Telbo</displayname>
+  </nr133>
+  <nr140>
+    <name>American Samoa Telephone</name>
+    <displayname>AST</displayname>
+  </nr140>
+  <nr144>
+    <name>Dynavar</name>
+    <displayname>Dynavar</displayname>
+  </nr144>
+  <nr145>
+    <name>NetDring</name>
+    <displayname>NetDring</displayname>
+  </nr145>
+  <nr148>
+    <name>Alcatel SEL AG</name>
+    <displayname>alcatel</displayname>
+  </nr148>
+  <nr151>
+    <name>HafaTel</name>
+    <displayname>hafatel</displayname>
+  </nr151>
+  <nr153>
+    <name>Net Design</name>
+    <displayname>NETDESIGN</displayname>
+  </nr153>
+  <nr155>
+    <name>LNX</name>
+    <displayname>LNX</displayname>
+  </nr155>
+  <nr156>
+    <name>ATIMA GmbH</name>
+    <displayname>ATIMA</displayname>
+  </nr156>
+  <nr158>
+    <name>Lucent Labs</name>
+    <displayname>Lucent</displayname>
+  </nr158>
+  <nr161>
+    <name>NCR Corporation</name>
+    <displayname>NCR</displayname>
+  </nr161>
+  <nr166>
+    <name>TCSI ltd</name>
+    <displayname>TCSI</displayname>
+  </nr166>
+  <nr171>
+    <name>IBM Austria</name>
+    <displayname>IBMAT</displayname>
+  </nr171>
+  <nr180>
+    <name>Bamok Com AB</name>
+    <displayname>KurdCom</displayname>
+  </nr180>
+  <nr184>
+    <name>KPN Netherlands</name>
+    <displayname>KPN</displayname>
+  </nr184>
+  <nr188>
+    <name>CSFB - Tokyo</name>
+    <displayname>CSFB - TOKYO</displayname>
+  </nr188>
+  <nr19>
+    <name>VocalTec</name>
+    <displayname>VocalTec</displayname>
+  </nr19>
+  <nr191>
+    <name>KocNet</name>
+    <displayname>Old_KocNet</displayname>
+  </nr191>
+  <nr195>
+    <name>3COM Germany</name>
+    <displayname>3COM Germany</displayname>
+  </nr195>
+  <nr198>
+    <name>NK Networks</name>
+    <displayname>NK Networks</displayname>
+  </nr198>
+  <nr199>
+    <name>SINGTEL - Soft Switch</name>
+    <displayname>SINGTEL</displayname>
+  </nr199>
+  <nr201>
+    <name>First Mobile Japan</name>
+    <displayname>FMJ</displayname>
+  </nr201>
+  <nr203>
+    <name>Artelecom</name>
+    <displayname>Artelecom</displayname>
+  </nr203>
+  <nr209>
+    <name>STMicroelectronics India</name>
+    <displayname>ST_India</displayname>
+  </nr209>
+  <nr21>
+    <name>US Office</name>
+    <displayname>US-ESCALATION</displayname>
+  </nr21>
+  <nr212>
+    <name>TELEFONICA DATA URUGUAY (Dedicado)</name>
+    <displayname>TDU</displayname>
+  </nr212>
+  <nr213>
+    <name>TELEFONICA Peru</name>
+    <displayname>TELEFONICA PERU</displayname>
+  </nr213>
+  <nr217>
+    <name>Eltel</name>
+    <displayname>SWN</displayname>
+  </nr217>
+  <nr218>
+    <name>AzulTel</name>
+    <displayname>AZUL</displayname>
+  </nr218>
+  <nr219>
+    <name>Deutsche TelekomNetwork Projects &amp; Services</name>
+    <displayname>DETELINE</displayname>
+  </nr219>
+  <nr220>
+    <name>ABN AMRO Australia</name>
+    <displayname>ABN-AUSTRALIA</displayname>
+  </nr220>
+  <nr221>
+    <name>Kocnet</name>
+    <displayname>Kocnet</displayname>
+  </nr221>
+  <nr225>
+    <name>China Light and Power</name>
+    <displayname>clp</displayname>
+  </nr225>
+  <nr226>
+    <name>Bell South Panama</name>
+    <displayname>C&amp;W Panama</displayname>
+  </nr226>
+  <nr227>
+    <name>IntraConnect - Greece</name>
+    <displayname>IntraConnect</displayname>
+  </nr227>
+  <nr231>
+    <name>Adesemi</name>
+    <displayname>Adesemi</displayname>
+  </nr231>
+  <nr232>
+    <name>Datacraft</name>
+    <displayname>Datacraft</displayname>
+  </nr232>
+  <nr233>
+    <name>Iristel</name>
+    <displayname>IRISTEL</displayname>
+  </nr233>
+  <nr234>
+    <name>Sonex</name>
+    <displayname>sonex</displayname>
+  </nr234>
+  <nr236>
+    <name>Insoltel</name>
+    <displayname>Insoltel</displayname>
+  </nr236>
+  <nr237>
+    <name>Mer-Pa</name>
+    <displayname>Mer-Pa</displayname>
+  </nr237>
+  <nr239>
+    <name>Net2Phone</name>
+    <displayname>Net2Phone</displayname>
+  </nr239>
+  <nr241>
+    <name>Dimension Data Nederland BV</name>
+    <displayname>DimensionData</displayname>
+  </nr241>
+  <nr242>
+    <name>Tdotcom Ltd</name>
+    <displayname>Tdotcom</displayname>
+  </nr242>
+  <nr243>
+    <name>GMINT</name>
+    <displayname>GMINT</displayname>
+  </nr243>
+  <nr244>
+    <name>Satelindo</name>
+    <displayname>Satelindo</displayname>
+  </nr244>
+  <nr248>
+    <name>Communications Authority Of Thailand</name>
+    <displayname>CAT</displayname>
+  </nr248>
+  <nr249>
+    <name>ACAL Nederland bv</name>
+    <displayname>ACAL</displayname>
+  </nr249>
+  <nr251>
+    <name>H3G - Italy</name>
+    <displayname>H3G Italy</displayname>
+  </nr251>
+  <nr252>
+    <name>Bellsouth Panama</name>
+    <displayname>BellsouthPanama</displayname>
+  </nr252>
+  <nr253>
+    <name>Telindus NL</name>
+    <displayname>Telindus NL</displayname>
+  </nr253>
+  <nr254>
+    <name>Teledome Communications S.A</name>
+    <displayname>Teledome</displayname>
+  </nr254>
+  <nr256>
+    <name>Sri Lanka Telecom</name>
+    <displayname>SLT</displayname>
+  </nr256>
+  <nr258>
+    <name>BTC NET Ltd.</name>
+    <displayname>BTC</displayname>
+  </nr258>
+  <nr260>
+    <name>H3G UK</name>
+    <displayname>H3G-UK</displayname>
+  </nr260>
+  <nr263>
+    <name>H3G Hong Kong</name>
+    <displayname>H3G-HK</displayname>
+  </nr263>
+  <nr264>
+    <name>CallSat Telecom Cyprus</name>
+    <displayname>callsat</displayname>
+  </nr264>
+  <nr266>
+    <name>CSFB-Hong Kong</name>
+    <displayname>CSFB-HONG KONG</displayname>
+  </nr266>
+  <nr268>
+    <name>Telecom Colombia</name>
+    <displayname>Telecom-Colombia</displayname>
+  </nr268>
+  <nr269>
+    <name>SNR</name>
+    <displayname>SNR</displayname>
+  </nr269>
+  <nr270>
+    <name>Merloni</name>
+    <displayname>Merloni</displayname>
+  </nr270>
+  <nr271>
+    <name>Avodaq</name>
+    <displayname>AVODAQ</displayname>
+  </nr271>
+  <nr276>
+    <name>Vietnam Telecoms International</name>
+    <displayname>VDC</displayname>
+  </nr276>
+  <nr277>
+    <name>Dimension Data Italy</name>
+    <displayname>DIDATAIT</displayname>
+  </nr277>
+  <nr279>
+    <name>ZIM</name>
+    <displayname>ZIM</displayname>
+  </nr279>
+  <nr280>
+    <name>CSFB - NY</name>
+    <displayname>CSFB - NY</displayname>
+  </nr280>
+  <nr281>
+    <name>Adisam Telecom SA</name>
+    <displayname>Adisam</displayname>
+  </nr281>
+  <nr283>
+    <name>Gabon Telecom S.A</name>
+    <displayname>Gabon</displayname>
+  </nr283>
+  <nr284>
+    <name>ABN</name>
+    <displayname>ABN</displayname>
+  </nr284>
+  <nr285>
+    <name>FRR RECOVERY INC</name>
+    <displayname>FRR</displayname>
+  </nr285>
+  <nr286>
+    <name>New York Property Insurance</name>
+    <displayname>NYPI</displayname>
+  </nr286>
+  <nr287>
+    <name>Nomura Securities</name>
+    <displayname>NOMURA</displayname>
+  </nr287>
+  <nr288>
+    <name>UPS NEW YORK</name>
+    <displayname>UPSNY</displayname>
+  </nr288>
+  <nr289>
+    <name>MERRILL LYNCH</name>
+    <displayname>MERRILL</displayname>
+  </nr289>
+  <nr290>
+    <name>AXCELIS</name>
+    <displayname>AXCELIS</displayname>
+  </nr290>
+  <nr291>
+    <name>CONGRESS FINANCIAL CORPORATION</name>
+    <displayname>CONGRESS</displayname>
+  </nr291>
+  <nr292>
+    <name>Furman University</name>
+    <displayname>FurmanU</displayname>
+  </nr292>
+  <nr293>
+    <name>NPRG</name>
+    <displayname>NPRG</displayname>
+  </nr293>
+  <nr294>
+    <name>Craven County</name>
+    <displayname>Craven County</displayname>
+  </nr294>
+  <nr295>
+    <name>COMVERSE</name>
+    <displayname>COMVERSE</displayname>
+  </nr295>
+  <nr296>
+    <name>Holy Name Hospital</name>
+    <displayname>HNH</displayname>
+  </nr296>
+  <nr297>
+    <name>Town Sports International</name>
+    <displayname>nysp</displayname>
+  </nr297>
+  <nr298>
+    <name>Dizengoff</name>
+    <displayname>Dizengoff</displayname>
+  </nr298>
+  <nr299>
+    <name>suburban telecom</name>
+    <displayname>suburban telecom</displayname>
+  </nr299>
+  <nr300>
+    <name>VERIZON DATA SERVICES - TX</name>
+    <displayname>VERIZON</displayname>
+  </nr300>
+  <nr301>
+    <name>BREEZE EASTERN CORPORATION</name>
+    <displayname>BREEZE EC</displayname>
+  </nr301>
+  <nr302>
+    <name>Omnitel Italy</name>
+    <displayname>omnitel</displayname>
+  </nr302>
+  <nr303>
+    <name>mafunlimited</name>
+    <displayname>mafunlimited</displayname>
+  </nr303>
+  <nr305>
+    <name>OmneticaUK</name>
+    <displayname>Omnetica UK</displayname>
+  </nr305>
+  <nr306>
+    <name>Intracom</name>
+    <displayname>Intracom</displayname>
+  </nr306>
+  <nr308>
+    <name>Telindus Portugal</name>
+    <displayname>Telindus-PT</displayname>
+  </nr308>
+  <nr309>
+    <name>Hot Link</name>
+    <displayname>hotlink</displayname>
+  </nr309>
+  <nr311>
+    <name>nasioncom</name>
+    <displayname>nasioncom</displayname>
+  </nr311>
+  <nr312>
+    <name>IBM Denmark</name>
+    <displayname>IBMDK</displayname>
+  </nr312>
+  <nr313>
+    <name>UNITRONICS COMUNICACIONES, Spain</name>
+    <displayname>UnitronicsSP</displayname>
+  </nr313>
+  <nr314>
+    <name>Borusan</name>
+    <displayname>Borusan</displayname>
+  </nr314>
+  <nr315>
+    <name>Telemedia</name>
+    <displayname>Telemedia</displayname>
+  </nr315>
+  <nr316>
+    <name>Inclarity</name>
+    <displayname>Inclarity</displayname>
+  </nr316>
+  <nr317>
+    <name>cabletel</name>
+    <displayname>cabletel</displayname>
+  </nr317>
+  <nr318>
+    <name>Dogan Telekom</name>
+    <displayname>DOL</displayname>
+  </nr318>
+  <nr319>
+    <name>optima</name>
+    <displayname>OPTIMA</displayname>
+  </nr319>
+  <nr320>
+    <name>Sabanci Telecom</name>
+    <displayname>sabanchi</displayname>
+  </nr320>
+  <nr321>
+    <name>Bucher &amp; Suter</name>
+    <displayname>buchersuter</displayname>
+  </nr321>
+  <nr325>
+    <name>H3G Italy Test Bed</name>
+    <displayname>H3G Italy TB</displayname>
+  </nr325>
+  <nr326>
+    <name>BTCBG</name>
+    <displayname>BTCBG</displayname>
+  </nr326>
+  <nr327>
+    <name>ArmenTel - Armenia</name>
+    <displayname>ArmenTel</displayname>
+  </nr327>
+  <nr328>
+    <name>SRG Bahamas (IndiGO)</name>
+    <displayname>SRG</displayname>
+  </nr328>
+  <nr329>
+    <name>Telcat</name>
+    <displayname>Telcat</displayname>
+  </nr329>
+  <nr332>
+    <name>CTR Mexico</name>
+    <displayname>CTR</displayname>
+  </nr332>
+  <nr333>
+    <name>IBM La Gaude France</name>
+    <displayname>IBM La Gaude Fr.</displayname>
+  </nr333>
+  <nr334>
+    <name>MailVision</name>
+    <displayname>MV</displayname>
+  </nr334>
+  <nr335>
+    <name>QTSC Vietnam</name>
+    <displayname>QTSC</displayname>
+  </nr335>
+  <nr336>
+    <name>Cisco Herndon</name>
+    <displayname>Cisco Herndon</displayname>
+  </nr336>
+  <nr337>
+    <name>Husky Asia</name>
+    <displayname>HuskyAsia</displayname>
+  </nr337>
+  <nr338>
+    <name>XL Group UK</name>
+    <displayname>XL Group UK</displayname>
+  </nr338>
+  <nr339>
+    <name>MIND Support Mediation team</name>
+    <displayname>Mediation</displayname>
+  </nr339>
+  <nr34>
+    <name>Verizon - Production - PA</name>
+    <displayname>VRZN</displayname>
+  </nr34>
+  <nr340>
+    <name>MIND Support Billing Group</name>
+    <displayname>Billing</displayname>
+  </nr340>
+  <nr341>
+    <name>Internet Solutions</name>
+    <displayname>IS</displayname>
+  </nr341>
+  <nr342>
+    <name>Vodafone Greece</name>
+    <displayname>VOGreece</displayname>
+  </nr342>
+  <nr343>
+    <name>Vocaltec</name>
+    <displayname>Vocaltec</displayname>
+  </nr343>
+  <nr344>
+    <name>TransTelecom Bulgaria</name>
+    <displayname>TransTelecom</displayname>
+  </nr344>
+  <nr345>
+    <name>Veraz Networks</name>
+    <displayname>Veraz</displayname>
+  </nr345>
+  <nr346>
+    <name>AFRIPA TELECOM GROUP</name>
+    <displayname>AFRIPA</displayname>
+  </nr346>
+  <nr347>
+    <name>Combis-Croatia</name>
+    <displayname>Combis</displayname>
+  </nr347>
+  <nr348>
+    <name>IPTEL-SL</name>
+    <displayname>Netcom - IPTEL</displayname>
+  </nr348>
+  <nr349>
+    <name>Fusion</name>
+    <displayname>Fusion</displayname>
+  </nr349>
+  <nr350>
+    <name>AxcelisTech</name>
+    <displayname>AxcelisTech</displayname>
+  </nr350>
+  <nr351>
+    <name>CelTel Tanzania</name>
+    <displayname>CelTel</displayname>
+  </nr351>
+  <nr352>
+    <name>Megacable</name>
+    <displayname>MCable</displayname>
+  </nr352>
+  <nr353>
+    <name>Siemens - JBV</name>
+    <displayname>JBV</displayname>
+  </nr353>
+  <nr354>
+    <name>Douglas Telecom</name>
+    <displayname>Dougtel</displayname>
+  </nr354>
+  <nr356>
+    <name>Coral Wireless (Mobi PCS)</name>
+    <displayname>Coral</displayname>
+  </nr356>
+  <nr357>
+    <name>GTA (Pulse Mobile)</name>
+    <displayname>GTA</displayname>
+  </nr357>
+  <nr358>
+    <name>CCT Boat Phone</name>
+    <displayname>CCT</displayname>
+  </nr358>
+  <nr359>
+    <name>Cleveland Unlimited Inc.</name>
+    <displayname>Revol</displayname>
+  </nr359>
+  <nr360>
+    <name>Belize Telecom Limited</name>
+    <displayname>BTL</displayname>
+  </nr360>
+  <nr361>
+    <name>Curacao Telecom</name>
+    <displayname>CT</displayname>
+  </nr361>
+  <nr362>
+    <name>East Caribbean Cellular</name>
+    <displayname>ECC</displayname>
+  </nr362>
+  <nr363>
+    <name>Indigo Wireless</name>
+    <displayname>Indigo</displayname>
+  </nr363>
+  <nr364>
+    <name>St. Maarten Telephone Company</name>
+    <displayname>SMTC</displayname>
+  </nr364>
+  <nr365>
+    <name>Vartec</name>
+    <displayname>Excel</displayname>
+  </nr365>
+  <nr366>
+    <name>Batelco</name>
+    <displayname>Batelco</displayname>
+  </nr366>
+  <nr367>
+    <name>Nigerian Mobile Telecommunications Limited</name>
+    <displayname>MTEL</displayname>
+  </nr367>
+  <nr369>
+    <name>Yaughiogheny Communications Texas LLC</name>
+    <displayname>YCT</displayname>
+  </nr369>
+  <nr370>
+    <name>ISKON Internet d.d. Croatia</name>
+    <displayname>ISKON</displayname>
+  </nr370>
+  <nr371>
+    <name>MTPCS LLC</name>
+    <displayname>MTPCS</displayname>
+  </nr371>
+  <nr372>
+    <name>Intel Costa Rica</name>
+    <displayname>INTELCR</displayname>
+  </nr372>
+  <nr374>
+    <name>Viaero</name>
+    <displayname>Viaero</displayname>
+  </nr374>
+  <nr375>
+    <name>AMIS Slovenia</name>
+    <displayname>AMIS</displayname>
+  </nr375>
+  <nr376>
+    <name>Dimension Data - South Africa</name>
+    <displayname>DidataSA</displayname>
+  </nr376>
+  <nr377>
+    <name>SOLUZIONA</name>
+    <displayname>SOLUZIONA</displayname>
+  </nr377>
+  <nr378>
+    <name>Lexington Medical Center</name>
+    <displayname>Lexington</displayname>
+  </nr378>
+  <nr379>
+    <name>Boston Post</name>
+    <displayname>BostonPost</displayname>
+  </nr379>
+  <nr380>
+    <name>BMW Italy</name>
+    <displayname>BMWIT</displayname>
+  </nr380>
+  <nr381>
+    <name>Moldtelecom</name>
+    <displayname>Moldtelecom</displayname>
+  </nr381>
+  <nr382>
+    <name>KDDI America Inc</name>
+    <displayname>KDDI</displayname>
+  </nr382>
+  <nr383>
+    <name>V2Tel</name>
+    <displayname>v2tel</displayname>
+  </nr383>
+  <nr384>
+    <name>Banverket (Siemens)</name>
+    <displayname>Benverket</displayname>
+  </nr384>
+  <nr385>
+    <name>Boston Post Technology</name>
+    <displayname>BPT</displayname>
+  </nr385>
+  <nr388>
+    <name>Moldtelecom Prepaid</name>
+    <displayname>MTCPREPAID</displayname>
+  </nr388>
+  <nr389>
+    <name>Mikrovisatos Servisas</name>
+    <displayname>MKV</displayname>
+  </nr389>
+  <nr391>
+    <name>Sonitel</name>
+    <displayname>SONITEL</displayname>
+  </nr391>
+  <nr392>
+    <name>Airbites</name>
+    <displayname>Airbites</displayname>
+  </nr392>
+  <nr393>
+    <name>Indra</name>
+    <displayname>Indra</displayname>
+  </nr393>
+  <nr394>
+    <name>Flat Wireless</name>
+    <displayname>Flat Wireless</displayname>
+  </nr394>
+  <nr395>
+    <name>City Telecom</name>
+    <displayname>CTel</displayname>
+  </nr395>
+  <nr396>
+    <name>Voyport</name>
+    <displayname>Voyport</displayname>
+  </nr396>
+  <nr397>
+    <name>International Development Research Centre</name>
+    <displayname>IDRC</displayname>
+  </nr397>
+  <nr398>
+    <name>My Solutions</name>
+    <displayname>MySol</displayname>
+  </nr398>
+  <nr399>
+    <name>Strata8</name>
+    <displayname>Strata8</displayname>
+  </nr399>
+  <nr400>
+    <name>Europa</name>
+    <displayname>Europa</displayname>
+  </nr400>
+  <nr401>
+    <name>OSCE</name>
+    <displayname>OSCE</displayname>
+  </nr401>
+  <nr402>
+    <name>MINDBill R&amp;D</name>
+    <displayname>R&amp;D</displayname>
+  </nr402>
+  <nr403>
+    <name>Dolphin Square</name>
+    <displayname>Dolphin</displayname>
+  </nr403>
+  <nr404>
+    <name>Renault Dacia Romania</name>
+    <displayname>daciaro</displayname>
+  </nr404>
+  <nr405>
+    <name>Tetra Pak</name>
+    <displayname>TP</displayname>
+  </nr405>
+  <nr406>
+    <name>Voyport MS Escalation</name>
+    <displayname>VP_MS</displayname>
+  </nr406>
+  <nr407>
+    <name>Smart PCS</name>
+    <displayname>SMART</displayname>
+  </nr407>
+  <nr408>
+    <name>PAUL HARTMANN AG</name>
+    <displayname>Hartmann</displayname>
+  </nr408>
+  <nr409>
+    <name>Dimension Data Kenya</name>
+    <displayname>DDKenya</displayname>
+  </nr409>
+  <nr410>
+    <name>Dimension-Data Kenya</name>
+    <displayname>410</displayname>
+  </nr410>
+  <nr411>
+    <name>United Nations Logistic Brindisi</name>
+    <displayname>UNLB</displayname>
+  </nr411>
+  <nr412>
+    <name>CFAO Cameroon</name>
+    <displayname>CFAOCAM</displayname>
+  </nr412>
+  <nr413>
+    <name>Gijima SA</name>
+    <displayname>Gijima</displayname>
+  </nr413>
+  <nr414>
+    <name>Garanti</name>
+    <displayname>Garanti</displayname>
+  </nr414>
+  <nr415>
+    <name>Amadeus</name>
+    <displayname>Amadeus</displayname>
+  </nr415>
+  <nr416>
+    <name>Citigroup</name>
+    <displayname>CG</displayname>
+  </nr416>
+  <nr417>
+    <name>Kooyman</name>
+    <displayname>Kooyman</displayname>
+  </nr417>
+  <nr418>
+    <name>Edenorte DR</name>
+    <displayname>Edenorte</displayname>
+  </nr418>
+  <nr419>
+    <name>CMC Networks SA</name>
+    <displayname>CMC</displayname>
+  </nr419>
+  <nr420>
+    <name>BMW UK</name>
+    <displayname>BMWUK</displayname>
+  </nr420>
+  <nr421>
+    <name>Shinsei Bank Japan</name>
+    <displayname>Shinsei</displayname>
+  </nr421>
+  <nr422>
+    <name>Expauto</name>
+    <displayname>Expauto</displayname>
+  </nr422>
+  <nr423>
+    <name>Bamburi Kenya</name>
+    <displayname>Bamburi</displayname>
+  </nr423>
+  <nr424>
+    <name>Infosys</name>
+    <displayname>Infosys</displayname>
+  </nr424>
+  <nr425>
+    <name>Marvell Semiconductors</name>
+    <displayname>Marvell</displayname>
+  </nr425>
+  <nr426>
+    <name>Phelps Dodge</name>
+    <displayname>PDIC</displayname>
+  </nr426>
+  <nr427>
+    <name>Alpitel</name>
+    <displayname>Alpitel</displayname>
+  </nr427>
+  <nr428>
+    <name>GAF</name>
+    <displayname>GAF</displayname>
+  </nr428>
+  <nr429>
+    <name>Navarette</name>
+    <displayname>Navarette</displayname>
+  </nr429>
+  <nr430>
+    <name>Barclays Uganda</name>
+    <displayname>BarclayUG</displayname>
+  </nr430>
+  <nr431>
+    <name>Spiritel</name>
+    <displayname>Spiritel</displayname>
+  </nr431>
+  <nr432>
+    <name>Acergy</name>
+    <displayname>Acergy</displayname>
+  </nr432>
+  <nr433>
+    <name>Newmark Knight Frank:</name>
+    <displayname>NKF</displayname>
+  </nr433>
+  <nr434>
+    <name>ORT</name>
+    <displayname>ORT</displayname>
+  </nr434>
+  <nr435>
+    <name>Orange County</name>
+    <displayname>OC</displayname>
+  </nr435>
+  <nr436>
+    <name>CopyCat Kenya</name>
+    <displayname>CopyCat</displayname>
+  </nr436>
+  <nr437>
+    <name>Eco Bank</name>
+    <displayname>EcoB</displayname>
+  </nr437>
+  <nr438>
+    <name>ST Malaesya</name>
+    <displayname>STM</displayname>
+  </nr438>
+  <nr439>
+    <name>Dimension Data Spain</name>
+    <displayname>DIDATASP</displayname>
+  </nr439>
+  <nr440>
+    <name>CIS Ghana</name>
+    <displayname>CISGh</displayname>
+  </nr440>
+  <nr441>
+    <name>CEZ Romania</name>
+    <displayname>CEZ</displayname>
+  </nr441>
+  <nr442>
+    <name>DataMonitor USA</name>
+    <displayname>DataMonitor</displayname>
+  </nr442>
+  <nr443>
+    <name>CFAO Senegal</name>
+    <displayname>CFAOS</displayname>
+  </nr443>
+  <nr444>
+    <name>Merck</name>
+    <displayname>Merck</displayname>
+  </nr444>
+  <nr445>
+    <name>Packet 360 USA</name>
+    <displayname>Packet360</displayname>
+  </nr445>
+  <nr446>
+    <name>Bureautique &amp; Services Gabon</name>
+    <displayname>BS</displayname>
+  </nr446>
+  <nr447>
+    <name>PriceWaterHouse Coopers SA</name>
+    <displayname>PWCSA</displayname>
+  </nr447>
+  <nr448>
+    <name>BancPost Romania</name>
+    <displayname>BancPost</displayname>
+  </nr448>
+  <nr449>
+    <name>Pitt County</name>
+    <displayname>Pitt</displayname>
+  </nr449>
+  <nr45>
+    <name>Marconi</name>
+    <displayname>Marconi</displayname>
+  </nr45>
+  <nr450>
+    <name>UTS</name>
+    <displayname>UTS</displayname>
+  </nr450>
+  <nr452>
+    <name>Newmarkkf</name>
+    <displayname>NewM</displayname>
+  </nr452>
+  <nr453>
+    <name>WaterOne</name>
+    <displayname>WaterOne</displayname>
+  </nr453>
+  <nr454>
+    <name>MTC</name>
+    <displayname>MTC</displayname>
+  </nr454>
+  <nr455>
+    <name>Pernod Ricard USA</name>
+    <displayname>PR</displayname>
+  </nr455>
+  <nr456>
+    <name>Sullivan County</name>
+    <displayname>SVC</displayname>
+  </nr456>
+  <nr457>
+    <name>Smithsonian USA</name>
+    <displayname>Smith</displayname>
+  </nr457>
+  <nr458>
+    <name>Inclarity UK</name>
+    <displayname>INC</displayname>
+  </nr458>
+  <nr459>
+    <name>Bank Of Japan</name>
+    <displayname>BJ</displayname>
+  </nr459>
+  <nr460>
+    <name>Viaero Escalation</name>
+    <displayname>ViaeroEsc</displayname>
+  </nr460>
+  <nr461>
+    <name>AOS5 USA</name>
+    <displayname>AOS5</displayname>
+  </nr461>
+  <nr462>
+    <name>Unicef Ethiopia</name>
+    <displayname>Unicef</displayname>
+  </nr462>
+  <nr463>
+    <name>Ednetics USA</name>
+    <displayname>Ednetics</displayname>
+  </nr463>
+  <nr464>
+    <name>GAF US</name>
+    <displayname>GAFUS</displayname>
+  </nr464>
+  <nr465>
+    <name>WSU Vancouver</name>
+    <displayname>WSU</displayname>
+  </nr465>
+  <nr466>
+    <name>Alpha Bank Romania</name>
+    <displayname>Alpha Bank</displayname>
+  </nr466>
+  <nr467>
+    <name>Lantech kenya</name>
+    <displayname>Lantech</displayname>
+  </nr467>
+  <nr468>
+    <name>DTB KENYA</name>
+    <displayname>DTB KENYA</displayname>
+  </nr468>
+  <nr469>
+    <name>HSBC Turkey</name>
+    <displayname>HSBC</displayname>
+  </nr469>
+  <nr470>
+    <name>RAD</name>
+    <displayname>RAD</displayname>
+  </nr470>
+  <nr471>
+    <name>Stryker USA</name>
+    <displayname>Stryker</displayname>
+  </nr471>
+  <nr472>
+    <name>DPWORLD Djibouti</name>
+    <displayname>DPWORLD</displayname>
+  </nr472>
+  <nr473>
+    <name>CFAO Ivory Coast</name>
+    <displayname>CFAOIV</displayname>
+  </nr473>
+  <nr474>
+    <name>Cisco Global</name>
+    <displayname>CiscoG</displayname>
+  </nr474>
+  <nr475>
+    <name>CCBC US</name>
+    <displayname>CCBC</displayname>
+  </nr475>
+  <nr476>
+    <name>Dell Perrot</name>
+    <displayname>DP</displayname>
+  </nr476>
+  <nr477>
+    <name>MSTelcom Angola</name>
+    <displayname>MSTelcom</displayname>
+  </nr477>
+  <nr478>
+    <name>Nintendo USA</name>
+    <displayname>Nin</displayname>
+  </nr478>
+  <nr479>
+    <name>UNAIDS Swiss</name>
+    <displayname>UNAIDS</displayname>
+  </nr479>
+  <nr480>
+    <name>CFAO Ghana</name>
+    <displayname>CFAOG</displayname>
+  </nr480>
+  <nr481>
+    <name>ACS Home Show USA</name>
+    <displayname>ACS</displayname>
+  </nr481>
+  <nr482>
+    <name>BCR Romania</name>
+    <displayname>BCR</displayname>
+  </nr482>
+  <nr483>
+    <name>Corbis US</name>
+    <displayname>Corbis</displayname>
+  </nr483>
+  <nr484>
+    <name>Fiscal Services Limited</name>
+    <displayname>FSL</displayname>
+  </nr484>
+  <nr485>
+    <name>852Free</name>
+    <displayname>852Free</displayname>
+  </nr485>
+  <nr486>
+    <name>Cable&amp;Wireless</name>
+    <displayname>CWP</displayname>
+  </nr486>
+  <nr487>
+    <name>MFI Enterprise Solutions</name>
+    <displayname>MFIES</displayname>
+  </nr487>
+  <nr488>
+    <name>GFT Forex</name>
+    <displayname>GFT US</displayname>
+  </nr488>
+  <nr489>
+    <name>Phone Solution Direct (PSD)  UK</name>
+    <displayname>PSD</displayname>
+  </nr489>
+  <nr490>
+    <name>Spirax UK</name>
+    <displayname>Spirax</displayname>
+  </nr490>
+  <nr491>
+    <name>CapGemini US</name>
+    <displayname>CapGemini</displayname>
+  </nr491>
+  <nr492>
+    <name>Getronics Swiss</name>
+    <displayname>Getronics Sw</displayname>
+  </nr492>
+  <nr493>
+    <name>ComputerPoint Uganda</name>
+    <displayname>ComputerPoint</displayname>
+  </nr493>
+  <nr494>
+    <name>Rompetrol Romania</name>
+    <displayname>Rompetrol</displayname>
+  </nr494>
+  <nr495>
+    <name>TouchBase UK</name>
+    <displayname>TouchBase</displayname>
+  </nr495>
+  <nr496>
+    <name>TWTELECOM US</name>
+    <displayname>TWTELECOM</displayname>
+  </nr496>
+  <nr497>
+    <name>NOWCOMM UK</name>
+    <displayname>NOWCOMM</displayname>
+  </nr497>
+  <nr498>
+    <name>Delta Georgia</name>
+    <displayname>Delta</displayname>
+  </nr498>
+  <nr499>
+    <name>CBS Kenya</name>
+    <displayname>CBS</displayname>
+  </nr499>
+  <nr50>
+    <name>Magenta</name>
+    <displayname>Magenta</displayname>
+  </nr50>
+  <nr500>
+    <name>Dimension Data Uganda</name>
+    <displayname>DD UG</displayname>
+  </nr500>
+  <nr501>
+    <name>Telecrema Australia</name>
+    <displayname>Telecrema</displayname>
+  </nr501>
+  <nr502>
+    <name>Siemens - Banca Intesa</name>
+    <displayname>Siemens Serbia</displayname>
+  </nr502>
+  <nr503>
+    <name>Ciudad de la Luz</name>
+    <displayname>Ciudada Luz</displayname>
+  </nr503>
+  <nr504>
+    <name>Algo Systems Greece</name>
+    <displayname>Algo</displayname>
+  </nr504>
+  <nr505>
+    <name>Computech</name>
+    <displayname>Computech</displayname>
+  </nr505>
+  <nr506>
+    <name>MIND Presale</name>
+    <displayname>Presale</displayname>
+  </nr506>
+  <nr507>
+    <name>Emerson Italy</name>
+    <displayname>Emerson</displayname>
+  </nr507>
+  <nr508>
+    <name>SoftNet Tanzania</name>
+    <displayname>SoftNet</displayname>
+  </nr508>
+  <nr509>
+    <name>Docomo</name>
+    <displayname>Docomo</displayname>
+  </nr509>
+  <nr51>
+    <name>Verestar</name>
+    <displayname>VStar</displayname>
+  </nr51>
+  <nr510>
+    <name>Mobee</name>
+    <displayname>Mobee</displayname>
+  </nr510>
+  <nr59>
+    <name>Azlan</name>
+    <displayname>AZLAN</displayname>
+  </nr59>
+  <nr67>
+    <name>Global Tel</name>
+    <displayname>GlobalTel</displayname>
+  </nr67>
+  <nr7>
+    <name>Aurora Global Solutions S.A.</name>
+    <displayname>Aurora</displayname>
+  </nr7>
+  <nr75>
+    <name>FSBM Net Media</name>
+    <displayname>FSBM Net</displayname>
+  </nr75>
+  <nr87>
+    <name>AMT Group</name>
+    <displayname>AMT Group</displayname>
+  </nr87>
+  <nr99>
+    <name>NetService</name>
+    <displayname>NetService</displayname>
+  </nr99>
+</customers>
