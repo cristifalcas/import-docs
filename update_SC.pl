@@ -33,6 +33,7 @@ use File::Find;
 use File::Copy;
 use Cwd 'abs_path','chdir';
 use XML::Simple;
+use Encode;
 # use File::Find::Rule;
 use Data::Compare;
 use Mind_work::WikiCommons;
@@ -51,7 +52,7 @@ our $svn_user = 'svncheckout';
 our $files_info = "files_info.txt";
 our $general_template_file = "./SC_template.txt";
 my $svn_update = "no";
-my $force_db_update = "no";
+my $force_db_update = "yes";
 my $bulk_svn_update = "no";
 
 $svn_update = "no" if ($force_db_update eq "yes");
@@ -95,16 +96,13 @@ sub write_rtf {
     $data =~ s/(^\s+)|(\s+$)//;
     $data =~ s/\$\$\@\@/\'/gs;
     return if (! defined $data || $data eq "");
-    WikiCommons::write_file("$name", $data);
+    write_file("$name", $data);
 }
 
-# sub write_file {
-#     my $path = shift;
-#     my $text = shift;
-#     open (FILE, ">$path") or die "can't open file $path for writing: $!\n";
-#     print FILE "$text";
-#     close (FILE);
-# }
+sub write_file {
+    my ($name, $txt) = @_;
+    WikiCommons::write_file("$name", Encode::encode('utf8', $txt) );
+}
 
 sub general_info {
     my ($info, $index, $modules, $tester, $initiator, $dealer) = @_;
@@ -148,7 +146,7 @@ sub general_info {
 	$tmp =~ s/\s+/ /g;
 	if ($tmp =~ m/^\s*(.*)?(\s*\/\s*|\s+)([0-9]{1,})\s*$/){
 	    my $q = $1;
-	    my $w = $2;
+	    my $w = $3;
 	    $q = WikiCommons::get_correct_customer( $q );
 	    $general =~ s/%customer_bug%/\'\'\'Customer bug\'\'\' (CRM ID): [[CRM:$q -- $w]]/;
 	} else {
@@ -163,14 +161,17 @@ sub general_info {
     $general =~ s/%product%/@$info[$index->{'productname'}]/;
     $general =~ s/%full_status%/@$info[$index->{'fullstatus'}]/;
     $general =~ s/%status%/@$info[$index->{'status'}]/;
-    $tmp = @$info[$index->{'fixversion'}];
-    $tmp =~ s/(^\s*)|(\s*$)//;
-    if ($tmp && $tmp ne '' && $tmp !~ m/[a-z ]/i){
-	$tmp =~ s/\(.*?\)//i;
-	$tmp =~ s/\+$//i;
-	my ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers($tmp, $tmp);
-	$general =~ s/%fix_version%/[[:Category:$ver_fixed|$ver_fixed]]/g;
-    }
+    $general =~ s/%fix_version%/@$info[$index->{'fixversion'}]/g;
+#     $tmp = @$info[$index->{'fixversion'}];
+#     $tmp =~ s/(^\s*)|(\s*$)//;
+#     if ($tmp && $tmp ne '' && $tmp !~ m/[a-z ]/i){
+# 	$tmp =~ s/\(.*?\)//i;
+# 	$tmp =~ s/\+$//i;
+# 	my ($main, $ver, $ver_fixed, $big_ver, $ver_sp, $ver_without_sp) = WikiCommons::check_vers($tmp, $tmp);
+# 	$general =~ s/%fix_version%/[[:Category:$ver_fixed|$ver_fixed]]/g;
+#     } else {
+# 	$general =~ s/%fix_version%//g;
+#     }
 
     push @categories, "version ". @$info[$index->{'version'}];
 
@@ -622,7 +623,7 @@ sub write_common_info {
     foreach my $key (sort keys %$index_comm) {
 	$text .= "$key = @$info_comm[$index_comm->{$key}]\n";
     }
-    WikiCommons::write_file("$to_path/common_info", $text);
+    write_file("$to_path/common_info", $text);
 }
 
 sub svn_info {
@@ -659,7 +660,7 @@ sub write_control_file {
 
     $text .= "SC_info;$hash->{'SC_info'}->{'name'};$hash->{'SC_info'}->{'size'};$hash->{'SC_info'}->{'revision'}\n";
     $text .= "Categories;". (join ';',@$categories). ";"x(3-(scalar @$categories))."\n" if scalar @$categories;
-    WikiCommons::write_file("$dir/$files_info", "$text");
+    write_file("$dir/$files_info", "$text");
 }
 
 sub move_dir {
@@ -821,17 +822,18 @@ foreach my $change_id (sort keys %$crt_hash){
 	    $txt .= "\nMissing \'\'\'$key\'\'\' from [$missing_documents->{$key} this] svn address, but database says it should exist.\n";
 	}
 
-	WikiCommons::write_file ("$work_dir/General_info.wiki" ,$txt);
+	write_file ("$work_dir/General_info.wiki" ,$txt);
 	write_rtf ("$work_dir/1 Market_SC.rtf", @$info_ret[$index->{'Market_SC'}]);
 	write_rtf ("$work_dir/2 Description_SC.rtf", @$info_ret[$index->{'Description_SC'}]);
 	write_rtf ("$work_dir/3 HLD.rtf", @$info_ret[$index->{'HLD_SC'}]);
 	write_rtf ("$work_dir/4 Messages_SC.rtf", @$info_ret[$index->{'Messages_SC'}]);
 	write_rtf ("$work_dir/5 Architecture_SC.rtf", @$info_ret[$index->{'Architecture_SC'}]);
+
+	write_control_file($crt_info, $work_dir, $cat);
     }
 
     $cat = [ $prev_info->{'Categories'}->{'name'} || "", $prev_info->{'Categories'}->{'size'} || "", $prev_info->{'Categories'}->{'revision'} || "" ] if ! defined $cat;
 
-    write_control_file($crt_info, $work_dir, $cat);
 
     move_dir("$work_dir", "$to_path/$change_id/");
     print "+Finish working for $change_id: nr $count of $total.\t$dif\n";
