@@ -268,7 +268,7 @@ sub fix_name {
     $fixed_name = "Task Scheduler" if ($fixed_name eq "Task Scheduler User Guide 5.3");
     $fixed_name = "UDR Distribution" if ($fixed_name eq "UDRDistributionUserGuide5.01-Rev10");
     $fixed_name = "User Activity" if ($fixed_name eq "UserActivity5.30");
-    $fixed_name = "Admin" if ($fixed_name eq "AdminUserManual5.02-Rev15");
+    $fixed_name = "Administrator" if ($fixed_name eq "AdminUserManual5.02-Rev15");
     $fixed_name = "WebBill" if ($fixed_name eq "5.3 WebBill");
     $fixed_name = "WebBill" if ($fixed_name eq "WebBill 5.2");
     $fixed_name = "WebBill" if ($fixed_name eq "WebBillUserManual5.0-Rev10");
@@ -296,6 +296,9 @@ sub fix_name {
     $fixed_name = "DB Import" if ($fixed_name eq "DBImport");
     $fixed_name = "Display CDR Field Instructions" if ($fixed_name eq "DisplayCDRFieldInstructions");
     $fixed_name = "Fix Invoice XML Deployment" if ($fixed_name eq "FixInvoiceXML Deployment");
+    $fixed_name = "Install Oracle 10g Veracity" if ($fixed_name eq "InstallOracle10g Veracity");
+    $fixed_name = "$1 - Data Dictionary Tables" if ($fixed_name =~ m/Data Dictionary Tables\s*-?\s*(.*)/);
+    $fixed_name = "$1 - DB Documentation" if ($fixed_name =~ m/DB Documentation\s*-?\s*[a-z0-9]{1,}/i);
 
     $fixed_name =~ s/(^\s*)|(\s*$)//;
 
