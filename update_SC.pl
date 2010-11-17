@@ -52,7 +52,7 @@ our $svn_user = 'svncheckout';
 our $files_info = "files_info.txt";
 our $general_template_file = "./SC_template.txt";
 my $svn_update = "no";
-my $force_db_update = "yes";
+my $force_db_update = "no";
 my $bulk_svn_update = "no";
 
 $svn_update = "no" if ($force_db_update eq "yes");
@@ -144,7 +144,7 @@ sub general_info {
 	$tmp = @$info[$index->{'crmid'}];
 	$tmp =~ s/(^\s+)|(\s+$)//g;
 	$tmp =~ s/\s+/ /g;
-	if ($tmp =~ m/^\s*(.*)?(\s*\/\s*|\s+)([0-9]{1,})\s*$/){
+	if ($tmp =~ m/^\s*(.*)?(\s*\/\s*|\s+|\s*\\\s*)([0-9]{1,})\s*$/){
 	    my $q = $1;
 	    my $w = $3;
 	    $q = WikiCommons::get_correct_customer( $q );
