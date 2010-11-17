@@ -456,7 +456,21 @@ sub insertdata {
     $text .= "link_type = $pages_toimp_hash->{$url}[$link_type_pos]\n";
     WikiCommons::write_file("$work_dir/$wiki_files_info", $text);
     delete($pages_toimp_hash->{$url});
-    WikiCommons::cleanup;
+
+    WikiCommons::cleanup($work_dir);
+    opendir(DIR, $work_dir);
+    my @files = grep { (!/^\.\.?$/) } readdir(DIR);
+    closedir(DIR);
+    my $fail = 0;
+    print "Dir $work_dir doesn't have the correct number of files.\n",$fail = 1 if (scalar @files != 3 );
+    foreach my $file (@files){
+	print "File $file from $work_dir should not exist.\n", $fail = 1, last if ($file ne $wiki_files_uploaded && $file ne $wiki_files_info && $file !~ m/\.wiki$/ );
+    }
+    if ($fail){
+	my $name_bad = "$bad_dir/$url".time();
+	WikiCommons::makedir("$name_bad");
+	move("$work_dir","$name_bad");
+    }
 }
 
 sub work_real {
@@ -556,7 +570,13 @@ sub work_begin {
 	($to_delete, $to_keep) = generate_pages_to_delete_to_import;
     }
 
-# print Dumper($pages_toimp_hash);return ($to_delete, $to_keep);
+    return ($to_delete, $to_keep);
+}
+
+sub work_for_docs {
+    my ($path_files) = @_;
+    my ($to_delete, $to_keep) = work_begin;
+# print "$_\n" foreach (sort keys %$pages_toimp_hash);exit 1;
     if (WikiCommons::is_remote ne "yes") {
 	foreach my $url (sort keys %$to_delete) {
 	    print "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";
@@ -564,12 +584,6 @@ sub work_begin {
 	    remove_tree("$wiki_dir/$url") || die "Can't remove dir $wiki_dir/$url: $?.\n";
 	}
     }
-    return ($to_delete, $to_keep);
-}
-
-sub work_for_docs {
-    my ($path_files) = @_;
-    my ($to_delete, $to_keep) = work_begin;
     make_categories;
     work_real($to_keep, $path_files);
     work_link($to_keep);
@@ -822,7 +836,7 @@ sub quick_and_dirty_html_to_wiki {
     print "\t+Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
     WikiCommons::add_to_remove( $html_file, "file" );
     insertdata($url, $wiki);
-    WikiCommons::cleanup;
+    WikiCommons::cleanup($work_dir);
 }
 
 

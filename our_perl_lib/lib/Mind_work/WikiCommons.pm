@@ -45,6 +45,7 @@ sub hash_to_xmlfile {
 }
 
 sub cleanup {
+    my $dir = shift;
     foreach my $key (keys %$clean_up) {
 	if ($clean_up->{"$key"} eq "file") {
 	    unlink("$key") or die "Could not delete the file $key: ".$!."\n";
@@ -179,8 +180,10 @@ sub capitalize_string {
 	$str =~ s/\b(\w)/\U$1/g;
     } elsif ($type eq "all") {
 	$str =~ s/([\w']+)/\u\L$1/g;
+    } elsif ($type eq "small") {
+	$str =~ s/([\w']+)/\L$1/g;
     } else {
-	die "Capitalization: first (only first letter is capital) or all (first letter is capital and the rest remain the same.)\n";
+	die "Capitalization: first (first letter is capital and the rest remain the same), small (all letters to lowercase) or all (only first letter is capital, and the rest are lowercase).\n";
     }
     return $str;
 }
@@ -236,7 +239,6 @@ sub fix_name {
     $fixed_name = "Billing" if ($fixed_name eq "BillingUserManual5.0-Rev12");
     $fixed_name = "Billing Rev12" if ($fixed_name eq "BillingUserManual5.01-Rev12");
     $fixed_name = "Billing Rev13" if ($fixed_name eq "BillingUserManual5.01-Rev13Kenan");
-    $fixed_name = "CallShop Manuel D\'Utilisation" if ($fixed_name eq "5.31.005 CallShop Manuel D\'Utilisation");
     $fixed_name = "Cashier" if ($fixed_name eq "Cashier5.21.Rev10");
     $fixed_name = "Cisco SSG Configuration" if ($fixed_name eq "Cisco SSG Configuration UserManuall5.0");
     $fixed_name = "Collector" if ($fixed_name eq "Collector 5.3");
@@ -266,6 +268,7 @@ sub fix_name {
     $fixed_name = "Task Scheduler" if ($fixed_name eq "Task Scheduler User Guide 5.3");
     $fixed_name = "UDR Distribution" if ($fixed_name eq "UDRDistributionUserGuide5.01-Rev10");
     $fixed_name = "User Activity" if ($fixed_name eq "UserActivity5.30");
+    $fixed_name = "Admin" if ($fixed_name eq "AdminUserManual5.02-Rev15");
     $fixed_name = "WebBill" if ($fixed_name eq "5.3 WebBill");
     $fixed_name = "WebBill" if ($fixed_name eq "WebBill 5.2");
     $fixed_name = "WebBill" if ($fixed_name eq "WebBillUserManual5.0-Rev10");
@@ -273,7 +276,7 @@ sub fix_name {
     $fixed_name = "WebClient" if ($fixed_name eq "WebClient5.0-Rev11");
     $fixed_name = "WebClient" if ($fixed_name eq "WebClient5.30");
     $fixed_name = "WebClient" if ($fixed_name eq "WebClient5.01-Rev11");
-    $fixed_name = "Billing User Manual Vodafone" if ($fixed_name eq "BillingUserManual5.02-rev14Vodafone");
+    $fixed_name = "Billing Vodafone" if ($fixed_name eq "BillingUserManual5.02-rev14Vodafone");
     $fixed_name = "Dialup CDR And Invoice Generation" if ($fixed_name eq "Dialup CDR And Invoice Generation 521");
     $fixed_name = "Vendors Support" if ($fixed_name eq "VendorsSupport");
     $fixed_name = "User Activity" if ($fixed_name eq "UserActivity5 30");
@@ -288,8 +291,8 @@ sub fix_name {
     $fixed_name = "Processor Logs Files" if ($fixed_name eq "ProcessorLogsFiles");
     $fixed_name = "Proxy Manager Server" if ($fixed_name eq "ProxyManagerServer");
     $fixed_name = "Statistics Description" if ($fixed_name eq "StatisticsDescription");
-    $fixed_name = "CallShop Manuel D\'Utilisation" if ($fixed_name eq "5.31.005 CallShop Manuel D\'Utilisation");
-    $fixed_name = "DB Documentation$1" if ($fixed_name =~ "6.00 DB Documentation(.*)");
+    $fixed_name = "CallShop Manuel$1" if ($fixed_name =~ m/5.31.005 CallShop Manuel(.*)/);
+    $fixed_name = "DB Documentation$1" if ($fixed_name =~ m/6.00 DB Documentation(.*)/);
     $fixed_name = "DB Import" if ($fixed_name eq "DBImport");
     $fixed_name = "Display CDR Field Instructions" if ($fixed_name eq "DisplayCDRFieldInstructions");
     $fixed_name = "Fix Invoice XML Deployment" if ($fixed_name eq "FixInvoiceXML Deployment");

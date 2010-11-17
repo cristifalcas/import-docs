@@ -199,8 +199,8 @@ sub add_document {
     my $page_url = $simple_url;
     chomp $page_url;
     $page_url = WikiCommons::normalize_text( $page_url );
-    $page_url = WikiCommons::capitalize_string( $page_url, 'all' );
-    my $page_url_caps = WikiCommons::capitalize_string( $page_url, 'first' );
+    $page_url = WikiCommons::capitalize_string( $page_url, 'first' );
+    my $page_url_caps = WikiCommons::capitalize_string( $page_url, 'small' );
     die "No page for $doc_file.\n" if ($page_url eq "" );
 
     ### Release Notes
