@@ -297,8 +297,8 @@ sub fix_name {
     $fixed_name = "Display CDR Field Instructions" if ($fixed_name eq "DisplayCDRFieldInstructions");
     $fixed_name = "Fix Invoice XML Deployment" if ($fixed_name eq "FixInvoiceXML Deployment");
     $fixed_name = "Install Oracle 10g Veracity" if ($fixed_name eq "InstallOracle10g Veracity");
-    $fixed_name = "$1 - Data Dictionary Tables" if ($fixed_name =~ m/Data Dictionary Tables\s*-?\s*(.*)/);
-    $fixed_name = "$1 - DB Documentation" if ($fixed_name =~ m/DB Documentation\s*-?\s*[a-z0-9]{1,}/i);
+#     $fixed_name = "$1 - Data Dictionary Tables" if ($fixed_name =~ m/Data Dictionary Tables\s*-?\s*(.*)/);
+#     $fixed_name = "$1 - DB Documentation" if ($fixed_name =~ m/DB Documentation\s*-?\s*([a-z0-9]{1,})/i);
 
     $fixed_name =~ s/(^\s*)|(\s*$)//;
 
@@ -438,12 +438,13 @@ sub get_correct_customer{
 	    || $name eq "IBM motorola" || $name eq "Gtronix" || $name eq "Merdian telecom" || $name eq "Barak" || $name eq "Bezeq"
 	    || $name eq "Cellcom" || $name eq "Personeta" || $name eq "Panama" || $name eq "UK" || $name eq "HOT" || $name eq "Interconnect"
 	    || $name eq "Derech-Eretz" || $name eq "ESCALATION" || $name eq "Fix Version 5.21.008 OM" || $name eq "InterConnect"
-	    || $name eq "Goldline" || $name eq "Business Dev 323";
+	    || $name eq "Business Dev 323";
     return "All" if $name eq "ALL" || $name eq "All" || $name eq "all" || $name eq "ALL version 5" || $name eq ". all" || $name eq "more..."
 	    || $name eq "alll" || $name eq "ALL CUSTOMERS" || $name eq "probably all" || $name eq "All (teledome)"
 	    || $name eq "All russian customers";
     return "Demo" if $name eq "DEMO" || $name eq "Demo";
     return "Vodafone Spain" if $name eq "Vodafone Spain" || $name eq "VodaFone Spain";
+    return "Goldline" if $name eq "goldline" || $name eq "Goldline";
 
 #     return "Siemens" if $name eq "Siemnes" || $name eq "Siemens" || $name eq "SIEMENS";
 #     return "HOT" if ;
@@ -522,7 +523,7 @@ sub get_correct_customer{
     }
 # print "$name\t$crm_name\n";
     if ( ! $is_ok ) {
-	die "Customer $name could not be found in customers list.\n";
+# 	die "Customer $name could not be found in customers list.\n";
 	open (FILE, ">>./bad_cust") or die "can't open file bad_cust for writing: $!\n";
 	print FILE "$name\n";
 	close (FILE);
