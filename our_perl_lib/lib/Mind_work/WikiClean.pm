@@ -24,7 +24,7 @@ our $debug = "yes";
 sub tree_clean_empty_p {
     my $tree = shift;
     foreach my $a_tag ($tree->guts->look_down(_tag => "p")) {
-	$a_tag->replace_with_content, next if ($a_tag->is_empty);
+	$a_tag->detach, next if ($a_tag->is_empty);
 	my $h = HTML::Element->new('br');
 	$a_tag->preinsert($h);
     }
@@ -238,7 +238,7 @@ sub tree_remove_empty_element {
 	}
     }
 
-    if ( $a_tag->as_text =~ m/^\s*$/ && !$has_content ) {
+    if ( $a_tag->as_text =~ m/^\s*$/ && ! $has_content ) {
 	$a_tag->detach;
     }
 }
@@ -501,7 +501,7 @@ sub tree_clean_lists {
     my $tree = shift;
     ### remove empty lists from body
     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
-	$a_tag->detach() if $a_tag->is_empty() || ( $a_tag->as_text =~ m/^\s*$/  && (scalar $a_tag->content_list() <= 1) );
+	$a_tag->detach() if ! scalar $a_tag->content_list();
     }
     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
 	next if ! $a_tag->is_empty();

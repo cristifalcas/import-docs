@@ -227,9 +227,10 @@ sub add_document {
 	push @categories, $main;
 	push @categories, $big_ver;
 	push @categories, $customer;
+return 1;
 	generate_categories($ver_fixed, $main, $big_ver, $customer, $dir_type);
 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
-	return 0;
+# 	return 0;
     }
 
     my $full_ver = "$ver $ver_id $ver_sp";
