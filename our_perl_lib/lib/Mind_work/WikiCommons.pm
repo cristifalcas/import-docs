@@ -429,24 +429,105 @@ sub array_diff {
 
 sub get_correct_customer{
     my $name = shift;
-    return $name if $name =~ m/^\s*$/;
+    $name =~ s/(^\s+)|(\s+$)//g;
+    return "" if $name =~ m/^\s*$/;
+    return $name if $name eq "Netvision" || $name eq "Others" || $name eq "EastLink" || $name eq "Amariska" || $name eq "Ericsson"
+	    || $name eq "Scott" || $name eq "Telecom Columbia" || $name eq "Netcentrex" || $name eq "Adaseme" || $name eq "Cyprus Telekom"
+	    || $name eq "Alvarion" || $name eq "Netcentrex" || $name eq "VSNL" || $name eq "VO" || $name eq "RTP" || $name eq "Cyberoute"
+	    || $name eq "QA" || $name eq "Pelephone" || $name eq "CTI" || $name eq "CSG Kenan" || $name eq "HOT Telecom"
+	    || $name eq "IBM motorola" || $name eq "Gtronix" || $name eq "Merdian telecom" || $name eq "Barak" || $name eq "Bezeq"
+	    || $name eq "Cellcom" || $name eq "Personeta" || $name eq "Panama" || $name eq "UK" || $name eq "HOT" || $name eq "Interconnect"
+	    || $name eq "Derech-Eretz" || $name eq "ESCALATION" || $name eq "Fix Version 5.21.008 OM" || $name eq "InterConnect"
+	    || $name eq "Goldline" || $name eq "Business Dev 323";
+    return "All" if $name eq "ALL" || $name eq "All" || $name eq "all" || $name eq "ALL version 5" || $name eq ". all" || $name eq "more..."
+	    || $name eq "alll" || $name eq "ALL CUSTOMERS" || $name eq "probably all" || $name eq "All (teledome)"
+	    || $name eq "All russian customers";
+    return "Demo" if $name eq "DEMO" || $name eq "Demo";
+    return "Vodafone Spain" if $name eq "Vodafone Spain" || $name eq "VodaFone Spain";
+
+#     return "Siemens" if $name eq "Siemnes" || $name eq "Siemens" || $name eq "SIEMENS";
+#     return "HOT" if ;
+#     return "SSG" if $name eq "Cisco - SSG" || $name eq "SSG + Ericson" || $name eq "SSG";
+
+
+    return "VDC" if $name eq "VTI";
+    return "TELEFONICA PERU" if $name eq "Telefonica Del Peru" || $name eq "Telefonica - Peru";
+    return "Budget Tel" if $name eq "Budgettel";
+    return "Telecom-Colombia" if $name eq "colombia" || $name eq "Telecom Kolumbia";
     return "MSTelcom" if $name eq "MSTelecom";
-    return $name if $name eq "MINDUK_EMP";
     return "Mobee" if $name eq "MobeeTel";
-    return "CWP" if $name eq "CWPanama";
-    return "EastLink" if $name eq "EastLink";
+    return "CWP" if $name eq "CWPanama" || $name eq "Cable & Wireless" || $name eq "Bell South Panama" || $name eq "BellSouth Panama"
+	    || $name eq "Bell South";
+    return "alcatel" if $name eq "Vendors: Alcatel" || $name eq "Alcatel / NerDring";
+    return "3KInt" if $name eq "MIND-SR 3KInt" || $name eq "3K intl" || $name eq "MIND-3KInt";
+    return "H3G Italy" if $name eq "H3G" || $name eq "h3g" || $name eq "H3G - IBM" || $name eq "H3g" || $name eq "H3G Omnitel"
+	    || $name eq "H3G Omnitel" || $name eq "H3G Italiano" || $name eq "Italy and HK" || $name eq "H3G-Italy" || $name eq "h3g iatly"
+	    || $name eq "H3G through IBM" || $name eq "H3G Itayl" || $name eq "Italy" || $name eq "H3G - Italy"
+	    || $name eq "MIND-H3G Italy TB";
+    return "H3G-UK" if $name eq "H3G UK" || $name eq "H3G UK and H3G HK" || $name eq "H3G UK and HK";
+    return "H3G-HK" if $name eq "H3G Honk Kong" || $name eq "HK" || $name eq "H3G HK" || $name eq "H3G - HK";
+    return "Vivodi" if $name eq "Vivody" || $name eq "Vivodi - All";
+    return "Teledome" if $name eq "Teledom" || $name eq "Teledome Greece" || $name eq "Teledome. probably all" || $name eq "teleodme"
+	    || $name eq "Teledome + All";
+    return "Lucent" if $name eq "Lucent Customers";
+    return "MIND" if $name eq "MINDUK_EMP" || $name eq "MIND - Scott" || $name eq "Mind Israel" || $name eq "MIND PROVISIONINIG"
+	    || $name eq "MindCRM" || $name eq "Mind CRM";
+    return "VocalTec" if $name eq "VocalTec Yael Siaki Lab" || $name eq "VT";
+    return "TTCom" if $name eq "TotalCom";
+    return "Flat Wireless" if $name eq "Flat";
+    return "Moldtelecom" if $name eq "MoldTel";
+    return "SMTC" if $name eq "Telem";
+    return "SINGTEL" if $name eq "SigTel" || $name eq "Sing Tel" || $name eq "Singtel UAT" || $name eq "Singel" || $name eq "SINGTEL UAT";
+    return "France Telecom" if $name eq "FT Salvador" || $name eq "FT salvador" || $name eq "France Telecom4_El Salvador"
+	    || $name eq "France Telecom El-Salvador";
+    return "Kocnet" if $name eq "Koçnet" || $name eq "Kocent";
+    return "ITN" if $name eq "ITN Nigeria" || $name eq "ITN nigeria" || $name eq "INT";
+    return "CTI Billing" if $name eq "CTI Billng";
+    return "CAT" if $name eq "CAT (& all Vocaltec customers)" || $name eq "CAT and others" || $name eq "CAT Thailand";
+    return "AMT Group" if $name eq "AMT";
+    return "AZUL" if $name eq "US lab (for Azultel)" || $name eq "Azultel" || $name eq "Azultel - US" || $name eq "azultel"
+	    || $name eq "Azultel +  ALL" || $name eq "AzulTel";
+    return "BTL" if $name eq "Belize";
+    return "Intelco" if $name eq "Intelco Belize" || $name eq "Belize Intelco" || $name eq "intelco 5.21" || $name eq "Intelco (Belize)"
+	    || $name eq "intelco belize" || $name eq "Intelco - Belize" || $name eq "Itelco" || $name eq "Intelco belize";
+    return "Artelecom" if $name eq "Artelecom + All" || $name eq "AR Telecom" || $name eq "Artelecom Romania" || $name eq "Artelecome";
+    return "sabanchi" if $name eq "Sabanci" || $name eq "sabanci" || $name eq "Sabnci Telecom" || $name eq "sbanci" || $name eq "Sbanci";
+    return "Bynet" if $name eq "BNet";
+    return "Hotlink Mauritius" if $name eq "HOTLINK Mauritius" || $name eq "Hotlink Mauritius";
+    return "Adisam" if $name eq "Adisam Romania";
+    return "OPTIMA" if $name eq "optima russia" || $name eq "Optima Russia";
+    return "INC" if $name eq "Inclarity UK";
+    return "VO Greece" if $name eq "VO Greece";
+    return "cabletel" if $name eq "Cabeltel" || $name eq "CabelTel";
+    return "BTCBG" if $name eq "BTC BG";
+    return "Netcom - IPTEL" if $name eq "IPTEL-SL";
+
 
     my $customers = WikiCommons::xmlfile_to_hash ("$real_path/customers.xml");
     my $crm_name = "";
+    my $is_ok = 0;
     foreach my $nr (sort keys %$customers){
-	$crm_name = $customers->{$nr}->{'displayname'};
-	if ($crm_name =~ m/$name/i){
-	    $crm_name = $name;
+	if ($customers->{$nr}->{'displayname'} =~ m/^$name$/i){
+	    $crm_name = $customers->{$nr}->{'displayname'};
+	    $is_ok = 1;
+	    last;
+	}
+	my $tmp = $name;
+	$tmp =~ s/\s*//g;
+	if ($customers->{$nr}->{'displayname'} =~ m/^$tmp$/i){
+	    $crm_name = $customers->{$nr}->{'displayname'};
+	    $is_ok = 1;
 	    last;
 	}
     }
 # print "$name\t$crm_name\n";
-    print "Customer $name could not be found in customers list.\n", return $name if $crm_name ne $name;
+    if ( ! $is_ok ) {
+	die "Customer $name could not be found in customers list.\n";
+	open (FILE, ">>./bad_cust") or die "can't open file bad_cust for writing: $!\n";
+	print FILE "$name\n";
+	close (FILE);
+	return $name;
+    }
     return $crm_name;
 }
 

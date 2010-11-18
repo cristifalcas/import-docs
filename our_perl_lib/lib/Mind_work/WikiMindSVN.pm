@@ -211,8 +211,8 @@ sub add_document {
 	$customer = $customer.$url_sep."RN" if $customer ne "";
 	$page_url =~ s/(($url_sep)($customer )?Release Notes)|(($url_sep)All Release Notes)//g;
 	my $q=$basic_url;
-	$q=~s/$url_sep$ver_fixed\s*\s*//;
-	$q=~s/$url_sep$ver\s*\s*//;
+	$q=~s/$url_sep$ver_fixed\s*//;
+	$q=~s/$url_sep$ver\s*//;
 	my $nodot_ver = $ver;
 	$nodot_ver =~ s/\.//g;
 	$q =~ s/RN$nodot_ver\s*//;

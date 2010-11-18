@@ -24,7 +24,7 @@ our $debug = "yes";
 sub tree_clean_empty_p {
     my $tree = shift;
     foreach my $a_tag ($tree->guts->look_down(_tag => "p")) {
-	$a_tag->detach, next if ($a_tag->is_empty);
+	$a_tag->replace_with_content, next if ($a_tag->is_empty);
 	my $h = HTML::Element->new('br');
 	$a_tag->preinsert($h);
     }

@@ -41,8 +41,8 @@ $dbh->{LongReadLen} = 1024 * 1024;
 $dbh->{LongTruncOk}   = 0;
 
 my $SEL_INFO = 'select t.rcustcompanycode, t.rcustcompanyname, t.rcustiddisplay
-    from tblcustomers t
-    where t.rcuststatus = \'A\'';
+    from tblcustomers t';
+#     where t.rcuststatus = \'A\'
 my $sth = $dbh->prepare($SEL_INFO);
 $sth->execute();
 my $customers = {};

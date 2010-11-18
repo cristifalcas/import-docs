@@ -52,7 +52,7 @@ our $svn_user = 'svncheckout';
 our $files_info = "files_info.txt";
 our $general_template_file = "./SC_template.txt";
 my $svn_update = "no";
-my $force_db_update = "yes";
+my $force_db_update = "no";
 my $bulk_svn_update = "no";
 
 $svn_update = "no" if ($force_db_update eq "yes");
@@ -123,12 +123,14 @@ sub general_info {
     }
     $general =~ s/%tester%/$tmp/g;
     $tmp = @$info[$index->{'customer'}];
-    my @all_custs = split ',', @$info[$index->{'customer'}];
+    my @all_custs = split /,|;/, @$info[$index->{'customer'}];
 
     foreach my $cust (@all_custs) {
 	next if $cust =~ m/^\s*$/;
-	$cust =~ s/(^\s*)|(\s*$)//;
-	my $q = WikiCommons::get_correct_customer($cust);
+	$cust =~ s/B08535//;
+	$cust =~ s/B08571//;
+	$cust =~ s/(^\s*)|(\s*$)//g;
+	$cust = WikiCommons::get_correct_customer($cust);
 	push @categories, "customer $cust";
 	$cust = "\[\[:Category:$cust\|$cust\]\]";
     }
@@ -140,20 +142,29 @@ sub general_info {
 	$general =~ s/%customer%//;
     }
 
-    if (@$info[$index->{'customer_bug'}] eq 'Y' && @$info[$index->{'crmid'}] !~ m/^\s*$/) {
-	$tmp = @$info[$index->{'crmid'}];
-	$tmp =~ s/(^\s+)|(\s+$)//g;
-	$tmp =~ s/\s+/ /g;
-	if ($tmp =~ m/^\s*(.*)?(\s*\/\s*|\s+|\s*\\\s*)([0-9]{1,})\s*$/){
-	    my $q = $1;
-	    my $w = $3;
-	    die "Strange crmid: $tmp.\n" if ! defined $w || $w eq "";
-	    $q = WikiCommons::get_correct_customer( $q );
-	    $general =~ s/%customer_bug%/\'\'\'Customer bug\'\'\' (CRM ID): [[CRM:$q -- $w]]/;
-	} else {
-	    $general =~ s/%customer_bug%/\'\'\'Customer bug\'\'\' (CRM ID): $tmp/;
+    if (@$info[$index->{'customer_bug'}] eq 'Y' || @$info[$index->{'crmid'}] !~ m/^\s*$/) {
+# 	$tmp = @$info[$index->{'crmid'}];
+	my @bug_ids = split /,|;/, @$info[$index->{'crmid'}];
+	$tmp = "";
+	foreach my $bug (@bug_ids) {
+	    $bug =~ s/(^\s+)|(\s+$)//g;
+	    $bug =~ s/\s+/ /g;
+	    $bug =~ s/(MIND-)?SR#\s*:?\s*//g;
+	    $bug =~ s/SR\s+(No\.)?//g;
+	    $bug =~ s/SINGTEL SR//g;
+	    if ($bug =~ m/^\s*([^\/\\]*)(\/|\\)\s*([0-9]{1,})\s*$/){
+		my $q = $1;
+		my $w = $3;
+		die "Strange crmid: $bug with $q == $w.\n" if ! defined $w || $w eq "";
+		$q = WikiCommons::get_correct_customer( $q );
+		$tmp .= " [[CRM:$q -- $w]]";
+	    } else {
+		$tmp .= " $bug";
+	    }
 	}
+	$general =~ s/%customer_bug%/\'\'\'Customer bug\'\'\' (CRM ID): $tmp/;
     } else {
+# print "@$info[$index->{'customer_bug'}]   @$info[$index->{'crmid'}]\n";
 	$general =~ s/%customer_bug%//;
     }
     $general =~ s/%type%/@$info[$index->{'changetype'}]/;
@@ -750,7 +761,7 @@ if ($bulk_svn_update eq "yes"){
 my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id ne "B02315";
+#     next if $change_id ne "B13589";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488

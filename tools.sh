@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function batch_Import() {
-    IN_PATH="./remote_batch_files1/"
+    IN_PATH="./remote_batch_files/"
     DONE_PATH="$IN_PATH/done"
     mkdir "$DONE_PATH"
     find "$IN_PATH" -maxdepth 1 -type f -print0 | while read -d $'\0' file
