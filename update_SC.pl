@@ -125,12 +125,14 @@ sub general_info {
     $tmp = @$info[$index->{'customer'}];
     my @all_custs = split /,|;/, @$info[$index->{'customer'}];
 
+    my $final_cust = "";
     foreach my $cust (@all_custs) {
 	next if $cust =~ m/^\s*$/;
 	$cust =~ s/B08535//;
 	$cust =~ s/B08571//;
 	$cust =~ s/(^\s*)|(\s*$)//g;
 	$cust = WikiCommons::get_correct_customer($cust);
+	$final_cust = $cust;
 	push @categories, "customer $cust";
 	$cust = "\[\[:Category:$cust\|$cust\]\]";
     }
@@ -158,6 +160,8 @@ sub general_info {
 		die "Strange crmid: $bug with $q == $w.\n" if ! defined $w || $w eq "";
 		$q = WikiCommons::get_correct_customer( $q );
 		$tmp .= " [[CRM:$q -- $w]]";
+	    } elsif ($bug =~ m/^\s*([0-9]{1,})\s*$/ && $final_cust ne ""){
+		$tmp .= " [[CRM:$final_cust -- $1]]";
 	    } else {
 		$tmp .= " $bug";
 	    }

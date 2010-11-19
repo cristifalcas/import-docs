@@ -217,7 +217,7 @@ sub add_document {
 	$q =~ s/\s*$ver_id\s*//;
 	$q =~ s/\s*$ver_sp\s*//;
 	$q =~ s/$url_sep(Release Notes|PDF|All Release Notes)//gi;
-	$q = "RN:$ver $ver_id $q$url_sep$rest";
+	$q = "RN:$ver $ver_id $ver_sp $q$url_sep$rest";
 # 	$page_url = "RN:$page_url";
 	$page_url=$q;
 	$page_url =~ s/\s+/ /g;
