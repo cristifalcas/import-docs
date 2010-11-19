@@ -16,6 +16,7 @@ our $clean_up = {};
 our $url_sep = " -- ";
 our $remote_work = "no";
 our $real_path;
+our $customers = {};
 
 sub set_real_path {
     $real_path = shift;
@@ -510,37 +511,39 @@ sub get_correct_customer{
     return "US-ESCALATION" if $name eq "US Escallation";
 
 
-
-    my $customers = WikiCommons::xmlfile_to_hash ("$real_path/customers.xml");
+    if ( ! scalar keys %$customers ){
+	$customers = WikiCommons::xmlfile_to_hash ("$real_path/customers.xml");
+	foreach my $nr (sort keys %$customers){
+	    my $new_nr = $nr;
+	    $new_nr =~ s/^nr//;
+	    $customers->{$new_nr} = $customers->{$nr};
+	    delete $customers->{$nr};
+	}
+    }
     my $crm_name = "";
     my $is_ok = 0;
-    foreach my $nr (sort keys %$customers){
+    foreach my $nr (sort { $a <=> $b } keys %$customers){
 	my $crt_name = $customers->{$nr}->{'displayname'};
-	my $tmp = $name;
-	$tmp =~ s/( |_|-)//g;
+	my $alt_name = $name;
+	$alt_name =~ s/( |_|-)//g;
 	if ($crt_name =~ m/^$name$/i){
 	    $crm_name = $crt_name;
 	    $is_ok = 1;
-	    next;
-	} elsif ($crt_name =~ m/^$tmp$/i){
+	    last;
+	} elsif ($crt_name =~ m/^$alt_name$/i){
 	    $crm_name = $crt_name;
 	    $is_ok = 1;
-	    next;
+	    last;
 	}
 
 	$crt_name = $customers->{$nr}->{'name'};
 	if ($crt_name =~ m/^$name$/i){
 	    $crm_name = $customers->{$nr}->{'displayname'};
 	    $is_ok = 1;
-	    next;
-	} elsif ($crt_name =~ m/^$tmp$/i){
+	} elsif ($crt_name =~ m/^$alt_name$/i){
 	    $crm_name = $customers->{$nr}->{'displayname'};
 	    $is_ok = 1;
-	    last;
 	}
-# 	$tmp = $name;
-# 	$tmp =~ s/[ -_]//g;
-#  && $crt_name !~ m/^[0-9]*$/ && $crt_name ne "Old_KocNet"
     }
 
     if ( ! $is_ok ) {
