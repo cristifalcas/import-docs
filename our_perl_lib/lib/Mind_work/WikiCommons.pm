@@ -214,9 +214,9 @@ sub fix_name {
     $fixed_name =~ s/_/\ /gi;
     my $yet_another_version_style = $ver;
     if (defined $ver && defined $main) {
-	$fixed_name =~ s/(^\s?[v]?$ver\s*$ver_id\s*$ver_sp\s+)|(\s+[v]?$ver\s*$ver_id\s*$ver_sp\s+$)//i;
-	$fixed_name =~ s/(^\s?[v]?$ver\s*$ver_sp\s+)|(\s+[v]?$ver\s*$ver_sp\s+$)//i;
-	$fixed_name =~ s/(^\s?[v]?$ver\s*$ver_id\s+)|(\s+[v]?$ver\s*$ver_id\s+$)//i;
+	$fixed_name =~ s/(^\s?[v]?$ver\s*$ver_id\s*$ver_sp\s+)|(\s+[v]?$ver\s*$ver_id\s*$ver_sp\s*$)//i;
+	$fixed_name =~ s/(^\s?[v]?$ver\s*$ver_sp\s+)|(\s+[v]?$ver\s*$ver_sp\s*$)//i;
+	$fixed_name =~ s/(^\s?[v]?$ver\s*$ver_id\s+)|(\s+[v]?$ver\s*$ver_id\s*$)//i;
 	$fixed_name =~ s/(^\s?[v]?$ver\s+)|(\s+[v]?$ver\s*$)//i;
 	$fixed_name =~ s/(^\s?[v]?$main\s+)|(\s+[v]?$main\s*$)//i;
 	$fixed_name =~ s/(^\s?[v]?$big_ver\s+)|(\s+[v]?$big_ver\s*$)//i;
@@ -224,8 +224,8 @@ sub fix_name {
 	my $amain = $main;
 	$aver =~ s/\.//g;
 	$amain =~ s/\.//g;
-	$fixed_name =~ s/(^\s?[v]?$aver\s*)|(\s+[v]?$aver\s*$)//i;
-	$fixed_name =~ s/(^\s?[v]?$amain\s*)|(\s+[v]?$amain\s*$)//i;
+	$fixed_name =~ s/(^\s?[v]?$aver\s+)|(\s+[v]?$aver\s*$)//i;
+	$fixed_name =~ s/(^\s?[v]?$amain\s+)|(\s+[v]?$amain\s*$)//i;
     }
     $fixed_name =~ s/\s+ver\s*$//i;
     $fixed_name =~ s/\s+for\s*$//i;
@@ -515,30 +515,37 @@ sub get_correct_customer{
     my $crm_name = "";
     my $is_ok = 0;
     foreach my $nr (sort keys %$customers){
-	if ($customers->{$nr}->{'displayname'} =~ m/^$name$/i){
-	    $crm_name = $customers->{$nr}->{'displayname'};
+	my $crt_name = $customers->{$nr}->{'displayname'};
+	if ($crt_name =~ m/^$name$/i){
+	    $crm_name = $crt_name;
 	    $is_ok = 1;
-	    last;
+# 	    last;
+	    next;
 	}
 	my $tmp = $name;
 	$tmp =~ s/[ -_]//g;
-	if ($customers->{$nr}->{'displayname'} =~ m/^$tmp$/i){
-	    $crm_name = $customers->{$nr}->{'displayname'};
+	if ($crt_name =~ m/^$tmp$/i){
+	    $crm_name = $crt_name;
 	    $is_ok = 1;
-	    last;
+# 	    last;
+	    next;
 	}
 
-	if ($customers->{$nr}->{'name'} =~ m/^$name$/i){
+	$crt_name = $customers->{$nr}->{'name'};
+	if ($crt_name =~ m/^$name$/i){
 	    $crm_name = $customers->{$nr}->{'displayname'};
 	    $is_ok = 1;
-	    last;
+# 	    last;
+	    next;
 	}
-	$tmp = $name;
-	$tmp =~ s/[ -_]//g;
-	if ($customers->{$nr}->{'name'} =~ m/^$tmp$/i){
+# 	$tmp = $name;
+# 	$tmp =~ s/[ -_]//g;
+#  && $crt_name !~ m/^[0-9]*$/ && $crt_name ne "Old_KocNet"
+	if ($crt_name =~ m/^$tmp$/i){
 	    $crm_name = $customers->{$nr}->{'displayname'};
 	    $is_ok = 1;
-	    last;
+# 	    last;
+	    next;
 	}
     }
 # print "$name\t$crm_name\n";
