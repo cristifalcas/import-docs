@@ -215,6 +215,7 @@ sub add_document {
 	$nodot_ver =~ s/\.//g;
 	$q =~ s/RN$nodot_ver\s*//;
 	$q =~ s/\s*$ver_id\s*//;
+	$q =~ s/\s*$ver_sp\s*//;
 	$q =~ s/$url_sep(Release Notes|PDF|All Release Notes)//gi;
 	$q = "RN:$ver $ver_id $q$url_sep$rest";
 # 	$page_url = "RN:$page_url";
