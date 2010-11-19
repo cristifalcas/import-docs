@@ -516,34 +516,33 @@ sub get_correct_customer{
     my $is_ok = 0;
     foreach my $nr (sort keys %$customers){
 	my $crt_name = $customers->{$nr}->{'displayname'};
-	if ($crt_name =~ m/^$name$/i && $crt_name !~ m/^[0-9]*$/ && $crt_name ne "Old_KocNet"){
-	    $crm_name = $crt_name;
-	    $is_ok = 1;
-	    last;
-	}
 	my $tmp = $name;
-	$tmp =~ s/[ -_]//g;
-	if ($crt_name =~ m/^$tmp$/i && $crt_name !~ m/^[0-9]*$/ && $crt_name ne "Old_KocNet"){
+	$tmp =~ s/( |_|-)//g;
+	if ($crt_name =~ m/^$name$/i){
 	    $crm_name = $crt_name;
 	    $is_ok = 1;
-	    last;
+	    next;
+	} elsif ($crt_name =~ m/^$tmp$/i){
+	    $crm_name = $crt_name;
+	    $is_ok = 1;
+	    next;
 	}
 
 	$crt_name = $customers->{$nr}->{'name'};
-	if ($crt_name =~ m/^$name$/i && $crt_name !~ m/^[0-9]*$/ && $crt_name ne "Old_KocNet"){
+	if ($crt_name =~ m/^$name$/i){
+	    $crm_name = $customers->{$nr}->{'displayname'};
+	    $is_ok = 1;
+	    next;
+	} elsif ($crt_name =~ m/^$tmp$/i){
 	    $crm_name = $customers->{$nr}->{'displayname'};
 	    $is_ok = 1;
 	    last;
 	}
 # 	$tmp = $name;
 # 	$tmp =~ s/[ -_]//g;
-	if ($crt_name =~ m/^$tmp$/i && $crt_name !~ m/^[0-9]*$/ && $crt_name ne "Old_KocNet"){
-	    $crm_name = $customers->{$nr}->{'displayname'};
-	    $is_ok = 1;
-	    last;
-	}
+#  && $crt_name !~ m/^[0-9]*$/ && $crt_name ne "Old_KocNet"
     }
-# print "$name\t$crm_name\n";
+
     if ( ! $is_ok ) {
 	die "Customer $name could not be found in customers list.\n";
 	open (FILE, ">>./bad_cust") or die "can't open file bad_cust for writing: $!\n";
@@ -551,6 +550,7 @@ sub get_correct_customer{
 	close (FILE);
 	return $name;
     }
+print "Using $crm_name instead of $name\n";
     return $crm_name;
 }
 
