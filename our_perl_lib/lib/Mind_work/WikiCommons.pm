@@ -297,8 +297,10 @@ sub fix_name {
     $fixed_name = "Display CDR Field Instructions" if ($fixed_name eq "DisplayCDRFieldInstructions");
     $fixed_name = "Fix Invoice XML Deployment" if ($fixed_name eq "FixInvoiceXML Deployment");
     $fixed_name = "Install Oracle 10g Veracity" if ($fixed_name eq "InstallOracle10g Veracity");
-#     $fixed_name = "$1 - Data Dictionary Tables" if ($fixed_name =~ m/Data Dictionary Tables\s*-?\s*(.*)/);
-#     $fixed_name = "$1 - DB Documentation" if ($fixed_name =~ m/DB Documentation\s*-?\s*([a-z0-9]{1,})/i);
+    $fixed_name = "Business Processes Monitoring Deployment" if ($fixed_name eq "BP Monitoring Deployment");
+
+    $fixed_name = "$1 - Data Dictionary Tables" if ($fixed_name =~ m/Data Dictionary Tables\s*-?\s*(.*)/i && defined $1 && $1 !~ m/^\s*$/);
+    $fixed_name = "$1 - DB Documentation" if ($fixed_name =~ m/DB Documentation\s*-?\s*([a-z0-9]{1,})/i && defined $1 && $1 !~ m/^\s*$/);
 
     $fixed_name =~ s/(^\s*)|(\s*$)//;
 

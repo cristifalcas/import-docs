@@ -474,6 +474,7 @@ sub insertdata {
 	}
     }
     if ($fail){
+    exit 1;
 	my $name_bad = "$bad_dir/$url".time();
 	WikiCommons::makedir("$name_bad");
 	move("$work_dir","$name_bad");

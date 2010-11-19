@@ -204,33 +204,38 @@ sub add_document {
     die "No page for $doc_file.\n" if ($page_url eq "" );
 
     ### Release Notes
-    if ($dir =~ /\/(.*? )?Release Notes\//i && $dir_type ne "SC") {
-	$dir_type = "RN";
-	$main = $main.$url_sep."RN" if $main ne "";
-	$big_ver = $big_ver.$url_sep."RN" if $big_ver ne "";
-	$customer = $customer.$url_sep."RN" if $customer ne "";
+    if ($dir =~ /\/(.*? )?Release Notes\//i) {
+	return 1 if $ver_fixed lt "5.00";
 	$page_url =~ s/(($url_sep)($customer )?Release Notes)|(($url_sep)All Release Notes)//g;
-	my $q=$basic_url;
-	$q=~s/$url_sep$ver_fixed\s*//;
-	$q=~s/$url_sep$ver\s*//;
+
+	my $q = $basic_url;
+	$q =~ s/$url_sep$ver_fixed\s*//;
+	$q =~ s/$url_sep$ver\s*//;
 	my $nodot_ver = $ver;
 	$nodot_ver =~ s/\.//g;
 	$q =~ s/RN$nodot_ver\s*//;
-	$q = "RN:$ver_fixed $q$url_sep$rest";
+	$q =~ s/\s*$ver_id\s*//;
 	$q =~ s/$url_sep(Release Notes|PDF|All Release Notes)//gi;
-	$page_url = "RN:$page_url";
+	$q = "RN:$ver $ver_id $q$url_sep$rest";
+# 	$page_url = "RN:$page_url";
 	$page_url=$q;
+	$page_url =~ s/\s+/ /g;
+
 	$ver_fixed = $ver_fixed.$url_sep."RN" if $ver_fixed ne "";
-	return 1 if $ver_fixed lt "5.00";
+	$main = $main.$url_sep."RN" if $main ne "";
+	$big_ver = $big_ver.$url_sep."RN" if $big_ver ne "";
+	$customer = $customer.$url_sep."RN" if $customer ne "";
 	my @categories = ();
 	push @categories, $ver_fixed;
 	push @categories, $main;
 	push @categories, $big_ver;
 	push @categories, $customer;
-return 1;
+# print "b=$big_ver|\tm=$main|\tv=$ver|\tvf=$ver_fixed|\tsp=$ver_sp|\tid=$ver_id|\tc=$customer\n";
+# print "$page_url\n";
 	generate_categories($ver_fixed, $main, $big_ver, $customer, $dir_type);
+	die "RN $page_url already exists:\n\t$rel_path\n".Dumper($pages_toimp_hash->{$page_url}) if exists $pages_toimp_hash->{$page_url};
 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
-# 	return 0;
+	return 0;
     }
 
     my $full_ver = "$ver $ver_id $ver_sp";
