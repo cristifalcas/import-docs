@@ -529,11 +529,11 @@ sub get_correct_customer{
 	if ($crt_name =~ m/^$name$/i){
 	    $crm_name = $crt_name;
 	    $is_ok = 1;
-	    last;
+	    next;
 	} elsif ($crt_name =~ m/^$alt_name$/i){
 	    $crm_name = $crt_name;
 	    $is_ok = 1;
-	    last;
+	    next;
 	}
 
 	$crt_name = $customers->{$nr}->{'name'};
@@ -553,7 +553,7 @@ sub get_correct_customer{
 	close (FILE);
 	return $name;
     }
-print "Using $crm_name instead of $name\n";
+
     return $crm_name;
 }
 
