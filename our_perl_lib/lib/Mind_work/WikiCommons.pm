@@ -516,36 +516,31 @@ sub get_correct_customer{
     my $is_ok = 0;
     foreach my $nr (sort keys %$customers){
 	my $crt_name = $customers->{$nr}->{'displayname'};
-	if ($crt_name =~ m/^$name$/i){
+	if ($crt_name =~ m/^$name$/i && $crt_name !~ m/^[0-9]*$/ && $crt_name ne "Old_KocNet"){
 	    $crm_name = $crt_name;
 	    $is_ok = 1;
-# 	    last;
-	    next;
+	    last;
 	}
 	my $tmp = $name;
 	$tmp =~ s/[ -_]//g;
-	if ($crt_name =~ m/^$tmp$/i){
+	if ($crt_name =~ m/^$tmp$/i && $crt_name !~ m/^[0-9]*$/ && $crt_name ne "Old_KocNet"){
 	    $crm_name = $crt_name;
 	    $is_ok = 1;
-# 	    last;
-	    next;
+	    last;
 	}
 
 	$crt_name = $customers->{$nr}->{'name'};
-	if ($crt_name =~ m/^$name$/i){
+	if ($crt_name =~ m/^$name$/i && $crt_name !~ m/^[0-9]*$/ && $crt_name ne "Old_KocNet"){
 	    $crm_name = $customers->{$nr}->{'displayname'};
 	    $is_ok = 1;
-# 	    last;
-	    next;
+	    last;
 	}
 # 	$tmp = $name;
 # 	$tmp =~ s/[ -_]//g;
-#  && $crt_name !~ m/^[0-9]*$/ && $crt_name ne "Old_KocNet"
-	if ($crt_name =~ m/^$tmp$/i){
+	if ($crt_name =~ m/^$tmp$/i && $crt_name !~ m/^[0-9]*$/ && $crt_name ne "Old_KocNet"){
 	    $crm_name = $customers->{$nr}->{'displayname'};
 	    $is_ok = 1;
-# 	    last;
-	    next;
+	    last;
 	}
     }
 # print "$name\t$crm_name\n";
