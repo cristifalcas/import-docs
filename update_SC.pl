@@ -51,9 +51,9 @@ our $svn_pass = 'svncheckout';
 our $svn_user = 'svncheckout';
 our $files_info = "files_info.txt";
 our $general_template_file = "./SC_template.txt";
-my $svn_update = "no";
-my $force_db_update = "no";
-my $bulk_svn_update = "no";
+my $svn_update = "yes";
+my $force_db_update = "yes";
+my $bulk_svn_update = "yes";
 
 $svn_update = "no" if ($force_db_update eq "yes");
 
@@ -131,7 +131,8 @@ sub general_info {
 	$cust =~ s/B08535//;
 	$cust =~ s/B08571//;
 	$cust =~ s/(^\s*)|(\s*$)//g;
-	$cust = WikiCommons::get_correct_customer($cust);
+	my $corr_cust = WikiCommons::get_correct_customer($cust);
+	$cust = $corr_cust if defined $corr_cust;
 	$final_cust = $cust;
 	push @categories, "customer $cust";
 	$cust = "\[\[:Category:$cust\|$cust\]\]";
@@ -149,19 +150,29 @@ sub general_info {
 	my @bug_ids = split /,|;/, @$info[$index->{'crmid'}];
 	$tmp = "";
 	foreach my $bug (@bug_ids) {
-	    $bug =~ s/(^\s+)|(\s+$)//g;
+	    $bug =~ s/(MIND-(SR#|SR))\s*:?\s*//gi;
+	    $bug =~ s/\s+(SR#|SR)\s+(No\.\s+)?//gi;
+	    $bug =~ s/^(SR#|SR)\s+(No\.\s+)?//gi;
 	    $bug =~ s/\s+/ /g;
-	    $bug =~ s/(MIND-)?SR#\s*:?\s*//g;
-	    $bug =~ s/SR\s+(No\.)?//g;
-	    $bug =~ s/SINGTEL SR//g;
+	    $bug =~ s/(^\s+)|(\s+$)//g;
 	    if ($bug =~ m/^\s*([^\/\\]*)(\/|\\)\s*([0-9]{1,})\s*$/){
 		my $q = $1;
 		my $w = $3;
-		die "Strange crmid: $bug with $q == $w.\n" if ! defined $w || $w eq "";
-		$q = WikiCommons::get_correct_customer( $q );
-		$tmp .= " [[CRM:$q -- $w]]";
+		$q =~ s/^\s*SR\s*$//i;
+		$q =~ s/\s+SR\s*$//i;
+		if ($q eq "" ){
+		    $tmp .= " [[CRM:$final_cust$url_sep$w]]";
+		} else {
+		    die "Strange crmid: $bug with $q == $w.\n" if ! defined $w || $w eq "";
+		    my $qq = WikiCommons::get_correct_customer( $q );
+		    if (defined $qq) {
+			$tmp .= " [[CRM:$qq$url_sep$w]]";
+		    } else {
+			$tmp .= " $q$url_sep$w";
+		    }
+		}
 	    } elsif ($bug =~ m/^\s*([0-9]{1,})\s*$/ && $final_cust ne ""){
-		$tmp .= " [[CRM:$final_cust -- $1]]";
+		$tmp .= " [[CRM:$final_cust$url_sep$1]]";
 	    } else {
 		$tmp .= " $bug";
 	    }
@@ -644,27 +655,28 @@ sub write_common_info {
 
 sub svn_info {
     my ($dir, $file) = @_;
-    print "\t-SVN info for $file.\t". (time() - $time)."\n";
+    print "\t-SVN info for $file.\t". (time() - $time)."\n" if defined $file;
     my $res;
     if (exists $svn_info_all->{$dir}) {
-	$res = $svn_info_all->{$dir}->{'list'}->{'entry'}->{$file};
+	$res = $svn_info_all->{$dir}->{$file};
     } else {
-	my $xml = `svn list --xml --non-interactive --no-auth-cache --trust-server-cert --password $svn_pass --username $svn_user \'$dir/$file\' 2> /dev/null`;
+	$dir .= "/$file" if defined $file;
+	my $xml = `svn list --xml --non-interactive --no-auth-cache --trust-server-cert --password $svn_pass --username $svn_user \'$dir\' 2> /dev/null`;
 	if ($?) {
 	    print "\tError $? for svn.\n";
-	    return;
+	    return undef;
 	}
 	my $hash = XMLin($xml);
 	$res = $hash->{'list'}->{'entry'};
     }
-    print "\t+SVN info for $file.\t". (time() - $time)."\n";
+    print "\t+SVN info for $file.\t". (time() - $time)."\n" if defined $file;
     return $res;
 }
 
 sub write_control_file {
     my ($hash, $dir, $categories) = @_;
     my $text = "";
-    print "Write control file\n";
+    print "\tWrite control file\n";
     for (my $i=0;$i<@doc_types;$i++) {
 	next if ! exists $hash->{$doc_types[$i]};
 	my $name = $hash->{$doc_types[$i]}->{'name'} || '';
@@ -754,18 +766,19 @@ if ($bulk_svn_update eq "yes"){
 	next if ($tmp !~ "^http://" || defined $svn_info_all->{$tmp});
 	while ( ! defined $svn_info_all->{$tmp} && $retries < 3){
 	    print "\tRetrieve svn info for $key.\t". (time() - $time) ."\n";
-	    $svn_info_all->{$tmp} = svn_info($tmp);
+	    my $res = svn_info($tmp);
+	    $svn_info_all->{$tmp} = $res if defined $res;
 	    $retries++;
 	}
 	die if $retries == 3;
     };
 }
 
-## (scalar @dirs) - (scalar @$only_in_dirs)
+## problem: after the first run we can have missing documents, but the general_info will not be updated
 my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id ne "B100405";
+    next if $change_id ne "B99101";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488

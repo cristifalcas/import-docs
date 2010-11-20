@@ -436,30 +436,33 @@ sub get_correct_customer{
     my $name = shift;
     $name =~ s/(^\s+)|(\s+$)//g;
     return "" if $name =~ m/^\s*$/;
-    return $name if $name eq "Netvision" || $name eq "Others" || $name eq "EastLink" || $name eq "Amariska" || $name eq "Ericsson"
-	    || $name eq "Scott" || $name eq "Telecom Columbia" || $name eq "Netcentrex" || $name eq "Adaseme" || $name eq "Cyprus Telekom"
-	    || $name eq "Alvarion" || $name eq "Netcentrex" || $name eq "VSNL" || $name eq "VO" || $name eq "RTP" || $name eq "Cyberoute"
-	    || $name eq "QA" || $name eq "Pelephone" || $name eq "CTI" || $name eq "CSG Kenan" || $name eq "HOT Telecom"
-	    || $name eq "IBM motorola" || $name eq "Gtronix" || $name eq "Merdian telecom" || $name eq "Barak" || $name eq "Bezeq"
-	    || $name eq "Cellcom" || $name eq "Personeta" || $name eq "Panama" || $name eq "UK" || $name eq "HOT" || $name eq "Interconnect"
-	    || $name eq "Derech-Eretz" || $name eq "ESCALATION" || $name eq "Fix Version 5.21.008 OM" || $name eq "InterConnect"
-	    || $name eq "Business Dev 323" || $name eq "Green Card" || $name eq "Green Card Demo" || $name eq "Radiomovel" || $name eq "Cisco - SSG"
-	    || $name eq "SSG + Ericson" || $name eq "SSG";
-    return "All" if $name eq "ALL" || $name eq "All" || $name eq "all" || $name eq "ALL version 5" || $name eq ". all" || $name eq "more..."
-	    || $name eq "alll" || $name eq "ALL CUSTOMERS" || $name eq "probably all" || $name eq "All (teledome)"
-	    || $name eq "All russian customers";
-    return "Demo" if $name eq "DEMO" || $name eq "Demo";
-    return "Vodafone Spain" if $name eq "Vodafone Spain" || $name eq "VodaFone Spain";
-    return "Goldline" if $name eq "goldline" || $name eq "Goldline";
-    return "MIND" if $name eq "MINDUK_EMP" || $name eq "MIND - Scott" || $name eq "Mind Israel" || $name eq "MIND PROVISIONINIG"
-	    || $name eq "MindCRM" || $name eq "Mind CRM";
-    return "Siemens" if $name eq "Siemnes" || $name eq "Siemens" || $name eq "SIEMENS";
+#     return $name if $name eq "Netvision" || $name eq "Others" || $name eq "EastLink" || $name eq "Amariska" || $name eq "Ericsson"
+# 	    || $name eq "Scott" || $name eq "Telecom Columbia" || $name eq "Netcentrex" || $name eq "Adaseme" || $name eq "Cyprus Telekom"
+# 	    || $name eq "Alvarion" || $name eq "Netcentrex" || $name eq "VSNL" || $name eq "VO" || $name eq "RTP" || $name eq "Cyberoute"
+# 	    || $name eq "QA" || $name eq "Pelephone" || $name eq "CTI" || $name eq "CSG Kenan" || $name eq "HOT Telecom"
+# 	    || $name eq "IBM motorola" || $name eq "Gtronix" || $name eq "Merdian telecom" || $name eq "Barak" || $name eq "Bezeq"
+# 	    || $name eq "Cellcom" || $name eq "Personeta" || $name eq "Panama" || $name eq "UK" || $name eq "HOT" || $name eq "Interconnect"
+# 	    || $name eq "Derech-Eretz" || $name eq "ESCALATION" || $name eq "Fix Version 5.21.008 OM" || $name eq "InterConnect"
+# 	    || $name eq "Business Dev 323" || $name eq "Green Card" || $name eq "Green Card Demo" || $name eq "Radiomovel" || $name eq "Cisco - SSG"
+# 	    || $name eq "SSG + Ericson" || $name eq "SSG" || $name eq "i2Telecom" || $name eq "POS" || $name eq "AMIS 247" || $name eq "Abacus_EMP"
+# 	    || $name eq "Sentori Convergent";
+#     return "All" if $name eq "ALL" || $name eq "All" || $name eq "all" || $name eq "ALL version 5" || $name eq ". all" || $name eq "more..."
+# 	    || $name eq "alll" || $name eq "ALL CUSTOMERS" || $name eq "probably all" || $name eq "All (teledome)"
+# 	    || $name eq "All russian customers";
+#     return "Demo" if $name eq "DEMO" || $name eq "Demo";
+#     return "Vodafone Spain" if $name eq "Vodafone Spain" || $name eq "VodaFone Spain";
+#     return "Goldline" if $name eq "goldline" || $name eq "Goldline";
+#     return "MIND" if $name eq "MINDUK_EMP" || $name eq "MIND - Scott" || $name eq "Mind Israel" || $name eq "MIND PROVISIONINIG"
+# 	    || $name eq "MindCRM" || $name eq "Mind CRM";
+#     return "Siemens" if $name eq "Siemnes" || $name eq "Siemens" || $name eq "SIEMENS";
+#     return "Hotlink Mauritius" if $name eq "HOTLINK Mauritius" || $name eq "Hotlink Mauritius";
+
 
     return "AFRIPA" if $name eq "Afripa Telecom";
     return "VDC" if $name eq "VTI";
     return "TELEFONICA PERU" if $name eq "Telefonica Del Peru" || $name eq "Telefonica - Peru";
     return "Budget Tel" if $name eq "Budgettel";
-    return "Telecom-Colombia" if $name eq "colombia" || $name eq "Telecom Kolumbia";
+    return "Telecom-Colombia" if $name eq "colombia" || $name eq "Telecom Kolumbia" || $name eq "Telecom - Colombia";
     return "MSTelcom" if $name eq "MSTelecom";
     return "Mobee" if $name eq "MobeeTel";
     return "CWP" if $name eq "CWPanama" || $name eq "Cable & Wireless" || $name eq "Bell South Panama" || $name eq "BellSouth Panama"
@@ -469,7 +472,7 @@ sub get_correct_customer{
     return "H3G Italy" if $name eq "H3G" || $name eq "h3g" || $name eq "H3G - IBM" || $name eq "H3g" || $name eq "H3G Omnitel"
 	    || $name eq "H3G Omnitel" || $name eq "H3G Italiano" || $name eq "Italy and HK" || $name eq "H3G-Italy" || $name eq "h3g iatly"
 	    || $name eq "H3G through IBM" || $name eq "H3G Itayl" || $name eq "Italy" || $name eq "H3G - Italy"
-	    || $name eq "MIND-H3G Italy TB" || $name eq "Service Call H3G Italy";
+	    || $name eq "H3G Italy TB" || $name eq "Service Call H3G Italy";
     return "H3G-UK" if $name eq "H3G UK" || $name eq "H3G UK and H3G HK" || $name eq "H3G UK and HK";
     return "H3G-HK" if $name eq "H3G Honk Kong" || $name eq "HK" || $name eq "H3G HK" || $name eq "H3G - HK";
     return "Vivodi" if $name eq "Vivody" || $name eq "Vivodi - All";
@@ -496,7 +499,6 @@ sub get_correct_customer{
     return "Artelecom" if $name eq "Artelecom + All" || $name eq "Artelecom Romania" || $name eq "Artelecome"; # || $name eq "AR Telecom"
     return "sabanchi" if $name eq "Sabanci" || $name eq "sabanci" || $name eq "Sabnci Telecom" || $name eq "sbanci" || $name eq "Sbanci";
     return "Bynet" if $name eq "BNet";
-#     return "Hotlink Mauritius" if $name eq "HOTLINK Mauritius" || $name eq "Hotlink Mauritius";
     return "Adisam" if $name eq "Adisam Romania";
     return "OPTIMA" if $name eq "optima russia" || $name eq "Optima Russia";
     return "INC" if $name eq "Inclarity UK";
@@ -509,6 +511,9 @@ sub get_correct_customer{
     return "QTSC" if $name eq "UAT + QTSC";
     return "ViaeroEsc" if $name eq "ViaroEsc";
     return "US-ESCALATION" if $name eq "US Escallation";
+    return "Billing" if $name eq "SRG + Billing";
+    return "SMART" if $name eq "SmartPCS";
+
 
 
     if ( ! scalar keys %$customers ){
@@ -520,6 +525,7 @@ sub get_correct_customer{
 	    delete $customers->{$nr};
 	}
     }
+
     my $crm_name = "";
     my $is_ok = 0;
     foreach my $nr (sort { $a <=> $b } keys %$customers){
@@ -546,13 +552,14 @@ sub get_correct_customer{
 	}
     }
 
-    if ( ! $is_ok ) {
-	die "Customer $name could not be found in customers list.\n";
-	open (FILE, ">>./bad_cust") or die "can't open file bad_cust for writing: $!\n";
-	print FILE "$name\n";
-	close (FILE);
-	return $name;
-    }
+    return undef if ( ! $is_ok );
+# {
+# 	die "Customer $name could not be found in customers list.\n";
+# 	open (FILE, ">>./bad_cust") or die "can't open file bad_cust for writing: $!\n";
+# 	print FILE "$name\n";
+# 	close (FILE);
+# 	return $name;
+#     }
 
     return $crm_name;
 }

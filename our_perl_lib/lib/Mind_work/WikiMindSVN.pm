@@ -116,7 +116,8 @@ sub add_document {
         ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $values[1], $values[2]);
         $customer = $values[0];
         $str =~ s/^$customer\///;
-	$customer = WikiCommons::get_correct_customer($customer);
+	my $customer_good = WikiCommons::get_correct_customer($customer);
+	$customer = $customer_good if defined $customer_good;
         $str =~ s/^$customer\///;
 	my $q = "";
 	$q = $values[2] if $values[2] =~ m/^\s*v?[0-9]{1,}(\.[0-9]{1,})*\s*([a-z0-9 ]{1,})?\s*(SP\s*[0-9]{1,}(\.[0-9]{1,})*)?\s*(demo)?\s*$/;
@@ -129,7 +130,8 @@ sub add_document {
         ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $values[1], $values[2]);
         $customer = $values[0];
         $str =~ s/^$customer\///;
-	$customer = WikiCommons::get_correct_customer($customer);
+	my $customer_good = WikiCommons::get_correct_customer($customer);
+	$customer = $customer_good if defined $customer_good;
         $str =~ s/^$customer\///;
 
         $fixed_name = WikiCommons::fix_name ($name, $values[0], $big_ver, $main, $ver, $ver_sp, $ver_id);
@@ -139,11 +141,12 @@ sub add_document {
     case "Projects_Deployment_Customization" {
         $customer = $values[0];
         $str =~ s/^$customer\///;
-	$customer = WikiCommons::get_correct_customer($customer);
+	my $customer_good = WikiCommons::get_correct_customer($customer);
+	$customer = $customer_good if defined $customer_good;
         $str =~ s/^$customer\///;
 
-	$customer = WikiCommons::get_correct_customer($customer);
-        $str =~ s/^$customer\///;
+# 	$customer = WikiCommons::get_correct_customer($customer);
+#         $str =~ s/^$customer\///;
 
 	my $ver_o = "";
 	if ( scalar @values == 2 ) {

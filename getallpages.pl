@@ -1,3 +1,5 @@
+#!/usr/bin/perl -w
+
 use Cwd 'abs_path';
 use File::Basename;
 use File::Copy;
@@ -62,11 +64,11 @@ sub print_url {
 # 		print "$_->{title}\n";
 # 	    }
 	 } else {
-	    print "$_->{url}\n";
 	    print "File:$name\n";
-	    $mw->edit( {
-		action => 'delete', title => "File:$name", reason => '' } )
-		|| print $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+# 	    print "\t$_->{url}\n";
+# 	    $mw->edit( {
+# 		action => 'delete', title => "File:$name", reason => '' } )
+# 		|| print $mw->{error}->{code} . ': ' . $mw->{error}->{details}."\n";
 	 }
     }
 }
