@@ -146,15 +146,16 @@ sub create_wiki {
     WikiCommons::makedir ("$work_dir");
     $name = WikiCommons::normalize_text($name);
 
-#     copy("$doc_file","$work_dir/$name$suffix") or die "Copy failed at create_wiki: $doc_file to $work_dir: $!\t". (WikiCommons::get_time_diff) ."\n";
-    copy("$doc_file","$work_dir/$page_url$suffix") or die "Copy failed at create_wiki: $doc_file to $work_dir: $!\t". (WikiCommons::get_time_diff) ."\n";
-    $doc_file = "$work_dir/$page_url$suffix";
+    my $new_file = "$page_url$suffix";
+#     copy("$doc_file","$work_dir/$new_file") or die "Copy failed at create_wiki: $doc_file to $work_dir: $!\t". (WikiCommons::get_time_diff) ."\n";
+    copy("$doc_file","$work_dir/$new_file") or die "Copy failed at create_wiki: $doc_file to $work_dir: $!\t". (WikiCommons::get_time_diff) ."\n";
+    $doc_file = "$work_dir/$new_file";
 
     if ( -f $doc_file ) {
 	WikiCommons::generate_html_file($doc_file);
-	my $html_file = "$work_dir/$name.html";
+	my $html_file = "$work_dir/$page_url.html";
 
-	if ( -f $html_file && ! -e ".~lock.$name.$suffix#") {
+	if ( -f $html_file && ! -e ".~lock.$new_file#") {
 	    my ($wiki, $image_files) = WikiClean::make_wiki_from_html ( $html_file );
 	    return undef if (! defined $wiki );
 
@@ -173,7 +174,7 @@ sub create_wiki {
 	    $image_files = ();
 
 	    my $zip = Archive::Zip->new();
-	    $zip->addFile( "$work_dir/$name$suffix", "$name$suffix") or die "Error adding file $name$suffix to zip.\t". (WikiCommons::get_time_diff) ."\n";
+	    $zip->addFile( "$work_dir/$new_file", "$new_file") or die "Error adding file $new_file to zip.\t". (WikiCommons::get_time_diff) ."\n";
 	    die "Write error for zip file.\t". (WikiCommons::get_time_diff) ."\n" if $zip->writeToFileNamed( "$dest/$zip_name.zip" ) != AZ_OK;
 	    print FILE "File:$zip_name.zip\n";
 	    close (FILE);
