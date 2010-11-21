@@ -52,7 +52,7 @@ our $svn_user = 'svncheckout';
 our $files_info = "files_info.txt";
 our $general_template_file = "./SC_template.txt";
 my $svn_update = "yes";
-my $force_db_update = "yes";
+my $force_db_update = "no";
 my $bulk_svn_update = "yes";
 
 $svn_update = "no" if ($force_db_update eq "yes");
@@ -712,6 +712,7 @@ sub clean_existing_dir {
 #     my $prev_info = {};
     # get all doc files from "$to_path/$change_id" and remove them if they are not in $svn_docs
 # 	$prev_info = get_previous("$to_path/$change_id/$files_info");
+    return if ! -e "$to_path/$change_id";
     opendir(DIR, "$to_path/$change_id") || die "Cannot open directory $to_path/$change_id: $!.\n";
     my @files = grep { (!/^\.\.?$/) && -f "$to_path/$change_id/$_" && "$_" =~ /\.doc$/} readdir(DIR);
     closedir(DIR);
@@ -778,7 +779,7 @@ if ($bulk_svn_update eq "yes"){
 my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
-    next if $change_id ne "B99101";
+#     next if $change_id ne "B99101";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -795,7 +796,9 @@ foreach my $change_id (sort keys %$crt_hash){
     ### svn updates (first svn, because we need missing documents)
     if ($svn_update ne "no") {
 	my $svn_docs = sql_get_svn_docs($change_id);
+print "1\n";
 	clean_existing_dir($change_id, $svn_docs, $prev_info);
+print "2\n";
 	foreach my $key (sort keys %$svn_docs) {
 	    my $dir = @$info_comm[$index_comm->{$key}];
 	    my $file = $svn_docs->{$key};

@@ -146,8 +146,9 @@ sub create_wiki {
     WikiCommons::makedir ("$work_dir");
     $name = WikiCommons::normalize_text($name);
 
-    copy("$doc_file","$work_dir/$name$suffix") or die "Copy failed at create_wiki: $doc_file to $work_dir: $!\t". (WikiCommons::get_time_diff) ."\n";
-    $doc_file = "$work_dir/$name$suffix";
+#     copy("$doc_file","$work_dir/$name$suffix") or die "Copy failed at create_wiki: $doc_file to $work_dir: $!\t". (WikiCommons::get_time_diff) ."\n";
+    copy("$doc_file","$work_dir/$page_url$suffix") or die "Copy failed at create_wiki: $doc_file to $work_dir: $!\t". (WikiCommons::get_time_diff) ."\n";
+    $doc_file = "$work_dir/$page_url$suffix";
 
     if ( -f $doc_file ) {
 	WikiCommons::generate_html_file($doc_file);
