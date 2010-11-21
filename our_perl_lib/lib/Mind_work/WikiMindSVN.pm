@@ -80,6 +80,8 @@ sub add_document {
     my $basic_url = ""; my $rest = ""; my $customer = "";
     my $main = ""; my $ver = ""; my $ver_fixed = ""; my $big_ver = ""; my $ver_sp = ""; my $ver_id = "";
     my $rel_path = ""; my $svn_url = ""; my $fixed_name = "";
+    my $known_customer = 1;
+
     my $str = $doc_file;
     #  remove svn_dir
     $str =~ s/^$path_file\/$dir_type\///;
@@ -117,7 +119,11 @@ sub add_document {
         $customer = $values[0];
         $str =~ s/^$customer\///;
 	my $customer_good = WikiCommons::get_correct_customer($customer);
-	$customer = $customer_good if defined $customer_good;
+	if (defined $customer_good) {
+	    $customer = $customer_good;
+	} else {
+	    $known_customer = 0;
+	}
         $str =~ s/^$customer\///;
 	my $q = "";
 	$q = $values[2] if $values[2] =~ m/^\s*v?[0-9]{1,}(\.[0-9]{1,})*\s*([a-z0-9 ]{1,})?\s*(SP\s*[0-9]{1,}(\.[0-9]{1,})*)?\s*(demo)?\s*$/;
@@ -131,7 +137,11 @@ sub add_document {
         $customer = $values[0];
         $str =~ s/^$customer\///;
 	my $customer_good = WikiCommons::get_correct_customer($customer);
-	$customer = $customer_good if defined $customer_good;
+	if (defined $customer_good) {
+	    $customer = $customer_good;
+	} else {
+	    $known_customer = 0;
+	}
         $str =~ s/^$customer\///;
 
         $fixed_name = WikiCommons::fix_name ($name, $values[0], $big_ver, $main, $ver, $ver_sp, $ver_id);
@@ -142,11 +152,12 @@ sub add_document {
         $customer = $values[0];
         $str =~ s/^$customer\///;
 	my $customer_good = WikiCommons::get_correct_customer($customer);
-	$customer = $customer_good if defined $customer_good;
+	if (defined $customer_good) {
+	    $customer = $customer_good;
+	} else {
+	    $known_customer = 0;
+	}
         $str =~ s/^$customer\///;
-
-# 	$customer = WikiCommons::get_correct_customer($customer);
-#         $str =~ s/^$customer\///;
 
 	my $ver_o = "";
 	if ( scalar @values == 2 ) {
@@ -233,7 +244,7 @@ sub add_document {
 	push @categories, $ver_fixed;
 	push @categories, $main;
 	push @categories, $big_ver;
-	push @categories, $customer;
+	push @categories, $customer if $known_customer;
 # print "b=$big_ver|\tm=$main|\tv=$ver|\tvf=$ver_fixed|\tsp=$ver_sp|\tid=$ver_id|\tc=$customer\n";
 # print "$page_url\n";
 	generate_categories($ver_fixed, $main, $big_ver, $customer, $dir_type);
