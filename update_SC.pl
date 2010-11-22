@@ -55,7 +55,7 @@ my $svn_update = "yes";
 my $force_db_update = "yes";
 my $bulk_svn_update = "yes";
 
-$svn_update = "no" if ($force_db_update eq "yes");
+# $svn_update = "no" if ($force_db_update eq "yes");
 
 our $time = time();
 my $svn_info_all = {};
@@ -780,7 +780,7 @@ if ($bulk_svn_update eq "yes"){
 my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id ne "B99101";
+#     next if $change_id ne "B03448";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -797,9 +797,8 @@ foreach my $change_id (sort keys %$crt_hash){
     ### svn updates (first svn, because we need missing documents)
     if ($svn_update ne "no") {
 	my $svn_docs = sql_get_svn_docs($change_id);
-print "1\n";
 	clean_existing_dir($change_id, $svn_docs, $prev_info);
-print "2\n";
+
 	foreach my $key (sort keys %$svn_docs) {
 	    my $dir = @$info_comm[$index_comm->{$key}];
 	    my $file = $svn_docs->{$key};
@@ -817,12 +816,13 @@ print "2\n";
 	    $crt_info->{$key}->{'size'} = $doc_size;
 	    $crt_info->{$key}->{'revision'} = $doc_rev;
 
-	    if ( ! Compare($crt_info->{$key}, $prev_info->{$key}) ) {
+# 	    if ( ! Compare($crt_info->{$key}, $prev_info->{$key}) ) {
+	    if ( -s "$to_path/$change_id/$key.doc" != $crt_info->{$key}->{'size'} ) {
 		print "\tUpdate svn http for $key.\n";
 		$request = HTTP::Request->new(GET => "$dir");
 		$request->authorization_basic("$svn_user", "$svn_pass");
-		my $file = http_svn_get("$dir/$file", "$work_dir");
-		move("$file", "$work_dir/$key.doc") || die "can't move file $file to $work_dir/$key.doc: $!.\n";
+		my $file_res = http_svn_get("$dir/$file", "$work_dir");
+		move("$file_res", "$work_dir/$key.doc") || die "can't move file $file_res to $work_dir/$key.doc: $!.\n";
 	    }
 	}
     }
