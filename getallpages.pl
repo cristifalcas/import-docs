@@ -19,6 +19,7 @@ $mw->login( {lgname => 'admin', lgpassword => '!0admin@9' } )
 sub all_pages {
 $mw->list ( { action => 'query',
 	list => 'allpages',
+	apnamespace => '0',
 	aplimit=>'500' },
     { max => 40000, hook => \&print_title } )
             || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
@@ -66,13 +67,12 @@ sub print_url {
 	 } else {
 	    print "File:$name\n";
 # 	    print "\t$_->{url}\n";
-	    $mw->edit( {
-		action => 'delete_all', title => "File:$name", reason => '' } )
-		|| print $mw->{error}->{code} . ': ' . $mw->{error}->{details}."\n";
+# 	    $mw->edit( { action => 'delete', title => "File:$name", reason => '' } )
+# 		|| print $mw->{error}->{code} . ': ' . $mw->{error}->{details}."\n";
 	 }
     }
 }
 
-# all_pages
+all_pages
 # all_links
-all_images
+# all_images
