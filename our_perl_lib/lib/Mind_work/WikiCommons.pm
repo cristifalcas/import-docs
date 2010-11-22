@@ -191,7 +191,6 @@ sub capitalize_string {
 
 sub fix_name {
     my ($name, $customer, $big_ver, $main, $ver, $ver_sp, $ver_id) = @_;
-
     my $fixed_name = $name;
     $fixed_name = normalize_text($fixed_name);
 

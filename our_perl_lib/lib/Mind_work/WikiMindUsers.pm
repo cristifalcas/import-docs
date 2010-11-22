@@ -14,7 +14,7 @@ our $general_categories_hash = {};
 
 sub new {
     my $class = shift;
-    my $self = { path_files => abs_path(shift) , url_sep => shift };
+    my $self = { path_files => abs_path(shift)};
     bless($self, $class);
     return $self;
 }
@@ -85,9 +85,9 @@ sub add_document {
 	if ($done eq "yes") {
 	    ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $version, $version) if ($version ne "" );
 # 	    WikiCommons::generate_categories($ver_fixed, $main, $big_ver, $customer, "Users documents");
-	    generate_categories($ver_fixed, $main, $big_ver, $customer, "Users documents");
 	    my $fixed_name = $name;
-	    $fixed_name = WikiCommons::fix_name ($name, $customer, $main, $ver, $ver_sp, $ver_id) if ($version ne "" );
+	    $fixed_name = WikiCommons::fix_name ($name, $customer, $big_ver, $main, $ver, $ver_sp, $ver_id) if ($version ne "" );
+# 	    generate_categories($ver_fixed, $main, $big_ver, $customer, "Users documents");
 # 	    $page_url = "$fixed_name$url_sep$main$url_sep$ver_fixed$url_sep$customer";
 	    $page_url = "$fixed_name$url_sep$ver_fixed$url_sep$customer";
 	    $page_url =~ s/($url_sep){2,}/$url_sep/g;
@@ -109,7 +109,8 @@ sub add_document {
 
 sub get_documents {
     my $self  = shift;
-    find sub { add_document ($File::Find::name, "$self->{path_files}", "$self->{url_sep}") if -f && (/(\.doc|\.docx|\.rtf)$/i) }, "$self->{path_files}";
+    my $url_sep = WikiCommons::get_urlsep;
+    find sub { add_document ($File::Find::name, "$self->{path_files}", "$url_sep") if -f && (/(\.doc|\.docx|\.rtf)$/i) }, "$self->{path_files}";
     return $pages_toimp_hash;
 }
 

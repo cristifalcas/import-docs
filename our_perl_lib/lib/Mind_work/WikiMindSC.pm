@@ -69,7 +69,7 @@ sub get_documents {
 	my @data=<FH>;
 	chomp @data;
 	close(FH);
-print "$node\n";
+# print "$node\n";
 	my @categories = ();
 	my $info_crt_h ;
 	foreach my $line (@data) {
@@ -81,7 +81,7 @@ print "$node\n";
 	    die "Wrong number of fields for line $line in $node/$files_info_file.\n" if @tmp<4;
 
 	    if ($tmp[0] eq "Categories") {
-print "$line\n";
+# print "$line\n";
 		foreach my $q (@tmp) {
 		    $q =~ s/(^\s*)|(\s*$)//g;
 		    next if $q eq "Categories" || $q =~ m/^\s*$/ || $q eq "customer" || $q eq "version";
@@ -93,12 +93,12 @@ print "$line\n";
 		    } elsif ($q =~ m/^version /i) {
 			my $w = $q; $w =~ s/^version //i; $w =~ s/\.$//;
 			next if $w =~ m/^\s*$/;
-			$w = "6.50.006 SP15.012" if $w eq "6.50.006,SP15.012";
-			$w = "6.01.004 SP43.010" if $w eq "6.01.004 SP.43.010";
-			$w = "6.50.009 SP05.010" if $w eq "6.50.009, SP05.010";
-			$w = "6.50.010 SP09.002" if $w eq "6.50.010.SP09.002";
-			$w = "6.60.003 SP17.003" if $w eq "6.60.003 SO17.003";
-			$w = "6.60.003 SP30.004" if $w eq "6.60.003 SP30 30.004";
+# 			$w = "6.50.006 SP15.012" if $w eq "6.50.006,SP15.012";
+# 			$w = "6.01.004 SP43.010" if $w eq "6.01.004 SP.43.010";
+# 			$w = "6.50.009 SP05.010" if $w eq "6.50.009, SP05.010";
+# 			$w = "6.50.010 SP09.002" if $w eq "6.50.010.SP09.002";
+# 			$w = "6.60.003 SP17.003" if $w eq "6.60.003 SO17.003";
+# 			$w = "6.60.003 SP30.004" if $w eq "6.60.003 SP30 30.004";
 
 			my ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $w, $w);
 			$big_ver = $big_ver.$url_sep."SC";

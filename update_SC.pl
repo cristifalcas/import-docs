@@ -52,7 +52,7 @@ our $svn_user = 'svncheckout';
 our $files_info = "files_info.txt";
 our $general_template_file = "./SC_template.txt";
 my $svn_update = "yes";
-my $force_db_update = "no";
+my $force_db_update = "yes";
 my $bulk_svn_update = "yes";
 
 $svn_update = "no" if ($force_db_update eq "yes");
