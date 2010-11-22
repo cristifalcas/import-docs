@@ -109,8 +109,8 @@ my $wiki_result = "result";
 my $wiki_files_uploaded = "wiki_files_uploaded.txt";
 my $wiki_files_info = "wiki_files_info.txt";
 
-my $delete_everything = "no";
-my $delete_categories = "no";
+my $delete_everything = "yes";
+my $delete_categories = "yes";
 my $make_categories = "no";
 my $pid_old = "100000";
 my $all_real = "no";

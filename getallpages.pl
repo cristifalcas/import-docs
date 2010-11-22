@@ -66,9 +66,9 @@ sub print_url {
 	 } else {
 	    print "File:$name\n";
 # 	    print "\t$_->{url}\n";
-	    $mw->edit( {
-		action => 'delete', title => "File:$name", reason => '' } )
-		|| print $mw->{error}->{code} . ': ' . $mw->{error}->{details}."\n";
+# 	    $mw->edit( {
+# 		action => 'delete', title => "File:$name", reason => '' } )
+# 		|| print $mw->{error}->{code} . ': ' . $mw->{error}->{details}."\n";
 	 }
     }
 }
