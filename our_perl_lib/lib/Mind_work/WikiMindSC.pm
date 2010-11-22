@@ -79,6 +79,7 @@ print "$node\n";
 	    chomp @tmp;
 
 	    if ($tmp[0] eq "Categories") {
+next;
 # print "$line\n";
 		foreach my $q (@tmp) {
 		    $q =~ s/(^\s*)|(\s*$)//g;
