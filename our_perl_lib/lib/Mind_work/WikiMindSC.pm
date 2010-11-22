@@ -69,7 +69,7 @@ sub get_documents {
 	my @data=<FH>;
 	chomp @data;
 	close(FH);
-print "$node\n";
+# print "$node\n";
 	my @categories = ();
 	my $info_crt_h ;
 	foreach my $line (@data) {
