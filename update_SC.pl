@@ -781,6 +781,7 @@ my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
 #     next if $change_id ne "B03448";
+next if $change_id lt "B605220";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -817,7 +818,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	    $crt_info->{$key}->{'revision'} = $doc_rev;
 
 # 	    if ( ! Compare($crt_info->{$key}, $prev_info->{$key}) ) {
-	    if ( -s "$to_path/$change_id/$key.doc" != $crt_info->{$key}->{'size'} ) {
+	    if ( ! -e "$to_path/$change_id/$key.doc" || -s "$to_path/$change_id/$key.doc" != $crt_info->{$key}->{'size'} ) {
 		print "\tUpdate svn http for $key.\n";
 		$request = HTTP::Request->new(GET => "$dir");
 		$request->authorization_basic("$svn_user", "$svn_pass");
