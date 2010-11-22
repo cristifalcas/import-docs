@@ -544,7 +544,9 @@ sub work_link {
 	die "We should have a url in to_keep.\n" if (scalar @{$pages_toimp_hash->{$url}} != scalar @{$to_keep->{$link_to}});
 	my ($link_name,$link_dir,$link_suffix) = fileparse($to_keep->{$link_to}[$rel_path_pos], qr/\.[^.]*/);
 	my ($name,$dir,$suffix) = fileparse($pages_toimp_hash->{$url}[$rel_path_pos], qr/\.[^.]*/);
-	my $link_file = "$wiki_dir/$link_to/$link_name.wiki";
+
+	my $new_file = "$url$suffix";
+	my $link_file = "$wiki_dir/$link_to/$url.wiki";
 	WikiCommons::makedir("$wiki_dir/$url/");
 	WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
 	copy("$link_file","$wiki_dir/$url/$name.wiki") or die "Copy failed for link: $link_file to $wiki_dir/$url: $!\t". (WikiCommons::get_time_diff) ."\n";
