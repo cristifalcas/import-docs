@@ -135,6 +135,8 @@ sub create_wiki {
     die "Page url is empty.\n" if $page_url eq '';
     $zip_name = $page_url if ! defined $zip_name;
     my $work_dir = "$wiki_dir/$page_url";
+
+    my ($name_url,$dir_url,$suffix_url) = fileparse($page_url, qr/\.[^.]*/);
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
     if ( -d $work_dir) {
 	print "Path $work_dir already exists. Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
@@ -146,14 +148,13 @@ sub create_wiki {
     WikiCommons::makedir ("$work_dir");
     $name = WikiCommons::normalize_text($name);
 
-    my $new_file = "$page_url$suffix";
-#     copy("$doc_file","$work_dir/$new_file") or die "Copy failed at create_wiki: $doc_file to $work_dir: $!\t". (WikiCommons::get_time_diff) ."\n";
-    copy("$doc_file","$work_dir/$new_file") or die "Copy failed at create_wiki: $doc_file to $work_dir: $!\t". (WikiCommons::get_time_diff) ."\n";
+    my $new_file = "$name_url$suffix";
+    copy("$doc_file","$work_dir/$new_file") or die "Copy failed for $page_url at create_wiki: $doc_file to $work_dir: $!\t". (WikiCommons::get_time_diff) ."\n";
     $doc_file = "$work_dir/$new_file";
 
     if ( -f $doc_file ) {
 	WikiCommons::generate_html_file($doc_file);
-	my $html_file = "$work_dir/$page_url.html";
+	my $html_file = "$work_dir/$name_url.html";
 
 	if ( -f $html_file && ! -e ".~lock.$new_file#") {
 	    my ($wiki, $image_files) = WikiClean::make_wiki_from_html ( $html_file );
@@ -681,7 +682,7 @@ if ($path_type eq "mind_svn") {
     my $crt_nr = 0;
     foreach my $url (sort keys %$pages_toimp_hash) {
 	$crt_nr++;
-#     next if "$url" ne "SC:B91991";
+# next if "$url" ne "SC:B02315";
 	WikiCommons::reset_time();
 	print "\n************************* $crt_nr of $total_nr\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 
