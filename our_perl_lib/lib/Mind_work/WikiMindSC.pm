@@ -69,7 +69,7 @@ sub get_documents {
 	my @data=<FH>;
 	chomp @data;
 	close(FH);
-# print "$node\n";
+print "$node\n";
 	my @categories = ();
 	my $info_crt_h ;
 	foreach my $line (@data) {
@@ -91,7 +91,7 @@ sub get_documents {
 		    } elsif ($q =~ m/^version /i) {
 			my $w = $q; $w =~ s/^version //i; $w =~ s/\.$//;
 			next if $w =~ m/^\s*$/;
-# 			$w = "6.50.006 SP15.012" if $w eq "6.50.006,SP15.012";
+# 			$w = "6.60.003 SP24.002" if $w eq "6.60.003 SP24.002 P";
 # 			$w = "6.01.004 SP43.010" if $w eq "6.01.004 SP.43.010";
 # 			$w = "6.50.009 SP05.010" if $w eq "6.50.009, SP05.010";
 # 			$w = "6.50.010 SP09.002" if $w eq "6.50.010.SP09.002";
