@@ -69,8 +69,7 @@ sub get_documents {
 	my @data=<FH>;
 	chomp @data;
 	close(FH);
-
-
+print "$node\n";
 	my @categories = ();
 	my $info_crt_h ;
 	foreach my $line (@data) {
@@ -82,28 +81,57 @@ sub get_documents {
 	    die "Wrong number of fields for line $line in $node/$files_info_file.\n" if @tmp<4;
 
 	    if ($tmp[0] eq "Categories") {
-		$tmp[1] =~ s/^customer //i;
-		$tmp[1] =~ s/\s*$//g;
-		$tmp[2] =~ s/^version //i;
-		$tmp[2] =~ s/\s*$//g;
-		$tmp[3] =~ s/\s*$//g;
-		my $customer = $tmp[1] || "";
-		my $full_ver = $tmp[2] || "";
-		my $main_ver = $full_ver;
-		$main_ver =~ s/([[:digit:]]{1,})(\.[[:digit:]]{1,})?(.*)/$1$2/;
+print "$line\n";
+		foreach my $q (@tmp) {
+		    $q =~ s/(^\s*)|(\s*$)//g;
+		    next if $q eq "Categories" || $q =~ m/^\s*$/ || $q eq "customer" || $q eq "version";
+		    if ($q =~ m/^customer /i){
+			my $customer = $q; $customer =~ s/^customer //i;
+			next if $customer =~ m/^\s*$/;
+			$customer = $customer.$url_sep."SC";
+			push @categories, "customer ".$customer;
+		    } elsif ($q =~ m/^version /i) {
+			my $w = $q; $w =~ s/^version //i; $w =~ s/\.$//;
+			next if $w =~ m/^\s*$/;
+			$w = "6.50.006 SP15.012" if $w eq "6.50.006,SP15.012";
+			$w = "6.01.004 SP43.010" if $w eq "6.01.004 SP.43.010";
+			$w = "6.50.009 SP05.010" if $w eq "6.50.009, SP05.010";
+			$w = "6.50.010 SP09.002" if $w eq "6.50.010.SP09.002";
+			$w = "6.60.003 SP17.003" if $w eq "6.60.003 SO17.003";
+			$w = "6.60.003 SP30.004" if $w eq "6.60.003 SP30 30.004";
 
-		my ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ($main_ver, $full_ver);
-		$main = $main.$url_sep."SC" if $main ne "";
-		$ver = $ver.$url_sep."SC" if $ver ne "";
-		$ver_fixed = $ver_fixed.$url_sep."SC" if $ver_fixed ne "";
-		$big_ver = $big_ver.$url_sep."SC" if $big_ver ne "";
-		$ver_sp = $ver_sp.$url_sep."SC" if $ver_sp ne "";
-# 		$ver_without_sp = $ver_without_sp.$url_sep."SC" if $ver_without_sp ne "";
-		$customer = $customer.$url_sep."SC" if $customer ne "";
-		generate_categories( $ver_fixed, $main, $big_ver, $customer, "SCDocs");
-
-		$tmp[1] = $customer;
-		$tmp[2] = $ver_fixed;
+			my ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $w, $w);
+			$big_ver = $big_ver.$url_sep."SC";
+			$main = $main.$url_sep."SC";
+			$ver_fixed = $ver_fixed.$url_sep."SC";
+			push @categories, "version_b ".$big_ver;
+			push @categories, "version_m ".$main;
+			push @categories, "version_v ".$ver_fixed;
+		    } else {
+			die "Unknown category in $line: $q.\n";
+		    }
+		}
+		next;
+# 		$tmp[1] =~ s/\s*$//g;
+# 		$tmp[2] =~ s/\s*$//g;
+# 		$tmp[3] =~ s/\s*$//g;
+# 		my $customer = $tmp[1] || "";
+# 		my $full_ver = $tmp[2] || "";
+# 		my $main_ver = $full_ver;
+# 		$main_ver =~ s/([[:digit:]]{1,})(\.[[:digit:]]{1,})?(.*)/$1$2/;
+#
+# 		($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ($main_ver, $full_ver);
+# 		$main = $main.$url_sep."SC" if $main ne "";
+# 		$ver = $ver.$url_sep."SC" if $ver ne "";
+# 		$ver_fixed = $ver_fixed.$url_sep."SC" if $ver_fixed ne "";
+# 		$big_ver = $big_ver.$url_sep."SC" if $big_ver ne "";
+# 		$ver_sp = $ver_sp.$url_sep."SC" if $ver_sp ne "";
+# # 		$ver_without_sp = $ver_without_sp.$url_sep."SC" if $ver_without_sp ne "";
+# 		$customer = $customer.$url_sep."SC" if $customer ne "";
+# 		generate_categories( $ver_fixed, $main, $big_ver, $customer, "SCDocs");
+#
+# 		$tmp[1] = $customer;
+# 		$tmp[2] = $ver_fixed;
 	    }
 	    $info_crt_h->{$tmp[0]}->{'name'} = "$tmp[1]";
 	    $info_crt_h->{$tmp[0]}->{'size'} = "$tmp[2]";

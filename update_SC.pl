@@ -127,14 +127,16 @@ sub general_info {
 
     my $final_cust = "";
     foreach my $cust (@all_custs) {
-	next if $cust =~ m/^\s*$/;
 	$cust =~ s/B08535//;
 	$cust =~ s/B08571//;
+	next if $cust =~ m/^\s*$/;
 	$cust =~ s/(^\s*)|(\s*$)//g;
 	my $corr_cust = WikiCommons::get_correct_customer($cust);
-	$cust = $corr_cust if defined $corr_cust;
+	if (defined $corr_cust ) {
+	    $cust = $corr_cust;
+	    push @categories, "customer $cust";
+	}
 	$final_cust = $cust;
-	push @categories, "customer $cust";
 	$cust = "\[\[:Category:$cust\|$cust\]\]";
     }
 
@@ -200,8 +202,7 @@ sub general_info {
 # 	$general =~ s/%fix_version%//g;
 #     }
 
-    push @categories, "version ". @$info[$index->{'version'}];
-
+    push @categories, "version ". @$info[$index->{'buildversion'}];
     $general =~ s/%version%/@$info[$index->{'version'}]/;
     $general =~ s/%build_version%/@$info[$index->{'buildversion'}]/;
     $general =~ s/%prod_version%/@$info[$index->{'prodversion'}]/;
@@ -687,7 +688,7 @@ sub write_control_file {
     }
 
     $text .= "SC_info;$hash->{'SC_info'}->{'name'};$hash->{'SC_info'}->{'size'};$hash->{'SC_info'}->{'revision'}\n";
-    $text .= "Categories;". (join ';',@$categories). ";"x(3-(scalar @$categories))."\n" if scalar @$categories;
+    $text .= "Categories;". (join ';',@$categories). "\n";
     write_file("$dir/$files_info", "$text");
 }
 

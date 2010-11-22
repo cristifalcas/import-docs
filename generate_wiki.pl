@@ -109,7 +109,7 @@ my $wiki_result = "result";
 my $wiki_files_uploaded = "wiki_files_uploaded.txt";
 my $wiki_files_info = "wiki_files_info.txt";
 
-my $delete_everything = "yes";
+my $delete_everything = "no";
 my $delete_categories = "yes";
 my $make_categories = "no";
 my $pid_old = "100000";
@@ -545,12 +545,15 @@ sub work_link {
 	my ($link_name,$link_dir,$link_suffix) = fileparse($to_keep->{$link_to}[$rel_path_pos], qr/\.[^.]*/);
 	my ($name,$dir,$suffix) = fileparse($pages_toimp_hash->{$url}[$rel_path_pos], qr/\.[^.]*/);
 
+# print Dumper($md5_map->{$pages_toimp_hash->{$url}[$md5_pos]});
+# print Dumper($pages_toimp_hash->{$url});
+# print Dumper($to_keep->{$link_to});
 	my $new_file = "$url$suffix";
-	my $link_file = "$wiki_dir/$link_to/$url.wiki";
+	my $link_file = "$wiki_dir/$link_to/$link_to.wiki";
 	WikiCommons::makedir("$wiki_dir/$url/");
 	WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
-	copy("$link_file","$wiki_dir/$url/$name.wiki") or die "Copy failed for link: $link_file to $wiki_dir/$url: $!\t". (WikiCommons::get_time_diff) ."\n";
-	open (FILEHANDLE, "$wiki_dir/$url/$name.wiki") or die $!."\t". (WikiCommons::get_time_diff) ."\n";
+	copy("$link_file","$wiki_dir/$url/$url.wiki") or die "Copy failed for link: $link_file to $wiki_dir/$url: $!\t". (WikiCommons::get_time_diff) ."\n";
+	open (FILEHANDLE, "$wiki_dir/$url/$url.wiki") or die $!."\t". (WikiCommons::get_time_diff) ."\n";
 	my $wiki = do { local $/; <FILEHANDLE> };
 	close (FILEHANDLE);
 
@@ -693,9 +696,9 @@ if ($path_type eq "mind_svn") {
 	my $wiki_txt = <FH>;
 	close (FH);
 	$wiki_txt =~ s/^[\f ]+|[\f ]+$//mg;
-	foreach my $key (keys %{$info_crt_h->{"Categories"}}) {
-	    $wiki_txt.= "[[Category:".$info_crt_h->{'Categories'}->{$key}."]]" if $info_crt_h->{'Categories'}->{$key} ne "";
-	}
+# 	foreach my $key (keys %{$info_crt_h->{"Categories"}}) {
+# 	    $wiki_txt.= "[[Category:".$info_crt_h->{'Categories'}->{$key}."]]" if $info_crt_h->{'Categories'}->{$key} ne "";
+# 	}
 
 	$wiki_txt .= "\n\n'''FTP links:'''\n\n";
 	foreach my $key (keys %$ftp_links) {
