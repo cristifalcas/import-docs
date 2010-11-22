@@ -682,7 +682,7 @@ if ($path_type eq "mind_svn") {
     my $crt_nr = 0;
     foreach my $url (sort keys %$pages_toimp_hash) {
 	$crt_nr++;
-next if "$url" ne "SC:B03448";
+# next if "$url" ne "SC:B03448";
 	WikiCommons::reset_time();
 	print "\n************************* $crt_nr of $total_nr\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 
