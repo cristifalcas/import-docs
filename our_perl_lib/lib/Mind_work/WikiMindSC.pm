@@ -77,8 +77,6 @@ sub get_documents {
 	    $line .= " " if $line =~ m/^(.*)\;$/;
 	    my @tmp = split ';', $line;
 	    chomp @tmp;
-	    $md5 .= "$tmp[2]" if defined $tmp[2];
-	    die "Wrong number of fields for line $line in $node/$files_info_file.\n" if @tmp<4;
 
 	    if ($tmp[0] eq "Categories") {
 # print "$line\n";
@@ -133,6 +131,9 @@ sub get_documents {
 # 		$tmp[1] = $customer;
 # 		$tmp[2] = $ver_fixed;
 	    }
+
+	    $md5 .= "$tmp[2]" if defined $tmp[2];
+	    die "Wrong number of fields for line $line in $node/$files_info_file.\n" if @tmp<4;
 	    $info_crt_h->{$tmp[0]}->{'name'} = "$tmp[1]";
 	    $info_crt_h->{$tmp[0]}->{'size'} = "$tmp[2]";
 	    $info_crt_h->{$tmp[0]}->{'revision'} = "$tmp[3]";
