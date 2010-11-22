@@ -718,6 +718,7 @@ next if "$url" ne "SC:B03448";
 	    my ($node, $title, $header) = "";
 	    if ($suffix eq ".doc") {
 		foreach my $key (keys %$info_crt_h) {
+		    next if $key eq "SC_info";
 		    if ($key =~ m/^([0-9]{1,}) $name$/) {
 			$node = $1;
 			$title = $name;
