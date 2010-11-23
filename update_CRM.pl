@@ -95,8 +95,6 @@ my $update_all = "no";
 my $ftp_addr = 'http://62.219.96.62/SupportFTP/';
 my $dbh;
 my $event_codes = {};
-my $attributes = {};
-my $attributes_options = {};
 my $staff = {};
 my $priorities = {};
 my $problem_categories = {};
@@ -173,24 +171,6 @@ select t.rsuppeventscode, t.rsuppeventsdesc, t.rsuppeventsdefsupstatus
     }
 }
 
-sub get_attributes {
-    my $SEL_INFO = 'select t.attribisn, t.attribname from tblattributes t';
-    my $sth = $dbh->prepare($SEL_INFO);
-    $sth->execute();
-    while ( my @row=$sth->fetchrow_array() ) {
-	$attributes->{$row[0]} = $row[1];
-    }
-}
-
-sub get_attributes_options {
-    my $SEL_INFO = 'select t.attrib_isn, t.option_line, t.option_text from tblattriboptions t';
-    my $sth = $dbh->prepare($SEL_INFO);
-    $sth->execute();
-    while ( my @row=$sth->fetchrow_array() ) {
-	$attributes_options->{$row[0]}->{$row[1]} = $row[2];
-    }
-}
-
 sub get_staff {
     my $SEL_INFO = '
 select t.rsuppstaffenggcode,
@@ -242,15 +222,22 @@ sub get_problem_types {
 
 sub get_customers {
     my $SEL_INFO = '
-select t.rcustcompanycode, t.rcustcompanyname, t.rcustiddisplay
-  from tblcustomers t
- where t.rcuststatus = \'A\'';
+select t.rcustcompanycode,
+       t.rcustcompanyname,
+       t.rcustiddisplay,
+       q.value_text
+  from tblcustomers t, tblattrib_values q, tblattributes w
+ where t.rcuststatus = \'A\'
+   and w.attribname = \'Latest Version\'
+   and w.attribisn = q.attrib_isn
+   and q.attrib_object_code1 = t.rcustcompanycode;';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
 	die "Already have this id for cust.\n" if exists $customers->{$row[0]};
 	$customers->{$row[0]}->{'name'} = $row[1];
 	$customers->{$row[0]}->{'displayname'} = $row[2];
+	$customers->{$row[0]}->{'ver'} = $row[3];
     }
 }
 
@@ -658,8 +645,6 @@ local $| = 1;
 print "-Get common info.\t". (WikiCommons::get_time_diff) ."\n";
 get_eventscode();
 get_customers();
-get_attributes();
-get_attributes_options();
 get_staff();
 get_priorities();
 get_problem_categories();
@@ -673,6 +658,9 @@ foreach my $cust (sort keys %$customers){
     print "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
 # next if $customers->{$cust}->{'displayname'} ne "Artelecom";
 # next if $cust != 381;
+    next if (! defined $cust_info->{'Latest Version'} || $customers->{$cust}->{'ver'} lt "5.00")
+	    && $customers->{$row[0]}->{'displayname'} ne "Billing";
+
     my $dir = "$to_path/".$customers->{$cust}->{'displayname'};
     WikiCommons::makedir ("$dir");
     my $crt_srs = get_allsrs($cust);
