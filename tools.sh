@@ -11,8 +11,13 @@ function batch_Import() {
     done
 }
 
-function backup_svn() {
-    find ./Documentation/svn_docs/ -type f -print0 | egrep \*.doc$\|\*.docx$\|\*.rtf$\|svn_helper_trunk_info.txt$ -z | xargs -0 -I coco cp --parents "coco" -t ./test_docs/
+function copy_svn() {
+    find ./Documentation/svn_docs/ -type f -print0 | egrep -i \*.xls$\|\*.doc$\|\*.docx$\|\*.rtf$\|svn_helper_trunk_info.txt$ -z | xargs -0 -I coco cp --parents "coco" -t ./test_docs/
+}
+
+function basckup_svn() {
+    find ./Documentation/svn_docs/ -type f | egrep -i \*.xls$\|\*.doc$\|\*.docx$\|\*.rtf$\|svn_helper_trunk_info.txt$ > ./test_docs/files
+    zip ./test_docs/zip.zip -@ < ./test_docs/files
 }
 
 batch_Import
