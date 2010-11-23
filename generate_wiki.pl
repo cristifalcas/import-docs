@@ -111,7 +111,7 @@ my $wiki_files_info = "wiki_files_info.txt";
 
 my $delete_everything = "no";
 my $delete_categories = "yes";
-my $make_categories = "no";
+my $make_categories = "yes";
 my $pid_old = "100000";
 my $all_real = "no";
 my $type_old = "";
@@ -412,18 +412,24 @@ sub make_categories {
 	    $text .= "\[\[Category:$sec_key\]\]\n"
 	}
 
-	if ( $our_wiki->wiki_exists_page($url) ) {
-	    my $page = $our_wiki->wiki_get_page($url);
-	    while ($page =~ m/\[\[Category:(.*?)\]\]/gi ) {
-		my $q = $1;
-		my $w = quotemeta $q;
-		$text .= "\[\[Category:$q\]\]\n" if ($text !~ m/\[\[Category:$w\]\]/);
+	if (WikiCommons::is_remote ne "yes"){
+	    if ( $our_wiki->wiki_exists_page($url) ) {
+		my $page = $our_wiki->wiki_get_page($url);
+		while ($page =~ m/\[\[Category:(.*?)\]\]/gi ) {
+		    my $q = $1;
+		    my $w = quotemeta $q;
+		    $text .= "\[\[Category:$q\]\]\n" if ($text !~ m/\[\[Category:$w\]\]/);
+		}
 	    }
+	    $text .= "----\n\n";
+	    $our_wiki->wiki_edit_page($url, $text);
+	    die "Could not import url $url.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url) );
+	} else {
+	    $text .= "----\n\n";
+	    print "\tCopy category to $remote_work_path\n";
+	    WikiCommons::makedir("$remote_work_path");
+	    WikiCommons::write_file("$remote_work_path/$url", $text);
 	}
-	$text .= "----\n\n";
-
-	$our_wiki->wiki_edit_page($url, $text);
-	die "Could not import url $url.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url) );
 	my $work_dir = "$wiki_dir/categories/$url";
 	WikiCommons::makedir("$work_dir");
 	WikiCommons::write_file ("$work_dir/$wiki_files_info", "md5 = 0\nrel_path = 0\nsvn_url = 0\nlink_type = category\n");

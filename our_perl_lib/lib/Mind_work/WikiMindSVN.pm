@@ -29,19 +29,25 @@ sub get_categories {
 sub generate_categories {
     my ($ver, $main, $big_ver, $customer, $dir_type) = @_;
     ## $general_categories_hash->{5.01.019}->{5.01} means that 5.01.019 will be in 5.01 category
-    $general_categories_hash->{$ver}->{$main} = 1 if $ver ne "" && $ver ne $main;
-    $general_categories_hash->{$ver}->{$big_ver} = 1 if $ver ne "" && $big_ver ne "";
-    $general_categories_hash->{$ver}->{$customer} = 1 if $big_ver ne "" && $customer ne "";
-    $general_categories_hash->{$ver}->{$dir_type} = 1 if $big_ver ne "" && $dir_type ne "";
+    if ($ver ne "") {
+	$general_categories_hash->{$ver}->{$main} = 1 if $ver ne $main;
+	$general_categories_hash->{$ver}->{$big_ver} = 1 if $big_ver ne "";
+	$general_categories_hash->{$ver}->{$customer} = 1 if $customer ne "";
+	$general_categories_hash->{$ver}->{$dir_type} = 1 if $dir_type ne "";
+    }
 
-    $general_categories_hash->{$main}->{$big_ver} = 1 if $main ne "" && $big_ver ne "";
-    $general_categories_hash->{$main}->{$customer} = 1 if $main ne "" && $customer ne "";
-    $general_categories_hash->{$main}->{$dir_type} = 1 if $main ne "" && $dir_type ne "";
-    $general_categories_hash->{$main}->{'Mind SVN autoimport'} = 1 if $main ne "";
+    if ($main ne "") {
+	$general_categories_hash->{$main}->{$big_ver} = 1 if $big_ver ne "";
+	$general_categories_hash->{$main}->{$customer} = 1 if $customer ne "";
+	$general_categories_hash->{$main}->{$dir_type} = 1 if $dir_type ne "";
+	$general_categories_hash->{$main}->{'Mind SVN autoimport'} = 1;
+    }
 
-    $general_categories_hash->{$customer}->{$dir_type} = 1 if $customer ne "" && $dir_type ne "";
-    $general_categories_hash->{$customer}->{'MIND_Customers'} = 1 if $customer ne "";
-    $general_categories_hash->{$customer}->{'Mind SVN autoimport'} = 1 if $customer ne "";
+    if ($customer ne "") {
+	$general_categories_hash->{$customer}->{$dir_type} = 1 if $dir_type ne "";
+	$general_categories_hash->{$customer}->{'MIND_Customers'} = 1;
+	$general_categories_hash->{$customer}->{'Mind SVN autoimport'} = 1;
+    }
 
     $general_categories_hash->{$big_ver}->{'Mind SVN autoimport'} = 1 if $big_ver ne "";
     $general_categories_hash->{$dir_type}->{'Mind SVN autoimport'} = 1 if $dir_type ne "";
@@ -256,13 +262,13 @@ sub add_document {
 	$big_ver = $big_ver.$url_sep."RN" if $big_ver ne "";
 	$customer = $customer.$url_sep."RN" if $customer ne "";
 	my @categories = ();
-	push @categories, $ver_fixed;
+# 	push @categories, $ver_fixed;
 	push @categories, $main;
 	push @categories, $big_ver;
-	push @categories, $customer if $known_customer;
+# 	push @categories, $customer if $known_customer;
 # print "b=$big_ver|\tm=$main|\tv=$ver|\tvf=$ver_fixed|\tsp=$ver_sp|\tid=$ver_id|\tc=$customer\n";
 # print "$page_url\n";
-	generate_categories($ver_fixed, $main, $big_ver, $customer, $dir_type);
+	generate_categories("", $main, $big_ver, "", $dir_type);
 	die "RN $page_url already exists:\n\t$rel_path\n".Dumper($pages_toimp_hash->{$page_url}) if exists $pages_toimp_hash->{$page_url};
 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
 	return 0;
@@ -280,7 +286,7 @@ sub add_document {
 	    if (exists $pages_ver->{$page_url_caps}->{'id'}) {
 		$id = $pages_ver->{$page_url_caps}->{'id'} + 1;
 	    }
-	    print "Fixed name: $page_url.\n\t$rel_path\n\t$pages_toimp_hash->{$page_url}[1]\n";
+# 	    print "Fixed name: $page_url.\n\t$rel_path\n\t$pages_toimp_hash->{$page_url}[1]\n";
 	    $page_url .= "$url_sep"."$id";
 	    $pages_ver->{$page_url_caps}->{'id'} = $id;
 # 	    die "Same SP already exists from $rel_path, url $page_url: $full_ver = $pages_ver->{$page_url_caps}->{'ver'}.\n".Dumper($pages_toimp_hash->{$page_url});
