@@ -817,8 +817,8 @@ next if $change_id lt "B605220";
 	    $crt_info->{$key}->{'size'} = $doc_size;
 	    $crt_info->{$key}->{'revision'} = $doc_rev;
 
-# 	    if ( ! Compare($crt_info->{$key}, $prev_info->{$key}) ) {
-	    if ( ! -e "$to_path/$change_id/$key.doc" || -s "$to_path/$change_id/$key.doc" != $crt_info->{$key}->{'size'} ) {
+	    if ( ! Compare($crt_info->{$key}, $prev_info->{$key}) ) {
+# 	    if ( ! -e "$to_path/$change_id/$key.doc" || -s "$to_path/$change_id/$key.doc" != $crt_info->{$key}->{'size'} ) {
 		print "\tUpdate svn http for $key.\n";
 		$request = HTTP::Request->new(GET => "$dir");
 		$request->authorization_basic("$svn_user", "$svn_pass");

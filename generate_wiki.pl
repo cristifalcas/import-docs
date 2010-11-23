@@ -726,8 +726,6 @@ if ($path_type eq "mind_svn") {
 			$header .= "The original document can be found at [$info_h->{$name}/$info_crt_h->{$key}->{'name'} this address]\n";
 			$header .= "</center>\n----\n\n";
 			last;
-		    } else {
-			die "Name unknown: $key.\n";
 		    }
 		}
 	    } elsif ($suffix eq ".rtf") {

@@ -167,7 +167,7 @@ WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1) if $deb
 	if ($text1 ne $text2 ) {
 WikiCommons::write_file("$dir/".++$i." html_text1.$name.txt", $text1, 1);
 WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
-	die "Missing text after working on html file in dir $dir.\n";
+	print "Missing text after working on html file in dir $dir.\n";
 	return undef;
     }
     ## here we remove text, so we use it last
@@ -383,13 +383,13 @@ my @q=();
 	}
     }
     if ( scalar @ancestors ) {
-	print "all lists here: ".Encode::encode('utf8', $a_tag->as_text)."\n\t";
+# 	print "all lists here: ".Encode::encode('utf8', $a_tag->as_text)."\n\t";
 	foreach my $parent (@ancestors) {
-	    print "".$parent->tag."\t";
+# 	    print "".$parent->tag."\t";
 	    last if $parent->tag eq "body";
 	    $parent->replace_with_content;
 	}
-	print "\n";
+# 	print "\n";
     } else {
 	die "not all lists here: ".Encode::encode('utf8', $a_tag->as_text)."\n".Dumper(@q) if ! scalar @q;
 	$a_tag->tag("b");
