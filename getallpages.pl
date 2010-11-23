@@ -19,25 +19,28 @@ $mw->login( {lgname => 'admin', lgpassword => '!0admin@9' } )
 sub all_pages {
 $mw->list ( { action => 'query',
 	list => 'allpages',
-	apnamespace => '0',
-	aplimit=>'500' },
+	apnamespace => '14' },
     { max => 40000, hook => \&print_title } )
             || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
 }
 
 sub all_links {
 $mw->list ( { action => 'query',
-	list => 'alllinks',
-	allimit=>'500' },
+	list => 'alllinks' },
     { max => 40000, hook => \&print_title } )
             || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
 }
 
+sub all_categories {
+$mw->list ( { action => 'query',
+	list => 'allcategories' },
+    { max => 40000, hook => \&print_title } )
+            || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+}
 
 sub all_images {
 $mw->list ( { action => 'query',
-	list => 'allimages',
-	ailimit=>'500' },
+	list => 'allimages' },
     { max => 40000, hook => \&print_url } )
             || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
 }
@@ -73,6 +76,7 @@ sub print_url {
     }
 }
 
+# all_categories
 all_pages
 # all_links
 # all_images

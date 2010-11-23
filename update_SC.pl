@@ -654,9 +654,9 @@ sub write_common_info {
     write_file("$to_path/common_info", $text);
 }
 
-sub svn_info {
+sub svn_list {
     my ($dir, $file) = @_;
-    print "\t-SVN info for $file.\t". (time() - $time)."\n" if defined $file;
+    print "\t-SVN list for $file.\t". (time() - $time)."\n" if defined $file;
     my $res;
     if (exists $svn_info_all->{$dir}) {
 	$res = $svn_info_all->{$dir}->{$file};
@@ -670,7 +670,7 @@ sub svn_info {
 	my $hash = XMLin($xml);
 	$res = $hash->{'list'}->{'entry'};
     }
-    print "\t+SVN info for $file.\t". (time() - $time)."\n" if defined $file;
+    print "\t+SVN list for $file.\t". (time() - $time)."\n" if defined $file;
     return $res;
 }
 
@@ -768,7 +768,7 @@ if ($bulk_svn_update eq "yes"){
 	next if ($tmp !~ "^http://" || defined $svn_info_all->{$tmp});
 	while ( ! defined $svn_info_all->{$tmp} && $retries < 3){
 	    print "\tRetrieve svn info for $key.\t". (time() - $time) ."\n";
-	    my $res = svn_info($tmp);
+	    my $res = svn_list($tmp);
 	    $svn_info_all->{$tmp} = $res if defined $res;
 	    $retries++;
 	}
@@ -803,7 +803,7 @@ next if $change_id lt "B605220";
 	foreach my $key (sort keys %$svn_docs) {
 	    my $dir = @$info_comm[$index_comm->{$key}];
 	    my $file = $svn_docs->{$key};
-	    my $res = svn_info("$dir", "$file");
+	    my $res = svn_list("$dir", "$file");
 
 	    my $doc_rev = $res->{'commit'}->{'revision'};
 	    my $doc_size = $res->{'size'};

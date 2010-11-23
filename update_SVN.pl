@@ -31,29 +31,6 @@ WikiCommons::makedir ("$to_path");
 $to_path = abs_path("$to_path");
 # 0758062144
 
-sub svn_list {
-    my $url = shift;
-    my $output = `svn list --non-interactive --no-auth-cache --trust-server-cert --password "$svn_pass" --username "$svn_user" "$url"`;
-    if ($?) {
-	print "\tError $? for svn list.\n";
-	return undef;
-    }
-    $output =~ s/\/$//gm;
-    return $output;
-}
-
-sub svn_checkout {
-    my ($url, $local) = @_;
-    my $list = svn_list($url);
-    return undef if undef $list;
-    my $output = `svn co --non-interactive --no-auth-cache --trust-server-cert --password "$svn_pass" --username "$svn_user" "$url" "$local" 2> /dev/null`;
-    if ($?) {
-	die "\tError $? for svn checkout $url to $local.\n";
-	return undef;
-    }
-    return 1;
-}
-
 sub get_dir {
     my $dir = shift;
     my $info = {};
@@ -90,12 +67,12 @@ sub get_documentation {
 	foreach my $doc_dir (@search_in_dirs){
 	    my $svn_url = "$svn/$doc_dir";
 	    my $local_url = "$local/$doc_dir";
-	    if ( defined svn_list($svn_url) ){
+	    if ( defined WikiCommons::svn_list($svn_url, $svn_pass, $svn_user) ){
 		print "checkout:\n\t$svn_url\n\t\tto\n\t$local_url\n" ;
 		WikiCommons::makedir ("$local_url");
 		my $text = "SVN_URL = $svn_url\nLOCAL_SVN_PATH = $local_url\n";
 		WikiCommons::write_file("$local_url/$svn_helper_file", $text);
-		svn_checkout($svn_url, $local_url);
+		WikiCommons::svn_checkout($svn_url, $local_url, $svn_pass, $svn_user);
 	    }
 	}
     } else {
@@ -103,7 +80,7 @@ sub get_documentation {
 	WikiCommons::makedir ("$local");
 	my $text = "SVN_URL = $svn\nLOCAL_SVN_PATH = $local\n";
 	WikiCommons::write_file("$local/$svn_helper_file", $text);
-	svn_checkout($svn, $local);
+	WikiCommons::svn_checkout($svn, $local, $svn_pass, $svn_user);
     }
 }
 
@@ -111,7 +88,7 @@ sub clean_path {
     my ($svn, $local) = @_;
     my @local_dirs = ();
     @local_dirs = get_dir($local) if -d "$local";
-    my @svn_dirs = split "\n", svn_list($svn);
+    my @svn_dirs = split "\n", WikiCommons::svn_list($svn, $svn_pass, $svn_user);
     my ($only_on_local, $only_on_svn, $common) = WikiCommons::array_diff( \@local_dirs, \@svn_dirs);
     foreach (@$only_on_local) {
 	print "Remove dir $local/$_.\n";
