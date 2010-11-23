@@ -28,6 +28,10 @@ use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 use XML::Simple;
 use Mind_work::WikiCommons;
+die "We need the destination path.\n" if ( $#ARGV != 0 );
+our $to_path = shift;
+WikiCommons::makedir ("$to_path");
+$to_path = abs_path("$to_path");
 
 my $attributes_options = {};
 my $dbh;
@@ -38,10 +42,14 @@ my $customers = {};
 sub write_customer {
     my ($hash) = @_;
     print "\t-Get customer info.\t". (WikiCommons::get_time_diff) ."\n";
-    my $dir = "./".$hash->{'names'}->{'displayname'};
+    my $dir = "$to_path/$hash->{'names'}->{'displayname'}";
     WikiCommons::makedir ("$dir");
-#     write_xml($hash, "$dir/attributes");
-print Dumper($hash);
+    my $xs = new XML::Simple;
+    my $xml = $xs->XMLout($hash,
+                      NoAttr => 1,
+                      RootName=>"info",
+                     );
+    WikiCommons::write_file( "$dir/$hash->{'names'}->{'name'}.xml", $xml);
     print "\t+Get customer info.\t". (WikiCommons::get_time_diff) ."\n";
     return $dir;
 }
@@ -114,21 +122,26 @@ $sth->execute();
 
 get_attributes_options();
 get_attributes();
+my $q = {};
 
 while ( my @row=$sth->fetchrow_array() ) {
-    die "Already have this id for cust.\n" if exists $customers->{$row[0]};
-    $customers->{$row[0]}->{'name'} = $row[1];
-    $customers->{$row[0]}->{'displayname'} = $row[2];
+    my $id = $row[0];
+    die "Already have this id for cust.\n" if exists $customers->{$id};
+    $customers->{$id}->{'name'} = $row[1];
+    $customers->{$id}->{'displayname'} = $row[2];
+    $q->{"nr".$id}->{'name'} = $row[1];
+    $q->{"nr".$id}->{'displayname'} = $row[2];
 
     my $cust_info = get_customer_attributes($row[0]);
     next if (! defined $cust_info->{'Latest Version'} || $cust_info->{'Latest Version'} lt "5.00")
-	    && $customers->{$row[0]}->{'displayname'} ne "Billing";
+	    && $customers->{$id}->{'displayname'} ne "Billing";
 
     my $dir = write_customer ($cust_info);
 }
 
 $dbh->disconnect if defined($dbh);
 
-WikiCommons::hash_to_xmlfile($customers, "./customers.xml", "customers");
+WikiCommons::hash_to_xmlfile($q, "./customers.xml", "customers");
+
 # $customers = WikiCommons::xmlfile_to_hash ("./customers.xml");
 # print Dumper($customers);

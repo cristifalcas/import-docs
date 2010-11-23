@@ -130,16 +130,6 @@ sub print_coco {
     print "\t\t\t\trunning $padded out of $total".$array[$nr%@array]." \r";
 }
 
-sub write_xml {
-    my ($info, $name) = @_;
-    my $xs = new XML::Simple;
-    my $xml = $xs->XMLout($info,
-                      NoAttr => 1,
-                      RootName=>"info",
-                     );
-    write_file( "$name.xml", $xml);
-}
-
 sub write_file {
     my ($path, $text) = @_;
     open (FILE, ">$path") or die "can't open file $path for writing: $!\n";
@@ -230,7 +220,7 @@ select t.rcustcompanycode,
  where t.rcuststatus = \'A\'
    and w.attribname = \'Latest Version\'
    and w.attribisn = q.attrib_isn
-   and q.attrib_object_code1 = t.rcustcompanycode;';
+   and q.attrib_object_code1 = t.rcustcompanycode';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
@@ -651,15 +641,13 @@ get_problem_categories();
 get_problem_types();
 get_servicestatus();
 print "+Get common info.\t". (WikiCommons::get_time_diff) ."\n";
-# get_sr_desc(100,1);
-# print Dumper($problem_types);
-# exit 1;
+
 foreach my $cust (sort keys %$customers){
     print "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
 # next if $customers->{$cust}->{'displayname'} ne "Artelecom";
 # next if $cust != 381;
-    next if (! defined $cust_info->{'Latest Version'} || $customers->{$cust}->{'ver'} lt "5.00")
-	    && $customers->{$row[0]}->{'displayname'} ne "Billing";
+    next if (! defined $customers->{$cust}->{'ver'} || $customers->{$cust}->{'ver'} lt "5.00")
+	    && $customers->{$cust}->{'displayname'} ne "Billing";
 
     my $dir = "$to_path/".$customers->{$cust}->{'displayname'};
     WikiCommons::makedir ("$dir");
@@ -695,33 +683,4 @@ foreach my $cust (sort keys %$customers){
     }
 }
 
-# &quot;			"
-# &amp;			&
-# &lt;			<
-# &gt;			>
-# &circ;			?
-# &tilde;			?
-# &ensp;
-# &emsp;
-# &ndash;			?
-# &mdash;			?
-# &lsquo;			?
-# &rsquo;			?
-# &sbquo;			?
-# &ldquo;			?
-# &rdquo;			?
-# &bdquo;			?
-# &lsaquo;		?
-# &rsaquo;		?
-# &euro;			¤
-
-# <div style="BACKGROUND-COLOR:silver">
-### links url encoded
 $dbh->disconnect if defined($dbh);
-# http://62.219.96.62/eServiceReq/mgrqispi93.dll?APPNAME=Service&PRGNAME=SecondFrame&ARGUMENTS=-A001_0000434033E,-N0000$SR,-N001,-N000$CUST
-# http://62.219.96.62/eServiceReq/mgrqispi93.dll?APPNAME=Service&PRGNAME=SecondFrame&ARGUMENTS=-A001_0000434033E,-N0000456,-N001,-N000221
-#sr 1586, customer 221
-# http://62.219.96.62/eServiceReq/mgrqispi93.dll?APPNAME=Service&PRGNAME=SecondFrame&ARGUMENTS=-A001_0000434033E,-N00001586,-N001,-N000221,-N010,-A001_0000434033E,-N000221,-N1,-N00000000,-N000,-N000,-N0000000000,-AFalse,-AFalse,-AFalse,-AFalse,-AFalse,-AALL,-A000000,-A000000,-A000000,-A000000,-N000005,-AFalse,-N000000,-AA,-A,-N000,-N000,-N000,-A,-A,-LFalse,-A,-A000000,-A000000,-A,-LFalse,-N00,-LF,-Akocnet,-A,-AA
-
-#sr 761, customer 328
-# http://62.219.96.62/eServiceReq/mgrqispi93.dll?APPNAME=Service&PRGNAME=SecondFrame&ARGUMENTS=-A001_0000434033E,-N00000761,-N001,-N000328,-N011,-A001_0000434033E,-N000328,-N1,-N00000000,-N000,-N000,-N0000000000,-AFalse,-AFalse,-AFalse,-AFalse,-AFalse,-AALL,-A000000,-A000000,-A000000,-A000000,-N000005,-AFalse,-N000000,-AA,-A,-N000,-N000,-N000,-A,-A,-LFalse,-A,-A000000,-A000000,-A,-LFalse,-N00,-LF,-ASRG,-A,-AA
