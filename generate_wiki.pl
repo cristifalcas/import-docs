@@ -377,6 +377,7 @@ sub generate_pages_to_delete_to_import {
 }
 
 sub delete_categories {
+    return if (WikiCommons::is_remote ne "yes");
     my $categories_dir = "$wiki_dir/categories/";
     my @files = ();
     if (-e "$wiki_dir/categories/") {
@@ -410,20 +411,20 @@ sub make_categories {
 	$url = "Category:$key";
 	foreach my $sec_key (sort keys %{$general_categories_hash->{$key}} ) {
 	    $text .= "\[\[Category:$sec_key\]\]\n"
+# 	if MIND_Customers add customer info
 	}
-
 	if (WikiCommons::is_remote ne "yes"){
-	    if ( $our_wiki->wiki_exists_page($url) ) {
-		my $page = $our_wiki->wiki_get_page($url);
-		while ($page =~ m/\[\[Category:(.*?)\]\]/gi ) {
-		    my $q = $1;
-		    my $w = quotemeta $q;
-		    $text .= "\[\[Category:$q\]\]\n" if ($text !~ m/\[\[Category:$w\]\]/);
-		}
-	    }
-	    $text .= "----\n\n";
-	    $our_wiki->wiki_edit_page($url, $text);
-	    die "Could not import url $url.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url) );
+# 	    if ( $our_wiki->wiki_exists_page($url) ) {
+# 		my $page = $our_wiki->wiki_get_page($url);
+# 		while ($page =~ m/\[\[Category:(.*?)\]\]/gi ) {
+# 		    my $q = $1;
+# 		    my $w = quotemeta $q;
+# 		    $text .= "\[\[Category:$q\]\]\n" if ($text !~ m/\[\[Category:$w\]\]/);
+# 		}
+# 	    }
+# 	    $text .= "----\n\n";
+# 	    $our_wiki->wiki_edit_page($url, $text);
+# 	    die "Could not import url $url.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url) );
 	} else {
 	    $text .= "----\n\n";
 	    print "\tCopy category to $remote_work_path\n";
@@ -483,7 +484,6 @@ sub insertdata {
 	}
     }
     if ($fail){
-#     exit 1;
 	my $name_bad = "$bad_dir/$url".time();
 	WikiCommons::makedir("$name_bad");
 	move("$work_dir","$name_bad");
@@ -598,7 +598,6 @@ sub work_begin {
 sub work_for_docs {
     my ($path_files) = @_;
     my ($to_delete, $to_keep) = work_begin;
-# print "$_\n" foreach (sort keys %$pages_toimp_hash);exit 1;
     if (WikiCommons::is_remote ne "yes") {
 	foreach my $url (sort keys %$to_delete) {
 	    print "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";

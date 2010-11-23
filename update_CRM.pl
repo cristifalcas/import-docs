@@ -254,36 +254,6 @@ select t.rcustcompanycode, t.rcustcompanyname, t.rcustiddisplay
     }
 }
 
-sub get_customer_attributes {
-    my $code = shift;
-    my $info = {};
-    my $SEL_INFO = '
-select t.attrib_isn, t.value_text
-  from tblattrib_values t
- where attrib_object_code1 = :CUST_CODE';
-    my $sth = $dbh->prepare($SEL_INFO);
-    $sth->bind_param( ":CUST_CODE", $code );
-    $sth->execute();
-    my $nr=0;
-    while ( my @row=$sth->fetchrow_array() ) {
-	my $data = "";
-	if (defined $attributes_options->{$row[0]}->{$row[1]}) {
-	     $data = $attributes_options->{$row[0]}->{$row[1]};
-	} else {
-	    $data = $row[1];
-	}
-	$data =~ s/(^\s*)|(\s*$)//;
-	next if $data eq '';
-	if ( $row[0] == 23 || $row[0] == 9  || $row[0] == 6 ) {
-	    $data = $ftp_addr."/Attrib/".$data;
-	}
-	$info->{$attributes->{$row[0]}} = $data;
-    }
-    $info->{'customer_id'} = $code;
-    $info->{'names'} = $customers->{$code};
-    return $info;
-}
-
 sub get_allsrs {
     my $cust = shift;
     my $SEL_INFO = '
@@ -488,16 +458,6 @@ sub sql_connect {
     $dbh->{RowCacheSize}  = 0;
     $dbh->{LongReadLen} = 1024 * 1024;
     $dbh->{LongTruncOk}   = 0;
-}
-
-sub write_customer {
-    my ($hash) = @_;
-    print "\t-Get customer info.\t". (WikiCommons::get_time_diff) ."\n";
-    my $dir = "$to_path/".$hash->{'names'}->{'displayname'};
-    WikiCommons::makedir ("$dir");
-    write_xml($hash, "$dir/attributes");
-    print "\t+Get customer info.\t". (WikiCommons::get_time_diff) ."\n";
-    return $dir;
 }
 
 sub parse_text {
@@ -713,13 +673,10 @@ foreach my $cust (sort keys %$customers){
     print "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
 # next if $customers->{$cust}->{'displayname'} ne "Artelecom";
 # next if $cust != 381;
-    my $cust_info = get_customer_attributes($cust);
-    next if (! defined $cust_info->{'Latest Version'} || $cust_info->{'Latest Version'} lt "5.00")
-	    && $customers->{$cust}->{'displayname'} ne "Billing";
-
-    my $dir = write_customer ($cust_info);
+    my $dir = "$to_path/".$customers->{$cust}->{'displayname'};
+    WikiCommons::makedir ("$dir");
     my $crt_srs = get_allsrs($cust);
-    my $prev_srs = get_previous("$to_path/".$customers->{$cust}->{'displayname'});
+    my $prev_srs = get_previous("$dir");
     foreach my $key (keys %$crt_srs) {
 	last if $update_all eq "yes";
 	my $str = $key."_".$crt_srs->{$key};

@@ -51,6 +51,53 @@ while ( my @row=$sth->fetchrow_array() ) {
     $customers->{"nr".$row[0]}->{'name'} = $row[1];
     $customers->{"nr".$row[0]}->{'displayname'} = $row[2];
 }
+
+    my $cust_info = get_customer_attributes($cust);
+    next if (! defined $cust_info->{'Latest Version'} || $cust_info->{'Latest Version'} lt "5.00")
+	    && $customers->{$cust}->{'displayname'} ne "Billing";
+
+    my $dir = write_customer ($cust_info);
+sub write_customer {
+    my ($hash) = @_;
+    print "\t-Get customer info.\t". (WikiCommons::get_time_diff) ."\n";
+    my $dir = "$to_path/".$hash->{'names'}->{'displayname'};
+    WikiCommons::makedir ("$dir");
+    write_xml($hash, "$dir/attributes");
+    print "\t+Get customer info.\t". (WikiCommons::get_time_diff) ."\n";
+    return $dir;
+}
+
+
+sub get_customer_attributes {
+    my $code = shift;
+    my $info = {};
+    my $SEL_INFO = '
+select t.attrib_isn, t.value_text
+  from tblattrib_values t
+ where attrib_object_code1 = :CUST_CODE';
+    my $sth = $dbh->prepare($SEL_INFO);
+    $sth->bind_param( ":CUST_CODE", $code );
+    $sth->execute();
+    my $nr=0;
+    while ( my @row=$sth->fetchrow_array() ) {
+	my $data = "";
+	if (defined $attributes_options->{$row[0]}->{$row[1]}) {
+	     $data = $attributes_options->{$row[0]}->{$row[1]};
+	} else {
+	    $data = $row[1];
+	}
+	$data =~ s/(^\s*)|(\s*$)//;
+	next if $data eq '';
+	if ( $row[0] == 23 || $row[0] == 9  || $row[0] == 6 ) {
+	    $data = $ftp_addr."/Attrib/".$data;
+	}
+	$info->{$attributes->{$row[0]}} = $data;
+    }
+    $info->{'customer_id'} = $code;
+    $info->{'names'} = $customers->{$code};
+    return $info;
+}
+
 $dbh->disconnect if defined($dbh);
 
 WikiCommons::hash_to_xmlfile($customers, "./customers.xml", "customers");
