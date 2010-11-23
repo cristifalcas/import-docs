@@ -225,18 +225,16 @@ sub add_document {
     }
     else { die "Unknown document type: $dir_type.\n" }
     }
-#     my $simple_url = "";
-#     if ($rest ne "") {
-# 	$simple_url = "$basic_url$url_sep$rest";
-#     } else {
-# 	$simple_url = "$basic_url";
-#     }
+
     my $page_url = "$basic_url";
     chomp $page_url;
     $page_url = WikiCommons::normalize_text( $page_url );
     $page_url = WikiCommons::capitalize_string( $page_url, 'first' );
     my $page_url_caps = WikiCommons::capitalize_string( $page_url, 'small' );
     die "No page for $doc_file.\n" if ($page_url eq "" );
+
+    ++$count_files;
+    print "\tNumber of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n" if ($count_files%100 == 0);
 
     ### Release Notes
     if ($dir =~ /\/(.*? )?Release Notes\//i) {
@@ -262,12 +260,8 @@ sub add_document {
 	$big_ver = $big_ver.$url_sep."RN" if $big_ver ne "";
 	$customer = $customer.$url_sep."RN" if $customer ne "";
 	my @categories = ();
-# 	push @categories, $ver_fixed;
 	push @categories, $main;
 	push @categories, $big_ver;
-# 	push @categories, $customer if $known_customer;
-# print "b=$big_ver|\tm=$main|\tv=$ver|\tvf=$ver_fixed|\tsp=$ver_sp|\tid=$ver_id|\tc=$customer\n";
-# print "$page_url\n";
 	generate_categories("", $main, $big_ver, "", $dir_type);
 	die "RN $page_url already exists:\n\t$rel_path\n".Dumper($pages_toimp_hash->{$page_url}) if exists $pages_toimp_hash->{$page_url};
 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
@@ -275,44 +269,35 @@ sub add_document {
     }
 
     my $full_ver = "$ver $ver_id $ver_sp";
-    if (exists $pages_ver->{$page_url_caps}->{'ver'} && "$pages_ver->{$page_url_caps}->{'ver'}" eq "$full_ver") {
-	my $new = WikiCommons::svn_info("$path_file/$rel_path", "", "");
-	$new =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
-	my $old = WikiCommons::svn_info("$path_file/$pages_toimp_hash->{$page_url}[1]", "", "");
-	$old =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
-	chomp $new; chomp $old;
-	if ($new ne $old) {
-	    my $id = 1;
-	    if (exists $pages_ver->{$page_url_caps}->{'id'}) {
-		$id = $pages_ver->{$page_url_caps}->{'id'} + 1;
-	    }
-# 	    print "Fixed name: $page_url.\n\t$rel_path\n\t$pages_toimp_hash->{$page_url}[1]\n";
-	    $page_url .= "$url_sep"."$id";
-	    $pages_ver->{$page_url_caps}->{'id'} = $id;
-# 	    die "Same SP already exists from $rel_path, url $page_url: $full_ver = $pages_ver->{$page_url_caps}->{'ver'}.\n".Dumper($pages_toimp_hash->{$page_url});
-	}
-    }
-    return 1 if $ver_fixed lt "5.00" && $ver_fixed ne "";
-
     my @categories = ();
     push @categories, $ver_fixed;
     push @categories, $main;
     push @categories, $big_ver;
     push @categories, $customer;
+
+    return 1 if $ver_fixed lt "5.00" && $ver_fixed ne "";
+    return 0 if (exists $pages_ver->{$page_url_caps}->{'ver'} && $pages_ver->{$page_url_caps}->{'ver'} gt "$full_ver");
+
     generate_categories($ver_fixed, $main, $big_ver, $customer, $dir_type);
 
-    ++$count_files;
-    print "\tNumber of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n" if ($count_files%100 == 0);
-
-    if (exists $pages_ver->{$page_url_caps}->{'ver'} && $pages_ver->{$page_url_caps}->{'ver'} gt "$full_ver") {
-# 	print "Ignore new page $page_url from\n\t\t$rel_path\n\tbecause new SP $ver_sp is smaller then $pages_ver->{$page_url_caps}->{'ver'}.\n"
-    } else {
-# 	print "Replace old url $page_url from\n\t\t$pages_toimp_hash->{$page_url}[1]\n\twith the doc from\n\t\t$rel_path\n\tbecause new SP $ver_sp is bigger then $pages_ver->{$page_url_caps}->{'ver'}.\n" if (exists $pages_toimp_hash->{$page_url});
-	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
-# $pages_toimp_hash->{$page_url} = ["1", $rel_path, $svn_url, "link", \@categories];
-# $pages_toimp_hash->{$rel_path} = "$basic_url";
-	$pages_ver->{$page_url_caps}->{'ver'} = "$full_ver";
+    if (exists $pages_ver->{$page_url_caps}->{'ver'} && "$pages_ver->{$page_url_caps}->{'ver'}" eq "$full_ver") {
+	my $new = WikiCommons::svn_info("$path_file/$rel_path", "", "");
+	if (defined $new) {$new =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs; chomp $new;}
+	my $old = WikiCommons::svn_info("$path_file/$pages_toimp_hash->{$page_url}[1]", "", "");
+	if (defined $old) {$old =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs; chomp $old;}
+	if (! defined $new || ! defined $old || $new ne $old) {
+	    my $id = 1;
+	    if (exists $pages_ver->{$page_url_caps}->{'id'}) {
+		$id = $pages_ver->{$page_url_caps}->{'id'} + 1;
+	    }
+	    $page_url .= "$url_sep"."$id";
+	    $pages_ver->{$page_url_caps}->{'id'} = $id;
+	}
     }
+
+    $pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
+    $pages_ver->{$page_url_caps}->{'ver'} = "$full_ver";
+
 #     push(@{$pages_ver->{"$fixed_name$url->{'ver'}_sep$ver_without_sp"}}, $ver_sp);
 }
 

@@ -50,7 +50,7 @@ sub svn_info {
     my ($url, $svn_pass, $svn_user) = @_;
     my $output = `svn info --non-interactive --no-auth-cache --trust-server-cert --password "$svn_pass" --username "$svn_user" "$url"`;
     if ($?) {
-	print "\tError $? for svn list.\n";
+	print "\tError $? for svn info.\n";
 	return undef;
     }
     $output =~ s/\/$//gm;

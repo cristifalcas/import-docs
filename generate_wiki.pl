@@ -377,7 +377,7 @@ sub generate_pages_to_delete_to_import {
 }
 
 sub delete_categories {
-    return if (WikiCommons::is_remote ne "yes");
+    return if (WikiCommons::is_remote eq "yes");
     my $categories_dir = "$wiki_dir/categories/";
     my @files = ();
     if (-e "$wiki_dir/categories/") {
