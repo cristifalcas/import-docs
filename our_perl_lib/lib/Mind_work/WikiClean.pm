@@ -31,6 +31,14 @@ sub tree_clean_empty_p {
     return $tree;
 }
 
+sub tree_is_empty_p {
+    my $tag = shift;
+    foreach my $a_tag ($tag->content_list) {
+	return 0  if (! ref $a_tag || (ref $a_tag && $a_tag->tag ne "br") );
+    }
+    return 1;
+}
+
 sub tree_clean_div {
     my $tree = shift;
     foreach my $a_tag ($tree->guts->look_down(_tag => "div")) {
@@ -122,6 +130,8 @@ WikiCommons::write_file("$dir/".++$i.". tree_text1.$name.txt", $text1, 1) if $de
     $tree->no_space_compacting(0);
 
     ## after TOC, because in TOC we use div
+    $tree = tree_clean_empty_p($tree);
+WikiCommons::write_file("$dir/".++$i.". tree_clean_empty_p.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
     $tree = tree_clean_div($tree) || return undef;
 WikiCommons::write_file("$dir/".++$i.". tree_clean_div.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
 
@@ -396,33 +406,38 @@ my @q=();
     }
 }
 
+sub tree_clean_tables_attributes {
+    my $a_tag = shift;
+    ### clean table attributes
+    foreach my $attr_name ($a_tag->all_external_attr_names){
+	my $attr_value = $a_tag->attr($attr_name);
+	if ( $attr_name eq "border"
+		|| $attr_name eq "bordercolor"
+		|| $attr_name eq "cellspacing"
+		|| $attr_name eq "frame"
+		|| $attr_name eq "rules"
+		|| $attr_name eq "width"
+		|| $attr_name eq "dir"
+		|| $attr_name eq "align"
+		|| $attr_name eq "style"
+		|| $attr_name eq "cols"
+# 			&& ( $attr_value =~ "page-break-(before|after|inside)")
+		|| $attr_name eq "hspace"
+		|| $attr_name eq "vspace"){
+	    $a_tag->attr("$attr_name", undef);
+	} elsif ($attr_name eq "cellpadding") {
+	} else {
+	    die "Unknown attr in table: $attr_name = $attr_value.\n";
+	    return undef;
+	}
+    }
+}
+
 sub tree_clean_tables {
     my $tree = shift;
 
     foreach my $a_tag ($tree->guts->look_down(_tag => "table")) {
-	### clean table attributes
-	foreach my $attr_name ($a_tag->all_external_attr_names){
-	    my $attr_value = $a_tag->attr($attr_name);
-	    if ( $attr_name eq "border"
-		    || $attr_name eq "bordercolor"
-		    || $attr_name eq "cellspacing"
-		    || $attr_name eq "frame"
-		    || $attr_name eq "rules"
-		    || $attr_name eq "width"
-		    || $attr_name eq "dir"
-		    || $attr_name eq "align"
-		    || $attr_name eq "style"
-		    || $attr_name eq "cols"
-# 			&& ( $attr_value =~ "page-break-(before|after|inside)")
-		    || $attr_name eq "hspace"
-		    || $attr_name eq "vspace"){
-		$a_tag->attr("$attr_name", undef);
-	    } elsif ($attr_name eq "cellpadding") {
-	    } else {
-		die "Unknown attr in table: $attr_name = $attr_value.\n";
-		return undef;
-	    }
-	}
+	tree_clean_tables_attributes($a_tag);
 	### replace thead and tbody with content
 	foreach my $b_tag ($a_tag->content_list){
 	    if (ref $b_tag){
@@ -474,10 +489,11 @@ sub tree_clean_tables {
 		    }
 		    ### remove empty td, add new lines
 		    foreach my $d_tag ($c_tag->content_refs_list){
-			if ( ref $$d_tag && $$d_tag->tag eq "p" ) {
-			    $$d_tag->postinsert(['br']);
+			if ( ref $$d_tag && ( $$d_tag->tag eq "p" || $$d_tag->tag eq "br") ) {
+			    $$d_tag->postinsert(['br']) if $$d_tag->tag ne "br";
+			    $has_content++ if $$d_tag->tag eq "p" && ! tree_is_empty_p($$d_tag);
 			} elsif ( ref $$d_tag ) {
-			    $has_content++, next ;
+			    $has_content++;
 			} else {
 			    $$d_tag =~ s/$/\n/gm;
 			}
@@ -504,6 +520,8 @@ sub tree_clean_lists {
 	$a_tag->detach() if ! scalar $a_tag->content_list();
     }
     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
+	$a_tag->postinsert("\n");
+	$a_tag->preinsert("\n");
 	next if ! $a_tag->is_empty();
 	my $has_content = 0;
 	my $last = "";
@@ -656,73 +674,65 @@ sub fix_external_links {
 sub fix_wiki_chars {
     my $wiki = shift;
     ## fix strange characters
-#     print "\tFix characters in wiki.\t". (WikiCommons::get_time_diff) ."\n";
-    ## decode character in hex: perl -e 'print sprintf("\\x{%x}", $_) foreach (unpack("C*", "�"));print"\n"'
-    # copyright
-#     $wiki =~ s/\x{c3}\x{93}/\x{C2}\x{A9}/gs;
 ## old
-    ## get ascii hex values from http://www.mikezilla.com/exp0012.html ïƒž is ascii %EF%192%17E which is utf \x{e2}\x{87}\x{92}
-    # numbers ??
-#     $wiki =~ s/\x{B2}/2/gs;
-#     $wiki =~ s/\x{B0}/0/gs;
-#     $wiki =~ s/\x{B5}/5/gs;
+# #     get ascii hex values from http://www.mikezilla.com/exp0012.html ïƒž is ascii %EF%192%17E which is utf \x{e2}\x{87}\x{92}
+# #     numbers ??
+# #     $wiki =~ s/\x{B2}/2/gs;
+# #     $wiki =~ s/\x{B0}/0/gs;
+# #     $wiki =~ s/\x{B5}/5/gs;
+    ## decode character in hex (replace character with utf8represantation): perl -e 'print sprintf("\\x{%x}", $_) foreach (unpack("C*", "�"));print"\n"'
     # copyright
-    $wiki =~ s/\x{EF}\x{192}\x{A3}/\x{C2}\x{A9}/gs;
-    $wiki =~ s/\x{EF}\x{192}\x{201C}/\x{C2}\x{A9}/gs;
-    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{e2}\x{80}\x{9c}/\x{C2}\x{A9}/gs;
-    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{e2}\x{80}\x{9c}\x{20}/\x{C2}\x{A9} /gs;
-    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{a3}/\x{C2}\x{A9}/gs;
-#     $wiki =~ s/ï/\x{C2}\x{A9}/gs;
+    $wiki =~ s/\x{EF}\x{192}\x{A3}/\x{C2}\x{A9}/gsi;
+    $wiki =~ s/\x{EF}\x{192}\x{201C}/\x{C2}\x{A9}/gsi;
+    $wiki =~ s/\x{C3}\x{AF}\x{C6}\x{92}\x{E2}\x{80}\x{9C}/\x{C2}\x{A9}/gsi;
+    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{a3}/\x{C2}\x{A9}/gsi;
+    $wiki =~ s/\x{ef}\x{83}\x{93}/\x{C2}\x{A9}/gsi;
     ## registered
-    $wiki =~ s/\x{EF}\x{192}\x{2019}/\x{C2}\x{AE}/gs;
-    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{e2}\x{80}\x{99}/\x{C2}\x{AE}/gs;
-#     $wiki =~ s/Â®/\x{C2}\x{AE}/gs;
+    $wiki =~ s/\x{EF}\x{192}\x{2019}/\x{C2}\x{AE}/gsi;
+    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{e2}\x{80}\x{99}/\x{C2}\x{AE}/gsi;
+    $wiki =~ s/\x{ef}\x{83}\x{92}/\x{C2}\x{AE}/gsi;
     ## trademark
-    $wiki =~ s/\x{EF}\x{192}\x{201D}/\x{E2}\x{84}\x{A2}/gs;
-    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{e2}\x{80}\x{9d}/\x{E2}\x{84}\x{A2}/gs;
-    ## long line
-    $wiki =~ s/\x{E2}\x{20AC}\x{201D}/\x{E2}\x{80}\x{93}/gs;
-    $wiki =~ s/\x{E2}\x{20AC}\x{201C}/\x{E2}\x{80}\x{93}/gs;
-#     $wiki =~ s/â¬/\x{E2}\x{80}\x{93}/gs;
-    ## puiu / amanda
-    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{bf}/\x{e2}\x{97}\x{bb}/gs;
-#     $wiki =~ s/ï¿/\x{e2}\x{97}\x{bb}/gs;
+    $wiki =~ s/\x{EF}\x{192}\x{201D}/\x{E2}\x{84}\x{A2}/gsi;
+    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{e2}\x{80}\x{9d}/\x{E2}\x{84}\x{A2}/gsi;
+    $wiki =~ s/\x{ef}\x{83}\x{94}/\x{E2}\x{84}\x{A2}/gsi;
 
+    ## long line
+    $wiki =~ s/\x{E2}\x{20AC}\x{201D}/\x{E2}\x{80}\x{93}/gsi;
+    $wiki =~ s/\x{E2}\x{20AC}\x{201C}/\x{E2}\x{80}\x{93}/gsi;
+    ## puiu / amanda
+    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{bf}/\x{e2}\x{97}\x{bb}/gsi;
     ## RIGHTWARDS arrow
-    $wiki =~ s/\x{EF}\x{192}\x{A8}/\x{e2}\x{86}\x{92}/gs;
-    $wiki =~ s/\x{E2}\x{2020}\x{2019}/\x{e2}\x{86}\x{92}/gs;
-    $wiki =~ s/\x{EF}\x{192}\x{A0}/\x{e2}\x{86}\x{92}/gs;
-    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{a8}/\x{e2}\x{86}\x{92}/gs;
-    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{a0}/\x{e2}\x{86}\x{92}/gs;
+    $wiki =~ s/\x{EF}\x{192}\x{A8}/\x{e2}\x{86}\x{92}/gsi;
+    $wiki =~ s/\x{E2}\x{2020}\x{2019}/\x{e2}\x{86}\x{92}/gsi;
+    $wiki =~ s/\x{EF}\x{192}\x{A0}/\x{e2}\x{86}\x{92}/gsi;
+    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{a8}/\x{e2}\x{86}\x{92}/gsi;
+    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{a0}/\x{e2}\x{86}\x{92}/gsi;
     ## LEFTWARDS arrow
-    $wiki =~ s/\x{EF}\x{192}\x{178}/\x{e2}\x{86}\x{90}/gs;
-    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c5}\x{b8}/\x{e2}\x{86}\x{90}/gs;
+    $wiki =~ s/\x{EF}\x{192}\x{178}/\x{e2}\x{86}\x{90}/gsi;
+    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c5}\x{b8}/\x{e2}\x{86}\x{90}/gsi;
     ## double arrow:
-    $wiki =~ s/\x{EF}\x{192}\x{17E}/\x{e2}\x{87}\x{92}/gs;
+    $wiki =~ s/\x{EF}\x{192}\x{17E}/\x{e2}\x{87}\x{92}/gsi;
     ## 3 points
-    $wiki =~ s/\x{E2}\x{20AC}\x{A6}/.../gs;
+    $wiki =~ s/\x{E2}\x{20AC}\x{A6}/.../gsi;
     ## circle
-    $wiki =~ s/\x{EF}\x{201A}\x{B7}/\x{e2}\x{97}\x{8f}/gs;
-    $wiki =~ s/\x{c3}\x{af}\x{e2}\x{80}\x{9a}\x{c2}\x{b7}/\x{e2}\x{97}\x{8f}/gs;
+    $wiki =~ s/\x{EF}\x{201A}\x{B7}/\x{e2}\x{97}\x{8f}/gsi;
+    $wiki =~ s/\x{c3}\x{af}\x{e2}\x{80}\x{9a}\x{c2}\x{b7}/\x{e2}\x{97}\x{8f}/gsi;
     ## black square %EF%201A%A7
-    $wiki =~ s/\x{c3}\x{af}\x{e2}\x{80}\x{9a}\x{c2}\x{a7}/\x{e2}\x{96}\x{a0}/gs;
+    $wiki =~ s/\x{c3}\x{af}\x{e2}\x{80}\x{9a}\x{c2}\x{a7}/\x{e2}\x{96}\x{a0}/gsi;
     ## CHECK MARK
-    $wiki =~ s/\x{EF}\x{81}\x{90}/\x{e2}\x{9c}\x{94}/gs;
-    $wiki =~ s/\x{EF}\x{192}\x{BC}/\x{e2}\x{9c}\x{94}/gs;
-    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{bc}/\x{e2}\x{9c}\x{94}/gs;
+    $wiki =~ s/\x{EF}\x{81}\x{90}/\x{e2}\x{9c}\x{94}/gsi;
+    $wiki =~ s/\x{EF}\x{192}\x{BC}/\x{e2}\x{9c}\x{94}/gsi;
+    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{bc}/\x{e2}\x{9c}\x{94}/gsi;
     ## BALLOT X
-    $wiki =~ s/\x{EF}\x{81}\x{8F}/\x{e2}\x{9c}\x{98}/gs;
-    $wiki =~ s/\x{EF}\x{192}\x{BB}/\x{e2}\x{9c}\x{98}/gs;
-    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{bb}/\x{e2}\x{9c}\x{98}/gs;
+    $wiki =~ s/\x{EF}\x{81}\x{8F}/\x{e2}\x{9c}\x{98}/gsi;
+    $wiki =~ s/\x{EF}\x{192}\x{BB}/\x{e2}\x{9c}\x{98}/gsi;
+    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{bb}/\x{e2}\x{9c}\x{98}/gsi;
     ## CIRCLE BACKSLASH
-    $wiki =~ s/\x{EF}\x{81}\x{2014}/\x{e2}\x{9c}\x{98}/gs;
-#     $wiki =~ s//\x{e2}\x{83}\x{A0}/gs;
+    $wiki =~ s/\x{EF}\x{81}\x{2014}/\x{e2}\x{9c}\x{98}/gsi;
     ## apostrof
-#     $wiki =~ s/â¬"/'/gs;
-#     $wiki =~ s/â¬Ü/'/gs;
+#     $wiki =~ s/????/'/gs;
     ## ghilimele
-#     $wiki =~ s/â¬S/"/gs;
-#     $wiki =~ s/â¬/"/gs;
+#     $wiki =~ s/????/"/gs;
 
     return $wiki;
 }
