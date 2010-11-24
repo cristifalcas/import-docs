@@ -5,8 +5,12 @@ use strict;
 
 $SIG{__WARN__} = sub { die @_ };
 
+use Cwd 'abs_path','chdir';
+use File::Basename;
+
 BEGIN {
-    my $need= "./instantclient_11_2/";
+    my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
+    my $need= "$path_prefix/instantclient_11_2/";
     my $ld= $ENV{LD_LIBRARY_PATH};
     if(  ! $ld  ) {
         $ENV{LD_LIBRARY_PATH}= $need;
@@ -21,17 +25,15 @@ BEGIN {
 }
 
 ## ~ 10 hours first run
-use lib "./our_perl_lib/lib";
+use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."our_perl_lib/lib";
 use DBI;
 use Net::FTP;
 use LWP::UserAgent;
 use File::Path qw(make_path remove_tree);
 use Data::Dumper;
-use File::Basename;
 use File::Listing qw(parse_dir);
 use File::Find;
 use File::Copy;
-use Cwd 'abs_path','chdir';
 use XML::Simple;
 use Encode;
 # use File::Find::Rule;
@@ -46,22 +48,22 @@ WikiCommons::makedir ("$tmp_path");
 WikiCommons::makedir ("$to_path");
 $tmp_path = abs_path("$tmp_path");
 $to_path = abs_path("$to_path");
+my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
+WikiCommons::set_real_path($path_prefix);
 
 our $svn_pass = 'svncheckout';
 our $svn_user = 'svncheckout';
 our $files_info = "files_info.txt";
-our $general_template_file = "./SC_template.txt";
+our $general_template_file = "$path_prefix/SC_template.txt";
 my $svn_update = "yes";
-my $force_db_update = "yes";
+my $force_db_update = "no";
 my $bulk_svn_update = "yes";
 
-# $svn_update = "no" if ($force_db_update eq "yes");
+die "Templare file missing.\n" if ! -e $general_template_file;
 
 our $time = time();
 my $svn_info_all = {};
 my $url_sep = WikiCommons::get_urlsep;
-my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
-WikiCommons::set_real_path($path_prefix);
 
 our $dbh;
 our $request;

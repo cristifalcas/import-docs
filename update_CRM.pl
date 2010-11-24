@@ -5,8 +5,12 @@ use strict;
 
 $SIG{__WARN__} = sub { die @_ };
 
+use Cwd 'abs_path','chdir';
+use File::Basename;
+
 BEGIN {
-    my $need= "./instantclient_11_2/";
+    my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
+    my $need= "$path_prefix/instantclient_11_2/";
     my $ld= $ENV{LD_LIBRARY_PATH};
     if(  ! $ld  ) {
         $ENV{LD_LIBRARY_PATH}= $need;
@@ -64,10 +68,8 @@ BEGIN {
 # 	$info->{N}->{'status'}->{'code'}
 # 	$info->{N}->{'status'}->{'desc'}
 
-
-use Cwd 'abs_path','chdir';
-use File::Basename;
-use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."./our_perl_lib/lib";
+# $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
+use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."our_perl_lib/lib";
 use DBI;
 use Net::FTP;
 use LWP::UserAgent;

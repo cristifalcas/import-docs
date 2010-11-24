@@ -5,17 +5,17 @@ use strict;
 $SIG{__WARN__} = sub { die @_ };
 
 ## ~ 10 hours first run
-use lib "./our_perl_lib/lib";
+use Cwd 'abs_path','chdir';
+use File::Basename;
+use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."our_perl_lib/lib";
 # use DBI;
 use File::Path qw(make_path remove_tree);
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
-use File::Basename;
 use File::Listing qw(parse_dir);
 use File::Find;
 use File::Copy;
 use POSIX;
-use Cwd 'abs_path','chdir';
 use Mind_work::WikiCommons;
 
 our $svn_user = 'svncheckout';

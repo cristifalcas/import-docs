@@ -63,9 +63,9 @@ use Switch;
 use Getopt::Std;
 
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
-# print "$path_prefix\n";
+print "$path_prefix\n";
 # my $real_path = abs_path($0);
-use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."./our_perl_lib/lib";
+use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."our_perl_lib/lib";
 
 use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
 use Data::Dumper;
@@ -102,7 +102,7 @@ $wiki_dir = abs_path($wiki_dir);
 
 my $bad_dir = "$path_prefix/work/bad_dir";
 WikiCommons::makedir $bad_dir;
-my $pid_file = "$path_prefix/work/mind_import_wiki.pid";
+my $pid_file = "$path_prefix/work/mind_importing_$path_type.pid";
 my $remote_work_path = "$path_prefix/remote_batch_files";
 
 my $wiki_result = "result";
@@ -472,7 +472,7 @@ sub insertdata {
     my @files = grep { (!/^\.\.?$/) } readdir(DIR);
     closedir(DIR);
     my $fail = 0;
-    if (scalar @files != 3 ) {
+    if (scalar @files > 3 ) {
 	print "Dir $work_dir doesn't have the correct number of files.\n";
 	$fail = 1;
     }
@@ -616,9 +616,14 @@ if (-f "$pid_file") {
     close (FH);
     chomp @info;
     $pid_old = $info[0];
-    $type_old = $info[1];
+    my $exists = kill 0, $pid_old;
+    if ( $exists ) {
+	my $proc_name = `ps -p $pid_old -o cmd`;
+	print "$proc_name\n";
+	die "Process is already running.\n" if $proc_name =~ m/(.+?)generate_wiki\.pl -d (.+?) -n $path_type(.*)/;
+    }
 }
-WikiCommons::write_file($pid_file,"$$\n$path_type\n");
+WikiCommons::write_file($pid_file,"$$\n");
 
 $our_wiki = new WikiWork();
 if ($path_type eq "mind_svn") {
