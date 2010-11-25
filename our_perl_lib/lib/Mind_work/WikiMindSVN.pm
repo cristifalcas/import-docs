@@ -284,7 +284,7 @@ sub add_document {
     return 1 if $ver_fixed lt "5.00" && $ver_fixed ne "";
     return 0 if (exists $pages_ver->{$page_url_caps}->{'ver'} && $pages_ver->{$page_url_caps}->{'ver'} gt "$full_ver");
 
-    generate_categories($ver_fixed, $main, $big_ver, $customer, $dir_type, $fixed_name);
+    generate_categories($ver_fixed, $main, $big_ver, $customer, $dir_type, $fixed_name)if $fixed_name !~ m/^DB Changes For/;
 
     if (exists $pages_ver->{$page_url_caps}->{'ver'} && "$pages_ver->{$page_url_caps}->{'ver'}" eq "$full_ver") {
 	my $new = WikiCommons::svn_info("$path_file/$rel_path", "", "");

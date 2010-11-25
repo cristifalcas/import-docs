@@ -334,6 +334,15 @@ sub fix_name {
     $fixed_name = "Fix Invoice XML Deployment" if ($fixed_name eq "FixInvoiceXML Deployment");
     $fixed_name = "Install Oracle 10g Veracity" if ($fixed_name eq "InstallOracle10g Veracity");
     $fixed_name = "Business Processes Monitoring Deployment" if ($fixed_name eq "BP Monitoring Deployment");
+    $fixed_name = "System - DB Documentation" if ($fixed_name eq "Syetem - DB Documentation");
+    $fixed_name = "Sabanchi Telecom EPay Credit Adapter API" if ($fixed_name eq "Sabanci Telecom EPay Credit Adapter API");
+    $fixed_name = "Sabanchi - DB Documentation" if ($fixed_name eq "Sebanci Telecom EPay Credit Adapter API");
+    $fixed_name = "Parameter Descriptions" if ($fixed_name eq "Parameters Descriptions");
+    $fixed_name = "Provisioning Client - Nortel" if ($fixed_name eq "Nortel Provisioning Client");
+    $fixed_name = "Provisioning Client - Netspeak" if ($fixed_name eq "Netspeak Provisioning Client");
+
+    $fixed_name = s/Wizards API/Wizard API/;
+    $fixed_name = s/Provisionig/Provisioning/;
 
     $fixed_name = "$1 - Data Dictionary Tables" if ($fixed_name =~ m/Data Dictionary Tables\s*-?\s*(.*)/i && defined $1 && $1 !~ m/^\s*$/);
     $fixed_name = "$1 - DB Documentation" if ($fixed_name =~ m/DB Documentation\s*-?\s*([a-z0-9]{1,})/i && defined $1 && $1 !~ m/^\s*$/);
