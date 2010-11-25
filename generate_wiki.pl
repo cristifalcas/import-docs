@@ -463,7 +463,7 @@ sub insertdata {
     WikiCommons::write_file("$work_dir/$wiki_files_info", $text);
     delete($pages_toimp_hash->{$url});
 
-#     WikiCommons::cleanup($work_dir);
+    WikiCommons::cleanup($work_dir);
     opendir(DIR, $work_dir);
     my @files = grep { (!/^\.\.?$/) } readdir(DIR);
     closedir(DIR);
