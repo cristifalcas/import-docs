@@ -27,7 +27,7 @@ sub get_categories {
 }
 
 sub generate_categories {
-    my ($ver, $main, $big_ver, $customer, $dir_type) = @_;
+    my ($ver, $main, $big_ver, $customer, $dir_type, $name) = @_;
     ## $general_categories_hash->{5.01.019}->{5.01} means that 5.01.019 will be in 5.01 category
     if ($ver ne "") {
 	$general_categories_hash->{$ver}->{$main} = 1 if $ver ne $main;
@@ -49,8 +49,13 @@ sub generate_categories {
 	$general_categories_hash->{$customer}->{'Mind SVN autoimport'} = 1;
     }
 
+    $general_categories_hash->{$name}->{'All SVN Documents'} = 1 if $name ne "";
     $general_categories_hash->{$big_ver}->{'Mind SVN autoimport'} = 1 if $big_ver ne "";
     $general_categories_hash->{$dir_type}->{'Mind SVN autoimport'} = 1 if $dir_type ne "";
+    $general_categories_hash->{'Mind SVN autoimport'} = 1;
+    $general_categories_hash->{'All SVN Documents'} = 1;
+    $general_categories_hash->{'MIND_Customers'} = 1;
+
     ## Release Notes categories
     my $url_sep = WikiCommons::get_urlsep;
     $general_categories_hash->{$main}->{'Release Notes'} = 1 if $main =~ /($url_sep)RN$/;
@@ -262,7 +267,7 @@ sub add_document {
 	my @categories = ();
 	push @categories, $main;
 	push @categories, $big_ver;
-	generate_categories("", $main, $big_ver, "", $dir_type);
+	generate_categories("", $main, $big_ver, "", $dir_type, "");
 	die "RN $page_url already exists:\n\t$rel_path\n".Dumper($pages_toimp_hash->{$page_url}) if exists $pages_toimp_hash->{$page_url};
 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
 	return 0;
@@ -274,11 +279,12 @@ sub add_document {
     push @categories, $main;
     push @categories, $big_ver;
     push @categories, $customer;
+    push @categories, $fixed_name;
 
     return 1 if $ver_fixed lt "5.00" && $ver_fixed ne "";
     return 0 if (exists $pages_ver->{$page_url_caps}->{'ver'} && $pages_ver->{$page_url_caps}->{'ver'} gt "$full_ver");
 
-    generate_categories($ver_fixed, $main, $big_ver, $customer, $dir_type);
+    generate_categories($ver_fixed, $main, $big_ver, $customer, $dir_type, $fixed_name);
 
     if (exists $pages_ver->{$page_url_caps}->{'ver'} && "$pages_ver->{$page_url_caps}->{'ver'}" eq "$full_ver") {
 	my $new = WikiCommons::svn_info("$path_file/$rel_path", "", "");

@@ -409,24 +409,19 @@ sub make_categories {
     foreach my $key (sort keys %$general_categories_hash) {
 	my $text = "----\n\n";
 	$url = "Category:$key";
-	foreach my $sec_key (sort keys %{$general_categories_hash->{$key}} ) {
-	    $text .= "\[\[Category:$sec_key\]\]\n"
-# 	if MIND_Customers add customer info
-	}
-	if (WikiCommons::is_remote ne "yes"){
-# 	    if ( $our_wiki->wiki_exists_page($url) ) {
-# 		my $page = $our_wiki->wiki_get_page($url);
-# 		while ($page =~ m/\[\[Category:(.*?)\]\]/gi ) {
-# 		    my $q = $1;
-# 		    my $w = quotemeta $q;
-# 		    $text .= "\[\[Category:$q\]\]\n" if ($text !~ m/\[\[Category:$w\]\]/);
-# 		}
-# 	    }
-# 	    $text .= "----\n\n";
-# 	    $our_wiki->wiki_edit_page($url, $text);
-# 	    die "Could not import url $url.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url) );
+	if (ref $general_categories_hash->{$key}) {
+	    foreach my $sec_key (sort keys %{$general_categories_hash->{$key}} ) {
+		$text .= "\[\[Category:$sec_key\]\]\n" if exists $general_categories_hash->{$key}->{$sec_key} ;
+#	 	if MIND_Customers add customer info
+	    }
 	} else {
-	    $text .= "----\n\n";
+# 	    $text .= "\[\[Category:$key\]\]\n";
+	}
+	$text .= "----\n\n";
+	if (WikiCommons::is_remote ne "yes"){
+	    $our_wiki->wiki_edit_page($url, $text);
+	    die "Could not import url $url.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url) );
+	} else {
 	    print "\tCopy category to $remote_work_path\n";
 	    WikiCommons::makedir("$remote_work_path");
 	    WikiCommons::write_file("$remote_work_path/$url", $text);
@@ -434,6 +429,7 @@ sub make_categories {
 	my $work_dir = "$wiki_dir/categories/$url";
 	WikiCommons::makedir("$work_dir");
 	WikiCommons::write_file ("$work_dir/$wiki_files_info", "md5 = 0\nrel_path = 0\nsvn_url = 0\nlink_type = category\n");
+	WikiCommons::write_file("$work_dir/$url", $text);
 
 	print "Done $url.\t". (WikiCommons::get_time_diff) ."\n";
     }
