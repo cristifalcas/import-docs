@@ -716,12 +716,14 @@ sub fix_wiki_chars {
     $wiki =~ s/\x{E2}\x{20AC}\x{201C}/\x{E2}\x{80}\x{93}/gsi;
     ## puiu / amanda
     $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{bf}/\x{e2}\x{97}\x{bb}/gsi;
+    $wiki =~ s/\x{ef}\x{83}\x{bf}/\x{e2}\x{97}\x{bb}/gsi;
     ## RIGHTWARDS arrow
     $wiki =~ s/\x{EF}\x{192}\x{A8}/\x{e2}\x{86}\x{92}/gsi;
     $wiki =~ s/\x{E2}\x{2020}\x{2019}/\x{e2}\x{86}\x{92}/gsi;
     $wiki =~ s/\x{EF}\x{192}\x{A0}/\x{e2}\x{86}\x{92}/gsi;
     $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{a8}/\x{e2}\x{86}\x{92}/gsi;
     $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{a0}/\x{e2}\x{86}\x{92}/gsi;
+    $wiki =~ s/\x{ef}\x{83}\x{a0}/\x{e2}\x{86}\x{92}/gsi;
     ## LEFTWARDS arrow
     $wiki =~ s/\x{EF}\x{192}\x{178}/\x{e2}\x{86}\x{90}/gsi;
     $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c5}\x{b8}/\x{e2}\x{86}\x{90}/gsi;
