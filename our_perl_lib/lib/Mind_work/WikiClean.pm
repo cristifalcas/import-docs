@@ -262,20 +262,31 @@ sub tree_remove_empty_element {
 sub tree_clean_span {
     my ($tree, $tag) = @_;
     foreach my $a_tag ($tree->guts->look_down(_tag => "span")) {
-	$a_tag->detach, next if $a_tag->is_empty();
+# 	$a_tag->detach, next if $a_tag->is_empty();
+	my $imgs = "";
 	foreach my $attr_name ($a_tag->all_external_attr_names){
 	    my $attr_value = $a_tag->attr($attr_name);
 	    if ( $attr_name eq "style") {
 		my @attr = split ';', $attr_value;
 		my $res = undef;
 		foreach my $att (@attr) {
-		    if ($att =~ m/^\s*(background: (#[0-9a-fA-F]{6}))|(transparent)\s*$/i
+		    if ($att =~ m/^\s*background: (#[0-9a-fA-F]{6}|transparent)\s*$/i
 			|| $att =~ m/^\s*(font-(weight|style): (normal|normal))\s*$/i
-			|| $att =~ m/^\s*(width|height): [0-9.]{1,}px\s*$/i ) {
+			|| $att =~ m/^\s*(width|height): [0-9.]{1,}(px|in)\s*$/i ) {
 			$res .= $att.";";
+			$imgs = $1 if ($att =~ m/^\s*width: ([0-9.]{1,}(px|in))\s*$/i);
+		    } elsif ($att =~ m/^\s*background: #[0-9a-fA-F]{6} url(.*)\((.*)\)(.*)/i) {
+			my $img = $2;
+			my $p = HTML::Element->new('p');
+			my $imge = HTML::Element->new('img');
+			$imgs = $1*100 if ($imgs ne "" && $imgs =~ m/\s*(.*)in\s*$/);
+# 			$imgs = 500 if $imgs>500;
+			$imge->attr("width", "$imgs") if $imgs ne "";
+			$imge->attr("src", "$img");
+			$p->push_content($imge);
+			$a_tag->postinsert($p);
 		    } else {
 			next if $att =~ m/^\s*float: (top|left|right)\s*$/i
-				    || $att =~ m/^\s*(width|height): [0-9.]{1,}in\s*$/i
 				    || $att =~ m/^\s*text-decoration:/i
 				    || $att =~ m/^\s*position: absolute\s*$/i
 				    || $att =~ m/^\s*(top|left|right): -?[0-9]{1,}(\.[0-9]{1,})?in\s*$/i
