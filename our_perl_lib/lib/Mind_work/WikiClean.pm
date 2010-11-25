@@ -19,7 +19,7 @@ use Text::Balanced qw (
     );
 use Encode;
 
-our $debug = "no";
+our $debug = "yes";
 
 sub tree_clean_empty_p {
     my $tree = shift;
@@ -170,16 +170,22 @@ WikiCommons::write_file("$dir/".++$i.". tree_clean_lists.$name.html", tree_to_ht
 WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1) if $debug eq "yes";
     $tree->no_space_compacting(0);
 
+    foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
+	$a_tag->postinsert("\n");
+	$a_tag->preinsert("\n");
+    }
+
     $text1 =~ s/[\s]//gs;
     $text2 =~ s/[\s]//gs;
     $text1 =~ s/\x{c2}\x{a0}//gs;
     $text2 =~ s/\x{c2}\x{a0}//gs;
-	if ($text1 ne $text2 ) {
+	if ($text1 ne $text2) {{
 WikiCommons::write_file("$dir/".++$i." html_text1.$name.txt", $text1, 1);
 WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
-	print "Missing text after working on html file in dir $dir.\n";
+	print "Missing text after working on html file $name, in dir $dir.\n";
+	last if  $name eq "SC:B04021 STP document";
 	return undef;
-    }
+    }}
     ## here we remove text, so we use it last
     $tree = tree_fix_numbers_in_headings($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_fix_numbers_in_headings.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
@@ -520,8 +526,6 @@ sub tree_clean_lists {
 	$a_tag->detach() if ! scalar $a_tag->content_list();
     }
     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
-	$a_tag->postinsert("\n");
-	$a_tag->preinsert("\n");
 	next if ! $a_tag->is_empty();
 	my $has_content = 0;
 	my $last = "";
