@@ -104,11 +104,7 @@ sub add_document {
 
     $dir_type = "SC" if ($name =~ m/^B[[:digit:]]{4,}\s+/);
     my $url_sep = WikiCommons::get_urlsep;
-    if ($str =~ m/.*\/([^\/]+)(branded|users? manuals?)\//i) {
-# 	print "$1\t\t$2\n";
-	$customer = "$1";
-    }
-
+    $customer = "$1" if ($str =~ m/.*\/([^\/]+)(branded|users? manuals?)\//i);
 
     switch ("$dir_type") {
     case "Projects" {
@@ -235,9 +231,6 @@ sub add_document {
     $fixed_name = WikiCommons::normalize_text( $fixed_name );
     $fixed_name = WikiCommons::capitalize_string( $fixed_name, 'first' );
     my $page_url = "$fixed_name$basic_url";
-    chomp $page_url;
-    $page_url = WikiCommons::normalize_text( $page_url );
-    $page_url = WikiCommons::capitalize_string( $page_url, 'first' );
     my $page_url_caps = WikiCommons::capitalize_string( $page_url, 'small' );
     die "No page for $doc_file.\n" if ($page_url eq "" );
 
@@ -287,10 +280,20 @@ sub add_document {
 
     if (exists $pages_ver->{$page_url_caps}->{'ver'} && "$pages_ver->{$page_url_caps}->{'ver'}" eq "$full_ver") {
 	my $new = WikiCommons::svn_info("$path_file/$rel_path", "", "");
-	if (defined $new) {$new =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs; chomp $new;}
+	if (defined $new) {
+	    $new =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
+	    chomp $new;
+	} else {
+	    $new = WikiCommons::get_file_md5($doc_file);
+	}
 	my $old = WikiCommons::svn_info("$path_file/$pages_toimp_hash->{$page_url}[1]", "", "");
-	if (defined $old) {$old =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs; chomp $old;}
-	if (! defined $new || ! defined $old || $new ne $old) {
+	if (defined $old) {
+	    $old =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
+	    chomp $old;
+	} else {
+	    $old = $path_file/$pages_toimp_hash->{$page_url}[0];
+	}
+	if ($new ne $old) {
 	    my $id = 1;
 	    if (exists $pages_ver->{$page_url_caps}->{'id'}) {
 		$id = $pages_ver->{$page_url_caps}->{'id'} + 1;
