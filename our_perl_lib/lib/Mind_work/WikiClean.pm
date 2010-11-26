@@ -171,8 +171,8 @@ WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1) if $deb
     $tree->no_space_compacting(0);
 
     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
-	$a_tag->postinsert("\n");
-	$a_tag->preinsert("\n");
+	$a_tag->postinsert(['br']);
+	$a_tag->preinsert(['br']);
     }
 
     $text1 =~ s/[\s]//gs;
@@ -206,6 +206,7 @@ sub tree_fix_numbers_in_headings {
 		    $$b_tag =~ s/^\s*([0-9]{1,}\.)+\s*//;
 		    $$b_tag =~ s/^\s*[0-9]{1,}([a-z])\s*/$1/i;
 		    $$b_tag =~ s/^\s*([0-9]{1,}\.)+[0-9]{1,}\s*//;
+		    $$b_tag =~ s/^\s*[0-9]{1}\s+//;
 		    last;
 		}
 	    }

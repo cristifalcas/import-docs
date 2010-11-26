@@ -342,7 +342,7 @@ sub generate_html_file {
     eval {
 	local $SIG{ALRM} = sub { die "alarm\n" };
 	alarm 1800;
-	$result = `python ./unoconv -f html "$doc_file"`;
+	$result = `python $real_path/unoconv -f html "$doc_file"`;
 	alarm 0;
     };
     if ($@) {
