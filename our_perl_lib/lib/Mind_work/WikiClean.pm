@@ -19,7 +19,7 @@ use Text::Balanced qw (
     );
 use Encode;
 
-our $debug = "yes";
+our $debug = "no";
 
 sub tree_clean_empty_p {
     my $tree = shift;
@@ -205,6 +205,7 @@ sub tree_fix_numbers_in_headings {
 		if (! ref $$b_tag ){
 		    $$b_tag =~ s/^\s*([0-9]{1,}\.)+\s*//;
 		    $$b_tag =~ s/^\s*[0-9]{1,}([a-z])\s*/$1/i;
+		    $$b_tag =~ s/^\s*([0-9]{1,}\.)+[0-9]{1,}\s*//;
 		    last;
 		}
 	    }
@@ -316,14 +317,13 @@ sub tree_clean_headings {
     print "\t-Fix headings.\t". (WikiCommons::get_time_diff) ."\n";
     foreach my $a_tag ($tree->descendants()) {
 	if ($a_tag->tag =~ m/^h[0-9]{1,2}$/) {
-	    $a_tag->postinsert("\n");
-	    $a_tag->preinsert("\n");
 	    my $dad = $a_tag->parent;
 	    my $grandpa = $dad->parent;
 	    my $grandgrandpa = $grandpa->parent;
 
 	    tree_headings_clean_content($a_tag);
-
+	    tree_headings_clean_content($a_tag); ## leftovers from like span
+	    tree_headings_clean_images($a_tag);
 	    ### remove empty headings
 	    my $heading_txt = $a_tag->as_text();
 	    $heading_txt =~ s/\s+/ /gm;
@@ -349,6 +349,26 @@ sub tree_clean_headings {
     return $tree;
 }
 
+sub tree_headings_clean_images {
+    my $a_tag = shift;
+    $a_tag->preinsert(['br']);
+    foreach my $b_tag ($a_tag->content_refs_list){
+	next if ! ref $$b_tag;
+	my $tag = $$b_tag->tag();
+	if ($tag eq "img" || $tag eq "table") {
+	    my $img = $$b_tag->clone;
+# print $img->as_HTML."\n";
+	    $$b_tag->detach;
+	    my $p = HTML::Element->new('p');
+	    my $b = HTML::Element->new('br');
+# 	    my $img = HTML::Element->new($img);
+	    $b->push_content($p);
+	    $b->push_content($img);
+	    $a_tag->postinsert($b);
+	}
+    }
+}
+
 sub tree_headings_clean_content {
     my $a_tag = shift;
 ## extract images from heading and put it before it. Remove other attr
@@ -356,9 +376,7 @@ sub tree_headings_clean_content {
 	next if ! ref $$b_tag;
 	my $tag = $$b_tag->tag();
 	if ($tag eq "img" || $tag eq "table") {
-	    my $img = $$b_tag->clone;
-	    $$b_tag->detach;
-	    $a_tag->preinsert($img);
+	    ## later alligator
 	} elsif ($tag eq "br" || $tag eq "a") {
 	    $$b_tag->detach;
 	} elsif ($tag eq "sup") {
@@ -655,17 +673,11 @@ sub fix_small_issues {
 
     ## replace breaks
     $wiki =~ s/(<BR>)|(<br\ \/>)/\n\n/gmi;
-    ## remove table of content
-#     $wiki =~ s/\'\'\'Content\'\'\'[\s]*<div id="Table of Contents.*?>.*?<\/div>//gsi;
-#     $wiki =~ s/(<u>)?(\'\'\'Table of Content[s]?\'\'\')?(<\/u>)?[\s]*<div id="Table of Contents.*?>.*?<\/div>//gsi;
     ## remove empty sub
     $wiki =~ s/<sub>[\s]{0,}<\/sub>//gsi;
-    ## remove empty div
-#     $wiki =~ s/<div>[\s]{0,}<\/div>//gsi;
     $wiki =~ s/(<center>)|(<\/center>)/\n\n/gmi;
 
     $wiki =~ s/\r\n?/\n/gs;
-#     $wiki =~ s/\|\}/\n\|\}/gs;
     ## remove consecutive blank lines
     $wiki =~ s/(\n){4,}/\n\n/gs;
     $wiki =~ s/^[ \t]+//mg;

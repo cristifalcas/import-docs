@@ -4,7 +4,6 @@ use warnings;
 use strict;
 $SIG{__WARN__} = sub { die @_ };
 
-#soffice "-accept=socket,host=localhost,port=2002;urp;StarOffice.ServiceManager" -nologo -headless -nofirststartwizard
 
 # categories:
 # $file_url -> $rest_dir[length], $ver, $cust
@@ -456,10 +455,10 @@ sub insertdata {
 	copy("$work_dir/$url.full.wiki","$remote_work_path/$url") or die "Copy failed for: $url.full.wiki to $remote_work_path: $!\t". (WikiCommons::get_time_diff) ."\n";
     }
 
-    my $text = "md5 = $pages_toimp_hash->{$url}[$md5_pos]\n";
-    $text .= "rel_path = $pages_toimp_hash->{$url}[$rel_path_pos]\n";
-    $text .= "svn_url = $pages_toimp_hash->{$url}[$svn_url_pos]\n";
-    $text .= "link_type = $pages_toimp_hash->{$url}[$link_type_pos]\n";
+    my $text = "md5 = ".$pages_toimp_hash->{$url}[$md5_pos]."\n";
+    $text .= "rel_path = ".$pages_toimp_hash->{$url}[$rel_path_pos]."\n";
+    $text .= "svn_url = ".$pages_toimp_hash->{$url}[$svn_url_pos]."\n";
+    $text .= "link_type = ".$pages_toimp_hash->{$url}[$link_type_pos]."\n";
     WikiCommons::write_file("$work_dir/$wiki_files_info", $text);
     delete($pages_toimp_hash->{$url});
 
