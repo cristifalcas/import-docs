@@ -472,6 +472,8 @@ sub tree_clean_tables {
     my $tree = shift;
 
     foreach my $a_tag ($tree->guts->look_down(_tag => "table")) {
+	$a_tag->postinsert(['br']);
+	$a_tag->preinsert(['br']);
 	tree_clean_tables_attributes($a_tag);
 	### replace thead and tbody with content
 	foreach my $b_tag ($a_tag->content_list){
@@ -707,13 +709,15 @@ sub fix_wiki_chars {
 # #     $wiki =~ s/\x{B2}/2/gs;
 # #     $wiki =~ s/\x{B0}/0/gs;
 # #     $wiki =~ s/\x{B5}/5/gs;
-    ## decode character in hex (replace character with utf8represantation): perl -e 'print sprintf("\\x{%x}", $_) foreach (unpack("C*", "Ó"));print"\n"'
+# #     decode character in hex (replace character with utf8represantation):
+# # 		perl -e 'print sprintf("\\x{%x}", $_) foreach (unpack("C*", "Ó"));print"\n"'
     # copyright
     $wiki =~ s/\x{EF}\x{192}\x{A3}/\x{C2}\x{A9}/gsi;
     $wiki =~ s/\x{EF}\x{192}\x{201C}/\x{C2}\x{A9}/gsi;
     $wiki =~ s/\x{C3}\x{AF}\x{C6}\x{92}\x{E2}\x{80}\x{9C}/\x{C2}\x{A9}/gsi;
     $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{a3}/\x{C2}\x{A9}/gsi;
     $wiki =~ s/\x{ef}\x{83}\x{93}/\x{C2}\x{A9}/gsi;
+    $wiki =~ s/\x{ef}\x{83}\x{a3}/\x{C2}\x{A9}/gsi;
     ## registered
     $wiki =~ s/\x{EF}\x{192}\x{2019}/\x{C2}\x{AE}/gsi;
     $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{e2}\x{80}\x{99}/\x{C2}\x{AE}/gsi;
