@@ -171,8 +171,8 @@ WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1) if $deb
     $tree->no_space_compacting(0);
 
     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
-	$a_tag->postinsert("\n");
-	$a_tag->preinsert("\n");
+	$a_tag->postinsert(['br']);
+	$a_tag->preinsert(['br']);
     }
 
     $text1 =~ s/[\s]//gs;
