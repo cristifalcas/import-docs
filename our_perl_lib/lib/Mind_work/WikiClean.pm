@@ -206,6 +206,7 @@ sub tree_fix_numbers_in_headings {
 		    $$b_tag =~ s/^\s*([0-9]{1,}\.)+\s*//;
 		    $$b_tag =~ s/^\s*[0-9]{1,}([a-z])\s*/$1/i;
 		    $$b_tag =~ s/^\s*([0-9]{1,}\.)+[0-9]{1,}\s*//;
+		    $$b_tag =~ s/^\s*[0-9]{1}\s+//;
 		    last;
 		}
 	    }
