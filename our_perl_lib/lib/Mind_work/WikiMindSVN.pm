@@ -267,7 +267,7 @@ sub add_document {
     return 0 if (exists $pages_ver->{$page_url_caps}->{'ver'} && $pages_ver->{$page_url_caps}->{'ver'} gt "$full_ver");
 
     my @categories = ();
-    if ($fixed_name !~ m/^DB Changes For/) {
+    if ($fixed_name !~ m/^DB Changes For/i) {
 	push @categories, $ver_fixed;
 	push @categories, $main;
 	push @categories, $big_ver;
