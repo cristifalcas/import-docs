@@ -105,38 +105,27 @@ sub add_document {
     $dir_type = "SC" if ($name =~ m/^B[[:digit:]]{4,}\s+/);
     my $url_sep = WikiCommons::get_urlsep;
     $customer = "$1" if ($str =~ m/.*\/([^\/]+)(branded|users? manuals?)\//i);
+    $customer = WikiCommons::get_correct_customer($customer);
 
     switch ("$dir_type") {
     case "Projects" {
         ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $values[0], $values[1]);
         $fixed_name = WikiCommons::fix_name ($name, $customer, $big_ver, $main, $ver, $ver_sp, $ver_id);
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values], $values[0], $values[1]);
-	if ($customer eq "") {
-	    $basic_url = "$url_sep$ver_fixed";
-	} else {
-	    $basic_url = "$url_sep$ver_fixed$url_sep$customer";
-	}
+	$basic_url = "$url_sep$ver_fixed";
     }
     case "Docs" {
         ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $values[0], $values[1]);
 # print "xxx:$values[0], $values[1]\n";
         $fixed_name = WikiCommons::fix_name ($name, $customer, $big_ver, $main, $ver, $ver_sp, $ver_id);
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values], $values[0], $values[1]);
-	if ($customer eq "") {
-	    $basic_url = "$url_sep$ver_fixed";
-	} else {
-	    $basic_url = "$url_sep$ver_fixed$url_sep$customer";
-	}
+	$basic_url = "$url_sep$ver_fixed";
     }
     case "Projects_Deployment" {
         ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $values[0], $values[0]);
         $fixed_name = WikiCommons::fix_name ($name, $customer, $big_ver, $main, $ver, $ver_sp, $ver_id);
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values], $values[0], $values[0]);
-	if ($customer eq "") {
-	    $basic_url = "$url_sep$ver_fixed";
-	} else {
-	    $basic_url = "$url_sep$ver_fixed$url_sep$customer";
-	}
+	$basic_url = "$url_sep$ver_fixed";
     }
     case "Docs_Customizations" {
         ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $values[1], $values[2]);
@@ -154,7 +143,7 @@ sub add_document {
 
         $fixed_name = WikiCommons::fix_name ( $name, $values[0], $big_ver, $main, $ver, $ver_sp, $ver_id);
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values], $values[1], $q);
-        $basic_url = "$url_sep$ver_fixed$url_sep$customer";
+        $basic_url = "$url_sep$ver_fixed";
     }
     case "Projects_Customizations" {
         ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $values[1], $values[2]);
@@ -170,7 +159,7 @@ sub add_document {
 
         $fixed_name = WikiCommons::fix_name ($name, $values[0], $big_ver, $main, $ver, $ver_sp, $ver_id);
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values], $values[1], $values[2]);
-        $basic_url = "$url_sep$ver_fixed$url_sep$customer";
+        $basic_url = "$url_sep$ver_fixed";
     }
     case "Projects_Deployment_Customization" {
         $customer = $values[0];
@@ -199,16 +188,13 @@ sub add_document {
 
         $fixed_name = WikiCommons::fix_name ( $name, $values[0], $big_ver, $main, $ver, $ver_sp, $ver_id);
 	if ($ver ne '' ){
-	    $basic_url = "$url_sep$ver_fixed$url_sep$customer";
-	} else {
-	    $basic_url = "$url_sep$customer";
+	    $basic_url = "$url_sep$ver_fixed";
 	}
     }
     case "Projects_Common" {
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values]);
         $customer = "_Common for all customers_";
         $fixed_name = WikiCommons::fix_name ($name, $customer);
-        $basic_url = "";
     }
     case "Projects_Deployment_Common" {
 	if ( scalar @values == 1 ) {
@@ -218,7 +204,6 @@ sub add_document {
 	}
         $customer = "_Common for all customers_";
         $fixed_name = WikiCommons::fix_name ( $name, $customer );
-        $basic_url = "";
     }
     case "SC" {
 	$basic_url = "$name";
@@ -226,6 +211,8 @@ sub add_document {
     }
     else { die "Unknown document type: $dir_type.\n" }
     }
+
+    $basic_url = "$basic_url$url_sep$customer" if ($customer ne "");
 
     $fixed_name = fix_naming($fixed_name, $customer) if ($dir !~ /\/(.*? )?Release Notes\//i);
     $fixed_name = WikiCommons::normalize_text( $fixed_name );

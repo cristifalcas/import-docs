@@ -100,6 +100,8 @@ sub add_document {
 	return;
     }
     chomp $page_url;
+    $page_url = WikiCommons::normalize_text( $page_url );
+    $page_url = WikiCommons::capitalize_string( $page_url, 'first' );
     die "Url is empty.\n" if $page_url eq '';
     die "We already have url $page_url from $doc_file with \n". Dumper($pages_toimp_hash->{$page_url}) .".\t". (WikiCommons::get_time_diff) ."\n" if (exists $pages_toimp_hash->{$page_url});
 
