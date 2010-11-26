@@ -293,7 +293,7 @@ sub add_document {
 	    $old =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
 	    chomp $old;
 	} else {
-	    $old = $path_file/$pages_toimp_hash->{$page_url}[0];
+	    $old = $pages_toimp_hash->{$page_url}[0];
 	}
 
 	if ($new ne $old) {
