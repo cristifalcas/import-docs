@@ -103,7 +103,15 @@ sub add_document {
     $page_url = WikiCommons::normalize_text( $page_url );
     $page_url = WikiCommons::capitalize_string( $page_url, 'first' );
     die "Url is empty.\n" if $page_url eq '';
-    die "We already have url $page_url from $doc_file with \n". Dumper($pages_toimp_hash->{$page_url}) .".\t". (WikiCommons::get_time_diff) ."\n" if (exists $pages_toimp_hash->{$page_url});
+
+    if (exists $pages_toimp_hash->{$page_url}) {
+	my $txt = "We already have url $page_url.\n";
+	$txt .= "Current document path is $doc_file.\n";
+	$txt .= "The other document path is $path_files/$pages_toimp_hash->{$page_url}[1].\n";
+	$txt .= Dumper($pages_toimp_hash->{$page_url})."\n";
+	WikiCommons::write_file("$dir/$name.error", $txt);
+	return 0;
+    }
 
     print "No txt page for $doc_file.\n" if ($page_url eq "" );
     $pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), "$rel_path", "", "link", \@categories];
