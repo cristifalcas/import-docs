@@ -99,8 +99,8 @@ sub heading_new_line {
     my $tree = shift;
     foreach my $a_tag ($tree->descendants()) {
 	if ($a_tag->tag =~ m/^h[0-9]{1,2}$/) {
-	    $a_tag->postinsert("\n");
-	    $a_tag->preinsert("\n");
+	    $a_tag->postinsert(['br']);
+	    $a_tag->preinsert(['br']);
 	}
     }
     return $tree;
