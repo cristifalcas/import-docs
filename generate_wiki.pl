@@ -498,11 +498,11 @@ sub work_real {
 	$svn_url = uri_escape( $svn_url,"^A-Za-z\/:0-9\-\._~%" );
 	my $wiki = create_wiki($url, "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]");
 	if (! defined $wiki ){
-	    $to_keep->{$url} = $pages_toimp_hash->{$url};
-	    print "Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
-	    my $name_bad = "$bad_dir/$url".time();
-	    WikiCommons::makedir("$name_bad");
-	    move("$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]","$name_bad");
+# 	    $to_keep->{$url} = $pages_toimp_hash->{$url};
+# 	    print "Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
+# 	    my $name_bad = "$bad_dir/$url".time();
+# 	    WikiCommons::makedir("$name_bad");
+# 	    move("$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]","$name_bad");
 	    delete($pages_toimp_hash->{$url});
 	    next;
 	}

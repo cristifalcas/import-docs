@@ -19,7 +19,7 @@ use Text::Balanced qw (
     );
 use Encode;
 
-our $debug = "yes";
+our $debug = "no";
 
 sub tree_clean_empty_p {
     my $tree = shift;
@@ -175,15 +175,17 @@ WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1) if $deb
 	$a_tag->preinsert(['br']);
     }
 
-    $text1 =~ s/[\s]//gs;
-    $text2 =~ s/[\s]//gs;
+    $text1 =~ s/[ \t]+/ /gs;
+    $text2 =~ s/[ \t]+/ /gs;
+    $text1 =~ s/\n+/\n/gs;
+    $text2 =~ s/\n+/\n/gs;
     $text1 =~ s/\x{c2}\x{a0}//gs;
     $text2 =~ s/\x{c2}\x{a0}//gs;
-	if ($text1 ne $text2) {{
+    if ($text1 ne $text2) {{
+	last if $name eq "SC:B04021 STP document" || $name eq "Cashier -- 5.31";
 WikiCommons::write_file("$dir/".++$i." html_text1.$name.txt", $text1, 1);
 WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
 	print "Missing text after working on html file $name, in dir $dir.\n";
-	last if  $name eq "SC:B04021 STP document";
 	return undef;
     }}
     ## here we remove text, so we use it last
