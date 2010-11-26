@@ -279,6 +279,7 @@ sub add_document {
 # print "2. $page_url\n";
 
     if (exists $pages_ver->{$page_url_caps}->{'ver'} && "$pages_ver->{$page_url_caps}->{'ver'}" eq "$full_ver") {
+
 	my $new = WikiCommons::svn_info("$path_file/$rel_path", "", "");
 	if (defined $new) {
 	    $new =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
@@ -286,6 +287,7 @@ sub add_document {
 	} else {
 	    $new = WikiCommons::get_file_md5($doc_file);
 	}
+
 	my $old = WikiCommons::svn_info("$path_file/$pages_toimp_hash->{$page_url}[1]", "", "");
 	if (defined $old) {
 	    $old =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
@@ -293,11 +295,10 @@ sub add_document {
 	} else {
 	    $old = $path_file/$pages_toimp_hash->{$page_url}[0];
 	}
+
 	if ($new ne $old) {
 	    my $id = 1;
-	    if (exists $pages_ver->{$page_url_caps}->{'id'}) {
-		$id = $pages_ver->{$page_url_caps}->{'id'} + 1;
-	    }
+	    $id = $pages_ver->{$page_url_caps}->{'id'} + 1 if (exists $pages_ver->{$page_url_caps}->{'id'});
 	    $page_url .= "$url_sep"."$id";
 	    $pages_ver->{$page_url_caps}->{'id'} = $id;
 	}
