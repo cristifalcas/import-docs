@@ -19,7 +19,7 @@ use Text::Balanced qw (
     );
 use Encode;
 
-our $debug = "no";
+our $debug = "yes";
 
 sub tree_clean_empty_p {
     my $tree = shift;
