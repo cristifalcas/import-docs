@@ -454,6 +454,7 @@ sub tree_clean_tables_attributes {
 		|| $attr_name eq "rules"
 		|| $attr_name eq "width"
 		|| $attr_name eq "dir"
+		|| $attr_name eq "bgcolor"
 		|| $attr_name eq "align"
 		|| $attr_name eq "style"
 		|| $attr_name eq "cols"
