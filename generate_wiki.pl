@@ -499,10 +499,10 @@ sub work_real {
 	my $wiki = create_wiki($url, "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]");
 	if (! defined $wiki ){
 # 	    $to_keep->{$url} = $pages_toimp_hash->{$url};
-# 	    print "Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
-# 	    my $name_bad = "$bad_dir/$url".time();
-# 	    WikiCommons::makedir("$name_bad");
-# 	    move("$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]","$name_bad");
+	    print "Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
+	    my $name_bad = "$bad_dir/$url".time();
+	    WikiCommons::makedir("$name_bad");
+	    move("$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]","$name_bad");
 	    delete($pages_toimp_hash->{$url});
 	    next;
 	}
@@ -638,9 +638,8 @@ if ($path_type eq "mind_svn") {
     my $crt_nr = 0;
     foreach my $url (sort keys %$pages_toimp_hash) {
 	$crt_nr++;
-#     next if "$url" ne "SC:B91991";
 	WikiCommons::reset_time();
-	print "\n************************* $crt_nr of $total_nr\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
+	print "\n************************* $crt_nr of $total_nr\nMaking crm url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 
 	WikiCommons::makedir "$wiki_dir/$url/";
 	my $rel_path = "$pages_toimp_hash->{$url}[$rel_path_pos]";
@@ -687,7 +686,7 @@ if ($path_type eq "mind_svn") {
     my $crt_nr = 0;
     foreach my $url (sort keys %$pages_toimp_hash) {
 	$crt_nr++;
-# next if "$url" ne "SC:B03448";
+# next if "$url" ne "SC:B19868";
 	WikiCommons::reset_time();
 	print "\n************************* $crt_nr of $total_nr\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 
@@ -799,7 +798,7 @@ if ($path_type eq "mind_svn") {
 	    WikiCommons::copy_dir ("$wiki_dir/$url/$url $name/$wiki_result", "$wiki_dir/$url/$wiki_result") if ($suffix eq ".doc");
 	}
 	if ($wrong eq "yes" ){
-	    remove_tree("$path_files/$rel_path") || die "Can't remove dir $path_files/$rel_path: $?.\n";
+# 	    remove_tree("$path_files/$rel_path") || die "Can't remove dir $path_files/$rel_path: $?.\n";
 	    next ;
 	}
 	my $full_wiki = "";

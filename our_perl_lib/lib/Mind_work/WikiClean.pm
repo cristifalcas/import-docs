@@ -21,6 +21,14 @@ use Encode;
 
 our $debug = "no";
 
+sub tree_remove_strike {
+    my $tree = shift;
+    foreach my $a_tag ($tree->guts->look_down(_tag => "strike")) {
+	$a_tag->detach;
+    }
+    return $tree;
+}
+
 sub tree_clean_empty_p {
     my $tree = shift;
     foreach my $a_tag ($tree->guts->look_down(_tag => "p")) {
@@ -122,6 +130,8 @@ sub cleanup_html {
 WikiCommons::write_file("$dir/".++$i.". original.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
     $tree = tree_remove_TOC($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_remove_TOC.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
+#     $tree = tree_remove_strike($tree);
+# WikiCommons::write_file("$dir/".++$i.". tree_remove_strike.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
     $tree = heading_new_line($tree) if $debug eq "yes";
 
     $tree->no_space_compacting(1);
@@ -137,15 +147,10 @@ WikiCommons::write_file("$dir/".++$i.". tree_clean_div.$name.html", tree_to_html
 
     $tree = tree_clean_span($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_clean_span.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
+
     $tree = tree_clean_font($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_clean_font.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
 
-#     $tree = tree_clean_empty_tag($tree, 'span');
-# WikiCommons::write_file("$dir/".++$i.". tree_clean_empty_tag_span.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
-#     $tree = tree_clean_empty_tag($tree, 'span');
-# WikiCommons::write_file("$dir/".++$i.". tree_clean_empty_tag_span.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
-#     $tree = tree_clean_empty_tag($tree, 'font');
-# WikiCommons::write_file("$dir/".++$i.". tree_clean_empty_tag_font.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
     $tree = tree_clean_tables($tree) || return undef;
 WikiCommons::write_file("$dir/".++$i.". tree_clean_tables.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
 
@@ -175,13 +180,13 @@ WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1) if $deb
 	$a_tag->preinsert(['br']);
     }
 
-    $text1 =~ s/[ \t]+/ /gs;
-    $text2 =~ s/[ \t]+/ /gs;
-    $text1 =~ s/\n+/\n/gs;
-    $text2 =~ s/\n+/\n/gs;
-    $text1 =~ s/\x{c2}\x{a0}//gs;
-    $text2 =~ s/\x{c2}\x{a0}//gs;
-    if ($text1 ne $text2) {{
+    my $clean_text1 = $text1;
+    my $clean_text2 = $text2;
+    $clean_text1 =~ s/\s*//gs;
+    $clean_text2 =~ s/\s*//gs;
+    $clean_text1 =~ s/\x{c2}\x{a0}//gs;
+    $clean_text2 =~ s/\x{c2}\x{a0}//gs;
+    if ($clean_text1 ne $clean_text2) {{
 	last if $name eq "SC:B04021 STP document" || $name eq "Cashier -- 5.31";
 WikiCommons::write_file("$dir/".++$i." html_text1.$name.txt", $text1, 1);
 WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
@@ -318,8 +323,14 @@ sub tree_clean_headings {
     my $tree = shift;
 
     print "\t-Fix headings.\t". (WikiCommons::get_time_diff) ."\n";
+
     foreach my $a_tag ($tree->descendants()) {
 	if ($a_tag->tag =~ m/^h[0-9]{1,2}$/) {
+	    if (scalar ($a_tag->look_down(_tag => "ul"))) {
+		$a_tag->replace_with_content;
+		next;
+	    }
+
 	    my $dad = $a_tag->parent;
 	    my $grandpa = $dad->parent;
 	    my $grandgrandpa = $grandpa->parent;
@@ -378,7 +389,7 @@ sub tree_headings_clean_content {
     foreach my $b_tag ($a_tag->content_refs_list){
 	next if ! ref $$b_tag;
 	my $tag = $$b_tag->tag();
-	if ($tag eq "img" || $tag eq "table") {
+	if ($tag eq "img" || $tag eq "table" || $tag eq "strike" ) {
 	    ## later alligator
 	} elsif ($tag eq "br" || $tag eq "a") {
 	    $$b_tag->detach;
