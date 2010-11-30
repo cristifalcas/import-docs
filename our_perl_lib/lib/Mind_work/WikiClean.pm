@@ -487,6 +487,12 @@ sub tree_clean_tables {
     my $tree = shift;
 
     foreach my $a_tag ($tree->guts->look_down(_tag => "table")) {
+	### replace all headings with bold
+	foreach my $b_tag ($a_tag->descendants()) {
+	    if ($b_tag->tag =~ m/^h[0-9]{1,2}$/) {
+		$b_tag->tag('b');
+	    }
+	}
 	$a_tag->postinsert(['br']);
 	$a_tag->preinsert(['br']);
 	tree_clean_tables_attributes($a_tag);
@@ -567,10 +573,10 @@ sub tree_clean_tables {
 
 sub tree_clean_lists {
     my $tree = shift;
-    ### remove empty lists from body
-    foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
-	$a_tag->detach() if ! scalar $a_tag->content_list();
-    }
+    ### remove empty lists from body (don't, because we remove numbering lists)
+#     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
+# 	$a_tag->detach() if ! scalar $a_tag->content_list();
+#     }
     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
 	next if ! $a_tag->is_empty();
 	my $has_content = 0;
@@ -693,7 +699,8 @@ sub fix_small_issues {
     ## remove empty sub
     $wiki =~ s/<sub>[\s]{0,}<\/sub>//gsi;
     $wiki =~ s/(<center>)|(<\/center>)/\n\n/gmi;
-
+    ## remove empty tables
+    $wiki =~ s/\n\{\|.*\n+\|\}\n//gm;;
     $wiki =~ s/\r\n?/\n/gs;
     ## remove consecutive blank lines
     $wiki =~ s/(\n){4,}/\n\n/gs;
@@ -703,7 +710,6 @@ sub fix_small_issues {
     $wiki =~ s/^\{\|(.*)$/\n\{\|$1 {{prettytable}} /mg;
     $wiki =~ s/\|}\s*{\|/\|}\n\n\n{\|/mg;
     $wiki =~ s/^[:\s]*$//gm;
-
     return $wiki;
 }
 

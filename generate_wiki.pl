@@ -4,7 +4,6 @@ use warnings;
 use strict;
 $SIG{__WARN__} = sub { die @_ };
 
-
 # categories:
 # $file_url -> $rest_dir[length], $ver, $cust
 # $rest_dir[length] -> $rest_dir[length-1]
@@ -593,6 +592,8 @@ sub work_begin {
 sub work_for_docs {
     my ($path_files) = @_;
     my ($to_delete, $to_keep) = work_begin;
+# print "$_\n" foreach sort keys %$pages_toimp_hash; exit 1;
+
     if (WikiCommons::is_remote ne "yes") {
 	foreach my $url (sort keys %$to_delete) {
 	    print "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";

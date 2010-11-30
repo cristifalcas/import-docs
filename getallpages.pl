@@ -17,11 +17,12 @@ $mw->login( {lgname => 'admin', lgpassword => '!0admin@9' } )
 	    || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
 
 sub all_pages {
-$mw->list ( { action => 'query',
-	list => 'allpages',
-	apnamespace => '14' },
-    { max => 40000, hook => \&print_title } )
-            || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+    my $ns = shift;
+    $mw->list ( { action => 'query',
+	    list => 'allpages',
+	    apnamespace => "$ns" },
+	{ max => 40000, hook => \&print_title } )
+		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
 }
 
 sub all_links {
@@ -77,6 +78,7 @@ sub print_url {
 }
 
 # all_categories
-all_pages
+all_pages (0) ;
+# all_pages (14) ## categories
 # all_links
 # all_images

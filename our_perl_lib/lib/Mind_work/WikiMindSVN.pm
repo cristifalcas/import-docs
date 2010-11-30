@@ -193,7 +193,7 @@ sub add_document {
     }
     case "Projects_Common" {
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values]);
-        $customer = "_Common for all customers_";
+#         $customer = "_Common for all customers_";
         $fixed_name = WikiCommons::fix_name ($name, $customer);
     }
     case "Projects_Deployment_Common" {
@@ -202,7 +202,7 @@ sub add_document {
 	} else {
 	    $rest = fix_rest_dirs ($str, quotemeta $values[$#values]);
 	}
-        $customer = "_Common for all customers_";
+#         $customer = "_Common for all customers_";
         $fixed_name = WikiCommons::fix_name ( $name, $customer );
     }
     case "SC" {
@@ -218,7 +218,7 @@ sub add_document {
     $fixed_name = WikiCommons::normalize_text( $fixed_name );
     $fixed_name = WikiCommons::capitalize_string( $fixed_name, 'first' );
     my $page_url = "$fixed_name$basic_url";
-    my $page_url_caps = WikiCommons::capitalize_string( $page_url, 'small' );
+#     my $page_url_caps = WikiCommons::capitalize_string( $page_url, 'small' );
     die "No page for $doc_file.\n" if ($page_url eq "" );
 
     ++$count_files;
@@ -250,11 +250,56 @@ sub add_document {
 
     my $full_ver = "$ver $ver_id $ver_sp";
 
+# print "2. $page_url\n";
     return 1 if $ver_fixed lt "5.00" && $ver_fixed ne "";
-    return 0 if (exists $pages_ver->{$page_url_caps}->{'ver'} && $pages_ver->{$page_url_caps}->{'ver'} gt "$full_ver");
+    if (exists $pages_ver->{$page_url}->{'ver'} ){
+	if ($pages_ver->{$page_url}->{'ver'} gt "$full_ver"){
+# print "skip $full_ver because we have $pages_ver->{$page_url}->{'ver'}\n";
+	    return 0;
+	} elsif ($pages_ver->{$page_url}->{'ver'} eq $full_ver) {
+	    my $new = WikiCommons::svn_info("$path_file/$rel_path", "", "");
+	    if (defined $new) {
+		$new =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
+		chomp $new;
+	    } else {
+		$new = WikiCommons::get_file_md5($doc_file);
+	    }
 
+	    my $old = WikiCommons::svn_info("$path_file/$pages_toimp_hash->{$page_url}[1]", "", "");
+	    if (defined $old) {
+		$old =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
+		chomp $old;
+	    } else {
+		$old = $pages_toimp_hash->{$page_url}[0];
+	    }
+
+	    if ($new ne $old) {
+		my $id = 1;
+		$id = $pages_ver->{$page_url}->{'id'} + 1 if (exists $pages_ver->{$page_url}->{'id'});
+# print "add extra $page_url because $full_ver is the same as $pages_ver->{$page_url}->{'ver'}\n";
+		my $new_url = $page_url."$url_sep"."$id";
+		push(@{$pages_ver->{$page_url}->{'urls'}}, $new_url);
+		$page_url = $new_url;
+		$pages_ver->{$page_url}->{'id'} = $id;
+	    } else {
+		return 0;
+	    }
+	} else {
+	    ### this is less then
+	    ### remove all previous urls
+	    foreach my $url ( @{$pages_ver->{$page_url}->{'urls'}} ){
+# print "remove previous url $url because $full_ver is greater then ".$pages_ver->{$page_url}->{'ver'}."\n";
+		delete $pages_toimp_hash->{$url};
+	    }
+	    delete $pages_ver->{$page_url};
+	}
+    } else {
+	### this is for new urls
+# print "add new $page_url\n";
+    }
+#     return 0 if (exists $pages_ver->{$page_url}->{'ver'} && $pages_ver->{$page_url}->{'ver'} gt "$full_ver");
     my @categories = ();
-    if ($fixed_name !~ m/^DB Changes For/i) {
+    if ($fixed_name !~ m/^DB Changes (For|from)/i) {
 	push @categories, $ver_fixed;
 	push @categories, $main;
 	push @categories, $big_ver;
@@ -263,36 +308,9 @@ sub add_document {
 	generate_categories($ver_fixed, $main, $big_ver, $customer, $dir_type, $fixed_name);
     }
 
-# print "2. $page_url\n";
-
-    if (exists $pages_ver->{$page_url_caps}->{'ver'} && "$pages_ver->{$page_url_caps}->{'ver'}" eq "$full_ver") {
-
-	my $new = WikiCommons::svn_info("$path_file/$rel_path", "", "");
-	if (defined $new) {
-	    $new =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
-	    chomp $new;
-	} else {
-	    $new = WikiCommons::get_file_md5($doc_file);
-	}
-
-	my $old = WikiCommons::svn_info("$path_file/$pages_toimp_hash->{$page_url}[1]", "", "");
-	if (defined $old) {
-	    $old =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
-	    chomp $old;
-	} else {
-	    $old = $pages_toimp_hash->{$page_url}[0];
-	}
-
-	if ($new ne $old) {
-	    my $id = 1;
-	    $id = $pages_ver->{$page_url_caps}->{'id'} + 1 if (exists $pages_ver->{$page_url_caps}->{'id'});
-	    $page_url .= "$url_sep"."$id";
-	    $pages_ver->{$page_url_caps}->{'id'} = $id;
-	}
-    }
-
     $pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
-    $pages_ver->{$page_url_caps}->{'ver'} = "$full_ver";
+    $pages_ver->{$page_url}->{'ver'} = "$full_ver";
+print "2. $page_url\n";
 
 #     push(@{$pages_ver->{"$fixed_name$url->{'ver'}_sep$ver_without_sp"}}, $ver_sp);
 }
@@ -304,8 +322,14 @@ sub get_documents {
     foreach my $append_dir (@APPEND_DIRS) {
 	print "-Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
 	$count_files = 0;
-	find sub { add_document ($File::Find::name, $append_dir, "$self->{path_files}", "$url_sep") if -f && (/(\.doc|\.docx|\.rtf)$/i) }, "$self->{path_files}/$append_dir" if  (-d "$self->{path_files}/$append_dir");
-	find sub { add_document ($File::Find::name, $append_dir, "$self->{path_files}", "$url_sep") if -f && /.*parameter.*Description.*\.xls$/i }, "$self->{path_files}/$append_dir" if  (-d "$self->{path_files}/$append_dir");
+	find ({
+	    wanted => sub { add_document ($File::Find::name, $append_dir, "$self->{path_files}", "$url_sep") if -f && (/(\.doc|\.docx|\.rtf)$/i) },},
+	    "$self->{path_files}/$append_dir"
+	    ) if  (-d "$self->{path_files}/$append_dir");
+	find ({
+	    wanted => sub { add_document ($File::Find::name, $append_dir, "$self->{path_files}", "$url_sep") if -f && /.*parameter.*Description.*\.xls$/i },},
+	    "$self->{path_files}/$append_dir"
+	    ) if  (-d "$self->{path_files}/$append_dir");
 	print "\tTotal number of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n";
 	print "+Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
     }
@@ -336,135 +360,164 @@ sub find_svn_helper {
 
 sub fix_naming {
     my ($fixed_name, $customer) = @_;
-# print "1. $fixed_name\n";
+print "1a. $fixed_name\n";
 
     $fixed_name =~ s/^$customer|$customer$//gi;
     ## Specific updates
     $fixed_name =~ s/\s+ver\s*$//i;
     $fixed_name =~ s/\s+for\s*$//i;
     $fixed_name =~ s/jinny/Jinny/gi;
-    $fixed_name =~ s/^User Guide|User Guide$//i;
-    $fixed_name =~ s/^User Manual|User Manual$//i;
-
+    $fixed_name =~ s/^User Guide\s*|\s*User Guide$//i;
+    $fixed_name =~ s/^User Manual\s*|\s*User Manual$//i;
     $fixed_name =~ s/^\budr\b/UDR/i;
-#     $fixed_name = "$1" if ($fixed_name =~ m/^GN (.*)/);
-
-    $fixed_name = "CDR Drivers - 3G" if ($fixed_name =~ m/^3G CDR Drivers$/i);
-    $fixed_name = "Administrator" if ($fixed_name =~ m/^Administrator User Manual 5.3$/i);
-    $fixed_name = "Administrator" if ($fixed_name =~ m/^Administrator Manuel D'Utilisation$/i);
-    $fixed_name = "Auxiliary Module Applications" if ($fixed_name =~ m/^Auxiliary Applications 5.3$/i);
-    $fixed_name = "Billing" if ($fixed_name =~ m/^BillingUserManual5.0-Rev12$/i);
-    $fixed_name = "Billing" if ($fixed_name =~ m/^BillingUserManual5.01-Rev12$/i);
-    $fixed_name = "Billing" if ($fixed_name =~ m/^BillingUserManual5.01-Rev13Kenan$/i);
-    $fixed_name = "Business Processes Deployment" if ($fixed_name =~ m/^Business Processes Deployment 601$/i);
-    $fixed_name = "Cashier" if ($fixed_name =~ m/^Cashier5.21.Rev10$/i);
-    $fixed_name = "Cashier" if ($fixed_name =~ m/^Cashier Manuel D'Utilisation$/i);
-    $fixed_name = "CallShop" if ($fixed_name =~ m/^5.31.005 CallShop Manuel d'Utilisation$/i);
-    $fixed_name = "CDR Export" if ($fixed_name =~ m/^CDR Export User Guide 5.0$/i);
-    $fixed_name = "Cisco User Manual" if ($fixed_name =~ m/^Cisco 5.31.001 User Manual$/i);
-    $fixed_name = "Cisco SSG Configuration" if ($fixed_name =~ m/^Cisco SSG Configuration UserManuall5.0$/i);
-    $fixed_name = "Collector" if ($fixed_name =~ m/^Collector 5.3$/i);
-    $fixed_name = "Correlation" if ($fixed_name =~ m/^Correlation Rev10$/i);
-    $fixed_name = "Configuration Parameters" if ($fixed_name =~ m/^ConfigurationParameters$/i);
-    $fixed_name = "Dashboard" if ($fixed_name =~ m/^Dashboard5.30$/i);
-    $fixed_name = "DB Documentation" if ($fixed_name =~ m/^5.31 DB Documentation$/i);
-    $fixed_name = "EDI For Payment" if ($fixed_name =~ m/^EDI For Payment 5.21$/i);
-    $fixed_name = "ETL Staging Area - DB Documentation" if ($fixed_name =~ m/^DB Documentation ETLStagingArea$/i);
-    $fixed_name = "ETL Installation Guide" if ($fixed_name =~ m/^ETL INSTALLATION GUIDE$/i);
-    $fixed_name = "Guard" if ($fixed_name =~ m/^Guard Rev13$/i);
-    $fixed_name = "Guard" if ($fixed_name =~ m/^GN Guard Manuel d'Utilisation$/i);
-    $fixed_name = "Install Cisco Rev10" if ($fixed_name =~ m/^InstallCisco5.0InstallB-Rev10$/i);
-    $fixed_name = "Install Cisco Rev11" if ($fixed_name =~ m/^InstallCisco5.0InstallA-Rev11$/i);
-    $fixed_name = "IGuard80" if ($fixed_name =~ m/^IGuard80-Rev10$/i);
-    $fixed_name = "Invoice Generation" if ($fixed_name =~ m/^Invoice Generation 5.30$/i);
-    $fixed_name = "Invoice Generation" if ($fixed_name =~ m/^Invoice Generation 5.31$/i);
-    $fixed_name = "Itraf80" if ($fixed_name =~ m/^Itraf80-Rev10$/i);
-    $fixed_name = "Interception Monitor" if ($fixed_name =~ m/^Interception 5.2Monitor Rev11$/i);
-    $fixed_name = "LDAP SunOne Provisioning Client" if ($fixed_name =~ m/^LDAPSunOne Provisioning Client 5.31.001$/i);
-
-    $fixed_name = "Manager" if ($fixed_name =~ m/^Manager User Manual 5.21-Rev.11$/i);
-    $fixed_name = "Manager" if ($fixed_name =~ m/^Manager User Manual 5.3$/i);
-    $fixed_name = "Manager" if ($fixed_name =~ m/^Manager Manuel D'Utilisation$/i);
-    $fixed_name = "Multisite Failover Manager" if ($fixed_name =~ m/^MultisiteFailoverManager5.01$/i);
-    $fixed_name = "CSR - Manual De Utilizare MINDBill" if ($fixed_name =~ m/^Manual De Utilizare MINDBill CSR$/i);
-    $fixed_name = "Rapoarte MINDBill - Manual De Utilizare" if ($fixed_name =~ m/^Manual de Utilizare Rapoarte MINDBill$/i);
-    $fixed_name = "CSR - Manual De Utilizare MINDBill" if ($fixed_name =~ m/^Modules Deployment (6.01|6.50|6.60|7.00)$/i);
-    $fixed_name = "Neils Revision" if ($fixed_name =~ m/^50001neilsrevision$/i);
-    $fixed_name = "New Features Summary" if ($fixed_name =~ m/^New Features Summary MIND-IPhonEX 5.30.010$/i);
-    $fixed_name = "New Features Summary" if ($fixed_name =~ m/^New Features Summary MIND-IPhonEX 5.30.013$/i);
-    $fixed_name = "Open View Operation" if ($fixed_name =~ m/^OpenViewOperations5.30$/i);
-
-    $fixed_name = "Parameters Description" if ($fixed_name =~ m/^Parameter Description Ver 601$/i);
-    $fixed_name = "Parameters Description" if ($fixed_name =~ m/^Parameter Description 6.00$/i);
-    $fixed_name = "Parameters Description" if ($fixed_name =~ m/^Parameters? Descriptions?/i);
-
-    $fixed_name =~ s/Provisionig/Provisioning/;
-    $fixed_name = "Provisioning Clients" if ($fixed_name =~ m/^Provisioning Client$/i);
-
-    $fixed_name = "Pre-Release" if ($fixed_name =~ m/^5.0Pre-Release$/i);
-    $fixed_name = "Process Configuration Documentation PackageChange" if ($fixed_name =~ m/^6.01 Process Configuration Documentation PackageChange$/i);
-    $fixed_name = "Product Description" if ($fixed_name =~ m/^Product Description 5.21-Rev.12$/i);
-    $fixed_name = "Product Description" if ($fixed_name =~ m/^Product Description5.3$/i);
-    $fixed_name = "Product Description" if ($fixed_name =~ m/^ProductDescription 5.0$/i);
-
-    $fixed_name = "Provisioning Solution" if ($fixed_name =~ m/^Provisioning Solution UserManual5.0$/i);
-    $fixed_name = "Reports" if ($fixed_name =~ m/^Reports Guide D'Utilisation$/i);
-    $fixed_name = "Resource Management" if ($fixed_name =~ m/^Resource Management Manuel D'Utilisation$/i);
-    $fixed_name = "Rule Rating Editor" if ($fixed_name =~ m/^Rule-Rating-Editor-Rev10$/i);
-
-    $fixed_name = "Rapoarte Crystal - Interconnect" if ($fixed_name =~ m/^Manual De Utilizare MINDBill 6.01 Rapoarte Crystal - Interconnect$/i);
-    $fixed_name = "Release Notes V3" if ($fixed_name =~ m/^5.2x Release Notes V3$/i);
-    $fixed_name = "Reports User Guide" if ($fixed_name =~ m/^Reports User Guide For$/i);
-    $fixed_name = "System Overview" if ($fixed_name =~ m/^5.00.015 System Overview$/i);
-    $fixed_name = "Task Scheduler" if ($fixed_name =~ m/^Task Scheduler User Guide 5.3$/i);
-    $fixed_name = "UDR Distribution" if ($fixed_name =~ m/^UDRDistributionUserGuide5.01-Rev10$/i);
-    $fixed_name = "User Activity" if ($fixed_name =~ m/^UserActivity5.30$/i);
-    $fixed_name = "Administrator" if ($fixed_name =~ m/^AdminUserManual5.02-Rev15$/i);
-    $fixed_name = "Billing Vodafone" if ($fixed_name =~ m/^BillingUserManual5.02-rev14Vodafone$/i);
-    $fixed_name = "Dialup CDR And Invoice Generation" if ($fixed_name =~ m/^Dialup CDR And Invoice Generation 521$/i);
-    $fixed_name = "Vendors Support" if ($fixed_name =~ m/^VendorsSupport$/i);
-    $fixed_name = "User Activity" if ($fixed_name =~ m/^UserActivity5 30$/i);
-    $fixed_name = "Checkpoint LEA Configuration" if ($fixed_name =~ m/^Checkpoint LEAconfiguration$/i);
-    $fixed_name = "High Availability" if ($fixed_name =~ m/^HighAvailability$/i);
-    $fixed_name = "LEA Client Installation" if ($fixed_name =~ m/^LEAClientInstallation$/i);
-    $fixed_name = "Load Balancing" if ($fixed_name =~ m/^LoadBalancing$/i);
-    $fixed_name = "Parsing Rules" if ($fixed_name =~ m/^ParsingRules$/i);
-
-    $fixed_name = "Plugin Point In Recalc" if ($fixed_name =~ m/^PluginPointInRecalc$/i);
-    $fixed_name = "Processor Logs Files" if ($fixed_name =~ m/^ProcessorLogsFiles$/i);
-    $fixed_name = "Proxy Manager Server" if ($fixed_name =~ m/^ProxyManagerServer$/i);
-    $fixed_name = "Statistics Description" if ($fixed_name =~ m/^StatisticsDescription$/i);
-    $fixed_name = "DB Documentation$1" if ($fixed_name =~ m/6.00 DB Documentation(.*)/);
-    $fixed_name = "DB Import" if ($fixed_name =~ m/^DBImport$/i);
-    $fixed_name = "Display CDR Field Instructions" if ($fixed_name =~ m/^DisplayCDRFieldInstructions$/i);
-    $fixed_name = "Fix Invoice XML Deployment" if ($fixed_name =~ m/^FixInvoiceXML Deployment$/i);
-    $fixed_name = "Install Oracle 10g Veracity" if ($fixed_name =~ m/^InstallOracle10g Veracity$/i);
-    $fixed_name = "Business Processes Monitoring Deployment" if ($fixed_name =~ m/^BP Monitoring Deployment$/i);
-    $fixed_name = "System - DB Documentation" if ($fixed_name =~ m/^DB Documentation Syetem$/i);
-    $fixed_name = "Sebanci Telecom EPay Credit Adapter API" if ($fixed_name =~ m/^Sabanci Telecom EPay Credit Adapter API$/i);
-    $fixed_name = "SES VF Greece QS Product Description" if ($fixed_name =~ m/^SES VF Greece QS ProductDescription$/i);
-    $fixed_name = "SNMP Client Paramaters Descriptions" if ($fixed_name =~ m/^SNMPClient Paramaters Descriptions$/i);
-
-    $fixed_name = "User Activity Tracker" if ($fixed_name =~ m/^User Activity Tracker Manuel D'Utilisation$/i);
-    $fixed_name = "VOIPCDR Upgrade Procedure" if ($fixed_name =~ m/^VOIPCDR Upgrade Procedure 601$/i);
-    $fixed_name = "WebBill" if ($fixed_name =~ m/^5.3 WebBill User Manual/i);
-    $fixed_name = "WebBill" if ($fixed_name =~ m/^WebBill 5.2 User Manual/i);
-    $fixed_name = "WebBill" if ($fixed_name =~ m/^WebBillUserManual5.0-Rev10$/i);
-    $fixed_name = "WebBill" if ($fixed_name =~ m/^WebBillUserManual5.01-Rev11$/i);
-    $fixed_name = "WebClient" if ($fixed_name =~ m/^WebClient5.0-Rev11$/i);
-    $fixed_name = "WebClient" if ($fixed_name =~ m/^WebClient5.30$/i);
-    $fixed_name = "WebClient" if ($fixed_name =~ m/^WebClient5.01-Rev11$/i);
-    $fixed_name = "WebClient" if ($fixed_name =~ m/^WebClient Manuel D'Utilisation$/i);
-
     $fixed_name =~ s/Wizards API/Wizard API/;
+    $fixed_name =~ s/Provisionig/Provisioning/;
     $fixed_name = "IPE Monitor$1" if ($fixed_name =~ m/^IPEMonitor(.*)$/i);
     $fixed_name = "Radius Paramaters$1" if ($fixed_name =~ m/^RadiusParamaters(.*)$/i);
+    $fixed_name = "Parameters Description" if ($fixed_name =~ m/Parameters? Descriptions?/i);
+    $fixed_name = "$1 - Data Dictionary Tables" if ($fixed_name =~ m/^Data Dictionary Tables\s*-?\s*(.*)$/i && defined $1 && $1 !~ m/^\s*$/);
+    return "Partner Management - DB Documentation" if ($fixed_name eq "DB Documentation Partner Mng");
+    return "Resource Management - DB Documentation" if ($fixed_name eq "DB Documentation Resource Mng");
+    return "Resource Management - DB Documentation" if ($fixed_name eq "6.00 DB Documentation Resource Mng");
+    return "Partner Management - DB Documentation" if ($fixed_name eq "6.00 DB Documentation Partner Mng");
+    return "System - DB Documentation" if ($fixed_name eq "DB Documentation Syetem");
 
-    $fixed_name = "$1 - Data Dictionary Tables" if ($fixed_name =~ m/Data Dictionary Tables\s*-?\s*(.*)/i && defined $1 && $1 !~ m/^\s*$/);
-    $fixed_name = "$1 - DB Documentation" if ($fixed_name =~ m/DB Documentation\s*-?\s*([a-z0-9]{1,})/i && defined $1 && $1 !~ m/^\s*$/);
+    $fixed_name =~ s/^Resource Mng/Resource Management/;
+    $fixed_name =~ s/^Partner Mng/Partner Management/;
+    $fixed_name = "$2 - DB Documentation" if ($fixed_name =~ m/^(6.00)?\s*DB Documentation\s*-?\s*([a-z0-9]{1,})$/i && defined $2 && $2 !~ m/^\s*$/);
+print "1b. $fixed_name\n";
+
+    return "General Configuration Parameters" if ($fixed_name eq "Configuration Parameters");
+    return "General Configuration Parameters" if ($fixed_name eq "General Config Parameters");
+    return "Modules Deployment" if ($fixed_name =~ m/Modules Deployment (6.01|6.50|6.60|7.00)/i);
+    return "Administrator" if ($fixed_name eq "Administrator User Manual 5.3");
+    return "Auxiliary Module Applications" if ($fixed_name eq "Auxiliary Applications 5.3");
+    return "Billing" if ($fixed_name eq "BillingUserManual5.0-rev12");
+    return "Billing" if ($fixed_name eq "BillingUserManual5.01-rev12");
+    return "Billing" if ($fixed_name eq "BillingUserManual5.01-rev13Kenan");
+    return "Business Processes Deployment" if ($fixed_name eq "Business Processes Deployment 601");
+    return "Cashier" if ($fixed_name eq "Cashier5.21.rev10");
+    return "CDR Export" if ($fixed_name eq "CDR Export User Guide 5.0");
+    return "CDR Drivers - 3G" if ($fixed_name eq " 3G CDR Drivers");
+    return "Cisco User Manual" if ($fixed_name eq "Cisco 5.31.001");
+    return "Cisco SSG Configuration" if ($fixed_name eq "Cisco SSG Configuration UserManuall5.0");
+    return "Collector" if ($fixed_name eq "Collector 5.3");
+    return "Correlation" if ($fixed_name eq "Correlation rev10");
+    return "Configuration Parameters" if ($fixed_name eq "ConfigurationParameters");
+    return "Dashboard" if ($fixed_name eq "Dashboard5.30");
+    return "DB Documentation" if ($fixed_name eq "5.31 DB Documentation");
+    return "EDI For Payment" if ($fixed_name eq "EDI for Payment 5.21");
+    return "EDI For Payment" if ($fixed_name eq "EDI for Payments");
+    return "ETL Staging Area - DB Documentation" if ($fixed_name eq "ETLStagingArea - DB Documentation");
+    return "ETL Installation Guide" if ($fixed_name eq "ETL INSTALLATION GUIDE");
+    return "Guard" if ($fixed_name eq "Guard rev13");
+    return "Install Cisco Rev10" if ($fixed_name eq "installCisco5.0InstallB-rev10");
+    return "Install Cisco Rev11" if ($fixed_name eq "installCisco5.0InstallA-rev11");
+    return "IGuard80" if ($fixed_name eq "iGuard80-rev10");
+    return "Invoice Generation" if ($fixed_name eq "Invoice generation 5.30");
+    return "Invoice Generation" if ($fixed_name eq "Invoice generation 5.31");
+    return "Itraf80" if ($fixed_name eq "itraf80-rev10");
+    return "Interception Monitor" if ($fixed_name eq "Interception 5.2Monitor rev11");
+
+    return "Provisioning Client - LDAP SunOne" if ($fixed_name eq "LDAPSunOne Provisioning Client 5.31.001");
+    return "Provisioning Client - Ericsson" if ($fixed_name eq "Ericsson Provisioning Client 5.31.001");
+    return "Provisioning Client - GEMPlus" if ($fixed_name eq "GEMPlus Provisioning Client 5.31.001");
+    return "Provisioning Client - HLR" if ($fixed_name eq "HLR Provisioning Client 5.31.001");
+    return "Provisioning Client - IP Services" if ($fixed_name eq "IP Services Provisioning Client");
+    return "Provisioning Client - IPGallery" if ($fixed_name eq "IPGallery Provisioning Client 5.31.001");
+    return "Provisioning Client - Cisco" if ($fixed_name eq "Cisco Provisioning Client 5.31.001");
+    return "Provisioning Client - Digital TV" if ($fixed_name eq "Digital TV Provisioning Client 5.31.001");
+    return "Provisioning Client - Netspeak" if ($fixed_name eq "Netspeak Provisioning Client 5.31.001");
+    return "Provisioning Client - Nortel" if ($fixed_name eq "Nortel Provisioning Client 5.31.001");
+    return "Provisioning Client - Terayon" if ($fixed_name eq "Terayon Provisioning Client 5.31.001");
+    return "Provisioning Client - Veraz" if ($fixed_name eq "Veraz Provisioning Client 5.31.001");
+    return "Provisioning Client - AIW" if ($fixed_name eq "AIW Provisioning Client");
+    return "Provisioning Client - ActionStreamer 3G" if ($fixed_name eq "ActionStreamer 3G Provisioning Client");
+    return "Provisioning Client - ActionStreamer" if ($fixed_name eq "ActionStreamer Provisioning Client");
+    return "Provisioning Client - ActionStreamer Wireline" if ($fixed_name eq "ActionStreamer Wireline Provisioning Client");
+    return "Provisioning Client - BTS" if ($fixed_name eq "BTS Provisioning Client");
+
+    return "Provisioning Clients" if ($fixed_name eq "Provisioning Client");
+
+    return "Manager" if ($fixed_name eq "Manager User Manual 5.21-rev.11");
+    return "Manager" if ($fixed_name eq "Manager User Manual 5.3");
+    return "Multisite Failover Manager" if ($fixed_name eq "MultisiteFailoverManager5.01");
+    return "CSR - Manual De Utilizare MINDBill" if ($fixed_name eq "Manual de utilizare MINDBill CSR");
+    return "Reports - Manual De Utilizare" if ($fixed_name eq "Manual de Utilizare Rapoarte MINDBill");
+
+    return "Neils Revision" if ($fixed_name eq "50001neilsrevision");
+    return "New Features Summary" if ($fixed_name eq "New Features Summary MIND-IPhonEX 5.30.010");
+    return "New Features Summary" if ($fixed_name eq "New Features Summary MIND-IPhonEX 5.30.013");
+    return "Open View Operation" if ($fixed_name eq "OpenViewOperations5.30");
+
+    return "Parameters Description" if ($fixed_name eq "Parameter Description Ver 601");
+    return "Parameters Description" if ($fixed_name eq "Parameter Description 6.00");
+
+    return "Pre-Release" if ($fixed_name eq "5.0Pre-Release");
+    return "Process Configuration Documentation PackageChange" if ($fixed_name eq "6.01 Process Configuration Documentation PackageChange");
+    return "Product Description" if ($fixed_name eq "Product Description 5.21-rev.12");
+    return "Product Description" if ($fixed_name eq "Product Description5.3");
+    return "Product Description" if ($fixed_name eq "ProductDescription 5.0");
+
+    return "Provisioning Solution" if ($fixed_name eq "Provisioning Solution UserManual5.0");
+    return "Provisioning API" if ($fixed_name eq "Provisioning API 5.20 v1.1");
+    return "Rule Rating Editor" if ($fixed_name eq "Rule-Rating-Editor-rev10");
+
+    return "Crystal Reports - Interconnect" if ($fixed_name eq "Manual de utilizare MINDBill 6.01 Rapoarte Crystal - Interconnect");
+    return "Release Notes V3" if ($fixed_name eq "5.2x Release Notes V3");
+    return "Reports User Guide" if ($fixed_name eq "Reports User Guide For");
+    return "System Overview" if ($fixed_name eq "5.00.015 System Overview");
+    return "Task Scheduler" if ($fixed_name eq "Task Scheduler User Guide 5.3");
+    return "UDR Distribution" if ($fixed_name eq "UDRDistributionUserGuide5.01-rev10");
+    return "User Activity" if ($fixed_name eq "UserActivity5.30");
+    return "Administrator" if ($fixed_name eq "AdminUserManual5.02-rev15");
+    return "Billing Vodafone" if ($fixed_name eq "BillingUserManual5.02-rev14Vodafone");
+    return "Dialup CDR And Invoice Generation" if ($fixed_name eq "Dialup CDR and Invoice Generation 521");
+    return "Vendors Support" if ($fixed_name eq "VendorsSupport");
+    return "User Activity" if ($fixed_name eq "UserActivity5 30");
+    return "Checkpoint LEA Configuration" if ($fixed_name eq "Checkpoint LEAconfiguration");
+    return "High Availability" if ($fixed_name eq "HighAvailability");
+    return "LEA Client Installation" if ($fixed_name eq "LEAClientInstallation");
+    return "Load Balancing" if ($fixed_name eq "LoadBalancing");
+    return "Parsing Rules" if ($fixed_name eq "ParsingRules");
+
+    return "Plugin Point In Recalc" if ($fixed_name eq "PluginPointInRecalc");
+    return "Processor Logs Files" if ($fixed_name eq "ProcessorLogsFiles");
+    return "Proxy Manager Server" if ($fixed_name eq "ProxyManagerServer");
+    return "Statistics Description" if ($fixed_name eq "StatisticsDescription");
+    return "DB Import" if ($fixed_name eq "DBImport");
+    return "Display CDR Field Instructions" if ($fixed_name eq "DisplayCDRFieldInstructions");
+    return "Fix Invoice XML Deployment" if ($fixed_name eq "FixInvoiceXML deployment");
+    return "Install Oracle 10g Veracity" if ($fixed_name eq "installOracle10g veracity");
+    return "Business Processes Monitoring Deployment" if ($fixed_name eq "BP Monitoring Deployment");
+    return "Sebanci Telecom EPay Credit Adapter API" if ($fixed_name eq "Sabanci Telecom EPay Credit Adapter API");
+    return "SES VF Greece QS Product Description" if ($fixed_name eq "SES VF Greece QS ProductDescription");
+    return "SNMP Client Paramaters Descriptions" if ($fixed_name eq "SNMPClient Paramaters descriptions");
+
+    return "VOIPCDR Upgrade Procedure" if ($fixed_name eq "VOIPCDR upgrade procedure 601");
+    return "WebBill" if ($fixed_name eq "5.3 WebBill");
+    return "WebBill" if ($fixed_name eq "WebBill 5.2");
+
+    return "WebBill" if ($fixed_name eq "WebBillUserManual5.0-rev10");
+    return "WebBill" if ($fixed_name eq "WebBillUserManual5.01-rev11");
+    return "WebClient" if ($fixed_name eq "WebClient5.0-rev11");
+    return "WebClient" if ($fixed_name eq "WebClient5.01-rev11");
+    return "WebClient" if ($fixed_name eq "WebClient5.30");
+
+    ### afripa documents
+    return "WebClient" if ($fixed_name eq "GN WebClient Manuel d'Utilisation");
+    return "Guard" if ($fixed_name eq "GN Guard Manuel d'Utilisation");
+    return "Administrator" if ($fixed_name eq "GN Administrator Manuel d'Utilisation");
+    return "Cashier" if ($fixed_name eq "GN Cashier Manuel d'Utilisation");
+    return "CallShop" if ($fixed_name eq "5.31.005 CallShop Manuel d'Utilisation");
+    return "Manager" if ($fixed_name eq "GN Manager Manuel d'Utilisation");
+    return "Reports" if ($fixed_name eq "GN Reports Guide d'Utilisation");
+    return "Resource Management" if ($fixed_name eq "GN Resource Management Manuel d'Utilisation");
+    return "User Activity Tracker" if ($fixed_name eq "GN User Activity Tracker Manuel d'Utilisation");
+    return "Product Description" if ($fixed_name eq "GN Description du Produit");
 
     $fixed_name =~ s/^\s*|\s*$//g;
-# print "2. $fixed_name\n" if $fixed_name =~ m/WebBill/;
+print "1c. $fixed_name\n";
     return $fixed_name;
 }
 
