@@ -136,7 +136,7 @@ WikiCommons::write_file("$dir/".++$i.". tree_remove_TOC.$name.html", tree_to_htm
 
     $tree->no_space_compacting(1);
     my $text1 = tree_to_text($tree);
-WikiCommons::write_file("$dir/".++$i.". tree_text1.$name.txt", $text1, 1) if $debug eq "yes";
+WikiCommons::write_file("$dir/".++$i.". tree_text1.$name.txt", $text1, 1);
     $tree->no_space_compacting(0);
 
     ## after TOC, because in TOC we use div
@@ -172,7 +172,7 @@ WikiCommons::write_file("$dir/".++$i.". tree_clean_lists.$name.html", tree_to_ht
 
     $tree->no_space_compacting(1);
     my $text2 = tree_to_text($tree);
-WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1) if $debug eq "yes";
+WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
     $tree->no_space_compacting(0);
 
     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
