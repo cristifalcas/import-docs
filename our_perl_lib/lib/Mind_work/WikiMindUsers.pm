@@ -11,6 +11,7 @@ $Data::Dumper::Sortkeys = 1;
 
 our $pages_toimp_hash = {};
 our $general_categories_hash = {};
+our $duplicates = {};
 
 sub new {
     my $class = shift;
@@ -26,22 +27,22 @@ sub get_categories {
 sub generate_categories {
     my ($ver, $main, $big_ver, $customer, $dir_type) = @_;
     ## $general_categories_hash->{5.01.019}->{5.01} means that 5.01.019 will be in 5.01 category
-    $general_categories_hash->{$ver}->{$main} = 1 if $ver ne "" && $ver ne $main;
-    $general_categories_hash->{$ver}->{$big_ver} = 1 if $ver ne "" && $big_ver ne "";
-    $general_categories_hash->{$ver}->{$customer} = 1 if $big_ver ne "" && $customer ne "";
-    $general_categories_hash->{$ver}->{$dir_type} = 1 if $big_ver ne "" && $dir_type ne "";
-
-    $general_categories_hash->{$main}->{$big_ver} = 1 if $main ne "" && $big_ver ne "";
-    $general_categories_hash->{$main}->{$customer} = 1 if $main ne "" && $customer ne "";
-    $general_categories_hash->{$main}->{$dir_type} = 1 if $main ne "" && $dir_type ne "";
-    $general_categories_hash->{$main}->{'Mind Documentation autoimport'} = 1 if $main ne "";
-
-    $general_categories_hash->{$customer}->{$dir_type} = 1 if $customer ne "" && $dir_type ne "";
-    $general_categories_hash->{$customer}->{'MIND_Customers'} = 1 if $customer ne "";
-    $general_categories_hash->{$customer}->{'Mind Documentation autoimport'} = 1 if $customer ne "";
-
-    $general_categories_hash->{$big_ver}->{'Mind Documentation autoimport'} = 1 if $big_ver ne "";
-    $general_categories_hash->{$dir_type}->{'Mind Documentation autoimport'} = 1 if $dir_type ne "";
+#     $general_categories_hash->{$ver}->{$main} = 1 if $ver ne "" && $ver ne $main;
+#     $general_categories_hash->{$ver}->{$big_ver} = 1 if $ver ne "" && $big_ver ne "";
+#     $general_categories_hash->{$ver}->{$customer} = 1 if $ver ne "" && $customer ne "";
+#     $general_categories_hash->{$ver}->{$dir_type} = 1 if $ver ne "" && $dir_type ne "";
+#
+#     $general_categories_hash->{$main}->{$big_ver} = 1 if $main ne "" && $big_ver ne "";
+#     $general_categories_hash->{$main}->{$customer} = 1 if $main ne "" && $customer ne "";
+#     $general_categories_hash->{$main}->{$dir_type} = 1 if $main ne "" && $dir_type ne "";
+#     $general_categories_hash->{$main}->{'Users Documentation autoimport'} = 1 if $main ne "";
+#
+#     $general_categories_hash->{$customer}->{$dir_type} = 1 if $customer ne "" && $dir_type ne "";
+#     $general_categories_hash->{$customer}->{'MIND_Customers'} = 1 if $customer ne "";
+#     $general_categories_hash->{$customer}->{'Users Documentation autoimport'} = 1 if $customer ne "";
+#
+#     $general_categories_hash->{$big_ver}->{'Users Documentation autoimport'} = 1 if $big_ver ne "";
+#     $general_categories_hash->{$dir_type}->{'Users Documentation autoimport'} = 1 if $dir_type ne "";
 }
 
 sub add_document {
@@ -105,11 +106,7 @@ sub add_document {
     die "Url is empty.\n" if $page_url eq '';
 
     if (exists $pages_toimp_hash->{$page_url}) {
-	my $txt = "We already have url $page_url.\n";
-	$txt .= "Current document path is $doc_file.\n";
-	$txt .= "The other document path is $path_files/$pages_toimp_hash->{$page_url}[1].\n";
-	$txt .= Dumper($pages_toimp_hash->{$page_url})."\n";
-	WikiCommons::write_file("$dir/$name.error", $txt);
+	$duplicates->{$page_url}->{$doc_file} = 1;
 	return 0;
     }
 
@@ -121,6 +118,21 @@ sub get_documents {
     my $self  = shift;
     my $url_sep = WikiCommons::get_urlsep;
     find sub { add_document ($File::Find::name, "$self->{path_files}", "$url_sep") if -f && (/(\.doc|\.docx|\.rtf)$/i) }, "$self->{path_files}";
+
+    foreach my $url (sort keys %$duplicates) {
+	my $first_path = "$self->{path_files}/$pages_toimp_hash->{$url}[1]";
+	my $txt = "We already have url $url.\nIt is the same as\n\t$first_path";
+	foreach my $file (keys %{$duplicates->{$url}}){
+	    $txt .= "\n\t$file";
+	}
+	foreach my $file (keys %{$duplicates->{$url}}){
+	    my ($name,$dir,$suffix) = fileparse("$file", qr/\.[^.]*/);
+	    WikiCommons::write_file("$dir/$name.error", $txt);
+	}
+	my ($name,$dir,$suffix) = fileparse("$first_path", qr/\.[^.]*/);
+	WikiCommons::write_file("$dir/$name.error", $txt);
+	delete $pages_toimp_hash->{$url};
+    }
     return $pages_toimp_hash;
 }
 

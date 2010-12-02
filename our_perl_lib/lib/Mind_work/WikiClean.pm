@@ -122,7 +122,7 @@ sub cleanup_html {
 
     my $tree = HTML::TreeBuilder->new();
 
-    $tree->no_space_compacting(0);
+    $tree->no_space_compacting(1);
     $tree = $tree->parse_content(decode_utf8($html));
     tree_only_one_body($tree);
 
@@ -134,10 +134,10 @@ WikiCommons::write_file("$dir/".++$i.". tree_remove_TOC.$name.html", tree_to_htm
 # WikiCommons::write_file("$dir/".++$i.". tree_remove_strike.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
     $tree = heading_new_line($tree) if $debug eq "yes";
 
-    $tree->no_space_compacting(1);
+#     $tree->no_space_compacting(1);
     my $text1 = tree_to_text($tree);
-WikiCommons::write_file("$dir/".++$i.". tree_text1.$name.txt", $text1, 1);
-    $tree->no_space_compacting(0);
+WikiCommons::write_file("$dir/".++$i.". tree_text1.$name.txt", $text1, 1) if $debug eq "yes";
+#     $tree->no_space_compacting(0);
 
     ## after TOC, because in TOC we use div
     $tree = tree_clean_empty_p($tree);
@@ -170,10 +170,9 @@ WikiCommons::write_file("$dir/".++$i.". tree_clean_lists.$name.html", tree_to_ht
 # WikiCommons::write_file("$dir/html_tidy2.$name.html", $html, 1);
 
 
-    $tree->no_space_compacting(1);
+#     $tree->no_space_compacting(1);
     my $text2 = tree_to_text($tree);
-WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
-    $tree->no_space_compacting(0);
+WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1) if $debug eq "yes";
 
     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
 	$a_tag->postinsert(['br']);
@@ -187,7 +186,9 @@ WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
     $clean_text1 =~ s/\x{c2}\x{a0}//gs;
     $clean_text2 =~ s/\x{c2}\x{a0}//gs;
     if ($clean_text1 ne $clean_text2) {{
-	last if $name eq "SC:B04021 STP document" || $name eq "Cashier -- 5.31";
+	last if $name eq "SC:B04021 STP document" || $name eq "Cashier -- 5.31" ||
+	    $name eq "Cashier -- 5.30.017 GN" || $name eq "Cashier -- 5.31.006 GN" ||
+	    $name eq "Cashier -- 5.40" || $name eq "Cashier -- 6.01";
 WikiCommons::write_file("$dir/".++$i." html_text1.$name.txt", $text1, 1);
 WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
 	print "Missing text after working on html file $name, in dir $dir.\n";
@@ -197,6 +198,7 @@ WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
     $tree = tree_fix_numbers_in_headings($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_fix_numbers_in_headings.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
 
+    $tree->no_space_compacting(0);
     my $html_res = tree_to_html($tree);
     print "\t+Fix html file $name.html.\t". (WikiCommons::get_time_diff) ."\n";
     $tree = $tree->delete;

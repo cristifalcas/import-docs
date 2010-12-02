@@ -22,27 +22,27 @@ sub get_categories {
 
 sub generate_categories {
     my ($ver, $main, $big_ver, $customer, $dir_type) = @_;
-    ## $general_categories_hash->{5.01.019}->{5.01} means that 5.01.019 will be in 5.01 category
-    $general_categories_hash->{$ver}->{$main} = 1 if $ver ne "" && $ver ne $main;
-    $general_categories_hash->{$ver}->{$big_ver} = 1 if $ver ne "" && $big_ver ne "";
-    $general_categories_hash->{$ver}->{$customer} = 1 if $big_ver ne "" && $customer ne "";
-    $general_categories_hash->{$ver}->{$dir_type} = 1 if $big_ver ne "" && $dir_type ne "";
-
-    $general_categories_hash->{$main}->{$big_ver} = 1 if $main ne "" && $big_ver ne "";
-    $general_categories_hash->{$main}->{$customer} = 1 if $main ne "" && $customer ne "";
-    $general_categories_hash->{$main}->{$dir_type} = 1 if $main ne "" && $dir_type ne "";
-    $general_categories_hash->{$main}->{'Mind Documentation autoimport'} = 1 if $main ne "";
-
-    $general_categories_hash->{$customer}->{$dir_type} = 1 if $customer ne "" && $dir_type ne "";
-    $general_categories_hash->{$customer}->{'MIND_Customers'} = 1 if $customer ne "";
-    $general_categories_hash->{$customer}->{'Mind Documentation autoimport'} = 1 if $customer ne "";
-
-    $general_categories_hash->{$big_ver}->{'Mind Documentation autoimport'} = 1 if $big_ver ne "";
-    $general_categories_hash->{$dir_type}->{'Mind Documentation autoimport'} = 1 if $dir_type ne "";
-    ## SC
-    $general_categories_hash->{$main}->{'SCDocs'} = 1 if $main =~ /^SC:/;
-    $general_categories_hash->{$customer}->{'SCDocs'} = 1 if $customer =~ /^SC:/;
-    $general_categories_hash->{$big_ver}->{'SCDocs'} = 1 if $big_ver =~ /^SC:/;
+#     ## $general_categories_hash->{5.01.019}->{5.01} means that 5.01.019 will be in 5.01 category
+#     $general_categories_hash->{$ver}->{$main} = 1 if $ver ne "" && $ver ne $main;
+#     $general_categories_hash->{$ver}->{$big_ver} = 1 if $ver ne "" && $big_ver ne "";
+#     $general_categories_hash->{$ver}->{$customer} = 1 if $big_ver ne "" && $customer ne "";
+#     $general_categories_hash->{$ver}->{$dir_type} = 1 if $big_ver ne "" && $dir_type ne "";
+#
+#     $general_categories_hash->{$main}->{$big_ver} = 1 if $main ne "" && $big_ver ne "";
+#     $general_categories_hash->{$main}->{$customer} = 1 if $main ne "" && $customer ne "";
+#     $general_categories_hash->{$main}->{$dir_type} = 1 if $main ne "" && $dir_type ne "";
+#     $general_categories_hash->{$main}->{'Mind Documentation autoimport'} = 1 if $main ne "";
+#
+#     $general_categories_hash->{$customer}->{$dir_type} = 1 if $customer ne "" && $dir_type ne "";
+#     $general_categories_hash->{$customer}->{'MIND_Customers'} = 1 if $customer ne "";
+#     $general_categories_hash->{$customer}->{'Mind Documentation autoimport'} = 1 if $customer ne "";
+#
+#     $general_categories_hash->{$big_ver}->{'Mind Documentation autoimport'} = 1 if $big_ver ne "";
+#     $general_categories_hash->{$dir_type}->{'Mind Documentation autoimport'} = 1 if $dir_type ne "";
+#     ## SC
+#     $general_categories_hash->{$main}->{'SCDocs'} = 1 if $main =~ /^SC:/;
+#     $general_categories_hash->{$customer}->{'SCDocs'} = 1 if $customer =~ /^SC:/;
+#     $general_categories_hash->{$big_ver}->{'SCDocs'} = 1 if $big_ver =~ /^SC:/;
 }
 
 sub get_documents {

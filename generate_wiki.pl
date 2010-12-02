@@ -84,11 +84,22 @@ use Mind_work::WikiMindCRM;
 
 # declare the perl command line flags/options we want to allow
 my $options = {};
-getopts("rd:n:", $options);
+getopts("rd:n:c:", $options);
 
 our $remote_work = "no";
 if ($options->{'r'}){
     $remote_work = "yes";
+}
+
+my $delete_categories = "yes";
+my $make_categories = "yes";
+if ($options->{'c'} =~ m/^y$/i){
+    $delete_categories = "yes";
+    $make_categories = "yes";
+}
+if ($options->{'c'} =~ m/^n$/i){
+    $delete_categories = "no";
+    $make_categories = "no";
 }
 
 my $our_wiki;
@@ -108,8 +119,6 @@ my $wiki_files_uploaded = "wiki_files_uploaded.txt";
 my $wiki_files_info = "wiki_files_info.txt";
 
 my $delete_everything = "no";
-my $delete_categories = "yes";
-my $make_categories = "yes";
 my $pid_old = "100000";
 my $all_real = "no";
 my $type_old = "";
@@ -497,11 +506,8 @@ sub work_real {
 	$svn_url = uri_escape( $svn_url,"^A-Za-z\/:0-9\-\._~%" );
 	my $wiki = create_wiki($url, "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]");
 	if (! defined $wiki ){
-# 	    $to_keep->{$url} = $pages_toimp_hash->{$url};
-	    print "Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
-	    my $name_bad = "$bad_dir/$url".time();
-	    WikiCommons::makedir("$name_bad");
-	    move("$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]","$name_bad");
+	    WikiCommons::makedir("$bad_dir/$url");
+	    move("$wiki_dir/$url","$bad_dir/$url");
 	    delete($pages_toimp_hash->{$url});
 	    next;
 	}

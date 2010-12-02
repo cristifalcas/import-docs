@@ -44,9 +44,9 @@ sub generate_categories {
     }
 
     if ($customer ne "") {
-	$general_categories_hash->{$customer}->{$dir_type} = 1 if $dir_type ne "";
-	$general_categories_hash->{$customer}->{'MIND_Customers'} = 1;
-	$general_categories_hash->{$customer}->{'Mind SVN autoimport'} = 1;
+# 	$general_categories_hash->{$customer}->{$dir_type} = 1 if $dir_type ne "";
+# 	$general_categories_hash->{$customer}->{'MIND_Customers'} = 1;
+# 	$general_categories_hash->{$customer}->{'Mind SVN autoimport'} = 1;
     }
 
     $general_categories_hash->{$big_ver}->{'Mind SVN autoimport'} = 1 if $big_ver ne "";
@@ -55,7 +55,7 @@ sub generate_categories {
 
     $general_categories_hash->{'Mind SVN autoimport'} = 1;
     $general_categories_hash->{'All SVN Documents'} = 1;
-    $general_categories_hash->{'MIND_Customers'} = 1;
+#     $general_categories_hash->{'MIND_Customers'} = 1;
     $general_categories_hash->{'Release Notes'} = 1;
 
     ## Release Notes categories
@@ -312,7 +312,7 @@ sub add_document {
 
     $pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
     $pages_ver->{$page_url}->{'ver'} = "$full_ver";
-print "2. $page_url\n";
+# print "2. $page_url\n";
 
 #     push(@{$pages_ver->{"$fixed_name$url->{'ver'}_sep$ver_without_sp"}}, $ver_sp);
 }
@@ -362,7 +362,7 @@ sub find_svn_helper {
 
 sub fix_naming {
     my ($fixed_name, $customer) = @_;
-print "1a. $fixed_name\n";
+# print "1a. $fixed_name\n";
 
     $fixed_name =~ s/^$customer|$customer$//gi;
     ## Specific updates
@@ -387,7 +387,7 @@ print "1a. $fixed_name\n";
     $fixed_name =~ s/^Resource Mng/Resource Management/;
     $fixed_name =~ s/^Partner Mng/Partner Management/;
     $fixed_name = "$2 - DB Documentation" if ($fixed_name =~ m/^(6.00)?\s*DB Documentation\s*-?\s*([a-z0-9]{1,})$/i && defined $2 && $2 !~ m/^\s*$/);
-print "1b. $fixed_name\n";
+# print "1b. $fixed_name\n";
 
     return "General Configuration Parameters" if ($fixed_name eq "Configuration Parameters");
     return "General Configuration Parameters" if ($fixed_name eq "General Config Parameters");
@@ -512,6 +512,7 @@ print "1b. $fixed_name\n";
     return "Guard" if ($fixed_name eq "GN Guard Manuel d'Utilisation");
     return "Administrator" if ($fixed_name eq "GN Administrator Manuel d'Utilisation");
     return "Cashier" if ($fixed_name eq "GN Cashier Manuel d'Utilisation");
+    return "CallShop" if ($fixed_name eq "CallShop Manuel d'Utilisation");
     return "CallShop" if ($fixed_name eq "5.31.005 CallShop Manuel d'Utilisation");
     return "Manager" if ($fixed_name eq "GN Manager Manuel d'Utilisation");
     return "Reports" if ($fixed_name eq "GN Reports Guide d'Utilisation");
@@ -520,7 +521,7 @@ print "1b. $fixed_name\n";
     return "Product Description" if ($fixed_name eq "GN Description du Produit");
 
     $fixed_name =~ s/^\s*|\s*$//g;
-print "1c. $fixed_name\n";
+# print "1c. $fixed_name\n";
     return $fixed_name;
 }
 
