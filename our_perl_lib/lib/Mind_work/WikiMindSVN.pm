@@ -49,12 +49,14 @@ sub generate_categories {
 	$general_categories_hash->{$customer}->{'Mind SVN autoimport'} = 1;
     }
 
-    $general_categories_hash->{$name}->{'All SVN Documents'} = 1 if $name ne "";
     $general_categories_hash->{$big_ver}->{'Mind SVN autoimport'} = 1 if $big_ver ne "";
     $general_categories_hash->{$dir_type}->{'Mind SVN autoimport'} = 1 if $dir_type ne "";
+    $general_categories_hash->{$name}->{'All SVN Documents'} = 1 if $name ne "";
+
     $general_categories_hash->{'Mind SVN autoimport'} = 1;
     $general_categories_hash->{'All SVN Documents'} = 1;
     $general_categories_hash->{'MIND_Customers'} = 1;
+    $general_categories_hash->{'Release Notes'} = 1;
 
     ## Release Notes categories
     my $url_sep = WikiCommons::get_urlsep;
@@ -490,6 +492,7 @@ print "1b. $fixed_name\n";
     return "Fix Invoice XML Deployment" if ($fixed_name eq "FixInvoiceXML deployment");
     return "Install Oracle 10g Veracity" if ($fixed_name eq "installOracle10g veracity");
     return "Business Processes Monitoring Deployment" if ($fixed_name eq "BP Monitoring Deployment");
+    return "System Audit" if ($fixed_name eq "SA");
     return "Sebanci Telecom EPay Credit Adapter API" if ($fixed_name eq "Sabanci Telecom EPay Credit Adapter API");
     return "SES VF Greece QS Product Description" if ($fixed_name eq "SES VF Greece QS ProductDescription");
     return "SNMP Client Paramaters Descriptions" if ($fixed_name eq "SNMPClient Paramaters descriptions");

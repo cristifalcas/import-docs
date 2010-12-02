@@ -64,21 +64,17 @@ sub print_url {
 		iulimit=>'1',
 		iutitle=>"File:$name" },
 	    ) || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
-	if (scalar @{$pages} ) {
-# 	    foreach (@{$pages}) {
-# 		print "$_->{title}\n";
-# 	    }
-	 } else {
+	if ( ! scalar @{$pages} ) {
 	    print "File:$name\n";
 # 	    print "\t$_->{url}\n";
-# 	    $mw->edit( { action => 'delete', title => "File:$name", reason => '' } )
-# 		|| print $mw->{error}->{code} . ': ' . $mw->{error}->{details}."\n";
+	    $mw->edit( { action => 'delete', title => "File:$name", reason => 'old' } )
+		|| print $mw->{error}->{code} . ': ' . $mw->{error}->{details}."\n";
 	 }
     }
 }
 
 # all_categories
-all_pages (0) ;
+# all_pages (0) ;
 # all_pages (14) ## categories
 # all_links
-# all_images
+all_images
