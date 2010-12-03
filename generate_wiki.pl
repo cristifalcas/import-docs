@@ -93,13 +93,15 @@ if ($options->{'r'}){
 
 my $delete_categories = "yes";
 my $make_categories = "yes";
-if ($options->{'c'} =~ m/^y$/i){
-    $delete_categories = "yes";
-    $make_categories = "yes";
-}
-if ($options->{'c'} =~ m/^n$/i){
-    $delete_categories = "no";
-    $make_categories = "no";
+if (defined $options->{'c'}) {
+    if ($options->{'c'} =~ m/^y$/i){
+	$delete_categories = "yes";
+	$make_categories = "yes";
+    }
+    if ($options->{'c'} =~ m/^n$/i){
+	$delete_categories = "no";
+	$make_categories = "no";
+    }
 }
 
 my $our_wiki;
