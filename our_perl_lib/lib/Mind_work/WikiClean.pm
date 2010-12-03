@@ -728,10 +728,8 @@ sub fix_wiki_chars {
     ## fix strange characters
 ## old
 # #     get ascii hex values from http://www.mikezilla.com/exp0012.html ïƒž is ascii %EF%192%17E which is utf \x{e2}\x{87}\x{92}
-# #     numbers ??
-# #     $wiki =~ s/\x{B2}/2/gs;
-# #     $wiki =~ s/\x{B0}/0/gs;
-# #     $wiki =~ s/\x{B5}/5/gs;
+# #
+# #     get utf8 codes from http://www.fileformat.info/info/unicode/char/25cb/index.htm
 # #     decode character in hex (replace character with utf8represantation):
 # # 		perl -e 'print sprintf("\\x{%x}", $_) foreach (unpack("C*", "�"));print"\n"'
     # copyright
@@ -770,10 +768,11 @@ sub fix_wiki_chars {
     $wiki =~ s/\x{EF}\x{192}\x{17E}/\x{e2}\x{87}\x{92}/gsi;
     ## 3 points
     $wiki =~ s/\x{E2}\x{20AC}\x{A6}/.../gsi;
-    ## circle
+    ## black circle
     $wiki =~ s/\x{EF}\x{201A}\x{B7}/\x{e2}\x{97}\x{8f}/gsi;
     $wiki =~ s/\x{c3}\x{af}\x{e2}\x{80}\x{9a}\x{c2}\x{b7}/\x{e2}\x{97}\x{8f}/gsi;
-    ## black square %EF%201A%A7
+    $wiki =~ s/\x{ef}\x{82}\x{b7}/\x{e2}\x{97}\x{8f}/gsi;
+    ## black square
     $wiki =~ s/\x{c3}\x{af}\x{e2}\x{80}\x{9a}\x{c2}\x{a7}/\x{e2}\x{96}\x{a0}/gsi;
     ## CHECK MARK
     $wiki =~ s/\x{EF}\x{81}\x{90}/\x{e2}\x{9c}\x{94}/gsi;
@@ -785,10 +784,6 @@ sub fix_wiki_chars {
     $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{bb}/\x{e2}\x{9c}\x{98}/gsi;
     ## CIRCLE BACKSLASH
     $wiki =~ s/\x{EF}\x{81}\x{2014}/\x{e2}\x{9c}\x{98}/gsi;
-    ## apostrof
-#     $wiki =~ s/????/'/gs;
-    ## ghilimele
-#     $wiki =~ s/????/"/gs;
 
     return $wiki;
 }

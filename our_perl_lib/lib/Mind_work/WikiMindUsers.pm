@@ -63,7 +63,8 @@ sub add_document {
 	close (FILEHANDLE);
 
 	chomp(@text);
-	@categories = split ',', (split ('=', $text[2]))[1];
+	my $q = (split ('=', $text[2]))[1];
+	@categories = split ',', $q if defined $q && $q !~ m/^\s*$/;
 	for (my $i=0;$i<@categories;$i++) { $categories[$i] =~ s/(^\s+|\s+$)//g; };
 	my $version = (split ('=', $text[0]))[1];
 	if ( defined $version ) {
