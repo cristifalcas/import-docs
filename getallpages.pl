@@ -75,7 +75,7 @@ sub print_url {
 
 # all_categories
 # all_pages (0);
-all_pages (100); ## SC
+# all_pages (100); ## SC
 # all_pages (14); ## categories
 # all_links
-# all_images
+all_images
