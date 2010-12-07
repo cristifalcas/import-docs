@@ -824,6 +824,8 @@ next if $change_id lt "B605220";
 		print "\tUpdate svn http for $key.\n";
 		$request = HTTP::Request->new(GET => "$dir");
 		$request->authorization_basic("$svn_user", "$svn_pass");
+		$dir = "/mnt/SC/svnDocs/Documents/iPhonEX/";
+print "$dir\n";
 		my $file_res = http_svn_get("$dir/$file", "$work_dir");
 		move("$file_res", "$work_dir/$key.doc") || die "can't move file $file_res to $work_dir/$key.doc: $!.\n";
 	    }

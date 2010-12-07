@@ -3,7 +3,7 @@ package WikiMindSVN;
 use warnings;
 use strict;
 
-use Switch;
+# use Switch;
 use File::Find;
 use Cwd 'abs_path';
 use File::Basename;
@@ -109,27 +109,23 @@ sub add_document {
     $customer = "$1" if ($str =~ m/.*\/([^\/]+)(branded|users? manuals?)\//i);
     $customer = WikiCommons::get_correct_customer($customer);
 
-    switch ("$dir_type") {
-    case "Projects" {
+    if ($dir_type eq "Projects") {
         ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $values[0], $values[1]);
         $fixed_name = WikiCommons::fix_name ($name, $customer, $big_ver, $main, $ver, $ver_sp, $ver_id);
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values], $values[0], $values[1]);
 	$basic_url = "$url_sep$ver_fixed";
-    }
-    case "Docs" {
+    } elsif ($dir_type eq "Docs" || $dir_type eq "Docs_POS") {
         ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $values[0], $values[1]);
 # print "xxx:$values[0], $values[1]\n";
         $fixed_name = WikiCommons::fix_name ($name, $customer, $big_ver, $main, $ver, $ver_sp, $ver_id);
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values], $values[0], $values[1]);
 	$basic_url = "$url_sep$ver_fixed";
-    }
-    case "Projects_Deployment" {
+    } elsif ($dir_type eq "Projects_Deployment") {
         ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $values[0], $values[0]);
         $fixed_name = WikiCommons::fix_name ($name, $customer, $big_ver, $main, $ver, $ver_sp, $ver_id);
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values], $values[0], $values[0]);
 	$basic_url = "$url_sep$ver_fixed";
-    }
-    case "Docs_Customizations" {
+    } elsif ($dir_type eq "Docs_Customizations") {
         ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $values[1], $values[2]);
         $customer = $values[0];
         $str =~ s/^$customer\///;
@@ -146,8 +142,7 @@ sub add_document {
         $fixed_name = WikiCommons::fix_name ( $name, $values[0], $big_ver, $main, $ver, $ver_sp, $ver_id);
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values], $values[1], $q);
         $basic_url = "$url_sep$ver_fixed";
-    }
-    case "Projects_Customizations" {
+    } elsif ($dir_type eq "Projects_Customizations") {
         ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $values[1], $values[2]);
         $customer = $values[0];
         $str =~ s/^$customer\///;
@@ -162,8 +157,7 @@ sub add_document {
         $fixed_name = WikiCommons::fix_name ($name, $values[0], $big_ver, $main, $ver, $ver_sp, $ver_id);
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values], $values[1], $values[2]);
         $basic_url = "$url_sep$ver_fixed";
-    }
-    case "Projects_Deployment_Customization" {
+    } elsif ($dir_type eq "Projects_Deployment_Customization") {
         $customer = $values[0];
         $str =~ s/^$customer\///;
 	my $customer_good = WikiCommons::get_correct_customer($customer);
@@ -192,13 +186,11 @@ sub add_document {
 	if ($ver ne '' ){
 	    $basic_url = "$url_sep$ver_fixed";
 	}
-    }
-    case "Projects_Common" {
+    } elsif ($dir_type eq "Projects_Common") {
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values]);
 #         $customer = "_Common for all customers_";
         $fixed_name = WikiCommons::fix_name ($name, $customer);
-    }
-    case "Projects_Deployment_Common" {
+    } elsif ($dir_type eq "Projects_Deployment_Common") {
 	if ( scalar @values == 1 ) {
 	    $rest = "";
 	} else {
@@ -206,26 +198,28 @@ sub add_document {
 	}
 #         $customer = "_Common for all customers_";
         $fixed_name = WikiCommons::fix_name ( $name, $customer );
-    }
-    case "SC" {
+    } elsif ($dir_type eq "SC") {
 	$basic_url = "$name";
 	return 1;
-    }
-    else { die "Unknown document type: $dir_type.\n" }
-    }
+    } else { die "Unknown document type: $dir_type.\n" }
 
     $basic_url = "$basic_url$url_sep$customer" if ($customer ne "");
 
+    if ($dir_type eq "Docs_POS") {
+	$fixed_name =~ s/$ver//g;
+	$fixed_name =~ s/^\s?pos[-_ \t]?//i;
+	$fixed_name = "POS $fixed_name";
+    }
     $fixed_name = fix_naming($fixed_name, $customer) if ($dir !~ /\/(.*? )?Release Notes\//i);
     $fixed_name = WikiCommons::normalize_text( $fixed_name );
     $fixed_name = WikiCommons::capitalize_string( $fixed_name, 'first' );
     my $page_url = "$fixed_name$basic_url";
+    $page_url =~ s/\s+/ /g;
 #     my $page_url_caps = WikiCommons::capitalize_string( $page_url, 'small' );
-    die "No page for $doc_file.\n" if ($page_url eq "" );
+    die "No page for $doc_file.\n" if ($page_url eq "");
 
     ++$count_files;
     print "\tNumber of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n" if ($count_files%100 == 0);
-
     ### Release Notes
     if ($dir =~ /\/(.*? )?Release Notes\//i) {
 	return 1 if $ver_fixed lt "5.00";
@@ -237,6 +231,7 @@ sub add_document {
 	$page_url = "$page_url $ver_id" if $page_url !~ m/$ver_id/gi;
 	$page_url = "RN:$ver $page_url$url_sep$rest";
 	$page_url =~ s/\s+/ /g;
+	$page_url .= "$url_sep"."POS" if $dir_type eq "Docs_POS";
 
 	$main = $main.$url_sep."RN" if $main ne "";
 	$big_ver = $big_ver.$url_sep."RN" if $big_ver ne "";
@@ -245,8 +240,7 @@ sub add_document {
 	push @categories, $big_ver;
 	generate_categories("", $main, $big_ver, "", $dir_type, "");
 	die "RN $page_url already exists:\n\t$rel_path\n".Dumper($pages_toimp_hash->{$page_url}) if exists $pages_toimp_hash->{$page_url};
-# 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
-	$pages_toimp_hash->{$page_url} = [1, $rel_path, $svn_url, "link", \@categories];
+	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
 	return 0;
     }
 
@@ -319,7 +313,7 @@ sub add_document {
 
 sub get_documents {
     my $self = shift;
-    my @APPEND_DIRS=("Docs", "Docs_Customizations", "Projects", "Projects_Common", "Projects_Customizations", "Projects_Deployment", "Projects_Deployment_Common", "Projects_Deployment_Customization");
+    my @APPEND_DIRS=("Docs", "Docs_POS", "Docs_Customizations", "Projects", "Projects_Common", "Projects_Customizations", "Projects_Deployment", "Projects_Deployment_Common", "Projects_Deployment_Customization");
     my $url_sep = WikiCommons::get_urlsep;
     foreach my $append_dir (@APPEND_DIRS) {
 	print "-Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
@@ -383,12 +377,16 @@ sub fix_naming {
     return "Resource Management - DB Documentation" if ($fixed_name eq "6.00 DB Documentation Resource Mng");
     return "Partner Management - DB Documentation" if ($fixed_name eq "6.00 DB Documentation Partner Mng");
     return "System - DB Documentation" if ($fixed_name eq "DB Documentation Syetem");
+    return "Digital TV" if ($fixed_name eq "Digital TV 5.31.001");
+    return "Dynamic Soft" if ($fixed_name eq "Dynamic Soft 5.30.017");
 
     $fixed_name =~ s/^Resource Mng/Resource Management/;
     $fixed_name =~ s/^Partner Mng/Partner Management/;
     $fixed_name = "$2 - DB Documentation" if ($fixed_name =~ m/^(6.00)?\s*DB Documentation\s*-?\s*([a-z0-9]{1,})$/i && defined $2 && $2 !~ m/^\s*$/);
 # print "1b. $fixed_name\n";
 
+    #Billing Crystal Reports invoice jbpm mediation rating reports Resource Management system
+#     return "POS - $2" if ($fixed_name =~ m/^POS\s+(-\s+)?(.*)$/i && defined $2 && $2 !~ m/^\s*$/);
     return "General Configuration Parameters" if ($fixed_name eq "Configuration Parameters");
     return "General Configuration Parameters" if ($fixed_name eq "General Config Parameters");
     return "Modules Deployment" if ($fixed_name =~ m/Modules Deployment (6.01|6.50|6.60|7.00)/i);

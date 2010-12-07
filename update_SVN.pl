@@ -166,8 +166,39 @@ sub docs_customization {
     get_documentation($url, $local_path, 1);
 }
 
+sub docs_sentori {
+    my $url = shift;
+    my $local_path = "$to_path/Docs_Sentori";
+    get_documentation($url, $local_path, 1);
+}
+
+sub docs_pos {
+    my $url = shift;
+    my $local_path = "$to_path/Docs_POS";
+    get_documentation($url, $local_path, 1);
+}
+
+sub docs_phonex {
+    my $url = shift;
+    my $local_path = "$to_path/Docs_Phonex";
+    get_documentation($url, $local_path, 1);
+}
+
+sub docs_sipserver {
+    my $url = shift;
+    my $local_path = "$to_path/Docs_SIPServer";
+    get_documentation($url, $local_path, 1);
+}
+
+sub docs_cms {
+    my $url = shift;
+    my $local_path = "$to_path/Docs_CMS";
+    get_documentation($url, $local_path, 1);
+}
+
+my $original_to_path = $to_path;
+$to_path = "$original_to_path/svn_docs";
 $svn_url = 'http://10.10.4.4:8080/svn/repos/trunk/Projects/iPhonEX';
-# $svn_url = 'http://10.10.4.4:8080/svn/repos/trunk/Projects/Plugins/PluginGenerator/';
 projects ($svn_url);
 projects_common ("$svn_url/Common/");
 projects_customization ("$svn_url/Customizations/");
@@ -175,11 +206,15 @@ projects_deployment ("$svn_url/Deployment/");
 projects_deployment_common ("$svn_url/Deployment/Common/");
 projects_deployment_customization ("$svn_url/Deployment/Customization/");
 
-$svn_url = 'http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation/iPhonEX%20Documents/iPhonEX';
-docs ($svn_url);
-docs_customization ("$svn_url/Customizations/");
+$svn_url = 'http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation/iPhonEX%20Documents';
+docs ("$svn_url/iPhonEX");
+docs_customization ("$svn_url/iPhonEX/Customizations/");
 
-# http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation/Sentori/
-# http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation/POS%20Documents/
-# http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation/PhonEX%20Documents/
-# http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation/iPhonEX%20Documents/SIPServer/
+$svn_url = 'http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation';
+docs_pos("$svn_url".'/POS%20Documents/');
+
+$to_path = "$original_to_path/svn_cms_docs";
+docs_sentori("$svn_url/Sentori/");
+docs_phonex("$svn_url".'/PhonEX%20Documents/');
+$svn_url = 'http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation/iPhonEX%20Documents';
+docs_cms ("$svn_url/CMS/");

@@ -57,7 +57,7 @@ use Cwd 'abs_path';
 use File::Basename;
 use File::Copy;
 use File::Find;
-use Switch;
+# use Switch;
 use Getopt::Std;
 
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
@@ -81,6 +81,7 @@ use Mind_work::WikiMindUsers;
 use Mind_work::WikiMindSVN;
 use Mind_work::WikiMindSC;
 use Mind_work::WikiMindCRM;
+use Mind_work::WikiMindCMS;
 
 # declare the perl command line flags/options we want to allow
 my $options = {};
@@ -632,6 +633,9 @@ WikiCommons::write_file($pid_file,"$$\n");
 $our_wiki = new WikiWork();
 if ($path_type eq "mind_svn") {
     $coco = new WikiMindSVN("$path_files");
+    work_for_docs("$path_files");
+} elsif ($path_type eq "cms_docs") {
+    $coco = new WikiMindCMS("$path_files");
     work_for_docs("$path_files");
 } elsif ($path_type eq "users") {
     $coco = new WikiMindUsers("$path_files");
