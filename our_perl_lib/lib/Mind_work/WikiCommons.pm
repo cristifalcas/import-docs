@@ -82,20 +82,27 @@ sub hash_to_xmlfile {
 
 sub cleanup {
     my $dir = shift;
+
     foreach my $key (keys %$clean_up) {
 	if ($clean_up->{"$key"} eq "file") {
-	    unlink("$key") or die "Could not delete the file $key: ".$!."\n";
+# 	    unlink("$key") or die "Could not delete the file $key: ".$!."\n";
+	    unlink("$key") or return 1;
 	    delete $clean_up->{"$key"};
 	}
     }
     foreach my $key (keys %$clean_up) {
 	if ($clean_up->{$key} eq "dir") {
 	    remove_tree("$key");
+	    delete $clean_up->{"$key"};
 	} else {
-	    die "caca $clean_up->{$key} for $key\n";
+# 	    die "caca $clean_up->{$key} for $key\n";
+	    print "caca $clean_up->{$key} for $key\n";
+	    return 1;
 	}
     }
+    return 1 if scalar keys %$clean_up;
     $clean_up = {};
+    return 0;
 }
 
 sub copy_dir {
@@ -346,7 +353,7 @@ sub generate_html_file {
 	alarm 0;
     };
     if ($@) {
-	die "Timed out.\n";
+	print "Error: Timed out.\n";
     } else {
 	print "\tFinished.\n";
     }

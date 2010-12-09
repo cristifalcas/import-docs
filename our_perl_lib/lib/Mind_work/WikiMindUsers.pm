@@ -12,12 +12,17 @@ $Data::Dumper::Sortkeys = 1;
 our $pages_toimp_hash = {};
 our $general_categories_hash = {};
 our $duplicates = {};
+our $disabled = {};
 
 sub new {
     my $class = shift;
     my $self = { path_files => abs_path(shift)};
     bless($self, $class);
     return $self;
+}
+
+sub get_disabled_pages {
+    return $disabled;
 }
 
 sub get_categories {
@@ -27,22 +32,6 @@ sub get_categories {
 sub generate_categories {
     my ($ver, $main, $big_ver, $customer, $dir_type) = @_;
     ## $general_categories_hash->{5.01.019}->{5.01} means that 5.01.019 will be in 5.01 category
-#     $general_categories_hash->{$ver}->{$main} = 1 if $ver ne "" && $ver ne $main;
-#     $general_categories_hash->{$ver}->{$big_ver} = 1 if $ver ne "" && $big_ver ne "";
-#     $general_categories_hash->{$ver}->{$customer} = 1 if $ver ne "" && $customer ne "";
-#     $general_categories_hash->{$ver}->{$dir_type} = 1 if $ver ne "" && $dir_type ne "";
-#
-#     $general_categories_hash->{$main}->{$big_ver} = 1 if $main ne "" && $big_ver ne "";
-#     $general_categories_hash->{$main}->{$customer} = 1 if $main ne "" && $customer ne "";
-#     $general_categories_hash->{$main}->{$dir_type} = 1 if $main ne "" && $dir_type ne "";
-#     $general_categories_hash->{$main}->{'Users Documentation autoimport'} = 1 if $main ne "";
-#
-#     $general_categories_hash->{$customer}->{$dir_type} = 1 if $customer ne "" && $dir_type ne "";
-#     $general_categories_hash->{$customer}->{'MIND_Customers'} = 1 if $customer ne "";
-#     $general_categories_hash->{$customer}->{'Users Documentation autoimport'} = 1 if $customer ne "";
-#
-#     $general_categories_hash->{$big_ver}->{'Users Documentation autoimport'} = 1 if $big_ver ne "";
-#     $general_categories_hash->{$dir_type}->{'Users Documentation autoimport'} = 1 if $dir_type ne "";
 }
 
 sub add_document {
@@ -85,7 +74,7 @@ sub add_document {
 
 	my $url_sep = WikiCommons::get_urlsep;
 	my $done = (split ('=', $text[3]))[1]; $done =~ s/(^\s+|\s+$)//g;
-	if ($done eq "yes") {
+	if ($done ne "") {
 	    ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $version, $version) if ($version ne "" );
 # 	    WikiCommons::generate_categories($ver_fixed, $main, $big_ver, $customer, "Users documents");
 	    my $fixed_name = $name;
@@ -95,6 +84,13 @@ sub add_document {
 	    $page_url = "$fixed_name$url_sep$ver_fixed$url_sep$customer";
 	    $page_url =~ s/($url_sep){2,}/$url_sep/g;
 	    $page_url =~ s/(^$url_sep)|($url_sep$)//;
+	    chomp $page_url;
+	    $page_url = WikiCommons::normalize_text( $page_url );
+	    $page_url = WikiCommons::capitalize_string( $page_url, 'first' );
+	    if ($done !~ m/yes/i) {
+		$disabled->{$page_url} = "";
+		return;
+	    }
 	} else {
 	    return;
 	}
@@ -102,9 +98,7 @@ sub add_document {
 	print "Invalid users doc. txt file missing: $dir/$name.txt.\n";
 	return;
     }
-    chomp $page_url;
-    $page_url = WikiCommons::normalize_text( $page_url );
-    $page_url = WikiCommons::capitalize_string( $page_url, 'first' );
+
     die "Url is empty.\n" if $page_url eq '';
 
     if (exists $pages_toimp_hash->{$page_url}) {

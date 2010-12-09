@@ -202,10 +202,12 @@ sub create_wiki {
 	    WikiCommons::add_to_remove( $html_file, "file" );
 	    return $wiki;
 	} else {
-	    die "OpenOffice could not create the html file.\t". (WikiCommons::get_time_diff) ."\n";
+	    print "OpenOffice could not create the html file.\t". (WikiCommons::get_time_diff) ."\n";
+	    return;
 	}
     } else {
-	die "Strange, can't find the doc file in $work_dir.\t". (WikiCommons::get_time_diff) ."\n";
+	 print "Strange, can't find the doc file in $work_dir.\t". (WikiCommons::get_time_diff) ."\n";
+	 return;
     }
 }
 
@@ -473,18 +475,18 @@ sub insertdata {
     WikiCommons::write_file("$work_dir/$wiki_files_info", $text);
     delete($pages_toimp_hash->{$url});
 
-    WikiCommons::cleanup($work_dir);
+    my $fail = 0;
+    $fail = WikiCommons::cleanup($work_dir);
     opendir(DIR, $work_dir);
     my @files = grep { (!/^\.\.?$/) } readdir(DIR);
     closedir(DIR);
-    my $fail = 0;
     if (scalar @files > 3 ) {
 	print "Dir $work_dir doesn't have the correct number of files.\n";
 	$fail = 1;
     }
     foreach my $file (@files){
 	if ($file ne $wiki_files_uploaded && $file ne $wiki_files_info && $file !~ m/\.wiki$/ ) {
-	    print "File $file from $work_dir should not exist.\n";
+	    print "File $file from $work_dir should not exist.\n".Dumper(@files);
 	    $fail = 1;
 	    last ;
 	}
@@ -555,9 +557,6 @@ sub work_link {
 	my ($link_name,$link_dir,$link_suffix) = fileparse($to_keep->{$link_to}[$rel_path_pos], qr/\.[^.]*/);
 	my ($name,$dir,$suffix) = fileparse($pages_toimp_hash->{$url}[$rel_path_pos], qr/\.[^.]*/);
 
-# print Dumper($md5_map->{$pages_toimp_hash->{$url}[$md5_pos]});
-# print Dumper($pages_toimp_hash->{$url});
-# print Dumper($to_keep->{$link_to});
 	my $new_file = "$url$suffix";
 	my $link_file = "$wiki_dir/$link_to/$link_to.wiki";
 	WikiCommons::makedir("$wiki_dir/$url/");
@@ -592,8 +591,17 @@ sub work_begin {
 	$pages_toimp_hash = {};
     } else {
 	$pages_toimp_hash = $coco->get_documents();
+
+	if ($path_type eq "users") {
+	    my $disabled = $coco->get_disabled_pages();
+	    foreach my $key (keys %$disabled){
+		delete( $pages_local_hash->{$key});
+	    }
+	}
+
 	($to_delete, $to_keep) = generate_pages_to_delete_to_import;
     }
+
 
     return ($to_delete, $to_keep);
 }
@@ -699,7 +707,7 @@ if ($path_type eq "mind_svn") {
     my $crt_nr = 0;
     foreach my $url (sort keys %$pages_toimp_hash) {
 	$crt_nr++;
-# next if "$url" ne "SC:B19868";
+# next if "$url" ne "SC:F70051";
 	WikiCommons::reset_time();
 	print "\n************************* $crt_nr of $total_nr\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 
@@ -874,7 +882,7 @@ sub quick_and_dirty_html_to_wiki {
     print "\t+Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
     WikiCommons::add_to_remove( $html_file, "file" );
     insertdata($url, $wiki);
-    WikiCommons::cleanup($work_dir);
+    die "Failed in cleanup.\n" if WikiCommons::cleanup($work_dir);
 }
 
 

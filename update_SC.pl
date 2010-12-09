@@ -404,8 +404,6 @@ sub sql_get_changeinfo {
 	@info = @row;
 	chomp @info;
     }
-    die "nica in $change_id\n" if (scalar @info == 0);
-
     return \@info;
 }
 
@@ -445,12 +443,13 @@ sub sql_get_all_changes {
     print "-Get all db changes ". (time() - $time) .".\n";
     my $SEL_CHANGES = "select changeid, nvl(crc,0), status
 	from scchange
-	where projectcode = \'B\'
-	and version >= \'5.0\'
+	where (projectcode = \'B\'
+	and (version >= \'5.0\' or version is null)
 	and status <> \'Cancel\'
 	and status<> \'Inform-Cancel\'
-	and status <> \'Market-Cancel\'
-	";
+	and status <> \'Market-Cancel\')
+	or projectcode = \'F\'";
+# or (projectcode = \'I\' and writtendatetime > \'1Jan2008\')
 
     my $sth = $dbh->prepare($SEL_CHANGES);
     $sth->execute();
@@ -643,6 +642,7 @@ sub http_svn_get {
 	    }
 	}
     }
+    die "Unknown error when retrieving file $url_path.\n" if $retries >= 3;
     print "\t+Get from svn url $url_path.\n";
     return "$local_path/$name$suffix";
 }
@@ -783,7 +783,7 @@ my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
 #     next if $change_id ne "B03448";
-next if $change_id lt "B605220";
+# next if $change_id ne "F70051";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -824,8 +824,8 @@ next if $change_id lt "B605220";
 		print "\tUpdate svn http for $key.\n";
 		$request = HTTP::Request->new(GET => "$dir");
 		$request->authorization_basic("$svn_user", "$svn_pass");
-		$dir = "/mnt/SC/svnDocs/Documents/iPhonEX/";
-print "$dir\n";
+# 		$dir = "/mnt/SC/svnDocs/Documents/iPhonEX/";
+# print "$dir\n";
 		my $file_res = http_svn_get("$dir/$file", "$work_dir");
 		move("$file_res", "$work_dir/$key.doc") || die "can't move file $file_res to $work_dir/$key.doc: $!.\n";
 	    }
@@ -850,6 +850,7 @@ print "$dir\n";
 	print "\tChanged status: $crt_info->{'SC_info'}->{'revision'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'revision'} && "$crt_info->{'SC_info'}->{'revision'}" ne "$prev");
 
 	my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
+	next if (scalar @$info_ret == 0);
 	my $modules = sql_get_modules( split ',', @$info_ret[$index->{'modules'}] ) if defined @$info_ret[$index->{'modules'}];
 	my $tester = sql_get_workers_names( split ',', @$info_ret[$index->{'tester'}] ) if defined @$info_ret[$index->{'tester'}];
 	my $initiator = sql_get_workers_names( split ',', @$info_ret[$index->{'initiator'}] );

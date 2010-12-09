@@ -188,7 +188,9 @@ WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1) if $deb
     if ($clean_text1 ne $clean_text2) {{
 	last if $name eq "SC:B04021 STP document" || $name eq "Cashier -- 5.31" ||
 	    $name eq "Cashier -- 5.30.017 GN" || $name eq "Cashier -- 5.31.006 GN" ||
-	    $name eq "Cashier -- 5.40" || $name eq "Cashier -- 6.01";
+	    $name eq "Cashier -- 5.40" || $name eq "Cashier -- 6.01" ||
+	    $name eq "CMS:PhonEX ONE Installation Technical Guide 2.2" ||
+	    $name eq "CMS:PhonEX Pro 8.00 User Manual";
 WikiCommons::write_file("$dir/".++$i." html_text1.$name.txt", $text1, 1);
 WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
 	print "Missing text after working on html file $name, in dir $dir.\n";
