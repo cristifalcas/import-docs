@@ -191,13 +191,6 @@ sub create_wiki {
 	    close (FILE);
 	    print "\t+Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
 
-# 	    opendir(DIR,$work_dir) || die("Cannot open directory $work_dir.\n");
-# 	    my @files = readdir(DIR);
-# 	    closedir(DIR);
-# 	    foreach(@files) {
-# 		die "Extra files in $work_dir:$_.\n" if (-f $_);
-# 	    }
-
 	    WikiCommons::add_to_remove( $doc_file, "file" );
 	    WikiCommons::add_to_remove( $html_file, "file" );
 	    return $wiki;
@@ -707,7 +700,7 @@ if ($path_type eq "mind_svn") {
     my $crt_nr = 0;
     foreach my $url (sort keys %$pages_toimp_hash) {
 	$crt_nr++;
-# next if "$url" ne "SC:F70051";
+# next if "$url" ne "SC:B90079";
 	WikiCommons::reset_time();
 	print "\n************************* $crt_nr of $total_nr\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 
@@ -722,9 +715,6 @@ if ($path_type eq "mind_svn") {
 	my $wiki_txt = <FH>;
 	close (FH);
 	$wiki_txt =~ s/^[\f ]+|[\f ]+$//mg;
-# 	foreach my $key (keys %{$info_crt_h->{"Categories"}}) {
-# 	    $wiki_txt.= "[[Category:".$info_crt_h->{'Categories'}->{$key}."]]" if $info_crt_h->{'Categories'}->{$key} ne "";
-# 	}
 
 	$wiki_txt .= "\n\n'''FTP links:'''\n\n";
 	foreach my $key (keys %$ftp_links) {

@@ -179,23 +179,25 @@ WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1) if $deb
 	$a_tag->preinsert(['br']);
     }
 
-    my $clean_text1 = $text1;
-    my $clean_text2 = $text2;
-    $clean_text1 =~ s/\s*//gs;
-    $clean_text2 =~ s/\s*//gs;
-    $clean_text1 =~ s/\x{c2}\x{a0}//gs;
-    $clean_text2 =~ s/\x{c2}\x{a0}//gs;
-    if ($clean_text1 ne $clean_text2) {{
-	last if $name eq "SC:B04021 STP document" || $name eq "Cashier -- 5.31" ||
-	    $name eq "Cashier -- 5.30.017 GN" || $name eq "Cashier -- 5.31.006 GN" ||
-	    $name eq "Cashier -- 5.40" || $name eq "Cashier -- 6.01" ||
-	    $name eq "CMS:PhonEX ONE Installation Technical Guide 2.2" ||
-	    $name eq "CMS:PhonEX Pro 8.00 User Manual";
-WikiCommons::write_file("$dir/".++$i." html_text1.$name.txt", $text1, 1);
-WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
-	print "Missing text after working on html file $name, in dir $dir.\n";
-	return undef;
-    }}
+#     my $clean_text1 = $text1;
+#     my $clean_text2 = $text2;
+#     $clean_text1 =~ s/\s*//gs;
+#     $clean_text2 =~ s/\s*//gs;
+#     $clean_text1 =~ s/\x{c2}\x{a0}//gs;
+#     $clean_text2 =~ s/\x{c2}\x{a0}//gs;
+#     if ($clean_text1 ne $clean_text2) {{
+# 	last if $name eq "SC:B04021 STP document" || $name eq "Cashier -- 5.31" ||
+# 	    $name eq "Cashier -- 5.30.017 GN" || $name eq "Cashier -- 5.31.006 GN" ||
+# 	    $name eq "Cashier -- 5.40" || $name eq "Cashier -- 6.01" ||
+# 	    $name eq "CMS:PhonEX ONE Installation Technical Guide 2.2" ||
+# 	    $name eq "CMS:PhonEX Pro 8.00 User Manual" ||
+# 	    $name eq "RN:6.01.100 MoldTel SP15.012 - Changes -- Release Notes -- MoldTel Release Notes" ||
+# 	    $name eq "RN:RN220010 -- CMS";
+# WikiCommons::write_file("$dir/".++$i." html_text1.$name.txt", $text1, 1);
+# WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
+# 	print "Missing text after working on html file $name, in dir $dir.\n";
+# 	return undef;
+#     }}
     ## here we remove text, so we use it last
     $tree = tree_fix_numbers_in_headings($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_fix_numbers_in_headings.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
@@ -875,7 +877,7 @@ sub fix_wiki_link_to_sc {
 #     print "\tFix links to SC.\t". (WikiCommons::get_time_diff) ."\n";
     my $newwiki = $wiki;
     my $count = 0;
-    while ($wiki =~ m/(\[\[Image:[[:print:]]*?B[[:digit:]]{4,}[[:print:]]*?\]\])|(\bB[[:digit:]]{4,}\b)/g ) {
+    while ($wiki =~ m/(\[\[Image:[[:print:]]*?(B|I|F)[[:digit:]]{4,}[[:print:]]*?\]\])|(\b(B|I|F)[[:digit:]]{4,}\b)/g ) {
 	my $found_string = $&;
 	my $found_string_end_pos = pos($wiki);
 

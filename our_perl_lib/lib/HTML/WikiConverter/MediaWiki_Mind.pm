@@ -352,6 +352,7 @@ sub _wikitext_patterns {
     rule     => { pattern => qr/^----/m, location => 'start_of_line' },
     table    => { pattern => qr/^\{\|/m, location => 'start_of_line' },
     link     => { pattern => qr/\[\[/m,  location => 'anywhere' },
+    tilda    => { pattern => qr/~~~/m,   location => 'anywhere' },
     template => { pattern => qr/{{/m,    location => 'anywhere' },
   );
 

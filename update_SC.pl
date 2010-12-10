@@ -31,6 +31,7 @@ use Net::FTP;
 use LWP::UserAgent;
 use File::Path qw(make_path remove_tree);
 use Data::Dumper;
+$Data::Dumper::Sortkeys = 1;
 use File::Listing qw(parse_dir);
 use File::Find;
 use File::Copy;
@@ -40,8 +41,11 @@ use Encode;
 use Data::Compare;
 use Mind_work::WikiCommons;
 
-die "We need the temp path and the destination path.\n" if ( $#ARGV != 1 );
-our ($tmp_path, $to_path) = @ARGV;
+die "We need the temp path, the destination path and sc type:b, f, i.\n" if ( $#ARGV != 2 );
+our ($tmp_path, $to_path, $sc_type) = @ARGV;
+
+die "sc type should be:b, f, i.\n" if length $sc_type>1 || $sc_type !~ m/[bfi]/i;
+$sc_type = uc $sc_type;
 
 remove_tree("$tmp_path");
 WikiCommons::makedir ("$tmp_path");
@@ -55,9 +59,12 @@ our $svn_pass = 'svncheckout';
 our $svn_user = 'svncheckout';
 our $files_info = "files_info.txt";
 our $general_template_file = "$path_prefix/SC_template.txt";
+my $svn_type = "remote";
+# my $svn_type = "local";
+my $svn_local_path = "/mnt/SC/";
 my $svn_update = "yes";
 my $force_db_update = "no";
-my $bulk_svn_update = "yes";
+my $bulk_svn_update = "no";
 
 die "Templare file missing.\n" if ! -e $general_template_file;
 
@@ -80,18 +87,6 @@ our @doc_types = (
 'STP document'
 );
 
-# sub makedir {
-#     my $dir = shift;
-#     make_path ("$dir", {owner=>'wiki', group=>'nobody', error => \my $err});
-#     if (@$err) {
-# 	for my $diag (@$err) {
-# 	    my ($file, $message) = %$diag;
-# 	    if ($file eq '') { die "general error: $message.\n"; }
-# 	    else { die "problem unlinking $file: $message.\n"; }
-# 	}
-# 	die "Can't make dir $dir.\n";
-#     }
-# }
 
 sub write_rtf {
     my ($name, $data) = @_;
@@ -212,11 +207,14 @@ sub general_info {
     my $related_tasks = "";
     my @related = split ',', @$info[$index->{'relatedtasks'}];
     for (my $i=0;$i<@related;$i++){
-	next if ($related[$i] eq @$info[$index->{'changeid'}] || $related[$i] eq '' || $related[$i] eq ' ');
+	my $task = $related[$i];
+	$task =~ s/(^\s*)|(\s*$)//g;
+print "-$task\n";
+	next if ($task eq @$info[$index->{'changeid'}] || $task eq '' || $task eq ' ');
 	if ($i%6 != 0){
-	    $related_tasks .= "| '''[[SC:$related[$i]|$related[$i]]]'''\n";
+	    $related_tasks .= "| '''[[SC:$task|$task]]'''\n";
 	} else {
-	    $related_tasks .= "|-\n| '''[[SC:$related[$i]|$related[$i]]]'''\n";
+	    $related_tasks .= "|-\n| '''[[SC:$task|$task]]'''\n";
 	}
     }
     if ($related_tasks ne ' ' && $related_tasks ne ''){
@@ -319,10 +317,11 @@ sub sql_get_common_info {
 	push @select , $hash_fields->{$arr_fields[$i]};
     }
     my $select = join ',', @select;
-    $SEL_INFO = "select $select" . $SEL_INFO . " where prj.projectcode = 'B'";
+    $SEL_INFO = "select $select" . $SEL_INFO . " where prj.projectcode = '$sc_type'";
 
     my @info = ();
     my $sth = $dbh->prepare($SEL_INFO);
+
     $sth->execute();
     my $nr=0;
     while ( my @row=$sth->fetchrow_array() ) {
@@ -441,15 +440,24 @@ sub sql_get_dealer_names {
 
 sub sql_get_all_changes {
     print "-Get all db changes ". (time() - $time) .".\n";
-    my $SEL_CHANGES = "select changeid, nvl(crc,0), status
-	from scchange
-	where (projectcode = \'B\'
+    my $cond = "";
+    if ($sc_type eq 'B') {
+	$cond = "(projectcode = \'B\'
 	and (version >= \'5.0\' or version is null)
 	and status <> \'Cancel\'
 	and status<> \'Inform-Cancel\'
-	and status <> \'Market-Cancel\')
-	or projectcode = \'F\'";
-# or (projectcode = \'I\' and writtendatetime > \'1Jan2008\')
+	and status <> \'Market-Cancel\')";
+    } elsif ($sc_type eq 'F') {
+	$cond = "projectcode = \'F\'";
+    } elsif ($sc_type eq 'I') {
+	$cond  = "(projectcode = \'I\' and writtendatetime > \'1Jan2008\')";
+    } else {
+	die "Impossible.\n";
+    }
+
+    my $SEL_CHANGES = "select changeid, nvl(crc,0), status, projectcode
+	from scchange
+	where $cond";
 
     my $sth = $dbh->prepare($SEL_CHANGES);
     $sth->execute();
@@ -515,6 +523,20 @@ sub sql_get_modules {
 	push @modules, @row;
     }
     return \@modules;
+}
+
+sub sql_get_relpath {
+    my $SEL = "select svn.parametervalue
+  from (select parametervalue
+          from scparameters
+         where section = \'SVN\'
+           and parameterkey = \'SVN_DOC_REPOS\') svn";
+    my $sth = $dbh->prepare($SEL);
+    $sth->execute();
+    while ( my @row=$sth->fetchrow_array() ) {
+	die "too many rows\n" if $#row>1;
+	return $row[0];
+    }
 }
 
 sub get_previous {
@@ -659,7 +681,7 @@ sub write_common_info {
 sub svn_list {
     my ($dir, $file) = @_;
     print "\t-SVN list for $file.\t". (time() - $time)."\n" if defined $file;
-    my $res;
+    my $res = "";;
     if (exists $svn_info_all->{$dir}) {
 	$res = $svn_info_all->{$dir}->{$file};
     } else {
@@ -670,7 +692,7 @@ sub svn_list {
 	    return undef;
 	}
 	my $hash = XMLin($xml);
-	$res = $hash->{'list'}->{'entry'};
+	$res = $hash->{'list'}->{'entry'} if exists $hash->{'list'}->{'entry'};
     }
     print "\t+SVN list for $file.\t". (time() - $time)."\n" if defined $file;
     return $res;
@@ -754,6 +776,7 @@ sub remove_old_dirs {
 
 $ENV{NLS_LANG} = 'AMERICAN_AMERICA.AL32UTF8';
 sql_connect('10.0.0.103', 'SCROM', 'scview', 'scview');
+my $db_relpath = sql_get_relpath();
 my ($index_comm, $info_comm) = sql_get_common_info();
 write_common_info ($index_comm, $info_comm);
 my $crt_hash = sql_get_all_changes();
@@ -761,15 +784,15 @@ my ($index, $SEL_INFO) = sql_generate_select_changeinfo();
 
 remove_old_dirs(keys %$crt_hash);
 
-
 if ($bulk_svn_update eq "yes"){
     foreach my $key (sort keys %$index_comm) {
 	my $retries = 0;
 	my $tmp = @$info_comm[$index_comm->{$key}];
 	# print "$key = @$info_comm[$index_comm->{$key}]\n";
 	next if ($tmp !~ "^http://" || defined $svn_info_all->{$tmp});
+	$tmp =~ s/$db_relpath/$svn_local_path/ if ($svn_type eq "local");
 	while ( ! defined $svn_info_all->{$tmp} && $retries < 3){
-	    print "\tRetrieve svn info for $key.\t". (time() - $time) ."\n";
+	    print "\tRetrieve svn list for $key.\t". (time() - $time) ."\n";
 	    my $res = svn_list($tmp);
 	    $svn_info_all->{$tmp} = $res if defined $res;
 	    $retries++;
@@ -782,8 +805,8 @@ if ($bulk_svn_update eq "yes"){
 my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id ne "B03448";
-# next if $change_id ne "F70051";
+#     next if $change_id ne "I004110";
+# next if $change_id ne "B90079";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -804,6 +827,7 @@ foreach my $change_id (sort keys %$crt_hash){
 
 	foreach my $key (sort keys %$svn_docs) {
 	    my $dir = @$info_comm[$index_comm->{$key}];
+	    $dir =~ s/$db_relpath/$svn_local_path/ if ($svn_type eq "local");
 	    my $file = $svn_docs->{$key};
 	    my $res = svn_list("$dir", "$file");
 
@@ -820,12 +844,9 @@ foreach my $change_id (sort keys %$crt_hash){
 	    $crt_info->{$key}->{'revision'} = $doc_rev;
 
 	    if ( ! Compare($crt_info->{$key}, $prev_info->{$key}) ) {
-# 	    if ( ! -e "$to_path/$change_id/$key.doc" || -s "$to_path/$change_id/$key.doc" != $crt_info->{$key}->{'size'} ) {
 		print "\tUpdate svn http for $key.\n";
 		$request = HTTP::Request->new(GET => "$dir");
 		$request->authorization_basic("$svn_user", "$svn_pass");
-# 		$dir = "/mnt/SC/svnDocs/Documents/iPhonEX/";
-# print "$dir\n";
 		my $file_res = http_svn_get("$dir/$file", "$work_dir");
 		move("$file_res", "$work_dir/$key.doc") || die "can't move file $file_res to $work_dir/$key.doc: $!.\n";
 	    }
@@ -864,7 +885,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	write_file ("$work_dir/General_info.wiki" ,$txt);
 	write_rtf ("$work_dir/1 Market_SC.rtf", @$info_ret[$index->{'Market_SC'}]);
 	write_rtf ("$work_dir/2 Description_SC.rtf", @$info_ret[$index->{'Description_SC'}]);
-	write_rtf ("$work_dir/3 HLD.rtf", @$info_ret[$index->{'HLD_SC'}]);
+	write_rtf ("$work_dir/3 HLD_SC.rtf", @$info_ret[$index->{'HLD_SC'}]);
 	write_rtf ("$work_dir/4 Messages_SC.rtf", @$info_ret[$index->{'Messages_SC'}]);
 	write_rtf ("$work_dir/5 Architecture_SC.rtf", @$info_ret[$index->{'Architecture_SC'}]);
 
