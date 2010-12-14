@@ -24,7 +24,12 @@ BEGIN {
     }
 }
 
-## ~ 10 hours first run
+#   --8466  '5.0' and version < '5.3'
+#   --11077 '5.3' and version < '6.0'
+#   --11652 '6.0' and version < '6.5'
+#   --12683 '6.5' and version < '7.0'
+#   --1089  '7.0' or version is null
+
 use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."our_perl_lib/lib";
 use DBI;
 use Net::FTP;
@@ -41,10 +46,10 @@ use Encode;
 use Data::Compare;
 use Mind_work::WikiCommons;
 
-die "We need the temp path, the destination path and sc type:b, f, i.\n" if ( $#ARGV != 2 );
+die "We need the temp path, the destination path and sc type:b1-5, f, i.\n" if ( $#ARGV != 2 );
 our ($tmp_path, $to_path, $sc_type) = @ARGV;
 
-die "sc type should be:b, f, i.\n" if length $sc_type>1 || $sc_type !~ m/[bfi]/i;
+die "sc type should be:b1-5, f, i.\n" if $sc_type !~ m/(^[fi]$)|(^b[1-5]$)/i;
 $sc_type = uc $sc_type;
 
 remove_tree("$tmp_path");
@@ -209,7 +214,7 @@ sub general_info {
     for (my $i=0;$i<@related;$i++){
 	my $task = $related[$i];
 	$task =~ s/(^\s*)|(\s*$)//g;
-print "-$task\n";
+
 	next if ($task eq @$info[$index->{'changeid'}] || $task eq '' || $task eq ' ');
 	if ($i%6 != 0){
 	    $related_tasks .= "| '''[[SC:$task|$task]]'''\n";
@@ -317,8 +322,14 @@ sub sql_get_common_info {
 	push @select , $hash_fields->{$arr_fields[$i]};
     }
     my $select = join ',', @select;
-    $SEL_INFO = "select $select" . $SEL_INFO . " where prj.projectcode = '$sc_type'";
+    my $type;
+    if ( $sc_type =~ m/b([1-5])/i ) {
+	$type = 'B';
+    } else {
+	$type = $sc_type;
+    }
 
+    $SEL_INFO = "select $select" . $SEL_INFO . " where prj.projectcode = '$type'";
     my @info = ();
     my $sth = $dbh->prepare($SEL_INFO);
 
@@ -441,9 +452,22 @@ sub sql_get_dealer_names {
 sub sql_get_all_changes {
     print "-Get all db changes ". (time() - $time) .".\n";
     my $cond = "";
-    if ($sc_type eq 'B') {
+    my $ver = "";
+    if ($sc_type eq 'B1') {
+	$ver = "version >= \'5.0\' and version < \'5.3\'";
+    } elsif ($sc_type eq 'B2') {
+	$ver = "version >= \'5.3\' and version < \'6.0\'";
+    } elsif ($sc_type eq 'B3') {
+	$ver = "version >= \'6.0\' and version < \'6.5\'";
+    } elsif ($sc_type eq 'B4') {
+	$ver = "version >= \'6.5\' and version < \'7.0\'";
+    } elsif ($sc_type eq 'B5') {
+	$ver = "(version >= \'7.0\' or version is null)";
+    }
+
+    if ($sc_type =~ m/B[0-5]/) {
 	$cond = "(projectcode = \'B\'
-	and (version >= \'5.0\' or version is null)
+	and $ver
 	and status <> \'Cancel\'
 	and status<> \'Inform-Cancel\'
 	and status <> \'Market-Cancel\')";
@@ -672,6 +696,7 @@ sub http_svn_get {
 sub write_common_info {
     my ($index_comm, $info_comm) = @_;
     my $text = "";
+
     foreach my $key (sort keys %$index_comm) {
 	$text .= "$key = @$info_comm[$index_comm->{$key}]\n";
     }

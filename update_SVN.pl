@@ -197,7 +197,7 @@ sub docs_cms {
 }
 
 my $original_to_path = $to_path;
-$to_path = "$original_to_path/svn_docs";
+$to_path = "$original_to_path/svn/mind_docs";
 $svn_url = 'http://10.10.4.4:8080/svn/repos/trunk/Projects/iPhonEX';
 projects ($svn_url);
 projects_common ("$svn_url/Common/");
@@ -213,7 +213,7 @@ docs_customization ("$svn_url/iPhonEX/Customizations/");
 $svn_url = 'http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation';
 docs_pos("$svn_url".'/POS%20Documents/');
 
-$to_path = "$original_to_path/svn_cms_docs";
+$to_path = "$original_to_path/svn/cms_docs";
 docs_sentori("$svn_url/Sentori/");
 docs_phonex("$svn_url".'/PhonEX%20Documents/');
 $svn_url = 'http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation/iPhonEX%20Documents';

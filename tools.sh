@@ -20,4 +20,12 @@ function basckup_svn() {
     zip ./test_docs/zip.zip -@ < ./test_docs/files
 }
 
-batch_Import
+function update_sc() {
+    time ./update_SC.pl ./tmp/b1 ./Documentation/sc/scmind_docs_5.3/ b1 &
+    time ./update_SC.pl ./tmp/b2 ./Documentation/sc/scmind_docs_6.0/ b2 &
+    time ./update_SC.pl ./tmp/b3 ./Documentation/sc/scmind_docs_6.5/ b3 &
+    time ./update_SC.pl ./tmp/b4 ./Documentation/sc/scmind_docs_7.0/ b4 &
+    time ./update_SC.pl ./tmp/b5 ./Documentation/sc/scmind_docs_10.0/ b5&
+}
+
+update_sc

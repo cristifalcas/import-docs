@@ -56,6 +56,7 @@ $SIG{__WARN__} = sub { die @_ };
 use Cwd 'abs_path';
 use File::Basename;
 use File::Copy;
+# move (" /media/share/Documentation/cfalcas/q/import_docs/work/workfor_scmind_docs_7.0/SC:B099252/SC:B099252 5 Architecture_SC", "/media/share/Documentation/cfalcas/q/import_docs//work/bad_dir/SC:B099252/SC:B099252 5 Architecture_SC1292200934") || die "cacat\n";exit 1;
 use File::Find;
 # use Switch;
 use Getopt::Std;
@@ -108,7 +109,8 @@ if (defined $options->{'c'}) {
 my $our_wiki;
 my $path_files = abs_path($options->{'d'});
 my $path_type = $options->{'n'};
-our $wiki_dir = "$path_prefix/work/workfor_". (fileparse($path_files, qr/\.[^.]*/))[0] ."";
+my @tmp = fileparse($path_files, qr/\.[^.]*/);
+our $wiki_dir = "$path_prefix/work/workfor_". $tmp[0].$tmp[2] ."";
 WikiCommons::makedir $wiki_dir;
 $wiki_dir = abs_path($wiki_dir);
 
@@ -151,8 +153,8 @@ sub create_wiki {
     if ( -d $work_dir) {
 	print "Path $work_dir already exists. Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
 	my $name_bad = "$bad_dir/$page_url".time();
-# 	WikiCommons::makedir("$name_bad");
-	move("$work_dir","$name_bad") || die "Can't move dir $work_dir: $!.\n";
+	WikiCommons::makedir("$name_bad");
+	move("$work_dir", "$name_bad") || die "Can't move dir $work_dir\n\tto $name_bad\n: $!.\n";
 	die "Directory still exists." if ( -d $work_dir);
     }
     WikiCommons::makedir ("$work_dir");
@@ -212,9 +214,13 @@ sub get_existing_pages {
 
     $count_files = 0;
     print "-Searching for files in local dir.\t". (WikiCommons::get_time_diff) ."\n";
+    my $total = scalar @allfiles;
+    my $crt_nr = 0;
     foreach my $dir (sort @allfiles) {
 	if (-d "$dir") {
 	    next if ($dir eq "$wiki_dir/categories");
+	    $crt_nr++;
+	    print "\tDone $crt_nr from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($crt_nr%100 == 0);
 	    if ( -f "$dir/$wiki_files_info" && -f "$dir/$wiki_files_info") {
 		open(FILE, "$dir/$wiki_files_info");
 		my @info_text = <FILE>;
@@ -457,6 +463,7 @@ sub insertdata {
     } else {
 	print "\tCopy files to $remote_work_path/$wiki_result\n";
 	WikiCommons::makedir("$remote_work_path/$wiki_result");
+	WikiCommons::add_to_remove ("$remote_work_path/$wiki_result", "dir");
 	WikiCommons::copy_dir ("$work_dir/$wiki_result", "$remote_work_path/$wiki_result") if -e "$work_dir/$wiki_result";
 	copy("$work_dir/$url.full.wiki","$remote_work_path/$url") or die "Copy failed for: $url.full.wiki to $remote_work_path: $!\t". (WikiCommons::get_time_diff) ."\n";
     }
@@ -611,7 +618,7 @@ sub work_for_docs {
 	    remove_tree("$wiki_dir/$url") || die "Can't remove dir $wiki_dir/$url: $?.\n";
 	}
     }
-    make_categories;
+    make_categories if scalar keys %$pages_toimp_hash;
     work_real($to_keep, $path_files);
     work_link($to_keep);
 }
@@ -706,6 +713,7 @@ if ($path_type eq "mind_svn") {
 
 	WikiCommons::makedir "$wiki_dir/$url/";
 	WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
+	WikiCommons::add_to_remove ("$wiki_dir/$url/$wiki_result", "dir");
 	my $rel_path = "$pages_toimp_hash->{$url}[$rel_path_pos]";
 	my $info_crt_h = $pages_toimp_hash->{$url}[$svn_url_pos];
 
