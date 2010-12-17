@@ -235,6 +235,7 @@ sub general_info {
     if (@$info[$index->{'fixesdescription'}] ne '' && @$info[$index->{'fixesdescription'}] ne ' ') {
 	$tmp = @$info[$index->{'fixesdescription'}];
 	$tmp =~ s/\r?\n/ <br\/>\n/g;
+	$tmp =~ s/^(\*|\#|\;|\:|\=|\!|\||----|\{\|)/<nowiki>$1<\/nowiki>/gm;
 	$general =~ s/%fix_description%/\'\'\'Fix descrption\'\'\':\n\n$tmp/;
     } else {
 	$general =~ s/%fix_description%//;
@@ -830,7 +831,7 @@ if ($bulk_svn_update eq "yes"){
 my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id ne "B609059";
+#     next if $change_id ne "I004093";
 # next if $change_id ne "B90079";
 # B099626, B03761
 ## special chars: B06390

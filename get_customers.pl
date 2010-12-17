@@ -210,8 +210,9 @@ while ( my @row=$sth->fetchrow_array() ) {
     $q->{"nr".$id}->{'displayname'} = $row[2];
 
     my $cust_info = get_customer_attributes($row[0]);
-#     next if ( ! defined $cust_info->{'Latest Version'} || $cust_info->{'Latest Version'} lt "5.00")
-    next if ( defined $cust_info->{'Latest Version'} && $cust_info->{'Latest Version'} lt "5.00")
+    next if ( (! defined $cust_info->{'Latest Version'} || $cust_info->{'Latest Version'} lt "5.00") &&
+		$customers->{$id}->{'name'} ne "MTC")
+#     next if ( defined $cust_info->{'Latest Version'} && $cust_info->{'Latest Version'} lt "5.00")
 	    && $customers->{$id}->{'displayname'} ne "Billing";
 
 #     my $dir = write_customer ($cust_info);

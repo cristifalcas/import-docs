@@ -610,6 +610,7 @@ sub write_sr {
 	}
     }
     $wiki .= "\n\n[[Category:CRM]]\n[[Category:$info->{0}->{'customer'} -- CRM]]\n\n";
+    $wiki =~ s/^(\*|\#|\;|\:|\=|\!|\||----|\{\|)/<nowiki>$1<\/nowiki>/gm;
     return $wiki;
 }
 
