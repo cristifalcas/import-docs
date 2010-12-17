@@ -597,8 +597,11 @@ sub tree_clean_lists {
 	    $last = $parent if $parent->tag !~ m/^(body|html)$/;
 	}
 	if (! $has_content) {
-	    $a_tag->detach() if $a_tag->is_empty();
-	    $last->detach();
+	    if ($a_tag->is_empty()){
+		$a_tag->detach();
+	    } else {
+		$last->detach();
+	    }
 	}
 	foreach my $b_tag ($a_tag->content_refs_list()){
 	    next if ref $$b_tag;
