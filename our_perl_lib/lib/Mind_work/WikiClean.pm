@@ -768,6 +768,7 @@ sub fix_wiki_chars {
     $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{a8}/\x{e2}\x{86}\x{92}/gsi;
     $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{a0}/\x{e2}\x{86}\x{92}/gsi;
     $wiki =~ s/\x{ef}\x{83}\x{a0}/\x{e2}\x{86}\x{92}/gsi;
+    $wiki =~ s/\x{ef}\x{80}\x{b0}/\x{e2}\x{86}\x{92}/gsi;
     ## LEFTWARDS arrow
     $wiki =~ s/\x{EF}\x{192}\x{178}/\x{e2}\x{86}\x{90}/gsi;
     $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c5}\x{b8}/\x{e2}\x{86}\x{90}/gsi;
