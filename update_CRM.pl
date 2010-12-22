@@ -465,10 +465,13 @@ sub parse_text {
     $text = WikiClean::fix_wiki_link_to_sc( $text );
     $text = WikiClean::fix_small_issues( $text );
     $text =~ s/([^\n])\n([^\n])/$1\n\n$2/gm;
-    $text =~ s/^=/<br\/>=/gm;
-    $text =~ s/^\*/<br\/>*/gm;
-    $text =~ s/^#/<br\/>#/gm;
-    $text =~ s/^(~+)([^~])/<nowiki>$1<\/nowiki>$2/gm;
+#     $text =~ s/^=/<br\/>=/gm;
+#     $text =~ s/^\*/<br\/>*/gm;
+#     $text =~ s/^#/<br\/>#/gm;
+    $text =~ s/(~+)([^~])/<nowiki>$1<\/nowiki>$2/gm;
+    $text =~ s/^(\*|\#|\;|\:|\=|\!|\||----|\{\|)/<nowiki>$1<\/nowiki>/gm;
+    $text =~ s/<!---/<nowiki><!---<\/nowiki>/gm;
+
     return $text;
 }
 
@@ -610,7 +613,6 @@ sub write_sr {
 	}
     }
     $wiki .= "\n\n[[Category:CRM]]\n[[Category:$info->{0}->{'customer'} -- CRM]]\n\n";
-    $wiki =~ s/^(\*|\#|\;|\:|\=|\!|\||----|\{\|)/<nowiki>$1<\/nowiki>/gm;
     return $wiki;
 }
 
@@ -647,7 +649,7 @@ print "+Get common info.\t". (WikiCommons::get_time_diff) ."\n";
 
 foreach my $cust (sort keys %$customers){
     print "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
-# next if $customers->{$cust}->{'displayname'} ne "Artelecom";
+# next if $customers->{$cust}->{'displayname'} ne "Borusan";
 # next if $cust != 381;
     next if (! defined $customers->{$cust}->{'ver'} || $customers->{$cust}->{'ver'} lt "5.00")
 	    && $customers->{$cust}->{'displayname'} ne "Billing";

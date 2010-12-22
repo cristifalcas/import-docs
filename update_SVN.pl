@@ -27,9 +27,8 @@ our $mind_ver_min = "5.00";
 
 die "We need the destination path.\n" if ( $#ARGV != 0 );
 our ($to_path) = @ARGV;
-WikiCommons::makedir ("$to_path");
+WikiCommons::makedir ("$to_path", 0);
 $to_path = abs_path("$to_path");
-# 0758062144
 
 sub get_dir {
     my $dir = shift;
@@ -38,18 +37,6 @@ sub get_dir {
     my @dirs = grep { (!/^\.\.?$/) && -d "$dir"} readdir(DIR);
     closedir(DIR);
     return @dirs;
-}
-
-sub get_diff {
-    my (@array1, @array2) = @_;
-    my (@union, @intersection, @difference) = ();
-    my %count = ();
-    foreach my $element (@array1, @array2) { $count{$element}++ }
-    foreach my $element (keys %count) {
-        push @union, $element;
-        push @{ $count{$element} > 1 ? \@intersection : \@difference }, $element;
-    }
-    return (\@union, \@intersection, \@difference);
 }
 
 sub is_version_ok {
@@ -69,7 +56,7 @@ sub get_documentation {
 	    my $local_url = "$local/$doc_dir";
 	    if ( defined WikiCommons::svn_list($svn_url, $svn_pass, $svn_user) ){
 		print "checkout:\n\t$svn_url\n\t\tto\n\t$local_url\n" ;
-		WikiCommons::makedir ("$local_url");
+		WikiCommons::makedir ("$local_url", 0);
 		my $text = "SVN_URL = $svn_url\nLOCAL_SVN_PATH = $local_url\n";
 		WikiCommons::write_file("$local_url/$svn_helper_file", $text);
 		WikiCommons::svn_checkout($svn_url, $local_url, $svn_pass, $svn_user);
@@ -77,7 +64,7 @@ sub get_documentation {
 	}
     } else {
 	print "checkout:\n\t$svn\n\t\tto\n\t$local\n" ;
-	WikiCommons::makedir ("$local");
+	WikiCommons::makedir ("$local", 0);
 	my $text = "SVN_URL = $svn\nLOCAL_SVN_PATH = $local\n";
 	WikiCommons::write_file("$local/$svn_helper_file", $text);
 	WikiCommons::svn_checkout($svn, $local, $svn_pass, $svn_user);
@@ -197,24 +184,36 @@ sub docs_cms {
 }
 
 my $original_to_path = $to_path;
-$to_path = "$original_to_path/svn/mind_docs";
+$to_path = "$original_to_path/svn/svn_mind_docs";
 $svn_url = 'http://10.10.4.4:8080/svn/repos/trunk/Projects/iPhonEX';
+print "Start working for projects.\n";
 projects ($svn_url);
+print "Start working for projects_common.\n";
 projects_common ("$svn_url/Common/");
+print "Start working for projects_customization.\n";
 projects_customization ("$svn_url/Customizations/");
+print "Start working for projects_deployment.\n";
 projects_deployment ("$svn_url/Deployment/");
+print "Start working for projects_deployment_common.\n";
 projects_deployment_common ("$svn_url/Deployment/Common/");
+print "Start working for projects_deployment_customization.\n";
 projects_deployment_customization ("$svn_url/Deployment/Customization/");
 
 $svn_url = 'http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation/iPhonEX%20Documents';
+print "Start working for docs.\n";
 docs ("$svn_url/iPhonEX");
+print "Start working for docs_customization.\n";
 docs_customization ("$svn_url/iPhonEX/Customizations/");
 
 $svn_url = 'http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation';
+print "Start working for docs_pos.\n";
 docs_pos("$svn_url".'/POS%20Documents/');
 
-$to_path = "$original_to_path/svn/cms_docs";
+$to_path = "$original_to_path/svn/svn_cms_docs";
+print "Start working for docs_sentori.\n";
 docs_sentori("$svn_url/Sentori/");
+print "Start working for docs_phonex.\n";
 docs_phonex("$svn_url".'/PhonEX%20Documents/');
 $svn_url = 'http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation/iPhonEX%20Documents';
+print "Start working for docs_cms.\n";
 docs_cms ("$svn_url/CMS/");

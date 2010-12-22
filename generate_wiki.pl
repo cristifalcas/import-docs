@@ -602,15 +602,7 @@ sub work_begin {
 	($to_delete, $to_keep) = generate_pages_to_delete_to_import;
     }
 
-
-    return ($to_delete, $to_keep);
-}
-
-sub work_for_docs {
-    my ($path_files) = @_;
-    my ($to_delete, $to_keep) = work_begin;
 # print "$_\n" foreach sort keys %$pages_toimp_hash; exit 1;
-
     if (WikiCommons::is_remote ne "yes") {
 	foreach my $url (sort keys %$to_delete) {
 	    print "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";
@@ -618,6 +610,13 @@ sub work_for_docs {
 	    remove_tree("$wiki_dir/$url") || die "Can't remove dir $wiki_dir/$url: $?.\n";
 	}
     }
+
+    return ($to_delete, $to_keep);
+}
+
+sub work_for_docs {
+    my ($path_files) = @_;
+    my $to_keep = work_begin;
     make_categories if scalar keys %$pages_toimp_hash;
     work_real($to_keep, $path_files);
     work_link($to_keep);
@@ -652,7 +651,7 @@ if ($path_type eq "mind_svn") {
     $all_real = "yes";
     $coco = new WikiMindCRM("$path_files");
 
-    my ($to_delete, $to_keep) = work_begin;
+    my $to_keep = work_begin;
 # print Dumper($pages_toimp_hash);die;
 
     my $total_nr = scalar keys %$pages_toimp_hash;
@@ -696,7 +695,7 @@ if ($path_type eq "mind_svn") {
     $ftp_links->{'FTP_test_attach'} = "ftp://$info_h->{'FTP_USER'}:$info_h->{'FTP_PASS'}\@$info_h->{'FTP_IP'}/$info_h->{'FTP_test_attach'}";
 
     $coco = new WikiMindSC("$path_files", WikiCommons::get_urlsep);
-    my ($to_delete, $to_keep) = work_begin;
+    my $to_keep = work_begin;
     make_categories;
     my $tmp = {};
     foreach (keys %$pages_toimp_hash) {$tmp->{$_} = 1 if ($pages_toimp_hash->{$_}[$link_type_pos] eq "link")};

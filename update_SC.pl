@@ -97,7 +97,10 @@ sub write_rtf {
     my ($name, $data) = @_;
     $data =~ s/(^\s+)|(\s+$)//;
     $data =~ s/\$\$\@\@/\'/gs;
-    return if (! defined $data || $data eq "");
+    if (! defined $data || $data eq "") {
+	unlink "$name" || die "Could not delete rtf file: $name.\n";
+	return;
+    }
     write_file("$name", $data);
 }
 
@@ -847,6 +850,7 @@ foreach my $change_id (sort keys %$crt_hash){
     my $prev_info = get_previous("$to_path/$change_id/$files_info") if (-e "$to_path/$change_id/$files_info");
 
     ### svn updates (first svn, because we need missing documents)
+    my $update_control_file = 0;
     if ($svn_update ne "no") {
 	my $svn_docs = sql_get_svn_docs($change_id);
 	clean_existing_dir($change_id, $svn_docs, $prev_info);
@@ -875,6 +879,7 @@ foreach my $change_id (sort keys %$crt_hash){
 		$request->authorization_basic("$svn_user", "$svn_pass");
 		my $file_res = http_svn_get("$dir/$file", "$work_dir");
 		move("$file_res", "$work_dir/$key.doc") || die "can't move file $file_res to $work_dir/$key.doc: $!.\n";
+		$update_control_file++;
 	    }
 	}
     }
@@ -914,10 +919,10 @@ foreach my $change_id (sort keys %$crt_hash){
 	write_rtf ("$work_dir/3 HLD_SC.rtf", @$info_ret[$index->{'HLD_SC'}]);
 	write_rtf ("$work_dir/4 Messages_SC.rtf", @$info_ret[$index->{'Messages_SC'}]);
 	write_rtf ("$work_dir/5 Architecture_SC.rtf", @$info_ret[$index->{'Architecture_SC'}]);
-
-	write_control_file($crt_info, $work_dir, $cat);
+	$update_control_file++;
     }
 
+    write_control_file($crt_info, $work_dir, $cat) if $update_control_file;
     $cat = [ $prev_info->{'Categories'}->{'name'} || "", $prev_info->{'Categories'}->{'size'} || "", $prev_info->{'Categories'}->{'revision'} || "" ] if ! defined $cat;
 
 

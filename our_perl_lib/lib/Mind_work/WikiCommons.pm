@@ -145,9 +145,14 @@ sub get_urlsep {
 }
 
 sub makedir {
-    my $dir = shift;
+    my ($dir, $no_extra) = @_;
     my ($name_user, $pass_user, $uid_user, $gid_user, $quota_user, $comment_user, $gcos_user, $dir_user, $shell_user, $expire_user) = getpwnam scalar getpwuid $<;
-    make_path ("$dir", {owner=>"$name_user", group=>"nobody", error => \my $err});
+    my $err;
+    if (defined $no_extra) {
+	make_path ("$dir", {error => \$err});
+    } else {
+	make_path ("$dir", {owner=>"$name_user", group=>"nobody", error => \$err});
+    }
     if (@$err) {
 	for my $diag (@$err) {
 	    my ($file, $message) = %$diag;
