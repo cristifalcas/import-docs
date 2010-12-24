@@ -66,7 +66,9 @@ sub add_document {
 	if ( defined $customer ) {
 	    $customer =~ s/(^\s+|\s+$)//g;
 # 	    $customer = WikiCommons::capitalize_string( $customer, "first"  );
+	    my $tmp = $customer;
 	    $customer = WikiCommons::get_correct_customer($customer);
+	    $customer = $tmp if ! defined $customer;
 	    push @categories, $customer;
 	} else {
 	    $customer = "";

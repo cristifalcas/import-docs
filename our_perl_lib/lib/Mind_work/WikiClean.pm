@@ -805,11 +805,13 @@ sub get_wiki_images {
     while ($wiki =~ m/(\[\[Image:)([[:print:]].*?)(\]\])/g ) {
 	my $pic_name = uri_unescape( $2 );
 	$pic_name =~ s/(.*?)(\|.*)/$1/;
-	push (@$image_files,  "$dir/$pic_name");
 	my $info = image_info("$dir/$pic_name");
 	if (my $error = $info->{error}) {
-	    die "Can't parse image info for $dir $pic_name: $error.\t". (WikiCommons::get_time_diff) ."\n";
+	    print "Can't parse image info for $dir $pic_name: $error.\t". (WikiCommons::get_time_diff) ."\n";
+	    die "" if $dir !~ m/CMS:MIND-IPhonEX CMS 80.00.020/;
+	    next;
 	}
+	push (@$image_files,  "$dir/$pic_name");
     }
     return $image_files;
 }

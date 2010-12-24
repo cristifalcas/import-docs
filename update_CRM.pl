@@ -465,9 +465,7 @@ sub parse_text {
     $text = WikiClean::fix_wiki_link_to_sc( $text );
     $text = WikiClean::fix_small_issues( $text );
     $text =~ s/([^\n])\n([^\n])/$1\n\n$2/gm;
-#     $text =~ s/^=/<br\/>=/gm;
-#     $text =~ s/^\*/<br\/>*/gm;
-#     $text =~ s/^#/<br\/>#/gm;
+
     $text =~ s/(~+)([^~])/<nowiki>$1<\/nowiki>$2/gm;
     $text =~ s/^(\*|\#|\;|\:|\=|\!|\||----|\{\|)/<nowiki>$1<\/nowiki>/gm;
     $text =~ s/<!---/<nowiki><!---<\/nowiki>/gm;

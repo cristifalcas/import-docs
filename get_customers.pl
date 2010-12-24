@@ -211,7 +211,7 @@ while ( my @row=$sth->fetchrow_array() ) {
 
     my $cust_info = get_customer_attributes($row[0]);
     next if ( (! defined $cust_info->{'Latest Version'} || $cust_info->{'Latest Version'} lt "5.00") &&
-		$customers->{$id}->{'name'} ne "MTC")
+		($customers->{$id}->{'name'} ne "MTC" || $customers->{$id}->{'name'} ne "SIW") )
 #     next if ( defined $cust_info->{'Latest Version'} && $cust_info->{'Latest Version'} lt "5.00")
 	    && $customers->{$id}->{'displayname'} ne "Billing";
 

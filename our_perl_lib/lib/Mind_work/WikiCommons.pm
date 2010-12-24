@@ -353,8 +353,9 @@ sub generate_html_file {
     print "\t-Generating html file from $name$suffix.\t". (get_time_diff) ."\n";
     eval {
 	local $SIG{ALRM} = sub { die "alarm\n" };
-	alarm 1800;
+	alarm 46800; # 13 hours
 	$result = `python $real_path/unoconv -f html "$doc_file"`;
+# 	$result = `sleep 300`;
 	alarm 0;
     };
     if ($@) {
@@ -404,27 +405,6 @@ sub get_correct_customer{
     my $name = shift;
     $name =~ s/(^\s+)|(\s+$)//g;
     return "" if $name =~ m/^\s*$/;
-#     return $name if $name eq "Netvision" || $name eq "Others" || $name eq "EastLink" || $name eq "Amariska" || $name eq "Ericsson"
-# 	    || $name eq "Scott" || $name eq "Telecom Columbia" || $name eq "Netcentrex" || $name eq "Adaseme" || $name eq "Cyprus Telekom"
-# 	    || $name eq "Alvarion" || $name eq "Netcentrex" || $name eq "VSNL" || $name eq "VO" || $name eq "RTP" || $name eq "Cyberoute"
-# 	    || $name eq "QA" || $name eq "Pelephone" || $name eq "CTI" || $name eq "CSG Kenan" || $name eq "HOT Telecom"
-# 	    || $name eq "IBM motorola" || $name eq "Gtronix" || $name eq "Merdian telecom" || $name eq "Barak" || $name eq "Bezeq"
-# 	    || $name eq "Cellcom" || $name eq "Personeta" || $name eq "Panama" || $name eq "UK" || $name eq "HOT" || $name eq "Interconnect"
-# 	    || $name eq "Derech-Eretz" || $name eq "ESCALATION" || $name eq "Fix Version 5.21.008 OM" || $name eq "InterConnect"
-# 	    || $name eq "Business Dev 323" || $name eq "Green Card" || $name eq "Green Card Demo" || $name eq "Radiomovel" || $name eq "Cisco - SSG"
-# 	    || $name eq "SSG + Ericson" || $name eq "SSG" || $name eq "i2Telecom" || $name eq "POS" || $name eq "AMIS 247" || $name eq "Abacus_EMP"
-# 	    || $name eq "Sentori Convergent";
-#     return "All" if $name eq "ALL" || $name eq "All" || $name eq "all" || $name eq "ALL version 5" || $name eq ". all" || $name eq "more..."
-# 	    || $name eq "alll" || $name eq "ALL CUSTOMERS" || $name eq "probably all" || $name eq "All (teledome)"
-# 	    || $name eq "All russian customers";
-#     return "Demo" if $name eq "DEMO" || $name eq "Demo";
-#     return "Vodafone Spain" if $name eq "Vodafone Spain" || $name eq "VodaFone Spain";
-#     return "Goldline" if $name eq "goldline" || $name eq "Goldline";
-#     return "MIND" if $name eq "MINDUK_EMP" || $name eq "MIND - Scott" || $name eq "Mind Israel" || $name eq "MIND PROVISIONINIG"
-# 	    || $name eq "MindCRM" || $name eq "Mind CRM";
-#     return "Siemens" if $name eq "Siemnes" || $name eq "Siemens" || $name eq "SIEMENS";
-#     return "Hotlink Mauritius" if $name eq "HOTLINK Mauritius" || $name eq "Hotlink Mauritius";
-
 
     return "AFRIPA" if $name eq "Afripa Telecom";
     return "VDC" if $name eq "VTI";
@@ -470,9 +450,7 @@ sub get_correct_customer{
     return "Adisam" if $name eq "Adisam Romania";
     return "OPTIMA" if $name eq "optima russia" || $name eq "Optima Russia";
     return "INC" if $name eq "Inclarity UK";
-#     return "VOGreece" if $name eq "VO Greece";
     return "cabletel" if $name eq "Cabeltel" || $name eq "CabelTel";
-#     return "BTCBG" if $name eq "BTC BG";
     return "Netcom - IPTEL" if $name eq "IPTEL-SL" || $name eq "IPTEL";
     return "CTV" if $name eq "CTVTelecomPanama";
     return "callsat" if $name eq "CallSat Cyprus";
@@ -481,8 +459,6 @@ sub get_correct_customer{
     return "US-ESCALATION" if $name eq "US Escallation";
     return "Billing" if $name eq "SRG + Billing";
     return "SMART" if $name eq "SmartPCS";
-
-
 
     if ( ! scalar keys %$customers ){
 	$customers = WikiCommons::xmlfile_to_hash ("$real_path/customers.xml");
@@ -521,14 +497,6 @@ sub get_correct_customer{
     }
 
     return undef if ( ! $is_ok );
-# {
-# 	die "Customer $name could not be found in customers list.\n";
-# 	open (FILE, ">>./bad_cust") or die "can't open file bad_cust for writing: $!\n";
-# 	print FILE "$name\n";
-# 	close (FILE);
-# 	return $name;
-#     }
-
     return $crm_name;
 }
 
