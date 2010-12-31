@@ -184,7 +184,7 @@ sub docs_cms {
 }
 
 my $original_to_path = $to_path;
-$to_path = "$original_to_path/svn/svn_mind_docs";
+$to_path = "$original_to_path/svn_mind_docs";
 $svn_url = 'http://10.10.4.4:8080/svn/repos/trunk/Projects/iPhonEX';
 print "Start working for projects.\n";
 projects ($svn_url);
@@ -209,7 +209,7 @@ $svn_url = 'http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation';
 print "Start working for docs_pos.\n";
 docs_pos("$svn_url".'/POS%20Documents/');
 
-$to_path = "$original_to_path/svn/svn_cms_docs";
+$to_path = "$original_to_path/svn_cms_docs";
 print "Start working for docs_sentori.\n";
 docs_sentori("$svn_url/Sentori/");
 print "Start working for docs_phonex.\n";

@@ -243,10 +243,6 @@ sub general_info {
     } else {
 	$general =~ s/%fix_description%//;
     }
-#     $general .= "\n\n";
-#     foreach my $cat (@categories) {
-# 	$general .= "[[Category:$cat]]\n";
-#     }
 
     return ($general, \@categories);
 }
