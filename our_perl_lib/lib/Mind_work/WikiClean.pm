@@ -711,6 +711,8 @@ sub fix_small_issues {
     ## remove empty tables
     $wiki =~ s/\n\{\|.*\n+\|\}\n//gm;;
     $wiki =~ s/\r\n?/\n/gs;
+    ## remove empty headings
+    $wiki =~ s/\n=+\n/\n/gm;;
     ## remove consecutive blank lines
     $wiki =~ s/(\n){4,}/\n\n/gs;
     $wiki =~ s/^[ \t]+//mg;

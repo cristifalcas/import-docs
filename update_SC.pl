@@ -737,7 +737,7 @@ sub write_control_file {
     }
 
     $text .= "SC_info;$hash->{'SC_info'}->{'name'};$hash->{'SC_info'}->{'size'};$hash->{'SC_info'}->{'revision'}\n";
-    $text .= "Categories;". (join ';',@$categories). "\n";
+    $text .= "Categories;". (join ';',@$categories). "\n" if defined $categories && scalar @$categories;
     write_file("$dir/$files_info", "$text");
 }
 

@@ -5,8 +5,12 @@ use strict;
 
 $SIG{__WARN__} = sub { die @_ };
 
+use Cwd 'abs_path','chdir';
+use File::Basename;
+
 BEGIN {
-    my $need= "./instantclient_11_2/";
+    my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
+    my $need= "$path_prefix/instantclient_11_2/";
     my $ld= $ENV{LD_LIBRARY_PATH};
     if(  ! $ld  ) {
         $ENV{LD_LIBRARY_PATH}= $need;
@@ -15,7 +19,7 @@ BEGIN {
     } else {
         $need= "";
     }
-    if( $need ) {
+    if(  $need  ) {
         exec 'env', $^X, $0, @ARGV;
     }
 }
