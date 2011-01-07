@@ -42,7 +42,7 @@ use File::Find;
 use File::Copy;
 use XML::Simple;
 use Encode;
-# use File::Find::Rule;
+use URI::Escape;
 use Data::Compare;
 use Mind_work::WikiCommons;
 
@@ -833,7 +833,7 @@ my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
 #     next if $change_id ne "I004093";
-# next if $change_id ne "B90079";
+# next if $change_id ne "B14861";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -908,7 +908,10 @@ foreach my $change_id (sort keys %$crt_hash){
 	my ($txt, $categories) = general_info($info_ret, $index, $modules, $tester, $initiator, $dealer);
 	$cat = $categories;
 	foreach my $key (sort keys %$missing_documents) {
-	    $txt .= "\nMissing \'\'\'$key\'\'\' from [$missing_documents->{$key} this] svn address, but database says it should exist.\n";
+	    my $link = $missing_documents->{$key};
+	    $link =~ s/^http:\/\///;
+	    $link = uri_escape( $link );
+	    $txt .= "\nMissing \'\'\'$key\'\'\' from [http://$link this] svn address, but database says it should exist.\n";
 	}
 
 	write_file ("$work_dir/General_info.wiki" ,$txt);
