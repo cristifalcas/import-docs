@@ -19,6 +19,7 @@ case "$1" in
     perl "$SCRIPT_PATH"/update_SC.pl "$SCRIPT_PATH"/tmp/b5 "$SCRIPT_PATH"/Documentation/sc/scmind_docs_10.0/	b5 &> "$LOG_PATH"update_sc_10.0 &
     perl "$SCRIPT_PATH"/update_SC.pl "$SCRIPT_PATH"/tmp/f  "$SCRIPT_PATH"/Documentation/sc/scsip_docs/		f  &> "$LOG_PATH"update_sc_f &
     perl "$SCRIPT_PATH"/update_SC.pl "$SCRIPT_PATH"/tmp/i  "$SCRIPT_PATH"/Documentation/sc/scsentori_docs/	i  &> "$LOG_PATH"update_sc_i &
+    perl "$SCRIPT_PATH"/update_SC.pl "$SCRIPT_PATH"/tmp/h  "$SCRIPT_PATH"/Documentation/sc/infrastructure_docs/	h  &> "$LOG_PATH"update_sc_h &
   ;;
 "import_sc")
     perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/scmind_docs_5.3/	-n sc_docs &> "$LOG_PATH"import_sc_5.3
@@ -28,6 +29,7 @@ case "$1" in
     perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/scmind_docs_10.0/	-n sc_docs &> "$LOG_PATH"import_sc_10.0
     perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/scsip_docs/		-n sc_docs &> "$LOG_PATH"import_sc_f
     perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/scsentori_docs/	-n sc_docs &> "$LOG_PATH"import_sc_i
+    perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/infrastructure_docs/ -n sc_docs &> "$LOG_PATH"import_sc_h
   ;;
 "import_crm")
     perl "$SCRIPT_PATH"/update_CRM.pl "$SCRIPT_PATH"/Documentation/crm_docs/ &> "$LOG_PATH"update_crm

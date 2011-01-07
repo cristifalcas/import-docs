@@ -46,10 +46,10 @@ use Encode;
 use Data::Compare;
 use Mind_work::WikiCommons;
 
-die "We need the temp path, the destination path and sc type:b1-5, f, i.\n" if ( $#ARGV != 2 );
+die "We need the temp path, the destination path and sc type:b1-5, f, i, h.\n" if ( $#ARGV != 2 );
 our ($tmp_path, $to_path, $sc_type) = @ARGV;
 
-die "sc type should be:b1-5, f, i.\n" if $sc_type !~ m/(^[fi]$)|(^b[1-5]$)/i;
+die "sc type should be:b1-5, f, i, h.\n" if $sc_type !~ m/(^[fih]$)|(^b[1-5]$)/i;
 $sc_type = uc $sc_type;
 
 remove_tree("$tmp_path");
@@ -475,6 +475,8 @@ sub sql_get_all_changes {
 	$cond = "projectcode = \'F\'";
     } elsif ($sc_type eq 'I') {
 	$cond  = "(projectcode = \'I\' and writtendatetime > \'1Jan2008\')";
+    } elsif ($sc_type eq 'H') {
+	$cond  = "(projectcode = \'H\' and writtendatetime > \'1Jan2008\')";
     } else {
 	die "Impossible.\n";
     }
