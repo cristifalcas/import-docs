@@ -2,6 +2,7 @@
 
 SCRIPT_PATH="$( cd "$( dirname "$0" )" && pwd )"
 LOG_PATH="/var/log/mind/wiki_"
+export LC_ALL=en_US.UTF-8
 
 case "$1" in
 "update_svn")

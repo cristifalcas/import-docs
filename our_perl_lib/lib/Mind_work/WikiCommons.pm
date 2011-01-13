@@ -37,11 +37,12 @@ sub svn_checkout {
     my ($url, $local, $svn_pass, $svn_user) = @_;
     my $list = svn_list($url, $svn_pass, $svn_user);
     return undef if undef $list;
-    my $output = `svn co --non-interactive --no-auth-cache --trust-server-cert --password "$svn_pass" --username "$svn_user" "$url" "$local" 2> /dev/null`;
+    my $output = `svn co --non-interactive --no-auth-cache --trust-server-cert --password "$svn_pass" --username "$svn_user" "$url" "$local"`; # 2> /dev/null
     if ($?) {
 	die "\tError $? for svn checkout $url to $local.\n";
 	return undef;
     }
+    print "$output\n";
     return 1;
 }
 

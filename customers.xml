@@ -1839,6 +1839,22 @@
     <name>SI Wireless</name>
     <displayname>SIW</displayname>
   </nr512>
+  <nr513>
+    <name>Mashreq Group</name>
+    <displayname>Mashreq</displayname>
+  </nr513>
+  <nr514>
+    <name>University of Lethbridge Canada</name>
+    <displayname>Uleth</displayname>
+  </nr514>
+  <nr515>
+    <name>Chicago House US</name>
+    <displayname>CHA</displayname>
+  </nr515>
+  <nr516>
+    <name>Lafarge Egypt</name>
+    <displayname>Lafarge</displayname>
+  </nr516>
   <nr52>
     <name>EcoCom</name>
     <displayname>eco</displayname>

@@ -217,3 +217,4 @@ docs_phonex("$svn_url".'/PhonEX%20Documents/');
 $svn_url = 'http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation/iPhonEX%20Documents';
 print "Start working for docs_cms.\n";
 docs_cms ("$svn_url/CMS/");
+print "DONE.\n";
