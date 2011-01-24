@@ -46,10 +46,10 @@ use URI::Escape;
 use Data::Compare;
 use Mind_work::WikiCommons;
 
-die "We need the temp path, the destination path and sc type:b1-5, f, i, h.\n" if ( $#ARGV != 2 );
+die "We need the temp path, the destination path and sc type:b1-5, f, i, h, r.\n" if ( $#ARGV != 2 );
 our ($tmp_path, $to_path, $sc_type) = @ARGV;
 
-die "sc type should be:b1-5, f, i, h.\n" if $sc_type !~ m/(^[fih]$)|(^b[1-5]$)/i;
+die "sc type should be:b1-5, f, i, h, r.\n" if $sc_type !~ m/(^[fihr]$)|(^b[1-5]$)/i;
 $sc_type = uc $sc_type;
 
 remove_tree("$tmp_path");
@@ -190,6 +190,7 @@ sub general_info {
 	$general =~ s/%customer_bug%//;
     }
     $general =~ s/%type%/@$info[$index->{'changetype'}]/;
+    push @categories, "ChangeType ".@$info[$index->{'changetype'}];
     $general =~ s/%category%/@$info[$index->{'category'}]/;
     $general =~ s/%project%/@$info[$index->{'projectname'}]/;
     $general =~ s/%product%/@$info[$index->{'productname'}]/;
@@ -466,24 +467,26 @@ sub sql_get_all_changes {
     }
 
     if ($sc_type =~ m/B[0-5]/) {
-	$cond = "(projectcode = \'B\'
-	and $ver
-	and status <> \'Cancel\'
-	and status<> \'Inform-Cancel\'
-	and status <> \'Market-Cancel\')";
+	$cond = "projectcode = \'B\' and $ver";
     } elsif ($sc_type eq 'F') {
 	$cond = "projectcode = \'F\'";
     } elsif ($sc_type eq 'I') {
-	$cond  = "(projectcode = \'I\' and writtendatetime > \'1Jan2008\')";
+	$cond  = "projectcode = \'I\' and writtendatetime > \'1Jan2008\'";
     } elsif ($sc_type eq 'H') {
-	$cond  = "(projectcode = \'H\' and writtendatetime > \'1Jan2008\')";
+	$cond  = "projectcode = \'H\' and writtendatetime > \'1Jan2008\'";
+    } elsif ($sc_type eq 'R') {
+	$cond  = "projectcode = \'R\'";
     } else {
 	die "Impossible.\n";
     }
 
+    my $no_cancel = "status <> \'Cancel\'
+	and status<> \'Inform-Cancel\'
+	and status <> \'Market-Cancel\'";
+
     my $SEL_CHANGES = "select changeid, nvl(crc,0), status, projectcode
 	from scchange
-	where $cond";
+	where $cond and $no_cancel";
 
     my $sth = $dbh->prepare($SEL_CHANGES);
     $sth->execute();
@@ -923,9 +926,9 @@ foreach my $change_id (sort keys %$crt_hash){
 	$update_control_file++;
     }
 
-    write_control_file($crt_info, $work_dir, $cat) if $update_control_file;
     $cat = [ $prev_info->{'Categories'}->{'name'} || "", $prev_info->{'Categories'}->{'size'} || "", $prev_info->{'Categories'}->{'revision'} || "" ] if ! defined $cat;
-
+#     write_control_file($crt_info, $work_dir, $cat) if $update_control_file;
+    write_control_file($crt_info, $work_dir, $cat);
 
     move_dir("$work_dir", "$to_path/$change_id/");
     print "+Finish working for $change_id: nr $count of $total.\t$dif\n";

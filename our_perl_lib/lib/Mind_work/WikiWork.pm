@@ -7,6 +7,7 @@ use Mind_work::WikiCommons;
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 use MediaWiki::API;
+# http://en.wikipedia.org/w/api.php
 
 our $wiki_site_path = "/var/www/html/wiki/";
 our $wiki_url = "http://10.0.0.99/wiki";
@@ -99,6 +100,13 @@ sub wiki_exists_page {
 
 sub wiki_geturl {
     return $wiki_url;
+}
+
+sub wiki_move_page {
+    my ($self, $title, $new_title) = @_;
+    $mw->edit( {
+    action => 'move', from => "$title", to => "$new_title" } )
+    || die "Could not move url $title to $new_title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff)."\n";
 }
 
 return 1;

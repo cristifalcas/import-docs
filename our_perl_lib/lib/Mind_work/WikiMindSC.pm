@@ -51,16 +51,39 @@ sub get_documents {
 	close(FH);
 	my @categories = ();
 	my $info_crt_h ;
+	my $url_namespace = "SC_iPhonex_Bug";
 	foreach my $line (@data) {
 	    $line .= " " if $line =~ m/^(.*)\;$/;
 	    my @tmp = split ';', $line;
 	    chomp @tmp;
 
 	    if ($tmp[0] eq "Categories") {
-next;
 		foreach my $q (@tmp) {
 		    $q =~ s/(^\s*)|(\s*$)//g;
-		    next if $q eq "Categories" || $q =~ m/^\s*$/ || $q eq "customer" || $q eq "version";
+		    next if $q !~ "^ChangeType";
+		    my $sc_type = $q;
+		    $sc_type =~ s/^ChangeType\s+//;
+		    push @categories, $q;
+		    if ($sc_type ne "Change" && $sc_type ne "Bug") {
+			print "\tSC type is unknown: $sc_type.\n";
+			$sc_type = "Bug";
+		    }
+		    if ($node =~ m/^B/i) {
+			$url_namespace = "SC_iPhonex_$sc_type";
+		    } elsif ($node =~ m/^F/i) {
+			$url_namespace = "SC_SIP_$sc_type";
+		    } elsif ($node =~ m/^I/i) {
+			$url_namespace = "SC_Sentori_$sc_type";
+		    } elsif ($node =~ m/^H/i) {
+			$url_namespace = "SC_Infrastructure_$sc_type";
+		    } elsif ($node =~ m/^R/i) {
+			$url_namespace = "SC_PaymentManager_$sc_type";
+		    } else {
+			$url_namespace = "SC_iPhonex_$sc_type";
+		    }
+		    push @categories, "RealNameSpace ".$url_namespace;
+		    next;
+
 		    if ($q =~ m/^customer /i){
 			my $customer = $q; $customer =~ s/^customer //i;
 			next if $customer =~ m/^\s*$/;
@@ -91,6 +114,7 @@ next;
 	    $info_crt_h->{$tmp[0]}->{'size'} = "$tmp[2]";
 	    $info_crt_h->{$tmp[0]}->{'revision'} = "$tmp[3]";
 	}
+	$pages_toimp_hash->{"$url_namespace:$node"} = [$md5." redirect", "$node", $info_crt_h, "real", \@categories];
 	$pages_toimp_hash->{"SC:$node"} = [$md5, "$node", $info_crt_h, "real", \@categories];
     }
     print "\tDone $count from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($count%500 != 0);

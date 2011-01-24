@@ -57,9 +57,7 @@ $SIG{__WARN__} = sub { die @_ };
 use Cwd 'abs_path';
 use File::Basename;
 use File::Copy;
-# move (" /media/share/Documentation/cfalcas/q/import_docs/work/workfor_scmind_docs_7.0/SC:B099252/SC:B099252 5 Architecture_SC", "/media/share/Documentation/cfalcas/q/import_docs//work/bad_dir/SC:B099252/SC:B099252 5 Architecture_SC1292200934") || die "cacat\n";exit 1;
 use File::Find;
-# use Switch;
 use Getopt::Std;
 
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
@@ -697,7 +695,7 @@ if ($path_type eq "mind_svn") {
 
     $coco = new WikiMindSC("$path_files", WikiCommons::get_urlsep);
     my $to_keep = work_begin;
-    make_categories;
+#     make_categories;
     my $tmp = {};
     foreach (keys %$pages_toimp_hash) {$tmp->{$_} = 1 if ($pages_toimp_hash->{$_}[$link_type_pos] eq "link")};
     die "There are no links.\n" if scalar keys %$tmp;
@@ -712,6 +710,26 @@ if ($path_type eq "mind_svn") {
 	print "\n************************* $crt_nr of $total_nr\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 
 	WikiCommons::makedir "$wiki_dir/$url/";
+
+	if ($url !~ m/^SC:(.*)/i) {
+	    my $crt_name = $url;
+	    $crt_name =~ s/(SC.*)?:(.*)/$2/i;
+	    my $redirect_text = "#REDIRECT [[SC:$crt_name]]";
+	    print "\tmake redirect from SC:$crt_name to $url.\n";
+	    $our_wiki->wiki_delete_page("$url", "") if $our_wiki->wiki_exists_page("$url");
+	    $our_wiki->wiki_move_page("SC:$crt_name", "$url");
+	    delete($pages_toimp_hash->{$url});
+
+	    my $text = "md5 = ".$pages_toimp_hash->{$url}[$md5_pos]."\n";
+	    $text .= "rel_path = ".$pages_toimp_hash->{$url}[$rel_path_pos]."\n";
+	    $text .= "svn_url = ".$pages_toimp_hash->{$url}[$svn_url_pos]."\n";
+	    $text .= "link_type = ".$pages_toimp_hash->{$url}[$link_type_pos]."\n";
+	    WikiCommons::write_file("$wiki_dir/$url/$url.wiki", "$redirect_text");
+	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
+	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_info", $text);
+	    next;
+	}
+
 	WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
 	WikiCommons::add_to_remove ("$wiki_dir/$url/$wiki_result", "dir");
 	my $rel_path = "$pages_toimp_hash->{$url}[$rel_path_pos]";
@@ -879,6 +897,7 @@ sub quick_and_dirty_html_to_wiki {
     close (FILE);
     print "\t+Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
     WikiCommons::add_to_remove( $html_file, "file" );
+
     insertdata($url, $wiki);
     die "Failed in cleanup.\n" if WikiCommons::cleanup($work_dir);
 }

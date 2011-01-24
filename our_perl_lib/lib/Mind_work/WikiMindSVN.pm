@@ -242,6 +242,8 @@ sub add_document {
 	die "RN $page_url already exists:\n\t$rel_path\n".Dumper($pages_toimp_hash->{$page_url}) if exists $pages_toimp_hash->{$page_url};
 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
 	return 0;
+    } else {
+	$page_url = "SVN:$page_url";
     }
 
     my $full_ver = "$ver $ver_id $ver_sp";
