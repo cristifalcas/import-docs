@@ -52,6 +52,7 @@ sub get_documents {
 	my @categories = ();
 	my $info_crt_h ;
 	my $url_namespace = "SC_iPhonex_Bug";
+# 	my $url_namespace = "";
 	foreach my $line (@data) {
 	    $line .= " " if $line =~ m/^(.*)\;$/;
 	    my @tmp = split ';', $line;
@@ -80,6 +81,7 @@ sub get_documents {
 			$url_namespace = "SC_PaymentManager_$sc_type";
 		    } else {
 			$url_namespace = "SC_iPhonex_$sc_type";
+# print "no namespace here: $node.\n".Dumper(@data);
 		    }
 		    push @categories, "RealNameSpace ".$url_namespace;
 		    next;
@@ -107,13 +109,14 @@ sub get_documents {
 		}
 		next;
 	    }
-
 	    $md5 .= "$tmp[2]" if defined $tmp[2];
 	    die "Wrong number of fields for line $line in $node/$files_info_file.\n" if @tmp<4;
 	    $info_crt_h->{$tmp[0]}->{'name'} = "$tmp[1]";
 	    $info_crt_h->{$tmp[0]}->{'size'} = "$tmp[2]";
 	    $info_crt_h->{$tmp[0]}->{'revision'} = "$tmp[3]";
 	}
+
+# print "no namespace here: $node.\n".Dumper(@data) if $url_namespace eq "";
 	$pages_toimp_hash->{"$url_namespace:$node"} = [$md5." redirect", "$node", $info_crt_h, "real", \@categories];
 	$pages_toimp_hash->{"SC:$node"} = [$md5, "$node", $info_crt_h, "real", \@categories];
     }

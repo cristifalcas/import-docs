@@ -372,6 +372,18 @@ sub generate_pages_to_delete_to_import {
     ($to_delete, $to_keep) = generate_real_and_links($to_delete, $to_keep);
     print "Done separating urls in real and links.\t". (WikiCommons::get_time_diff) ."\n";
 #     ($to_delete, $to_keep) = generate_cleaned_real_and_links($to_delete, $to_keep);
+#     if ($path_type eq "sc_docs"){
+# 	foreach my $url (keys %$pages_toimp_hash) {
+# 	    if ($url =~ m/^SC_(.*)?:(.*)/) {
+# 		my $new_delete = "SC:$2";
+# 		if (exists $to_keep->{$new_delete} && ! defined $pages_toimp_hash->{$new_delete}) {
+# 		    $to_delete->{$new_delete} = $to_keep->{$new_delete};
+# 		    $pages_toimp_hash->{$new_delete} = $to_keep->{$new_delete};
+# 		    delete ($to_keep->{$new_delete});
+# 		}
+# 	    }
+# 	}
+#     }
     generate_cleaned_real_and_links($to_keep);
     print "Done final cleaning of urls.\t". (WikiCommons::get_time_diff) ."\n";
 
@@ -610,7 +622,8 @@ sub work_begin {
 	}
     }
 
-    return ($to_delete, $to_keep);
+#    return ($to_delete, $to_keep);
+    return $to_keep;
 }
 
 sub work_for_docs {
@@ -718,7 +731,6 @@ if ($path_type eq "mind_svn") {
 	    print "\tmake redirect from SC:$crt_name to $url.\n";
 	    $our_wiki->wiki_delete_page("$url", "") if $our_wiki->wiki_exists_page("$url");
 	    $our_wiki->wiki_move_page("SC:$crt_name", "$url");
-	    delete($pages_toimp_hash->{$url});
 
 	    my $text = "md5 = ".$pages_toimp_hash->{$url}[$md5_pos]."\n";
 	    $text .= "rel_path = ".$pages_toimp_hash->{$url}[$rel_path_pos]."\n";
@@ -727,6 +739,7 @@ if ($path_type eq "mind_svn") {
 	    WikiCommons::write_file("$wiki_dir/$url/$url.wiki", "$redirect_text");
 	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
 	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_info", $text);
+	    delete($pages_toimp_hash->{$url});
 	    next;
 	}
 
