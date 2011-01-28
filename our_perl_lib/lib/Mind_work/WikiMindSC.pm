@@ -51,8 +51,8 @@ sub get_documents {
 	close(FH);
 	my @categories = ();
 	my $info_crt_h ;
-	my $url_namespace = "SC_iPhonex_Bug";
-# 	my $url_namespace = "";
+# 	my $url_namespace = "SC_iPhonex_Bug";
+	my $url_namespace = "";
 	foreach my $line (@data) {
 	    $line .= " " if $line =~ m/^(.*)\;$/;
 	    my @tmp = split ';', $line;
@@ -81,7 +81,7 @@ sub get_documents {
 			$url_namespace = "SC_PaymentManager_$sc_type";
 		    } else {
 			$url_namespace = "SC_iPhonex_$sc_type";
-# print "no namespace here: $node.\n".Dumper(@data);
+die "no namespace here: $node.\n".Dumper(@data);
 		    }
 		    push @categories, "RealNameSpace ".$url_namespace;
 		    next;
@@ -116,7 +116,7 @@ sub get_documents {
 	    $info_crt_h->{$tmp[0]}->{'revision'} = "$tmp[3]";
 	}
 
-# print "no namespace here: $node.\n".Dumper(@data) if $url_namespace eq "";
+die "no namespace here: $node.\n".Dumper(@data) if $url_namespace eq "";
 	$pages_toimp_hash->{"$url_namespace:$node"} = [$md5." redirect", "$node", $info_crt_h, "real", \@categories];
 	$pages_toimp_hash->{"SC:$node"} = [$md5, "$node", $info_crt_h, "real", \@categories];
     }

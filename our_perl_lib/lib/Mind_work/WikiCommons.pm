@@ -413,7 +413,7 @@ sub get_correct_customer{
     return "Budget Tel" if $name eq "Budgettel";
     return "Telecom-Colombia" if $name eq "colombia" || $name eq "Telecom Kolumbia" || $name eq "Telecom - Colombia";
     return "MSTelcom" if $name eq "MSTelecom";
-    return "Mobee" if $name eq "MobeeTel";
+    return "Mobee" if $name eq "MobeeTel" ||$name =~ m/mobi/i;
     return "CWP" if $name eq "CWPanama" || $name eq "Cable & Wireless" || $name eq "Bell South Panama" || $name eq "BellSouth Panama"
 	    || $name eq "Bell South";
     return "alcatel" if $name eq "Vendors: Alcatel" || $name eq "Alcatel / NerDring";

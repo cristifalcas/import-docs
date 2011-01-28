@@ -106,8 +106,15 @@ sub add_document {
 
     $dir_type = "SC" if ($name =~ m/^B[[:digit:]]{4,}\s+/);
     my $url_sep = WikiCommons::get_urlsep;
-    $customer = "$1" if ($str =~ m/.*\/([^\/]+)(branded|users? manuals?)\//i);
-    $customer = WikiCommons::get_correct_customer($customer);
+    if ($str =~ m/.*\/([^\/]+)(branded|users? manuals?)\//i) {
+	$customer = "$1";
+	my $q = $customer;
+	$customer = WikiCommons::get_correct_customer($customer);
+	if (! defined $customer) {
+	    print "EE** Unknown customer $q from file $doc_file.\n";
+	    $customer = "";
+	}
+    }
 
     if ($dir_type eq "Projects") {
         ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $values[0], $values[1]);

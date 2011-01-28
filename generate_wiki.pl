@@ -372,18 +372,18 @@ sub generate_pages_to_delete_to_import {
     ($to_delete, $to_keep) = generate_real_and_links($to_delete, $to_keep);
     print "Done separating urls in real and links.\t". (WikiCommons::get_time_diff) ."\n";
 #     ($to_delete, $to_keep) = generate_cleaned_real_and_links($to_delete, $to_keep);
-#     if ($path_type eq "sc_docs"){
-# 	foreach my $url (keys %$pages_toimp_hash) {
-# 	    if ($url =~ m/^SC_(.*)?:(.*)/) {
-# 		my $new_delete = "SC:$2";
-# 		if (exists $to_keep->{$new_delete} && ! defined $pages_toimp_hash->{$new_delete}) {
-# 		    $to_delete->{$new_delete} = $to_keep->{$new_delete};
-# 		    $pages_toimp_hash->{$new_delete} = $to_keep->{$new_delete};
-# 		    delete ($to_keep->{$new_delete});
-# 		}
-# 	    }
-# 	}
-#     }
+    if ($path_type eq "sc_docs"){
+	foreach my $url (keys %$pages_toimp_hash) {
+	    if ($url =~ m/^SC_(.*)?:(.*)/) {
+		my $new_delete = "SC:$2";
+		if (exists $to_keep->{$new_delete} && ! defined $pages_toimp_hash->{$new_delete}) {
+		    $to_delete->{$new_delete} = $to_keep->{$new_delete};
+		    $pages_toimp_hash->{$new_delete} = $to_keep->{$new_delete};
+		    delete ($to_keep->{$new_delete});
+		}
+	    }
+	}
+    }
     generate_cleaned_real_and_links($to_keep);
     print "Done final cleaning of urls.\t". (WikiCommons::get_time_diff) ."\n";
 
@@ -718,7 +718,7 @@ if ($path_type eq "mind_svn") {
     my $crt_nr = 0;
     foreach my $url (sort keys %$pages_toimp_hash) {
 	$crt_nr++;
-# next if "$url" ne "SC:B90079";
+# next if "$url" !~ "B608142";
 	WikiCommons::reset_time();
 	print "\n************************* $crt_nr of $total_nr\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 
@@ -842,7 +842,7 @@ if ($path_type eq "mind_svn") {
 	    if (! defined $title) {
 		print "No title for $name.\n";
 		$wrong = "yes";
-		next;
+		last;
 	    }
 	    $wiki_txt = "\n=$title=\n\n".$header.$wiki_txt."\n\n";
 	    $wiki->{$node} = $wiki_txt;
@@ -852,7 +852,7 @@ if ($path_type eq "mind_svn") {
 	    WikiCommons::copy_dir ("$wiki_dir/$url/$url $name/$wiki_result", "$wiki_dir/$url/$wiki_result") if ($suffix eq ".doc");
 	}
 	if ($wrong eq "yes" ){
-# 	    remove_tree("$path_files/$rel_path") || die "Can't remove dir $path_files/$rel_path: $?.\n";
+	    remove_tree("$path_files/$rel_path") || die "Can't remove dir $path_files/$rel_path: $?.\n";
 	    next ;
 	}
 	my $full_wiki = "";

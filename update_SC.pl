@@ -68,7 +68,7 @@ my $svn_type = "remote";
 # my $svn_type = "local";
 my $svn_local_path = "/mnt/SC/";
 my $svn_update = "yes";
-my $force_db_update = "no";
+my $force_db_update = "yes";
 my $bulk_svn_update = "no";
 
 die "Templare file missing.\n" if ! -e $general_template_file;
@@ -836,7 +836,7 @@ my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
 #     next if $change_id ne "I004093";
-# next if $change_id ne "B14861";
+# next if $change_id ne "B00700";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -912,9 +912,9 @@ foreach my $change_id (sort keys %$crt_hash){
 	$cat = $categories;
 	foreach my $key (sort keys %$missing_documents) {
 	    my $link = $missing_documents->{$key};
-	    $link =~ s/^http:\/\///;
-	    $link = uri_escape( $link );
-	    $txt .= "\nMissing \'\'\'$key\'\'\' from [http://$link this] svn address, but database says it should exist.\n";
+	    $link =~ s/\s/%20/;
+# 	    $link = uri_escape( $link );
+	    $txt .= "\nMissing \'\'\'$key\'\'\' from [$link this] svn address, but database says it should exist.\n";
 	}
 
 	write_file ("$work_dir/General_info.wiki" ,$txt);
@@ -926,9 +926,9 @@ foreach my $change_id (sort keys %$crt_hash){
 	$update_control_file++;
     }
 
-    $cat = [ $prev_info->{'Categories'}->{'name'} || "", $prev_info->{'Categories'}->{'size'} || "", $prev_info->{'Categories'}->{'revision'} || "" ] if ! defined $cat;
-#     write_control_file($crt_info, $work_dir, $cat) if $update_control_file;
-    write_control_file($crt_info, $work_dir, $cat);
+#     $cat = [ $prev_info->{'Categories'}->{'name'} || "", $prev_info->{'Categories'}->{'size'} || "", $prev_info->{'Categories'}->{'revision'} || "" ] if ! defined $cat;
+    write_control_file($crt_info, $work_dir, $cat) if $update_control_file;
+#     write_control_file($crt_info, $work_dir, $cat);
 
     move_dir("$work_dir", "$to_path/$change_id/");
     print "+Finish working for $change_id: nr $count of $total.\t$dif\n";
