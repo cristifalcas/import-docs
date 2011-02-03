@@ -580,7 +580,7 @@ sub work_link {
 	my $svn_url = $pages_toimp_hash->{$url}[$svn_url_pos];
 	$svn_url = uri_escape( $svn_url,"^A-Za-z\/:0-9\-\._~%" );
 
-	my $head_text = "<center>\'\'\'This file was shamesly copied from the following url: [[$link_to]] because the doc files are identical.\'\'\'\n\n";
+	my $head_text = "<center>\'\'\'This file was shamesly copied from the following url: [[SVN:$link_to]] because the doc files are identical.\'\'\'\n\n";
 	$head_text .= "The original document can be found at [$svn_url this address]\n" if ($svn_url ne "");
 	$head_text .= "</center>\n----\n\n\n\n\n\n".$wiki."\n----\n\n";
 	$wiki = $head_text;
@@ -790,6 +790,13 @@ if ($path_type eq "mind_svn") {
 	    } else {
 		die "WTF?\n";
 	    }
+
+	    if (! defined $title) {
+		print "No title for $name.\n";
+		$wrong = "yes";
+		last;
+	    }
+
 	    print "\tWork for $file.\n";
 	    my $wiki_txt = create_wiki("$url/$url $name", "$file", "$url $name");
 	    if (! defined $wiki_txt ){
@@ -839,11 +846,6 @@ if ($path_type eq "mind_svn") {
 
 	    $wiki_txt =~ s/^\s*(.*)\s*$/$1/gs;
 	    next if $wiki_txt eq '';
-	    if (! defined $title) {
-		print "No title for $name.\n";
-		$wrong = "yes";
-		last;
-	    }
 	    $wiki_txt = "\n=$title=\n\n".$header.$wiki_txt."\n\n";
 	    $wiki->{$node} = $wiki_txt;
 
@@ -852,7 +854,10 @@ if ($path_type eq "mind_svn") {
 	    WikiCommons::copy_dir ("$wiki_dir/$url/$url $name/$wiki_result", "$wiki_dir/$url/$wiki_result") if ($suffix eq ".doc");
 	}
 	if ($wrong eq "yes" ){
-	    remove_tree("$path_files/$rel_path") || die "Can't remove dir $path_files/$rel_path: $?.\n";
+	    my $name_bad = "$bad_dir/$url".time();
+	    move("$path_files/$rel_path", "$name_bad") || die "Can't move dir $path_files/$rel_path\n\tto $name_bad\n: $!.\n";
+# 	    WikiCommons::copy_dir ("$path_files/$rel_path", "$name_bad");
+# 	    remove_tree("$path_files/$rel_path") || die "Can't remove dir $path_files/$rel_path: $?.\n";
 	    next ;
 	}
 	my $full_wiki = "";

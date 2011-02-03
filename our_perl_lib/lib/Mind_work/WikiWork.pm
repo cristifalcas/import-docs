@@ -48,8 +48,8 @@ sub wiki_get_page {
 sub wiki_delete_page {
   my ($self, $title, $extra_files_path) = @_;
   my $page = $mw->get_page( { title => $title } );
-  $mw->login( {lgname => 'admin', lgpassword => '!0admin@9' } )
-    || die "Could not login with user admin: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
+#   $mw->login( {lgname => 'admin', lgpassword => '!0admin@9' } )
+#     || die "Could not login with user admin: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
   unless ( $page->{missing} ) {
     $mw->edit( { action => 'delete', title => $title, reason => 'no longer needed' } )
     || die "Could not delete url $title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";

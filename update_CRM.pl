@@ -687,3 +687,4 @@ foreach my $cust (sort keys %$customers){
 }
 
 $dbh->disconnect if defined($dbh);
+print "Done.\n";
