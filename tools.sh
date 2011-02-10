@@ -19,3 +19,7 @@ function basckup_svn() {
     find ./Documentation/svn_docs/ -type f | egrep -i \*.xls$\|\*.doc$\|\*.docx$\|\*.rtf$\|svn_helper_trunk_info.txt$ > ./test_docs/files
     zip ./test_docs/zip.zip -@ < ./test_docs/files
 }
+
+function generate_ftp_links() {
+    gawk '{print "[ftp://"$1":"$2"@62.219.96.61 "toupper($3)"]\n"}' ./new_ftp_users.txt
+}

@@ -63,8 +63,8 @@ sub wiki_delete_page {
     print "\t+Delete previous files from wiki.\t". (WikiCommons::get_time_diff) ."\n";
   }
 
-  $mw->login( {lgname => $wiki_user, lgpassword => $wiki_pass } )
-    || die "Could not login with user $wiki_user: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
+#   $mw->login( {lgname => $wiki_user, lgpassword => $wiki_pass } )
+#     || die "Could not login with user $wiki_user: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
 }
 
 sub wiki_edit_page {
