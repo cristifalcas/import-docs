@@ -91,7 +91,7 @@ sub move_wiki_page {
 # move_wiki_page
 # all_categories
 # all_pages (0);
-# all_pages (100); ## SC
+all_pages (100); ## SC
 # all_pages (14); ## categories
 # all_links
 # all_images

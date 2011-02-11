@@ -882,13 +882,13 @@ if ($path_type eq "mind_svn") {
 
 
 sub quick_and_dirty_html_to_wiki {
-    my $url = "Installing SSL certificate";
+    my $url = "SIP Call Flow";
     my $work_dir = "$wiki_dir/$url";
     $wiki_result = "result";
     my $dest = "$work_dir/$wiki_result";
     WikiCommons::makedir ("$dest");
-    `cp -R "./installing ssl certificate_files/"* "$work_dir"`;
-    my $html_file = "$work_dir/installing ssl certificate.htm";
+    `cp -R "./tmp/SIP Call Flow/"* "$work_dir"`;
+    my $html_file = "$work_dir/article.asp.htm";
 
     my ($name,$dir,$suffix) = fileparse($html_file, qr/\.[^.]*/);
     my $zip_name = $name;
@@ -916,10 +916,14 @@ sub quick_and_dirty_html_to_wiki {
     print "\t+Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
     WikiCommons::add_to_remove( $html_file, "file" );
 
+    $pages_toimp_hash->{$url}[$md5_pos] = "";
+    $pages_toimp_hash->{$url}[$rel_path_pos] = "";
+    $pages_toimp_hash->{$url}[$svn_url_pos] = "";
+    $pages_toimp_hash->{$url}[$link_type_pos] = "";
     insertdata($url, $wiki);
     die "Failed in cleanup.\n" if WikiCommons::cleanup($work_dir);
 }
 
-
+# quick_and_dirty_html_to_wiki
 print "End.\n";
 unlink("$pid_file") or die "Could not delete the file $pid_file: ".$!."\n";

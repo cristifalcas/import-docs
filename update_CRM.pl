@@ -581,6 +581,7 @@ sub write_sr {
 		$hash->{'event'}->{'desc'} = '';
 	    }
 	    $wiki .= write_header($hash, $name, $date, $time, $key);
+	    my $ref = $hash->{'reference'};
 
 	    my $attachements = "";
 	    my $sr_text = "";
@@ -606,6 +607,7 @@ sub write_sr {
 		}
 	    }
 # 	    $wiki .= "$color\n$sr_text\n$attachements\n</div>\n" if ($sr_text ne '' || $attachements ne '');
+	    $attachements .= "\n\nSC reference: [[SC:$ref->{'ref1'}|$ref->{'ref1'}]]" if defined $ref->{'ref1'} && $ref->{'ref1'} !~ m/^\s*$/;
 	    $wiki .= "$color\n$sr_text\n$attachements\n</font>\n" if ($sr_text ne '' || $attachements ne '');
 	    $wiki .= "----\n";
 	}
@@ -632,7 +634,7 @@ sub get_previous {
 
 $ENV{NLS_LANG} = 'AMERICAN_AMERICA.AL32UTF8';
 # $ENV{NLS_NCHAR} = 'AMERICAN_AMERICA.UTF8';
-sql_connect('10.0.0.232', 'BILL1022', 'service25', 'service25');
+sql_connect('10.0.10.92', 'BILL', 'service25', 'service25');
 WikiCommons::reset_time();
 local $| = 1;
 print "-Get common info.\t". (WikiCommons::get_time_diff) ."\n";

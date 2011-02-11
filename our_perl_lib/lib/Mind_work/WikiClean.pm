@@ -65,8 +65,10 @@ sub tree_clean_div {
 	    } elsif ($attr_name eq "id" ) {
 		$id++;
 	    } else {
-		die "Unknown tag in div: $attr_name = $attr_value\n";
-		return undef;
+# 		die "Unknown tag in div: $attr_name = $attr_value\n";
+# 		return undef;
+		print "Unknown tag in div: $attr_name = $attr_value\n";
+		$a_tag->attr("$attr_name", undef);
 	    }
 	}
 	my $nr_attr = scalar $a_tag->all_external_attr_names();
