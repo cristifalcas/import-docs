@@ -71,13 +71,13 @@ sub wiki_edit_page {
   my ($self, $title, $text) = @_;
   print "\t-Uploading page for url $title. ". (WikiCommons::get_time_diff) ."\n";
   my $page = $mw->get_page( { title => $title } );
-  print "\tCreating a new page for $title.\n" if ($page->{missing});
+  print "\tCreating a new page for url $title.\n" if ($page->{missing});
   my $timestamp = $page->{timestamp};
 # php /var/www/html/wiki/maintenance/importTextFile.php --title "Manual De Utilizare MINDBill CSR 6.01.003 -- 6.01 -- 6.01.003 -- User Manuals -- MoldTel branded" "/media/share/Documentation/cfalcas/q/import_docs/work/workfor_svn_docs/Manual De Utilizare MINDBill CSR 6.01.003 -- 6.01 -- 6.01.003 -- User Manuals -- MoldTel branded"
 
   $mw->edit( { action => 'edit', title => $title, text => Encode::decode('utf8', $text) } )
       || die "Could not upload text for $title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
-  print "\t+Uploading page for $title. ". (WikiCommons::get_time_diff) ."\n";
+  print "\t+Uploading page for url $title. ". (WikiCommons::get_time_diff) ."\n";
 }
 
 sub wiki_import_files {

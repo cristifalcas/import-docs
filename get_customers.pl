@@ -185,7 +185,7 @@ select t.attrib_isn, t.value_text
 
 $ENV{NLS_LANG} = 'AMERICAN_AMERICA.AL32UTF8';
 
-$dbh=DBI->connect("dbi:Oracle:host=10.0.0.232;sid=BILL1022", "service25", "service25")|| die( $DBI::errstr . "\n" );
+$dbh=DBI->connect("dbi:Oracle:host=10.0.10.92;sid=BILL", "service25", "service25")|| die( $DBI::errstr . "\n" );
 $dbh->{AutoCommit}    = 0;
 $dbh->{RaiseError}    = 1;
 $dbh->{ora_check_sql} = 1;

@@ -62,7 +62,7 @@ BEGIN {
 # 	$info->{N}->{'person'}->{'first_name'}
 # 	$info->{N}->{'person'}->{'last_name'}
 # 	$info->{N}->{'person'}->{'job'}	-- not used
-# 	$info->{N}->{'reference'}	-- not used
+# 	$info->{N}->{'reference'}
 # 	$info->{N}->{'short_desc'}
 # 	$info->{N}->{'show_to_customer'}
 # 	$info->{N}->{'status'}->{'code'}
@@ -460,8 +460,6 @@ sub parse_text {
 	$text = WikiClean::fix_wiki_chars( $text );
     }
 
-
-
     $text = WikiClean::fix_wiki_link_to_sc( $text );
     $text = WikiClean::fix_small_issues( $text );
     $text =~ s/([^\n])\n([^\n])/$1\n\n$2/gm;
@@ -613,6 +611,13 @@ sub write_sr {
 	}
     }
     $wiki .= "\n\n[[Category:CRM]]\n[[Category:$info->{0}->{'customer'} -- CRM]]\n\n";
+
+#     $wiki =~ s/\x{c2}\x{91}/"/gsi;
+#     $wiki =~ s/\x{c2}\x{92}/'/gsi;
+#     $wiki =~ s/\x{c2}\x{93}/"/gsi;
+#     $wiki =~ s/\x{c2}\x{94}/"/gsi;
+#     $wiki =~ s/\x{c2}\x{96}/-/gsi;
+
     return $wiki;
 }
 
