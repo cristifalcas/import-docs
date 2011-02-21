@@ -228,4 +228,4 @@ $dbh->disconnect if defined($dbh);
 WikiCommons::hash_to_xmlfile( $q, "$to_path/customers.xml", "customers" );
 
 # $customers = WikiCommons::xmlfile_to_hash ("./customers.xml");
-# print Dumper($customers);
+print "Done.\n";

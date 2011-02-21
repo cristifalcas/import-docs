@@ -716,6 +716,7 @@ if ($path_type eq "mind_svn") {
     my $general_wiki_file = "General_info.wiki";
     my $total_nr = scalar keys %$pages_toimp_hash;
     my $crt_nr = 0;
+    my $wrong_hash = {};
     foreach my $url (sort keys %$pages_toimp_hash) {
 	$crt_nr++;
 # next if "$url" !~ "B608142";
@@ -727,15 +728,16 @@ if ($path_type eq "mind_svn") {
 	if ($url !~ m/^SC:(.*)/i) {
 	    my $crt_name = $url;
 	    $crt_name =~ s/(SC.*)?:(.*)/$2/i;
-	    my $redirect_text = "#REDIRECT [[SC:$crt_name]]";
 	    print "\tmake redirect from SC:$crt_name to $url.\n";
 	    $our_wiki->wiki_delete_page("$url", "") if $our_wiki->wiki_exists_page("$url");
+	    next if defined $wrong_hash->{$url};
 	    $our_wiki->wiki_move_page("SC:$crt_name", "$url");
 
 	    my $text = "md5 = ".$pages_toimp_hash->{$url}[$md5_pos]."\n";
 	    $text .= "rel_path = ".$pages_toimp_hash->{$url}[$rel_path_pos]."\n";
 	    $text .= "svn_url = ".$pages_toimp_hash->{$url}[$svn_url_pos]."\n";
 	    $text .= "link_type = ".$pages_toimp_hash->{$url}[$link_type_pos]."\n";
+	    my $redirect_text = "#REDIRECT [[SC:$crt_name]]";
 	    WikiCommons::write_file("$wiki_dir/$url/$url.wiki", "$redirect_text");
 	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
 	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_info", $text);
@@ -856,6 +858,7 @@ if ($path_type eq "mind_svn") {
 	if ($wrong eq "yes" ){
 	    my $name_bad = "$bad_dir/$url".time();
 	    move("$path_files/$rel_path", "$name_bad") || die "Can't move dir $path_files/$rel_path\n\tto $name_bad\n: $!.\n";
+	    $wrong_hash->{$url} = 1;
 # 	    WikiCommons::copy_dir ("$path_files/$rel_path", "$name_bad");
 # 	    remove_tree("$path_files/$rel_path") || die "Can't remove dir $path_files/$rel_path: $?.\n";
 	    next ;

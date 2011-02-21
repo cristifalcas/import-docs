@@ -79,6 +79,10 @@ sub get_documents {
 			$url_namespace = "SC_Infrastructure_$sc_type";
 		    } elsif ($node =~ m/^R/i) {
 			$url_namespace = "SC_PaymentManager_$sc_type";
+		    } elsif ($node =~ m/^D/i) {
+			$url_namespace = "SC_PhonexONE_$sc_type";
+		    } elsif ($node =~ m/^T/i) {
+			$url_namespace = "SC_Nagios_$sc_type";
 		    } else {
 			$url_namespace = "SC_iPhonex_$sc_type";
 die "no namespace here: $node.\n".Dumper(@data);

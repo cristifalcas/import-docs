@@ -22,6 +22,8 @@ case "$1" in
     perl "$SCRIPT_PATH"/update_SC.pl "$SCRIPT_PATH"/tmp/i  "$SCRIPT_PATH"/Documentation/sc/scsentori_docs/	i  &> "$LOG_PATH"update_sc_i &
     perl "$SCRIPT_PATH"/update_SC.pl "$SCRIPT_PATH"/tmp/h  "$SCRIPT_PATH"/Documentation/sc/scinfrastructure_docs/	h  &> "$LOG_PATH"update_sc_h &
     perl "$SCRIPT_PATH"/update_SC.pl "$SCRIPT_PATH"/tmp/r  "$SCRIPT_PATH"/Documentation/sc/scpmg_docs/	r  &> "$LOG_PATH"update_sc_r &
+    perl "$SCRIPT_PATH"/update_SC.pl "$SCRIPT_PATH"/tmp/d  "$SCRIPT_PATH"/Documentation/sc/scphonexone_docs/	d  &> "$LOG_PATH"update_sc_d &
+    perl "$SCRIPT_PATH"/update_SC.pl "$SCRIPT_PATH"/tmp/t  "$SCRIPT_PATH"/Documentation/sc/scnagios_docs/	t  &> "$LOG_PATH"update_sc_t &
   ;;
 "import_sc")
     perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/scmind_docs_5.3/	-n sc_docs &> "$LOG_PATH"import_sc_5.3
@@ -33,6 +35,8 @@ case "$1" in
     perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/scsentori_docs/	-n sc_docs &> "$LOG_PATH"import_sc_i
     perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/scinfrastructure_docs/ -n sc_docs &> "$LOG_PATH"import_sc_h
     perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/scpmg_docs/ 	-n sc_docs &> "$LOG_PATH"import_sc_r
+    perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/scphonexone_docs/ 	-n sc_docs &> "$LOG_PATH"import_sc_d
+    perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/scnagios_docs/ 	-n sc_docs &> "$LOG_PATH"import_sc_t
   ;;
 "import_crm")
     perl "$SCRIPT_PATH"/update_CRM.pl "$SCRIPT_PATH"/Documentation/crm_docs/ &> "$LOG_PATH"update_crm
@@ -42,7 +46,7 @@ case "$1" in
     perl "$SCRIPT_PATH"/generate_wiki.pl -d "/media/share/Documentation/Autoimport in wiki/" -n users &> "$LOG_PATH"import_users &
   ;;
 "update_customers")
-    perl "$SCRIPT_PATH"/get_customers.pl "$SCRIPT_PATH"/ &> "$LOG_PATH"update_customers &
+    perl "$SCRIPT_PATH"/update_customers.pl "$SCRIPT_PATH"/ &> "$LOG_PATH"update_customers &
   ;;
 *)
     echo "Incorrect parameter"

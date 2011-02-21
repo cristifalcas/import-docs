@@ -4,8 +4,7 @@
 =General Information=
 
 <div style="float: left;">'''Initiator''': [mailto:%initiator%@mindcti.com %initiator%]</div>
-<div style="float: right;">'''Tester''' : %tester%
-</div>
+<div style="float: right;">'''Tester''' : %tester%</div>
 
 
 
@@ -14,6 +13,23 @@
 %customer%
 
 %customer_bug%
+
+<div style="float: right;">
+%creation_date%
+
+%modification_date%
+
+{| class="wikitable"
+! Fix version
+! Version
+! Build version
+! Prod version
+|-
+| %fix_version%
+| %version%
+| %build_version%
+| %prod_version%
+|}</div>
 
 {| class="wikitable"
 | '''Type'''
@@ -35,17 +51,6 @@
 | %status%
 |}
 
-{| class="wikitable"
-! Fix version
-! Version
-! Build version
-! Prod version
-|-
-| %fix_version%
-| %version%
-| %build_version%
-| %prod_version%
-|}
 
 '''Parent ID''': [[%parent_id%]]
 

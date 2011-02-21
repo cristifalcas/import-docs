@@ -46,10 +46,10 @@ use URI::Escape;
 use Data::Compare;
 use Mind_work::WikiCommons;
 
-die "We need the temp path, the destination path and sc type:b1-5, f, i, h, r.\n" if ( $#ARGV != 2 );
+die "We need the temp path, the destination path and sc type:b1-5, f, i, h, r, d, t.\n" if ( $#ARGV != 2 );
 our ($tmp_path, $to_path, $sc_type) = @ARGV;
 
-die "sc type should be:b1-5, f, i, h, r.\n" if $sc_type !~ m/(^[fihr]$)|(^b[1-5]$)/i;
+die "sc type should be:b1-5, f, i, h, r, d, t.\n" if $sc_type !~ m/(^[fihrdt]$)|(^b[1-5]$)/i;
 $sc_type = uc $sc_type;
 
 remove_tree("$tmp_path");
@@ -121,6 +121,8 @@ sub general_info {
     $general =~ s/%initiator%/$tmp/g;
     $tmp = join ' ', @$dealer;
     $general =~ s/%dealer%/\'\'\'Dealer\'\'\': $tmp/g;
+    $general =~ s/%creation_date%/\'\'\'Creation date\'\'\': @$info[$index->{'writtendatetime'}]/g;
+    $general =~ s/%modification_date%/\'\'\'Modification date\'\'\': @$info[$index->{'modification_time'}]/g;
     $tmp = "";
     foreach (@$tester) {
 	s/\ /_/g;
@@ -347,6 +349,8 @@ sub sql_get_common_info {
 sub sql_generate_select_changeinfo {
     my $hash_fields = {
 	'fixesdescription'	=> 'nvl(a.fixesdescription,\' \')',
+	'writtendatetime'	=> 'to_char(a.writtendatetime,\'yyyy-mm-dd hh:mi:ss\')',
+	'modification_time'	=> 'to_char(a.modification_time,\'yyyy-mm-dd hh:mi:ss\')',
 	'changeid'		=> 'a.changeid',
 	'modules'		=> 'nvl(a.modules,\' \')',
 	'moduleslist'		=> 'nvl(a.moduleslist,\' \')',
@@ -471,11 +475,15 @@ sub sql_get_all_changes {
     } elsif ($sc_type eq 'F') {
 	$cond = "projectcode = \'F\'";
     } elsif ($sc_type eq 'I') {
-	$cond  = "projectcode = \'I\' and writtendatetime > \'1Jan2008\'";
+	$cond  = "projectcode = \'I\' and nvl(fixversion,0)>=\'4.00\'";
     } elsif ($sc_type eq 'H') {
 	$cond  = "projectcode = \'H\' and writtendatetime > \'1Jan2008\'";
     } elsif ($sc_type eq 'R') {
 	$cond  = "projectcode = \'R\'";
+    } elsif ($sc_type eq 'D') {
+	$cond  = "projectcode = \'D\' and nvl(fixversion,0)>='2.30'";
+    } elsif ($sc_type eq 'T') {
+	$cond  = "projectcode = \'T\'";
     } else {
 	die "Impossible.\n";
     }
@@ -835,7 +843,7 @@ if ($bulk_svn_update eq "yes"){
 my $count = 0;
 my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id ne "B79172";
+#     next if $change_id ne "F00012";
 # next if $change_id ne "B00700";
 # B099626, B03761
 ## special chars: B06390

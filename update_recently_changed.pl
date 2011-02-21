@@ -52,10 +52,11 @@ my $sql_query="select rc_timestamp, rc_user_text, rc_title
 print "Query...\n";
 my $query = $db->prepare($sql_query); 
 $query->execute();
+my $max_size = 40;
 while (my ($time, $user, $page) = $query->fetchrow_array ){
   my $new_page = $page;
   $new_page =~ s/_/\ /g;
-  $new_page = substr($new_page,0,40)."..." if length($new_page)>40;
+  $new_page = substr($new_page,0,$max_size)."..." if length($new_page) > $max_size;
   my $year = substr($time,0,4);
   my $month = substr($time,4,2);
   my $day = substr($time,6,2);
