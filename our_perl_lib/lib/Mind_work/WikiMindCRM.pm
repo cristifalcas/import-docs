@@ -12,11 +12,13 @@ use File::Basename;
 our $pages_toimp_hash = {};
 our $general_categories_hash = {};
 our $count_files;
+our $domain;
 
 sub new {
     my $class = shift;
-    my $self = { path_files => shift };
+    my $self = { path_files => shift, domain => shift };
     bless($self, $class);
+    $domain = $self->{domain};
     return $self;
 }
 
@@ -41,7 +43,19 @@ sub add_document{
     my $sr = $values[1];
     $sr =~ s/^0*//;
     $sr = (split '_', $sr)[0];
-    my $page_url = 'CRM:'."$values[0]".$url_sep."$sr";
+    my $ns = "";
+    if ($domain =~ m/^iphonex$/i) {
+        $ns = "CRM_iPhonex:";
+    } elsif ($domain =~ m/^phonex$/i) {
+        $ns = "CRM_PhonexONE:";
+    } elsif ($domain =~ m/^sentori$/i) {
+        $ns = "CRM:Sentori";
+    } elsif ($domain =~ m/^docs$/i) {
+        return; ##empty old crm
+    } else {
+      die "Domain should be mind, phonex, sentori.\n";
+    }
+    my $page_url = "$ns$values[0]".$url_sep."$sr";
     chomp $page_url;
     die "No page for $doc_file.\n" if ($page_url eq "" );
 

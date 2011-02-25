@@ -130,7 +130,8 @@ my $q=0 if defined $hash->{'Other agreed services'};
 
     delete $hash->{'customer_id'};
 
-    die "Leftovers:".Dumper($hash) if scalar (keys %$hash);
+    die "Leftovers:".Dumper($hash) if scalar (keys %$hash) && $name ne "VStar";
+#print "$txt\n-------------------------------\n";return;
     $our_wiki->wiki_edit_page("Category:$name", $txt);
 }
 
@@ -194,10 +195,15 @@ $dbh->{RowCacheSize}  = 0;
 $dbh->{LongReadLen} = 1024 * 1024;
 $dbh->{LongTruncOk}   = 0;
 
-    my $SEL_INFO = '
-select t.rcustcompanycode, t.rcustcompanyname, t.rcustiddisplay
-  from tblcustomers t';
-#     where t.rcuststatus = \'A\'
+    my $SEL_INFO = 'select unique a.rcustcompanycode, a.rcustcompanyname, a.rcustiddisplay
+  from tblcustomers a, tblsuppdept b, tbldeptsforcustomers c
+ where a.rcustcompanycode = c.rdeptcustcompanycode
+   and b.rsuppdeptcode = c.rdeptcustdeptcode
+   and c.rcuststatus = \'A\'
+   and a.rcuststatus = \'A\'
+   and b.rsuppdeptstatus = \'A\'
+   and a.rcustlastscno > 10';
+
 my $sth = $dbh->prepare($SEL_INFO);
 $sth->execute();
 
@@ -214,10 +220,10 @@ while ( my @row=$sth->fetchrow_array() ) {
     $q->{"nr".$id}->{'displayname'} = $row[2];
 
     my $cust_info = get_customer_attributes($row[0]);
-    next if ( (! defined $cust_info->{'Latest Version'} || $cust_info->{'Latest Version'} lt "5.00") &&
-		($customers->{$id}->{'name'} ne "MTC" || $customers->{$id}->{'name'} ne "SIW") )
+#    next if ( (! defined $cust_info->{'Latest Version'} || $cust_info->{'Latest Version'} lt "5.00") &&
+#		($customers->{$id}->{'name'} ne "MTC" || $customers->{$id}->{'name'} ne "SIW") )
 #     next if ( defined $cust_info->{'Latest Version'} && $cust_info->{'Latest Version'} lt "5.00")
-	    && $customers->{$id}->{'displayname'} ne "Billing";
+#	    && $customers->{$id}->{'displayname'} ne "Billing";
 
 #     my $dir = write_customer ($cust_info);
     write_customer ($cust_info);

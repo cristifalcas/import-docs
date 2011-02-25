@@ -25,6 +25,24 @@ sub all_pages {
 		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
 }
 
+sub all_redirects {
+    my $ns = shift;
+    $mw->list ( { action => 'query',
+	    list => 'allpages',
+	    apnamespace => "$ns", apfilterredir => "redirects" },
+	{ max => 40000, hook => \&print_title } )
+		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+}
+
+sub all_nonredirects {
+    my $ns = shift;
+    $mw->list ( { action => 'query',
+	    list => 'allpages',
+	    apnamespace => "$ns", apfilterredir => "nonredirects" },
+	{ max => 40000, hook => \&print_title } )
+		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+}
+
 sub all_links {
 $mw->list ( { action => 'query',
 	list => 'alllinks' },
@@ -73,25 +91,11 @@ sub print_url {
     }
 }
 
-sub move_wiki_page {
-#     my ($title, $new_title) = @_;
-# find ./work/bkp/workfor_svn_mind_docs/ ! -iname \*RN\:\* -type d | sed s/^\.\\/work\\/bkp\\/workfor_svn_mind_docs\\/// | sort > ./allfiles
-    open FILE, "<allfiles" or die $!;
-    while (<FILE>) {
-	my $title = $_;
-	chomp $title;
-	my $new_title = "SVN:$title";
-	print "Moving $title to $new_title.\n";
-	$mw->edit( {
-	action => 'move', from => "$title", to => "$new_title" } )
-	|| die "Could not move url $title to $new_title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\n";
-    }
-}
-
 # move_wiki_page
 # all_categories
 # all_pages (0);
-all_pages (100); ## SC
+all_pages (500); ## SC
+# all_nonredirects(100)
 # all_pages (14); ## categories
 # all_links
 # all_images

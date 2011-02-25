@@ -83,15 +83,29 @@ use File::Find::Rule;
 use Mind_work::WikiCommons;
 use XML::Simple;
 use Encode;
+# use utf8;
 use URI::Escape;
 use HTML::TreeBuilder;
 use Mind_work::WikiClean;
 use Mind_work::WikiWork;
 
-die "We need the destination path.\n" if ( $#ARGV != 0 );
 our $to_path = shift;
+our $domain = shift;
+die "We need the destination path and the domain: m=MIND, s=Sentori, p=PhonEX. We got :$to_path and $domain.\n" if ( ! defined $to_path || ! defined $domain || $domain !~ m/^[msp]$/i);
 WikiCommons::makedir ("$to_path");
 $to_path = abs_path("$to_path");
+
+    my $dept = "";
+    if ($domain =~ m/m/i) {
+        $dept = '(0, 1, 2, 3)';
+    } elsif ($domain =~ m/p/i) {
+        $dept = '(4, 9)';
+    } elsif ($domain =~ m/s/i) {
+        $dept = '(13)';
+    } else {
+        die "All srs unknown domain: $domain.\n";
+    }
+#1, 3, 4, 9, 13 0-3 mind, 4,9 phonex, 13 sentori';
 
 my $update_all = "no";
 my $ftp_addr = 'http://62.219.96.62/SupportFTP/';
@@ -104,26 +118,26 @@ my $problem_types = {};
 my $servicestatus = {};
 my $customers = {};
 
-sub get_encoding {
-    my $txt = shift;
-#     return $txt if $txt =~ m/\s*/;
-#     $txt = 'services key';
-# write_file('./1', $txt);die;
-    use Encode::Guess;# qw/latin1 utf8  cp1251 iso-8859-1 iso-8859-2/;
-#     use Encode::Guess Encode->encodings(":all");
-# print Dumper(Encode->encodings(":all"));exit 1;
-#     use Encode;
-    my $enc = guess_encoding($txt, qw/cp1251 utf8 iso-8859-1/);
-    print "Can't guess: $enc.\n", return '' if (!ref($enc));
-#     print Dumper($enc->name);
-# write_file('./test1',$txt);
-# write_file('./test',decode('latin1',$txt));
-#     my $utf = $enc->name."\n".$enc->decode($txt);
-# print "$utf\n";die;
-# decode('utf8',$utf);
-#     return $enc->decode($txt);
-    return $enc->name;
-}
+# sub get_encoding {
+#     my $txt = shift;
+# #     return $txt if $txt =~ m/\s*/;
+# #     $txt = 'services key';
+# # write_file('./1', $txt);die;
+#     use Encode::Guess;# qw/latin1 utf8  cp1251 iso-8859-1 iso-8859-2/;
+# #     use Encode::Guess Encode->encodings(":all");
+# # print Dumper(Encode->encodings(":all"));exit 1;
+# #     use Encode;
+#     my $enc = guess_encoding($txt, qw/utf8 iso-8859-1/);
+#     return '', print "Can't guess encoding: $enc.\n" if (!ref($enc));
+# #     print Dumper($enc->name);
+# # write_file('./test1',$txt);
+# # write_file('./test',decode('latin1',$txt));
+# #     my $utf = $enc->name."\n".$enc->decode($txt);
+# # print "$utf\n";die;
+# # decode('utf8',$utf);
+# #     return $enc->decode($txt);
+#     return $enc->name;
+# }
 
 sub print_coco {
     my ($nr, $total) = @_;
@@ -135,7 +149,12 @@ sub print_coco {
 sub write_file {
     my ($path, $text) = @_;
     open (FILE, ">$path") or die "can't open file $path for writing: $!\n";
-    $text = encode("utf8", $text);
+    $text = encode_utf8( $text );
+# use Encode;
+#     $text = Encode::decode("cp1251", $text);
+# binmode FILE, ":utf8";
+# print "$text";
+#     Encode::from_to( $text, "cp1251", "utf8");
     print FILE "$text";
     close (FILE);
 }
@@ -213,23 +232,36 @@ sub get_problem_types {
 }
 
 sub get_customers {
-    my $SEL_INFO = '
-select t.rcustcompanycode,
-       t.rcustcompanyname,
-       t.rcustiddisplay,
-       q.value_text
-  from tblcustomers t, tblattrib_values q, tblattributes w
- where t.rcuststatus = \'A\'
-   and w.attribname = \'Latest Version\'
-   and w.attribisn = q.attrib_isn
-   and q.attrib_object_code1 = t.rcustcompanycode';
+    my $SEL_INFO = 'select unique a.rcustcompanycode, a.rcustcompanyname, a.rcustiddisplay
+  from tblcustomers a, tblsuppdept b, tbldeptsforcustomers c
+ where a.rcustcompanycode = c.rdeptcustcompanycode
+   and b.rsuppdeptcode = c.rdeptcustdeptcode
+   and c.rcuststatus = \'A\'
+   and a.rcuststatus = \'A\'
+   and b.rsuppdeptstatus = \'A\'
+   and a.rcustlastscno > 10
+   and c.rdeptcustdeptcode in '.$dept;
+
+#     my $SEL_INFO = '
+# select t.rcustcompanycode,
+#        t.rcustcompanyname,
+#        t.rcustiddisplay,
+#        q.value_text
+#   from tblcustomers t, tblattrib_values q, tblattributes w
+#  where t.rcuststatus = \'A\'
+#    and w.attribname = \'Latest Version\'
+#    and w.attribisn = q.attrib_isn
+#    and q.attrib_object_code1 = t.rcustcompanycode';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
-	die "Already have this id for cust.\n" if exists $customers->{$row[0]};
+	die "Already have this id for cust: $row[0].\n" if exists $customers->{$row[0]};
 	$customers->{$row[0]}->{'name'} = $row[1];
 	$customers->{$row[0]}->{'displayname'} = $row[2];
-	$customers->{$row[0]}->{'ver'} = $row[3];
+	$customers->{$row[0]}->{'dept_code'} = $row[3];
+	$customers->{$row[0]}->{'dept_name'} = $row[4];
+	$customers->{$row[0]}->{'last_sc_no'} = $row[5];
+# 	$customers->{$row[0]}->{'ver'} = $row[3];
     }
 }
 
@@ -243,9 +275,10 @@ select t1.rsceventsscno, count(t1.rsceventssrno)
        (select t.rscmainrecscno
           from tblscmainrecord t
          where t.rscmainreccustcode = :CUST_CODE
-	   and t.rscmainrecdeptcode = 1
+	   and t.rscmainrecdeptcode in '.$dept.'
            and t.rscmainreclasteventdate >= \'20000101\')
  group by t1.rsceventsscno';
+
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->bind_param( ":CUST_CODE", $cust );
     $sth->execute();
@@ -449,16 +482,28 @@ sub parse_text {
 	my $tmp = quotemeta $extra_info->{'subject'};
 	$text =~ s/Subject:[ ]+$tmp\nDate:[ ]+$extra_info->{event_date}\n+//;
 	$tmp = quotemeta("*************************************************");
-	my $reg_exp = "MIND CTI Support Center\n+[a-zA-Z0-9 ]{0,}\n+$tmp\n+Service Call Data:\n+Number:[ ]+$extra_info->{'customer'} \/ $extra_info->{'sr_no'}\n+Received:[ ]+$extra_info->{sr_date}\n+Current Status:[ ]+[a-zA-Z0-9 ]{1,}\n+$tmp\n+PLEASE DO NOT REPLY TO THIS EMAIL - Use the CRM\n*";
-
+	my $reg_exp = "(
+MIND CTI Support Center|
+MindBill Support|
+CMS|
+Enterprise Solutions Support|
+Sentori Support Center|
+MIND CTI eService, USA Center|
+MIND CTI eService, Israel Center)\n+[a-zA-Z0-9 ,]{0,}\n+$tmp\n+Service Call Data:\n+Number:[ ]+$extra_info->{'customer'} \/ $extra_info->{'sr_no'}\n+Received:[ ]+($extra_info->{sr_date}|$extra_info->{sr_usa_date})\n+Current Status:[ ]+[a-zA-Z0-9 ]{1,}\n+$tmp\n+PLEASE DO NOT REPLY TO THIS EMAIL - Use the CRM\n*";
+#print "$text\n\n\n\n\n\n$reg_exp\n";
 	$text =~ s/$reg_exp//gs;
+#print "$text\n";exit 1;
     }
-
-    my $enc = get_encoding($text);
-    if ($enc eq "utf8"){
-	$text = encode ("utf8", $text);
-	$text = WikiClean::fix_wiki_chars( $text );
-    }
+#     my $enc = get_encoding($text);
+# # print "$enc\n";exit 1;
+#     if ($enc ne "utf8" && $enc ne ""){
+#     Encode::from_to($text, "$enc", "utf8");
+# use Encode;
+#     $text = Encode::decode("utf8", $text);
+#     utf8::upgrade($text);
+# # 	$text = WikiClean::fix_wiki_chars( $text );
+#     }
+# print "$text\n";exit 1;
 
     $text = WikiClean::fix_wiki_link_to_sc( $text );
     $text = WikiClean::fix_small_issues( $text );
@@ -497,8 +542,12 @@ sub write_intro {
 sub get_time_date {
     my $hash = shift;
     my $time = (substr $hash->{'time'}, 0 , 2).":".(substr $hash->{'time'}, 2 , 2).":".(substr $hash->{'time'}, 4);
-    my $date = (substr $hash->{'date'}, 6)."/".(substr $hash->{'date'}, 4 , 2)."/".(substr $hash->{'date'}, 0 , 4);
-    return ($date, $time);
+    my $d = substr $hash->{'date'}, 6;
+    my $m = substr $hash->{'date'}, 4 , 2;
+    my $y = substr $hash->{'date'}, 0 , 4;
+    my $date = "$d/$m/$y";
+    my $usa_date = "$m/$d/$y";
+    return ($date, $usa_date, $time);
 }
 
 sub write_header {
@@ -563,10 +612,11 @@ sub write_sr {
     my $wiki = "";
     foreach my $key (sort {$a<=>$b} keys %$info){
 	my $hash = $info->{$key};
-	my ($date, $time) = get_time_date($hash->{'date'});
+	my ($date, $usa_date, $time) = get_time_date($hash->{'date'});
 	if ($key == 0){
 	    $wiki = write_intro($hash, $date, $time);
 	    $extra_info->{'sr_date'} = "$date";
+	    $extra_info->{'sr_usa_date'} = "$usa_date";
 	    $extra_info->{'customer'} = "$hash->{'customer'}";
 	    $extra_info->{'sr_no'} = "$hash->{'number'}";
 	    $extra_info->{'subject'} = "$hash->{'subject'}";
@@ -612,6 +662,7 @@ sub write_sr {
     }
     $wiki .= "\n\n[[Category:CRM]]\n[[Category:$info->{0}->{'customer'} -- CRM]]\n\n";
 
+    $wiki =~ s/\x{ef}\x{bf}\x{bd}/?/gsi;
 #     $wiki =~ s/\x{c2}\x{91}/"/gsi;
 #     $wiki =~ s/\x{c2}\x{92}/'/gsi;
 #     $wiki =~ s/\x{c2}\x{93}/"/gsi;
@@ -625,7 +676,7 @@ sub get_previous {
     my $dir = shift;
     my $info = {};
     opendir(DIR, "$dir") || die "Cannot open directory $dir: $!.\n";
-    my @files = grep { (!/^\.\.?$/) && -f "$dir/$_" && "$_" ne "attributes.xml" && "$_" =~ m/\.wiki$/} readdir(DIR);
+    my @files = grep { (!/^\.\.?$/) && -f "$dir/$_" && "$_" ne "attributes.xml" && "$_" =~ m/\.wiki$/ && -s "$dir/$_" } readdir(DIR);
     closedir(DIR);
     foreach my $file (@files){
 	my $str = $file;
@@ -633,6 +684,18 @@ sub get_previous {
 	$str =~ s/^0*//;
 	my @tmp = split '_', $str;
 	$info->{$tmp[0]."_".$tmp[1]} = $file;
+    }
+    return $info;
+}
+
+sub get_previous_customers {
+    my $dir = shift;
+    my $info = {};
+    opendir(DIR, "$dir") || die "Cannot open directory $dir: $!.\n";
+    my @alldirs = grep { (!/^\.\.?$/) && -d "$dir/$_" } readdir(DIR);
+    closedir(DIR);
+    foreach my $adir (@alldirs){
+	$info->{$adir} = 1;
     }
     return $info;
 }
@@ -652,16 +715,22 @@ get_problem_types();
 get_servicestatus();
 print "+Get common info.\t". (WikiCommons::get_time_diff) ."\n";
 
+my $crt_cust = get_previous_customers($to_path);
+my @new_cust_arr = ();
+
 foreach my $cust (sort keys %$customers){
     print "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
-# next if $customers->{$cust}->{'displayname'} ne "Borusan";
+# print "$customers->{$cust}->{'displayname'}\n";next;
+# next if $customers->{$cust}->{'displayname'} ne "Bell Atlantic";
 # next if $cust != 381;
-    next if (! defined $customers->{$cust}->{'ver'} || $customers->{$cust}->{'ver'} lt "5.00")
-	    && $customers->{$cust}->{'displayname'} ne "Billing";
-
+#     next if (! defined $customers->{$cust}->{'ver'} || $customers->{$cust}->{'ver'} lt "5.00")
+# 	    && $customers->{$cust}->{'displayname'} ne "Billing";
+# 	    && $customers->{$cust}->{'displayname'} !~ m/mtpcs/i;
+    push @new_cust_arr, $customers->{$cust}->{'displayname'};
     my $dir = "$to_path/".$customers->{$cust}->{'displayname'};
-    WikiCommons::makedir ("$dir");
     my $crt_srs = get_allsrs($cust);
+    next if (! scalar keys %$crt_srs);
+    WikiCommons::makedir ("$dir");
     my $prev_srs = get_previous("$dir");
     foreach my $key (keys %$crt_srs) {
 	last if $update_all eq "yes";
@@ -680,7 +749,7 @@ foreach my $cust (sort keys %$customers){
     print "\tadd $total new files.\n";
     my $nr = 0;
     foreach my $sr (sort {$a<=>$b} keys %$crt_srs) {
-# print "$sr\n";next if $sr <804;
+# print "$sr\n";next if $sr != 160;
 # print "$sr\n";next if $sr < 22;
 	my $info = {};
 	$info = get_sr($cust, $sr);
@@ -692,6 +761,11 @@ foreach my $cust (sort keys %$customers){
 	print_coco(++$nr, $total);
     }
 }
+
+### remove old dirs
+my @arr2 = (keys %$crt_cust);
+my ($only_in_arr1, $only_in_arr2, $intersection) = WikiCommons::array_diff( \@new_cust_arr, \@arr2 );
+remove_tree("$to_path/$_") || die "Can't remove dir $to_path/$_: $?.\n" foreach (@$only_in_arr2);
 
 $dbh->disconnect if defined($dbh);
 print "Done.\n";

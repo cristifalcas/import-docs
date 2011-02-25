@@ -231,6 +231,8 @@ sub capitalize_string {
 	$str =~ s/([\w']+)/\u\L$1/g;
     } elsif ($type eq "small") {
 	$str =~ s/([\w']+)/\L$1/g;
+    } elsif ($type eq "onlyfirst") {
+	$str =~ s/\b(\w)/\U$1/;
     } else {
 	die "Capitalization: first (first letter is capital and the rest remain the same), small (all letters to lowercase) or all (only first letter is capital, and the rest are lowercase).\n";
     }

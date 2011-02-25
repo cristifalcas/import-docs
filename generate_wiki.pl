@@ -4,7 +4,6 @@ use warnings;
 use strict;
 $SIG{__WARN__} = sub { die @_ };
 
-
 # categories:
 # $file_url -> $rest_dir[length], $ver, $cust
 # $rest_dir[length] -> $rest_dir[length-1]
@@ -383,6 +382,16 @@ sub generate_pages_to_delete_to_import {
 		}
 	    }
 	}
+	foreach my $url (keys %$to_keep) {
+	    if ($url =~ m/^SC_(.*)?:(.*)/) {
+		my $new_delete = "SC:$2";
+		if (exists $pages_toimp_hash->{$new_delete} && ! defined $pages_toimp_hash->{$url}) {
+		    $to_delete->{$url} = $to_keep->{$url};
+		    $pages_toimp_hash->{$url} = $to_keep->{$url};
+		    delete ($to_keep->{$url});
+		}
+	    }
+	}
     }
     generate_cleaned_real_and_links($to_keep);
     print "Done final cleaning of urls.\t". (WikiCommons::get_time_diff) ."\n";
@@ -653,15 +662,15 @@ $our_wiki = new WikiWork();
 if ($path_type eq "mind_svn") {
     $coco = new WikiMindSVN("$path_files");
     work_for_docs("$path_files");
-} elsif ($path_type eq "cms_docs") {
+} elsif ($path_type eq "cms_svn") {
     $coco = new WikiMindCMS("$path_files");
     work_for_docs("$path_files");
 } elsif ($path_type eq "users") {
     $coco = new WikiMindUsers("$path_files");
     work_for_docs("$path_files");
-} elsif ($path_type eq "crm_docs") {
+} elsif ($path_type =~ m/^crm_(.+)$/) {
     $all_real = "yes";
-    $coco = new WikiMindCRM("$path_files");
+    $coco = new WikiMindCRM("$path_files", "$1");
 
     my $to_keep = work_begin;
 # print Dumper($pages_toimp_hash);die;

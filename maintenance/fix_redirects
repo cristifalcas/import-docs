@@ -1,0 +1,30 @@
+#!/bin/bash
+
+HERE=$(cd ${0%/*} && pwd -P)
+
+rm -rf "/tmp/double_redirects"
+mkdir "/tmp/double_redirects"
+
+### double redirects
+LINK="http://localhost/wiki/index.php?title=Special:DoubleRedirects&limit=2000&offset=0"
+lynx -dump "$LINK" | grep 'http://localhost/wiki/index.php?title=SC' | sed 's/^ *[0-9]*\. http:\/\/localhost\/wiki\/index\.php?title=//' | sed 's/&redirect=no.*//' | sort | uniq > "/tmp/double_redirects/remove_urls"
+cat "/tmp/double_redirects/remove_urls" | grep "^SC:" | sed s/^SC:// > "/tmp/double_redirects/remove_ids"
+php /var/www/html/wiki/maintenance/deleteBatch.php "/tmp/double_redirects/remove_urls"
+# find /media/share/Documentation/cfalcas/q/import_docs/work/workfor_sc* -type d | grep -f "/tmp/double_redirects/remove_ids" | sed s/^/rm\ -rf\ \"/ | sed s/$/\"/ > "/tmp/double_redirects/remove_localdirs"
+# bash "/tmp/double_redirects/remove_localdirs"
+
+
+##non redirects
+perl $HERE/getnonredirects.pl | grep "^SC:" | sed s/^SC:// >> "/tmp/double_redirects/remove_ids"
+# find /media/share/Documentation/cfalcas/q/import_docs/work/workfor_sc* -type d | grep -f "/tmp/double_redirects/remove_ids" | sed s/^/rm\ -rf\ \"/ | sed s/$/\"/ > "/tmp/double_redirects/remove_localdirs"
+# bash "/tmp/double_redirects/remove_localdirs"
+
+## redirects not on wiki
+perl $HERE/getredirects.pl | grep "^SC:" | sed s/^SC:// > "/tmp/double_redirects/redirects_ids"
+find /media/share/Documentation/cfalcas/q/import_docs/work/workfor_sc* -mindepth 2 -maxdepth 2 | grep "SC:" | gawk -F \/ '{print $10}' | sed s/^SC\:// >> "/tmp/double_redirects/redirects_ids"
+cat "/tmp/double_redirects/redirects_ids" | sort | uniq -u >> "/tmp/double_redirects/remove_ids"
+find /media/share/Documentation/cfalcas/q/import_docs/work/workfor_sc* -type d | grep -f "/tmp/double_redirects/remove_ids" | sed s/^/rm\ -rf\ \"/ | sed s/$/\"/ | sort | uniq > "/tmp/double_redirects/remove_localdirs"
+bash "/tmp/double_redirects/remove_localdirs"
+
+
+# grep "\"SC_" /var/www/html/wiki/LocalSettings.php | gawk -F\[ '{print $2}' | gawk -F\] '{print $1}'

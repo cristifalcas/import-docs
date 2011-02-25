@@ -10,7 +10,7 @@ case "$1" in
   ;;
 "import_svn")
     perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/svn/svn_mind_docs/ -n mind_svn &> "$LOG_PATH"import_svn_mind
-    perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/svn/svn_cms_docs/ -n cms_docs &> "$LOG_PATH"import_svn_cms
+    perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/svn/svn_cms_docs/ -n cms_svn &> "$LOG_PATH"import_svn_cms
   ;;
 "update_sc")
     perl "$SCRIPT_PATH"/update_SC.pl "$SCRIPT_PATH"/tmp/b1 "$SCRIPT_PATH"/Documentation/sc/scmind_docs_5.3/	b1 &> "$LOG_PATH"update_sc_5.3 &
@@ -39,8 +39,12 @@ case "$1" in
     perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/scnagios_docs/ 	-n sc_docs &> "$LOG_PATH"import_sc_t
   ;;
 "import_crm")
-    perl "$SCRIPT_PATH"/update_CRM.pl "$SCRIPT_PATH"/Documentation/crm_docs/ &> "$LOG_PATH"update_crm
-    perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/crm_docs/ -n crm_docs &> "$LOG_PATH"import_crm
+    perl "$SCRIPT_PATH"/update_CRM.pl "$SCRIPT_PATH"/Documentation/crm_mind/ m &> "$LOG_PATH"update_crm_mind
+    perl "$SCRIPT_PATH"/update_CRM.pl "$SCRIPT_PATH"/Documentation/crm_phonex/ p &> "$LOG_PATH"update_crm_phonex
+    perl "$SCRIPT_PATH"/update_CRM.pl "$SCRIPT_PATH"/Documentation/crm_sentori/ s &> "$LOG_PATH"update_crm_sentori
+    perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/crm_iphonex/ -n crm_iphonex &> "$LOG_PATH"import_crm_iphonex &
+    perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/crm_phonex/ -n crm_phonex &> "$LOG_PATH"import_crm_phonex &
+    perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/crm_sentori/ -n crm_sentori &> "$LOG_PATH"import_crm_sentori &
   ;;
 "import_users")
     perl "$SCRIPT_PATH"/generate_wiki.pl -d "/media/share/Documentation/Autoimport in wiki/" -n users &> "$LOG_PATH"import_users &

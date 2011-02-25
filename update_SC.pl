@@ -372,9 +372,9 @@ sub sql_generate_select_changeinfo {
 	'relatedtasks'		=> 'nvl(a.relatedtasks,\' \')',
 	'Market_SC'		=> 'nvl(a.marketinfo,\' \')',
 	'Description_SC'	=> 'nvl(a.function,\' \')',
-	'Architecture_SC'	=> 'nvl(a.architecture_memo,\' \')',
 	'HLD_SC'		=> 'nvl(a.hld_memo,\' \')',
 	'Messages_SC'		=> 'nvl(a.messages,\' \')',
+	'Architecture_SC'	=> 'nvl(a.architecture_memo,\' \')',
 	'initiator'		=> 'a.initiator',
 	'tester'		=> 'nvl(a.testincharge,-1)',
 	'dealer'		=> 'nvl(a.dealer,-1)',
@@ -390,6 +390,21 @@ sub sql_generate_select_changeinfo {
     }
     my $select = join ',', @select;
 
+# 	'Market_SC'		=> 'nvl(b1.marketinfo,\' \')',
+# 	'Description_SC'	=> 'nvl(b2.function,\' \')',
+# 	'HLD_SC'		=> 'nvl(b3.hld_memo,\' \')',
+# 	'Messages_SC'		=> 'nvl(b4.messages,\' \')',
+# 	'Architecture_SC'	=> 'nvl(b5.architecture_memo,\' \')',
+# sc_marketinfo b1,
+# sc_function b2,
+# sc_hld_memo b3,
+# sc_messages b4,
+# sc_architecture_memo b5,
+# and a.changeid = b1.changeid
+# and a.changeid = b2.changeid
+# and a.changeid = b3.changeid
+# and a.changeid = b4.changeid
+# and a.changeid = b5.changeid
     my $SEL_INFO = "
     select $select
     from scchange a,
@@ -475,13 +490,13 @@ sub sql_get_all_changes {
     } elsif ($sc_type eq 'F') {
 	$cond = "projectcode = \'F\'";
     } elsif ($sc_type eq 'I') {
-	$cond  = "projectcode = \'I\' and nvl(fixversion,0)>=\'4.00\'";
+	$cond  = "projectcode = \'I\' and nvl(fixversion,100)>=\'4.00\'";
     } elsif ($sc_type eq 'H') {
 	$cond  = "projectcode = \'H\' and writtendatetime > \'1Jan2008\'";
     } elsif ($sc_type eq 'R') {
 	$cond  = "projectcode = \'R\'";
     } elsif ($sc_type eq 'D') {
-	$cond  = "projectcode = \'D\' and nvl(fixversion,0)>='2.30'";
+	$cond  = "projectcode = \'D\' and nvl(fixversion,100)>='2.30'";
     } elsif ($sc_type eq 'T') {
 	$cond  = "projectcode = \'T\'";
     } else {

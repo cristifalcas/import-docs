@@ -8,6 +8,7 @@ use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 use MediaWiki::API;
 # http://en.wikipedia.org/w/api.php
+# http://www.mediawiki.org/wiki/API:Lists/es
 
 our $wiki_site_path = "/var/www/html/wiki/";
 our $wiki_url = "http://10.0.0.99/wiki";
@@ -15,7 +16,7 @@ our $wiki_url = "http://10.0.0.99/wiki";
 our $wiki_user = 'wiki_auto_import';
 our $wiki_pass = '!0wiki_auto_import@9';
 our $mw;
-
+our $array = ();
 
 sub wiki_on_error {
     print "1. Error code: " . $mw->{error}->{code} . "\n";
@@ -107,6 +108,57 @@ sub wiki_move_page {
     $mw->edit( {
     action => 'move', from => "$title", to => "$new_title" } )
     || die "Could not move url $title to $new_title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff)."\n";
+}
+
+sub wiki_get_nonredirects {
+    my ($self, $ns) = @_;
+    $array = ();
+    $mw->list ( { action => 'query',
+	    list => 'allpages', aplimit=>'5000',
+	    apnamespace => "$ns", apfilterredir => "nonredirects" },
+	{ max => 1000, hook => \&wiki_print_title } )
+		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+    return $array;
+}
+
+sub wiki_get_redirects {
+    my ($self, $ns) = @_;
+    $array = ();
+    $mw->list ( { action => 'query',
+	    list => 'allpages', aplimit=>'5000',
+	    apnamespace => "$ns", apfilterredir => "redirects" },
+	{ max => 1000, hook => \&wiki_print_title } )
+		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+    return $array;
+}
+
+sub wiki_get_all_pages {
+    my ($self, $ns) = @_;
+    $array = ();
+    $mw->list ( { action => 'query',
+	    list => 'allpages', aplimit=>'5000',
+	    apnamespace => "$ns" },
+	{ max => 1000, hook => \&wiki_print_title } )
+		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+    return $array;
+} 
+
+sub wiki_get_pages_using {
+    my ($self, $file) = @_;
+    $array = ();
+    $mw->list ( { action => 'query',
+	    list => 'imageusage', iulimit=>'5000',
+	    iutitle => "$file" },
+	{ max => 1000, hook => \&wiki_print_title } )
+		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+    return $array;
+} 
+
+sub wiki_print_title {
+    my ( $ref) = @_;
+    foreach (@$ref) {
+	push @$array, $_->{title};
+    }
 }
 
 return 1;
