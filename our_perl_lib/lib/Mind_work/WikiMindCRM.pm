@@ -46,7 +46,7 @@ sub add_document{
     my $ns = "";
     if ($domain =~ m/^iphonex$/i) {
         $ns = "CRM_iPhonex:";
-    } elsif ($domain =~ m/^phonex$/i) {
+    } elsif ($domain =~ m/^phonexone$/i) {
         $ns = "CRM_PhonexONE:";
     } elsif ($domain =~ m/^sentori$/i) {
         $ns = "CRM:Sentori";

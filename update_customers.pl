@@ -36,7 +36,6 @@ use Mind_work::WikiCommons;
 use Mind_work::WikiWork;
 die "We need the destination path.\n" if ( $#ARGV != 0 );
 our $to_path = shift;
-# WikiCommons::makedir ("$to_path");
 $to_path = abs_path("$to_path");
 
 my $attributes_options = {};
@@ -118,7 +117,7 @@ sub write_customer {
     $txt .= "VoIP Customers: $hash->{'VoIP Customers'}\n\n" if defined $hash->{'VoIP Customers'};
     $txt .= "Additional activities: $hash->{'Additional activities'}\n\n" if defined $hash->{'Additional activities'};
     $txt .= "Other agreed services: $hash->{'Other agreed services'}\n\n" if defined $hash->{'Other agreed services'};
-my $q=0 if defined $hash->{'Other agreed services'};
+    my $q=0 if defined $hash->{'Other agreed services'};
     delete $hash->{'DBA service'};
     delete $hash->{'Database Type'};
     delete $hash->{'Vendor Network Elements'};
@@ -131,7 +130,6 @@ my $q=0 if defined $hash->{'Other agreed services'};
     delete $hash->{'customer_id'};
 
     die "Leftovers:".Dumper($hash) if scalar (keys %$hash) && $name ne "VStar";
-#print "$txt\n-------------------------------\n";return;
     $our_wiki->wiki_edit_page("Category:$name", $txt);
 }
 
@@ -180,7 +178,6 @@ select t.attrib_isn, t.value_text
     }
     $info->{'customer_id'} = $code;
     $info->{$_} = $customers->{$code}->{$_} foreach (keys %{$customers->{$code}});
-#     $info->{'names'} = $customers->{$code};
     return $info;
 }
 
@@ -191,7 +188,6 @@ $dbh->{AutoCommit}    = 0;
 $dbh->{RaiseError}    = 1;
 $dbh->{ora_check_sql} = 1;
 $dbh->{RowCacheSize}  = 0;
-#     $dbh->{LongReadLen}   = 52428800;
 $dbh->{LongReadLen} = 1024 * 1024;
 $dbh->{LongTruncOk}   = 0;
 
@@ -220,12 +216,6 @@ while ( my @row=$sth->fetchrow_array() ) {
     $q->{"nr".$id}->{'displayname'} = $row[2];
 
     my $cust_info = get_customer_attributes($row[0]);
-#    next if ( (! defined $cust_info->{'Latest Version'} || $cust_info->{'Latest Version'} lt "5.00") &&
-#		($customers->{$id}->{'name'} ne "MTC" || $customers->{$id}->{'name'} ne "SIW") )
-#     next if ( defined $cust_info->{'Latest Version'} && $cust_info->{'Latest Version'} lt "5.00")
-#	    && $customers->{$id}->{'displayname'} ne "Billing";
-
-#     my $dir = write_customer ($cust_info);
     write_customer ($cust_info);
 }
 
@@ -233,5 +223,4 @@ $dbh->disconnect if defined($dbh);
 
 WikiCommons::hash_to_xmlfile( $q, "$to_path/customers.xml", "customers" );
 
-# $customers = WikiCommons::xmlfile_to_hash ("./customers.xml");
 print "Done.\n";

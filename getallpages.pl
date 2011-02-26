@@ -94,7 +94,7 @@ sub print_url {
 # move_wiki_page
 # all_categories
 # all_pages (0);
-all_pages (500); ## SC
+all_pages (6); ## SC
 # all_nonredirects(100)
 # all_pages (14); ## categories
 # all_links

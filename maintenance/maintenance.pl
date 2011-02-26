@@ -4,7 +4,7 @@ use warnings;
 use strict;
 $SIG{__WARN__} = sub { die @_ };
 
-#syncronize wiki with local fs: for anything in namespaces
+#syncronize wiki with local fs: delete all in only one of them
 #fix missing files: find pages with missing files, search for the pages on local dirs and remove them from both
 
 
@@ -31,13 +31,13 @@ use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."../our_perl_lib/lib";
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 use File::Path qw(remove_tree);
-use URI::Escape; 
 use Mind_work::WikiWork;
 use Mind_work::WikiCommons;
 
 my $workdir = "/media/share/Documentation/cfalcas/q/import_docs/work/";
 my $our_wiki;
 $our_wiki = new WikiWork();
+my ($local_pages, $wiki_pages);
 
 sub getnamespaces {
   my $namespaces = {};
@@ -58,53 +58,110 @@ sub getnamespaces {
   return $namespaces;
 }
 
-sub getwikiscpagestype {
+sub fix_wiki_sc_type {
   my $namespaces = shift;
   my $array = ();
-  $array = $our_wiki->wiki_get_redirects("$namespaces->{'sc_redir'}");
-  $array = $our_wiki->wiki_get_nonredirects("$namespaces->{'sc_redir'}");
+  my $hash = $namespaces->{'sc_redir'};
+  foreach my $ns (keys %$hash){
+    $array = $our_wiki->wiki_get_nonredirects("$hash->{$ns}");
+    foreach my $url (@$array) {
+      if ( defined $local_pages->{'sc_redir'}->{$url} ) {
+	print "rm local $workdir/$local_pages->{'sc_redir'}->{$url}/$url\n";
+	remove_tree("$workdir/$local_pages->{'sc_redir'}->{$url}/$url") || die "Can't remove dir $workdir/$local_pages->{'sc_redir'}->{$url}/$url: $?.\n";
+      }
+      print "rm page $url\n";
+      $our_wiki->wiki_delete_page($url, "") if ( $our_wiki->wiki_exists_page("$url") );
+    }
+  }
 
-  my %hash = map { $_ => 1 } @$array;
-  return \%hash;
+  $hash = $namespaces->{'sc_real'};
+  foreach my $ns (keys %$hash){
+    $array = $our_wiki->wiki_get_redirects("$hash->{$ns}");
+    foreach my $url (@$array) {
+      if ( defined $local_pages->{'sc_real'}->{$url} ) {
+	print "rm local $workdir/$local_pages->{'sc_real'}->{$url}/$url\n";
+	remove_tree("$workdir/$local_pages->{'sc_real'}->{$url}/$url") || die "Can't remove dir $workdir/$local_pages->{'sc_real'}->{$url}/$url: $?.\n";
+      }
+      print "rm page $url\n";
+      $our_wiki->wiki_delete_page($url, "") if ( $our_wiki->wiki_exists_page("$url") );
+    }
+  }
+
+}
+
+sub unused_categories {
+  my $link = "http://localhost/wiki/index.php?title=Special:UnusedCategories&limit=2000&offset=0";
+  my $res = `lynx -dump "$link"`;
+
+  my $i = 1;
+  foreach my $elem (split '\n', $res){
+    $elem =~ s/\x{e2}\x{80}\x{8e}//g;
+    next if $elem !~ m/^\s*$i\.\s+\[[0-9]+\](.*)$/;
+    my $cat = "Category:$1";
+    $i++;
+    print "rm page $cat\n";
+    $our_wiki->wiki_delete_page($cat, "") if ( $our_wiki->wiki_exists_page("$cat") );
+  }
+}
+
+sub wanted_categories {
+  my $link = "http://localhost/wiki/index.php?title=Special:WantedCategories&limit=2000&offset=0";
+  my $res = `lynx -dump "$link"`;
+  
+  my $i = 1;
+  foreach my $elem (split '\n', $res) {
+    $elem =~ s/\x{e2}\x{80}\x{8e}//g;
+    next if $elem !~ m/^\s*$i\.\s+\[[0-9]+\](.*)? (\([0-9]+(.*?)members?\))$/;
+    my $cat = "Category:$1";
+    $i++;
+    print "add category $cat.\n";
+    $our_wiki->wiki_edit_page("$cat", "----");
+  }
+}
+
+sub broken_redirects {
+  my $link = "http://localhost/wiki/index.php?title=Special:BrokenRedirects&limit=2000&offset=0";
+  my $res = `lynx -dump "$link"`;
+
+  foreach my $elem (split '\n', $res){
+    next if $elem !~ m/^\s*[0-9]+\.\s*http:\/\/localhost\/wiki\/index.php\?title=SC(.*?)&redirect=no/;
+    $elem =~ s/^\s*[0-9]+\.\s*http:\/\/localhost\/wiki\/index.php\?title=//;
+    $elem =~ s/&redirect=no$//;
+    print "rm page $elem.\n";
+    $our_wiki->wiki_delete_page($elem, "") if ( $our_wiki->wiki_exists_page("$elem") );
+  }
 }
 
 sub scdoubleredirects {
   my $link = "http://localhost/wiki/index.php?title=Special:DoubleRedirects&limit=2000&offset=0";
   my $res = `lynx -dump "$link"`;
-  my $elements = {};
 
   foreach my $elem (split '\n', $res){
+    $elem =~ s/\x{e2}\x{80}\x{8e}//g;
     next if $elem !~ m/^\s*[0-9]+\.\s*http:\/\/localhost\/wiki\/index.php\?title=SC/;
     $elem =~ s/^\s*[0-9]+\.\s*http:\/\/localhost\/wiki\/index.php\?title=//;
     $elem =~ s/&redirect=no.*$//;
-    $elements->{$elem} = 1;
+    print "rm page $elem.\n";
+    $our_wiki->wiki_delete_page($elem, "") if ( $our_wiki->wiki_exists_page("$elem") );
   }
-  return $elements;
 }
 
 sub unused_images {
   my $link = "http://localhost/wiki/index.php?title=Special:UnusedFiles&limit=2000&offset=0";
-  my $res = `lynx -dump "$link"`;
-  my $images = {};
-  foreach my $elem (split '\n', $res){
-    next if $elem !~ m/^\s*[0-9]+\.\s*http:\/\/localhost\/wiki\/index.php\/File:/;
-    $elem =~ s/^\s*[0-9]+\.\s*http:\/\/localhost\/wiki\/index.php\///;
-    $images->{$elem} = 1;
-  }
-  return $images;
-}
+  my $images = 1;
 
-sub missing_files {
-  my $link = "http://localhost/wiki/index.php?title=Special:WantedFiles&limit=2000&offset=0";
-  my $res = `lynx -dump "$link"`;
-  my $images = {};
-  foreach my $elem (split '\n', $res){
-    next if $elem !~ m/^\s*[0-9]+\.\s*http:\/\/localhost\/wiki\/index.php\?title=File:/;
-    $elem =~ s/^\s*[0-9]+\.\s*http:\/\/localhost\/wiki\/index.php\?title=//;
-    $elem =~ s/&action=edit&redlink=1$//;
-    $images->{$elem} = 1;
+  while ($images) {
+    $images = 0;
+    my $res = `lynx -dump "$link"`;
+    foreach my $elem (split '\n', $res){
+      $elem =~ s/\x{e2}\x{80}\x{8e}//g;
+      next if $elem !~ m/^\s*[0-9]+\.\s*http:\/\/localhost\/wiki\/index.php\/File:/;
+      $images = 1;
+      $elem =~ s/^\s*[0-9]+\.\s*http:\/\/localhost\/wiki\/index.php\///;
+      print "rm page $elem.\n";
+      $our_wiki->wiki_delete_page($elem, "") if ( $our_wiki->wiki_exists_page("$elem") );
+    }
   }
-  return $images;
 }
 
 sub getlocalpages {
@@ -162,95 +219,70 @@ sub getwikipages {
 }
 
 sub fix_missing_files {
-  my ($localnonsc_pages, $localsc_pages, $localsc_redirs) = @_;
-  my $missing = missing_files;
+  my $link = "http://localhost/wiki/index.php?title=Special:WantedFiles&limit=2000&offset=0";
+  my $res = `lynx -dump "$link"`;
+  my $missing = {};
+  foreach my $elem (split '\n', $res){
+    $elem =~ s/\x{e2}\x{80}\x{8e}//g;
+    next if $elem !~ m/^\s*[0-9]+\.\s*http:\/\/localhost\/wiki\/index.php\?title=File:/;
+    $elem =~ s/^\s*[0-9]+\.\s*http:\/\/localhost\/wiki\/index.php\?title=//;
+    $elem =~ s/&action=edit&redlink=1$//;
+    $missing->{$elem} = 1;
+  }
+
   foreach my $q (keys %$missing) {
     my $arr = $our_wiki->wiki_get_pages_using("$q");
     foreach my $file (@$arr) {
-      if ( exists $localnonsc_pages->{$file} ) {
-	remove_tree("$workdir/$file") || die "Can't remove dir $workdir/$file: $?.\n";
-	delete $localnonsc_pages->{$file};
-      } elsif ( exists $localsc_pages->{$file} ) {
-	remove_tree("$workdir/$file") || die "Can't remove dir $workdir/$file: $?.\n";
-	delete $localsc_pages->{$file};
+      if ( exists $local_pages->{'non_sc'}->{$file} ) {
+	print "rm dir $workdir/$local_pages->{'non_sc'}->{$file}/$file\n";
+	remove_tree("$workdir/$local_pages->{'non_sc'}->{$file}/$file") || die "Can't remove dir $workdir/$local_pages->{'non_sc'}->{$file}/$file: $?.\n";
+      } elsif ( exists $local_pages->{'sc_real'}->{$file} ) {
+	print "rm dir $workdir/$local_pages->{'sc_real'}->{$file}/$file\n";
+	remove_tree("$workdir/$local_pages->{'sc_real'}->{$file}/$file") || die "Can't remove dir $workdir/$local_pages->{'sc_real'}->{$file}/$file: $?.\n";
       }
-      $our_wiki->wiki_delete_page($file);
+      print "rm page $file\n";
+      $our_wiki->wiki_delete_page($file, "") if ( $our_wiki->wiki_exists_page("$file") );
     }
   }
 }
 
-sub fix_sc_double_redirects {
-  my ($localsc_pages,$localsc_redirs) = @_;
-  my $doubleredirects = scdoubleredirects;
+sub syncronize_local_wiki {
+  for my $tmp ('non_sc', 'sc_real', 'sc_redir'){
+    my $hash1 = $local_pages->{$tmp};
+    my $hash2 = $wiki_pages->{$tmp};
+    my @arr1 = (sort keys %$hash1);
+    my @arr2 = (sort keys %$hash2);
+    my ($only_in1, $only_in2, $common) = WikiCommons::array_diff( \@arr1, \@arr2 );
+    foreach my $local (@$only_in1) {
+      print "rm dir $workdir/$local_pages->{$tmp}->{$local}/$local\n";
+      remove_tree("$workdir/$local_pages->{$tmp}->{$local}/$local") || die "Can't remove dir $workdir/$local_pages->{$tmp}->{$local}/$local: $?.\n";
+      delete $local_pages->{$tmp}->{$local};
+    }
+    foreach my $wiki (@$only_in2) {
+      print "rm page $wiki\n";
+      $our_wiki->wiki_delete_page($wiki, "") if ( $our_wiki->wiki_exists_page("$wiki") );
+      delete $wiki_pages->{$tmp}->{$wiki};
+    }
+  }
 }
 
 my $namespaces = getnamespaces;
-my $local_pages = getlocalpages($namespaces);
-my $wiki_pages = getwikipages($namespaces);
-#WikiCommons::hash_to_xmlfile( $local_pages, "q_local_pages.xml");
-#WikiCommons::hash_to_xmlfile( $wiki_pages, "q_wiki_pages.xml");
+$local_pages = getlocalpages($namespaces);
+$wiki_pages = getwikipages($namespaces);
 
-my ($hash1, $hash2, @arr1, @arr2, $only_in1, $only_in2, $common);
-@arr1 = (sort keys %$local_pages);
-@arr2 = (sort keys %$wiki_pages);
-
-## non_sc
-$hash1 = $local_pages->{'non_sc'};
-$hash2 = $wiki_pages->{'non_sc'};
-@arr1 = (sort keys %$hash1);
-@arr2 = (sort keys %$hash2);
-($only_in1, $only_in2, $common) = WikiCommons::array_diff(\@arr1, \@arr2);
-print "non_sc in local ".Dumper($only_in1);
-print "non_sc in wiki ".Dumper($only_in2);
-## sc_real
-$hash1 = $local_pages->{'sc_real'};
-$hash2 = $wiki_pages->{'sc_real'};
-@arr1 = (sort keys %$hash1);
-@arr2 = (sort keys %$hash2);
-($only_in1, $only_in2, $common) = WikiCommons::array_diff(\@arr1, \@arr2);
-print "sc_real in local ".Dumper($only_in1);
-print "sc_real in wiki ".Dumper($only_in2);
-## sc_redir
-$hash1 = $local_pages->{'sc_redir'};
-$hash2 = $wiki_pages->{'sc_redir'};
-@arr1 = (sort keys %$hash1);
-@arr2 = (sort keys %$hash2);
-($only_in1, $only_in2, $common) = WikiCommons::array_diff(\@arr1, \@arr2);
-print "sc_redir in local ".Dumper($only_in1);
-print "sc_redir in wiki ".Dumper($only_in2);
-
-# my $local_pages = WikiCommons::xmlfile_to_hash( "local_pages.xml");
-# print Dumper($local_pages);
-
-# fix_missing_files ($localnonsc_pages, $localsc_pages,$localsc_redirs);
-#
-# my $wikinonsc_pages = allpagesinwiki();
-# my $wikisc_pages = allpagesinwiki("sc");
-# my $wikisc_redirs = sconly('r');
-# my $wikisc_nonredirs = sconly;
-# print Dumper($wikisc_nonredirects);
-
-# $nr = scalar keys %$wiki_pages;
-# print "$nr\n";
-# $nr = scalar keys %$local_pages;
-# print "$nr\n";
-# $nr = scalar keys %$wiki_redirs;
-# print "$nr\n";
-# print Dumper($arr);
-# $nr = scalar keys %$local_redirs;
-# print "$nr\n";
-
-## in SC namespace we should have only redirects that are also on the filesystem
-## only in SC: remove the pages and the redirect
-## only on FS: remove the dir from fs
-
-
-## in SC namespace we should NOT have any pages that are not redirects
-## remove the pages and the dirs from fs
-
-## there should not be any double redirects
-## remove all from the wiki and also from fs
-
-
-## remove all unused images from wiki
-# my $unusedimages = unused_images;
+print "##### Fix missing files:\n";
+fix_missing_files;
+print "##### Fix wiki sc type:\n";
+fix_wiki_sc_type($namespaces);
+print "##### Remove unused categories:\n";
+unused_categories;
+print "##### Add missing categories:\n";
+wanted_categories;
+print "##### Fix broken redirects:\n";
+broken_redirects;
+print "##### Fix double redirects:\n";
+scdoubleredirects;
+print "##### Remove unused images:\n";
+# unused_images;
+print "##### Syncronize:\n";
+syncronize_local_wiki;
