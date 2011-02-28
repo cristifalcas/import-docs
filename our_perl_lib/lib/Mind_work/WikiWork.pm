@@ -16,7 +16,9 @@ our $wiki_url = "http://10.0.0.99/wiki";
 our $wiki_user = 'wiki_auto_import';
 our $wiki_pass = '!0wiki_auto_import@9';
 our $mw;
+our $edit_token;
 our $array = ();
+my $nr_pages = 0;
 
 sub wiki_on_error {
     print "1. Error code: " . $mw->{error}->{code} . "\n";
@@ -35,7 +37,17 @@ sub new {
 	$mw->{config}->{on_error} = \&wiki_on_error;
 	$mw->login( {lgname => $wiki_user, lgpassword => $wiki_pass } )
 	    || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+
+	my $res = $mw->api({
+	    action  => 'query',
+	    titles  => 'Testos',
+	    prop    => 'info|revisions',
+	    intoken => 'edit',
+	});
+	my $data           = ( %{ $res->{'query'}->{'pages'} })[1];
+	$edit_token      = $data->{'edittoken'};
     }
+
     bless($self, $class);
     return $self;
 }
@@ -47,25 +59,24 @@ sub wiki_get_page {
 }
 
 sub wiki_delete_page {
-  my ($self, $title, $extra_files_path) = @_;
+  my ($self, $title) = @_;
   my $page = $mw->get_page( { title => $title } );
-#   $mw->login( {lgname => 'admin', lgpassword => '!0admin@9' } )
-#     || die "Could not login with user admin: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
   unless ( $page->{missing} ) {
     $mw->edit( { action => 'delete', title => $title, reason => 'no longer needed' } )
     || die "Could not delete url $title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
   }
+}
 
-    ## remove due to too many overwrites
-  if ($extra_files_path ne "" ) {
-    print "\t-Delete previous files from wiki.\t". (WikiCommons::get_time_diff) ."\n";
-    my @cmd_output = `php "$wiki_site_path/maintenance/deleteBatch.php" --conf "$wiki_site_path/LocalSettings.php" "$extra_files_path"`;
-#     print "@cmd_output\n";
-    print "\t+Delete previous files from wiki.\t". (WikiCommons::get_time_diff) ."\n";
-  }
+sub wiki_delete_images {
+    my ($self, $images) = @_;
+#     print "\t-Delete previous files from wiki.\t". (WikiCommons::get_time_diff) ."\n";
+    ## check if $images is a file or is a page
+#     $mw->api ( { action => 'delete',
+# 	token => $edit_token,
+# 	title => 'File:MIND-iPhonEX_5.31.003_Manager_User_Manual_html_m5b0080ed.png'}
+#     )   || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
 
-#   $mw->login( {lgname => $wiki_user, lgpassword => $wiki_pass } )
-#     || die "Could not login with user $wiki_user: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
+#     print "\t+Delete previous files from wiki.\t". (WikiCommons::get_time_diff) ."\n";
 }
 
 sub wiki_edit_page {
@@ -74,7 +85,6 @@ sub wiki_edit_page {
   my $page = $mw->get_page( { title => $title } );
   print "\tCreating a new page for url $title.\n" if ($page->{missing});
   my $timestamp = $page->{timestamp};
-# php /var/www/html/wiki/maintenance/importTextFile.php --title "Manual De Utilizare MINDBill CSR 6.01.003 -- 6.01 -- 6.01.003 -- User Manuals -- MoldTel branded" "/media/share/Documentation/cfalcas/q/import_docs/work/workfor_svn_docs/Manual De Utilizare MINDBill CSR 6.01.003 -- 6.01 -- 6.01.003 -- User Manuals -- MoldTel branded"
 
   $mw->edit( { action => 'edit', title => $title, text => Encode::decode('utf8', $text) } )
       || die "Could not upload text for $title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
@@ -141,15 +151,38 @@ sub wiki_get_all_pages {
 	{ max => 1000, hook => \&wiki_print_title } )
 		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     return $array;
-} 
+}
+
+sub wiki_get_unused_images {
+    my $self = shift;
+    my $arr = wiki_get_all_pages($self, 6);
+    my $unused_img = ();
+    my $nr_all = 0; my $nr_ok = 0; my $total = scalar @$arr;
+
+    foreach my $image (@$arr) {
+	$nr_all++;
+        my $pages = wiki_get_pages_using($self, $image, 1);
+        if (! defined $pages || scalar(@$pages) == 0) {
+	    print "$image\n";
+	    push @$unused_img, $image;
+	    $nr_ok++;
+        }
+	print "Done $nr_all out of $total, with $nr_ok good.\n" if ($nr_all%1000 == 0);
+    }
+    return $unused_img;
+}
 
 sub wiki_get_pages_using {
-    my ($self, $file) = @_;
+    my ($self, $file, $nr) = @_;
+    my $limit = 5000; my $max = 1000;
+    if (defined $nr ) {
+	$limit = 1; $max = 1;
+    }
     $array = ();
     $mw->list ( { action => 'query',
-	    list => 'imageusage', iulimit=>'5000',
+	    list => 'imageusage', iulimit => "$limit",
 	    iutitle => "$file" },
-	{ max => 1000, hook => \&wiki_print_title } )
+	{ max => "$max", hook => \&wiki_print_title } )
 		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     return $array;
 } 
@@ -158,7 +191,9 @@ sub wiki_print_title {
     my ( $ref) = @_;
     foreach (@$ref) {
 	push @$array, $_->{title};
+# 	$nr_pages++;
     }
+#     print "\tRetrieved $nr_pages pages.\n" if ($nr_pages%1000 == 0);
 }
 
 return 1;

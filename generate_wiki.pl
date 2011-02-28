@@ -420,7 +420,7 @@ sub delete_categories {
 	print "-Delete category $category.\t". (WikiCommons::get_time_diff) ."\n";
 	if ( -d "$categories_dir/$category" ) {
 	    my ($name,$dir,$suffix) = fileparse("$categories_dir/$category", qr/\.[^.]*/);
-	    $our_wiki->wiki_delete_page("$name$suffix", "") if ( $our_wiki->wiki_exists_page("$name$suffix") );
+	    $our_wiki->wiki_delete_page("$name$suffix") if ( $our_wiki->wiki_exists_page("$name$suffix") );
 	    remove_tree("$dir$name$suffix") || die "Can't remove dir $dir$name$suffix: $?.\n";
 	} else {
 	    print "Extra file in $categories_dir: $categories_dir/$category.\n";
@@ -475,7 +475,7 @@ sub insertdata {
     if (WikiCommons::is_remote ne "yes"){
 	$our_wiki->wiki_import_files ("$work_dir/$wiki_result", "$url");
 	print "\tDeleting url $url just to be sure.\t". (WikiCommons::get_time_diff) ."\n";
-	$our_wiki->wiki_delete_page ($url,"") if ( $our_wiki->wiki_exists_page($url) );
+	$our_wiki->wiki_delete_page ($url) if ( $our_wiki->wiki_exists_page($url) );
 	print "\tImporting url $url.\t". (WikiCommons::get_time_diff) ."\n";
 	$our_wiki->wiki_edit_page($url, $wiki);
 	die "Could not import url $url.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url) );
@@ -626,7 +626,8 @@ sub work_begin {
     if (WikiCommons::is_remote ne "yes") {
 	foreach my $url (sort keys %$to_delete) {
 	    print "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";
-	    $our_wiki->wiki_delete_page($url, "$wiki_dir/$url/$wiki_files_uploaded") if ( $our_wiki->wiki_exists_page($url) );
+	    $our_wiki->wiki_delete_images("$wiki_dir/$url/$wiki_files_uploaded");
+	    $our_wiki->wiki_delete_page($url) if ( $our_wiki->wiki_exists_page($url) );
 	    remove_tree("$wiki_dir/$url") || die "Can't remove dir $wiki_dir/$url: $?.\n";
 	}
     }
@@ -738,7 +739,7 @@ if ($path_type eq "mind_svn") {
 	    my $crt_name = $url;
 	    $crt_name =~ s/(SC.*)?:(.*)/$2/i;
 	    print "\tmake redirect from SC:$crt_name to $url.\n";
-	    $our_wiki->wiki_delete_page("$url", "") if $our_wiki->wiki_exists_page("$url");
+	    $our_wiki->wiki_delete_page("$url") if $our_wiki->wiki_exists_page("$url");
 	    next if defined $wrong_hash->{$url};
 	    $our_wiki->wiki_move_page("SC:$crt_name", "$url");
 

@@ -65,10 +65,11 @@ sub fix_wiki_sc_type {
   foreach my $ns (keys %$hash){
     $array = $our_wiki->wiki_get_nonredirects("$hash->{$ns}");
     foreach my $url (@$array) {
-      if ( defined $local_pages->{'sc_redir'}->{$url} ) {
-	print "rm local $workdir/$local_pages->{'sc_redir'}->{$url}/$url\n";
-	remove_tree("$workdir/$local_pages->{'sc_redir'}->{$url}/$url") || die "Can't remove dir $workdir/$local_pages->{'sc_redir'}->{$url}/$url: $?.\n";
-      }
+#       $url =~ s/ /_/g;
+#       if ( defined $local_pages->{'sc_redir'}->{$url} ) {
+# 	print "rm local $workdir/$local_pages->{'sc_redir'}->{$url}/$url\n";
+# 	remove_tree("$workdir/$local_pages->{'sc_redir'}->{$url}/$url") || die "Can't remove dir $workdir/$local_pages->{'sc_redir'}->{$url}/$url: $?.\n";
+#       }
       print "rm page $url\n";
       $our_wiki->wiki_delete_page($url, "") if ( $our_wiki->wiki_exists_page("$url") );
     }
@@ -78,10 +79,11 @@ sub fix_wiki_sc_type {
   foreach my $ns (keys %$hash){
     $array = $our_wiki->wiki_get_redirects("$hash->{$ns}");
     foreach my $url (@$array) {
-      if ( defined $local_pages->{'sc_real'}->{$url} ) {
-	print "rm local $workdir/$local_pages->{'sc_real'}->{$url}/$url\n";
-	remove_tree("$workdir/$local_pages->{'sc_real'}->{$url}/$url") || die "Can't remove dir $workdir/$local_pages->{'sc_real'}->{$url}/$url: $?.\n";
-      }
+#       $url =~ s/ /_/g;
+#       if ( defined $local_pages->{'sc_real'}->{$url} ) {
+# 	print "rm local $workdir/$local_pages->{'sc_real'}->{$url}/$url\n";
+# 	remove_tree("$workdir/$local_pages->{'sc_real'}->{$url}/$url") || die "Can't remove dir $workdir/$local_pages->{'sc_real'}->{$url}/$url: $?.\n";
+#       }
       print "rm page $url\n";
       $our_wiki->wiki_delete_page($url, "") if ( $our_wiki->wiki_exists_page("$url") );
     }
@@ -219,6 +221,7 @@ sub getwikipages {
 }
 
 sub fix_missing_files {
+    ## this will delete pages if the user forgot to add an image
   my $link = "http://localhost/wiki/index.php?title=Special:WantedFiles&limit=2000&offset=0";
   my $res = `lynx -dump "$link"`;
   my $missing = {};
@@ -233,13 +236,13 @@ sub fix_missing_files {
   foreach my $q (keys %$missing) {
     my $arr = $our_wiki->wiki_get_pages_using("$q");
     foreach my $file (@$arr) {
-      if ( exists $local_pages->{'non_sc'}->{$file} ) {
-	print "rm dir $workdir/$local_pages->{'non_sc'}->{$file}/$file\n";
-	remove_tree("$workdir/$local_pages->{'non_sc'}->{$file}/$file") || die "Can't remove dir $workdir/$local_pages->{'non_sc'}->{$file}/$file: $?.\n";
-      } elsif ( exists $local_pages->{'sc_real'}->{$file} ) {
-	print "rm dir $workdir/$local_pages->{'sc_real'}->{$file}/$file\n";
-	remove_tree("$workdir/$local_pages->{'sc_real'}->{$file}/$file") || die "Can't remove dir $workdir/$local_pages->{'sc_real'}->{$file}/$file: $?.\n";
-      }
+#       if ( exists $local_pages->{'non_sc'}->{$file} ) {
+# 	print "rm dir $workdir/$local_pages->{'non_sc'}->{$file}/$file\n";
+# 	remove_tree("$workdir/$local_pages->{'non_sc'}->{$file}/$file") || die "Can't remove dir $workdir/$local_pages->{'non_sc'}->{$file}/$file: $?.\n";
+#       } elsif ( exists $local_pages->{'sc_real'}->{$file} ) {
+# 	print "rm dir $workdir/$local_pages->{'sc_real'}->{$file}/$file\n";
+# 	remove_tree("$workdir/$local_pages->{'sc_real'}->{$file}/$file") || die "Can't remove dir $workdir/$local_pages->{'sc_real'}->{$file}/$file: $?.\n";
+#       }
       print "rm page $file\n";
       $our_wiki->wiki_delete_page($file, "") if ( $our_wiki->wiki_exists_page("$file") );
     }
@@ -266,23 +269,23 @@ sub syncronize_local_wiki {
   }
 }
 
-my $namespaces = getnamespaces;
-$local_pages = getlocalpages($namespaces);
-$wiki_pages = getwikipages($namespaces);
-
-print "##### Fix missing files:\n";
-fix_missing_files;
-print "##### Fix wiki sc type:\n";
-fix_wiki_sc_type($namespaces);
-print "##### Remove unused categories:\n";
-unused_categories;
-print "##### Add missing categories:\n";
-wanted_categories;
-print "##### Fix broken redirects:\n";
-broken_redirects;
-print "##### Fix double redirects:\n";
-scdoubleredirects;
-print "##### Remove unused images:\n";
-# unused_images;
-print "##### Syncronize:\n";
-syncronize_local_wiki;
+my $q = $our_wiki->wiki_get_unused_images;
+print Dumper($q);
+# my $namespaces = getnamespaces;
+# $local_pages = getlocalpages($namespaces);
+# $wiki_pages = getwikipages($namespaces);
+# print Dumper($local_pages);print Dumper($wiki_pages);exit 1;
+# print "##### Fix wiki sc type:\n";
+# fix_wiki_sc_type($namespaces);
+# print "##### Remove unused categories:\n";
+# unused_categories;
+# print "##### Add missing categories:\n";
+# wanted_categories;
+# print "##### Fix broken redirects:\n";
+# broken_redirects;
+# print "##### Fix double redirects:\n";
+# scdoubleredirects;
+# print "##### Remove unused images:\n";
+# # unused_images;
+# print "##### Syncronize:\n";
+# syncronize_local_wiki;
