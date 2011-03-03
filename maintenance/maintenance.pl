@@ -38,72 +38,60 @@ my $workdir = "/media/share/Documentation/cfalcas/q/import_docs/work/";
 my $our_wiki;
 $our_wiki = new WikiWork();
 my ($local_pages, $wiki_pages);
+my $view_only = 1;
 
-sub getnamespaces {
-  my $namespaces = {};
-  my $ns = 'grep "\$wgExtraNamespaces" /var/www/html/wiki/LocalSettings.php | sed s/^\$wgExtraNamespaces// | sed s/=// | sed s/\]// | sed s/\\\[// | sed s/\"//g | sed s/\;//';
-  my @my_res = split "\n", `$ns`;
-  foreach my $line (@my_res){
-    my @elem = split ' ', $line;
-    die "too many: $line\n" if scalar @elem >2;
-    if ($elem[1] =~ m/^SC_/) {
-      $namespaces->{'sc_real'}->{$elem[1]} = $elem[0];
-    } elsif ($elem[1] =~ m/^SC$/) {
-      $namespaces->{'sc_redir'}->{$elem[1]} = $elem[0];
+sub fixnamespaces {
+  my $namespaces = shift;
+  my $res = {};
+  foreach my $ns_nr (keys %$namespaces){
+    if ($ns_nr >= 100) {
+	my $name = $namespaces->{$ns_nr};
+	if ($name =~ m/^(SC |CRM )/) {
+	    $res->{'real'}->{$name} = $ns_nr;
+	} elsif ($name =~ m/^(SC|CRM)$/) {
+	    $res->{'redir'}->{$name} = $ns_nr;
+	} else {
+	    $res->{'normal'}->{$name} = $ns_nr;
+	}
     } else {
-      $namespaces->{'non_sc'}->{$elem[1]} = $elem[0];
+	$res->{'wiki_private'}->{$namespaces->{$ns_nr}} = $ns_nr;
     }
   }
 
-  return $namespaces;
+  return $res;
 }
 
 sub fix_wiki_sc_type {
   my $namespaces = shift;
   my $array = ();
-  my $hash = $namespaces->{'sc_redir'};
+  my $hash = $namespaces->{'redir'};
   foreach my $ns (keys %$hash){
     $array = $our_wiki->wiki_get_nonredirects("$hash->{$ns}");
     foreach my $url (@$array) {
-#       $url =~ s/ /_/g;
-#       if ( defined $local_pages->{'sc_redir'}->{$url} ) {
-# 	print "rm local $workdir/$local_pages->{'sc_redir'}->{$url}/$url\n";
-# 	remove_tree("$workdir/$local_pages->{'sc_redir'}->{$url}/$url") || die "Can't remove dir $workdir/$local_pages->{'sc_redir'}->{$url}/$url: $?.\n";
-#       }
       print "rm page $url\n";
-      $our_wiki->wiki_delete_page($url, "") if ( $our_wiki->wiki_exists_page("$url") );
+      $our_wiki->wiki_delete_page($url, "") if ( $our_wiki->wiki_exists_page("$url") && ! $view_only);
     }
   }
 
-  $hash = $namespaces->{'sc_real'};
+  $hash = $namespaces->{'real'};
   foreach my $ns (keys %$hash){
     $array = $our_wiki->wiki_get_redirects("$hash->{$ns}");
     foreach my $url (@$array) {
-#       $url =~ s/ /_/g;
-#       if ( defined $local_pages->{'sc_real'}->{$url} ) {
-# 	print "rm local $workdir/$local_pages->{'sc_real'}->{$url}/$url\n";
-# 	remove_tree("$workdir/$local_pages->{'sc_real'}->{$url}/$url") || die "Can't remove dir $workdir/$local_pages->{'sc_real'}->{$url}/$url: $?.\n";
-#       }
       print "rm page $url\n";
-      $our_wiki->wiki_delete_page($url, "") if ( $our_wiki->wiki_exists_page("$url") );
+      $our_wiki->wiki_delete_page($url, "") if ( $our_wiki->wiki_exists_page("$url") && ! $view_only);
     }
   }
 
 }
 
 sub unused_categories {
-  my $link = "http://localhost/wiki/index.php?title=Special:UnusedCategories&limit=2000&offset=0";
-  my $res = `lynx -dump "$link"`;
-
-  my $i = 1;
-  foreach my $elem (split '\n', $res){
-    $elem =~ s/\x{e2}\x{80}\x{8e}//g;
-    next if $elem !~ m/^\s*$i\.\s+\[[0-9]+\](.*)$/;
-    my $cat = "Category:$1";
-    $i++;
-    print "rm page $cat\n";
-    $our_wiki->wiki_delete_page($cat, "") if ( $our_wiki->wiki_exists_page("$cat") );
-  }
+    my $all_categories = $our_wiki->wiki_get_categories();
+    foreach my $cat (@$all_categories) {
+	my $res = $our_wiki->wiki_get_pages_in_category($cat, 1);
+	next if defined $res;
+	print "rm page $cat\n";
+	$our_wiki->wiki_delete_page($cat, "") if ( $our_wiki->wiki_exists_page("$cat") && ! $view_only);
+    }
 }
 
 sub wanted_categories {
@@ -188,12 +176,12 @@ sub getlocalpages {
       $file =~ s/_/ /g;
       if ($ns eq "") {
 	$local_pages->{'gorgonzola'}->{$file} = "$adir";
-      } elsif ( defined $namespaces->{'sc_redir'}->{$ns} ){
-	$local_pages->{'sc_redir'}->{$file} = "$adir";
-      } elsif ( defined $namespaces->{'sc_real'}->{$ns} ){
-	$local_pages->{'sc_real'}->{$file} = "$adir";
-      } elsif ( defined $namespaces->{'non_sc'}->{$ns} ){
-	$local_pages->{'non_sc'}->{$file} = "$adir";
+      } elsif ( defined $namespaces->{'redir'}->{$ns} ){
+	$local_pages->{'redir'}->{$file} = "$adir";
+      } elsif ( defined $namespaces->{'real'}->{$ns} ){
+	$local_pages->{'real'}->{$file} = "$adir";
+      } elsif ( defined $namespaces->{'normal'}->{$ns} ){
+	$local_pages->{'normal'}->{$file} = "$adir";
       }
     }
     closedir(DIR);
@@ -269,9 +257,14 @@ sub syncronize_local_wiki {
   }
 }
 
-my $q = $our_wiki->wiki_get_unused_images;
+# my $q = $our_wiki->wiki_get_unused_images;
+# $our_wiki->wiki_delete_page("/media/share/Documentation/cfalcas/q/import_docs/dumb");
+# print Dumper($q);
+my $namespaces = $our_wiki->wiki_get_namespaces;
+$namespaces = fixnamespaces($namespaces);
+print Dumper($namespaces);
+my $q = $our_wiki->wiki_get_all_categories();
 print Dumper($q);
-# my $namespaces = getnamespaces;
 # $local_pages = getlocalpages($namespaces);
 # $wiki_pages = getwikipages($namespaces);
 # print Dumper($local_pages);print Dumper($wiki_pages);exit 1;

@@ -371,27 +371,29 @@ sub generate_pages_to_delete_to_import {
     ($to_delete, $to_keep) = generate_real_and_links($to_delete, $to_keep);
     print "Done separating urls in real and links.\t". (WikiCommons::get_time_diff) ."\n";
 #     ($to_delete, $to_keep) = generate_cleaned_real_and_links($to_delete, $to_keep);
-    if ($path_type eq "sc_docs"){
-	foreach my $url (keys %$pages_toimp_hash) {
-	    if ($url =~ m/^SC_(.*)?:(.*)/) {
-		my $new_delete = "SC:$2";
-		if (exists $to_keep->{$new_delete} && ! defined $pages_toimp_hash->{$new_delete}) {
-		    $to_delete->{$new_delete} = $to_keep->{$new_delete};
-		    $pages_toimp_hash->{$new_delete} = $to_keep->{$new_delete};
-		    delete ($to_keep->{$new_delete});
-		}
-	    }
-	}
-	foreach my $url (keys %$to_keep) {
-	    if ($url =~ m/^SC_(.*)?:(.*)/) {
-		my $new_delete = "SC:$2";
-		if (exists $pages_toimp_hash->{$new_delete} && ! defined $pages_toimp_hash->{$url}) {
-		    $to_delete->{$url} = $to_keep->{$url};
-		    $pages_toimp_hash->{$url} = $to_keep->{$url};
-		    delete ($to_keep->{$url});
-		}
-	    }
-	}
+    if ($path_type eq "sc_docs" || $path_type =~ m/^crm_/){
+# 	foreach my $url (keys %$pages_toimp_hash) {
+# 	    if ( $url =~ m/^SC_(.*)?:(.*)/ || $url =~ m/^CRM_(.*)?:(.*) /) {
+# 		my $new_delete = "SC:$2" if $url =~ m/^SC_/;
+# 		my $new_delete = "CRM:$2" if $url =~ m/^CRM_/;
+# 		if (exists $to_keep->{$new_delete} && ! defined $pages_toimp_hash->{$new_delete}) {
+# 		    $to_delete->{$new_delete} = $to_keep->{$new_delete};
+# 		    $pages_toimp_hash->{$new_delete} = $to_keep->{$new_delete};
+# 		    delete ($to_keep->{$new_delete});
+# 		}
+# 	    }
+# 	}
+# 	foreach my $url (keys %$to_keep) {
+# 	    if ( $url =~ m/^SC_(.*)?:(.*)/ || $url =~ m/^CRM_(.*)?:(.*)/ ) {
+# 		my $new_delete = "SC:$2" if $url =~ m/^SC_/;
+# 		my $new_delete = "CRM:$2" if $url =~ m/^CRM_/;
+# 		if (exists $pages_toimp_hash->{$new_delete} && ! defined $pages_toimp_hash->{$url}) {
+# 		    $to_delete->{$url} = $to_keep->{$url};
+# 		    $pages_toimp_hash->{$url} = $to_keep->{$url};
+# 		    delete ($to_keep->{$url});
+# 		}
+# 	    }
+# 	}
     }
     generate_cleaned_real_and_links($to_keep);
     print "Done final cleaning of urls.\t". (WikiCommons::get_time_diff) ."\n";
@@ -626,7 +628,7 @@ sub work_begin {
     if (WikiCommons::is_remote ne "yes") {
 	foreach my $url (sort keys %$to_delete) {
 	    print "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";
-	    $our_wiki->wiki_delete_images("$wiki_dir/$url/$wiki_files_uploaded");
+	    $our_wiki->wiki_delete_page("$wiki_dir/$url/$wiki_files_uploaded");
 	    $our_wiki->wiki_delete_page($url) if ( $our_wiki->wiki_exists_page($url) );
 	    remove_tree("$wiki_dir/$url") || die "Can't remove dir $wiki_dir/$url: $?.\n";
 	}
@@ -650,7 +652,7 @@ if (-f "$pid_file") {
     close (FH);
     chomp @info;
     $pid_old = $info[0];
-    my $exists = kill 0, $pid_old;
+    my $exists = kill 0, $pid_old if defined $pid_old && $pid_old =~ m/^[0-9]+$/;
     if ( $exists ) {
 	my $proc_name = `ps -p $pid_old -o cmd`;
 	print "$proc_name\n";
@@ -693,6 +695,27 @@ if ($path_type eq "mind_svn") {
 	close (FH);
 
 	WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
+
+	if ($url !~ m/^CRM:(.*)/i) {
+	    my $crt_name = $url;
+	    $crt_name =~ s/(CRM.*)?:(.*)/$2/i;
+	    print "\tmake redirect from CRM:$crt_name to $url.\n";
+	    $our_wiki->wiki_delete_page("$url") if $our_wiki->wiki_exists_page("$url");
+# 	    next if defined $wrong_hash->{$url};
+	    $our_wiki->wiki_move_page("CRM:$crt_name", "$url");
+
+	    my $text = "md5 = ".$pages_toimp_hash->{$url}[$md5_pos]."\n";
+	    $text .= "rel_path = ".$pages_toimp_hash->{$url}[$rel_path_pos]."\n";
+	    $text .= "svn_url = ".$pages_toimp_hash->{$url}[$svn_url_pos]."\n";
+	    $text .= "link_type = ".$pages_toimp_hash->{$url}[$link_type_pos]."\n";
+	    my $redirect_text = "#REDIRECT [[CRM:$crt_name]]";
+	    WikiCommons::write_file("$wiki_dir/$url/$url.wiki", "$redirect_text");
+	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
+	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_info", $text);
+	    delete($pages_toimp_hash->{$url});
+	    next;
+	}
+
 	WikiCommons::add_to_remove("$wiki_dir/$url/$wiki_result", "dir");
 	my $work_dir = "$wiki_dir/$url";
 	WikiCommons::write_file("$work_dir/$url.wiki", $wiki_txt);

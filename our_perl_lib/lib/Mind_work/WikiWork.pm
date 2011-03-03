@@ -7,15 +7,21 @@ use Mind_work::WikiCommons;
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 use MediaWiki::API;
+use MediaWiki::Bot;
+# get_last($page, $user)
+# get_history($pagename[,$limit])
+# get_namespace_names()
 # http://en.wikipedia.org/w/api.php
 # http://www.mediawiki.org/wiki/API:Lists/es
 
 our $wiki_site_path = "/var/www/html/wiki/";
 our $wiki_url = "http://10.0.0.99/wiki";
+our $wiki_url_path = "/wiki";
 # our $wiki_url = "http://localhost:1900/wiki";
 our $wiki_user = 'wiki_auto_import';
 our $wiki_pass = '!0wiki_auto_import@9';
 our $mw;
+our $bmw;
 our $edit_token;
 our $array = ();
 my $nr_pages = 0;
@@ -33,23 +39,98 @@ sub new {
     my $class = shift;
     my $self = {};
     if (WikiCommons::is_remote ne "yes" ) {
+
 	$mw = MediaWiki::API->new({ api_url => "$wiki_url/api.php" }, retries  => 3) or die "coco";
 	$mw->{config}->{on_error} = \&wiki_on_error;
 	$mw->login( {lgname => $wiki_user, lgpassword => $wiki_pass } )
 	    || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
 
-	my $res = $mw->api({
-	    action  => 'query',
-	    titles  => 'Testos',
-	    prop    => 'info|revisions',
-	    intoken => 'edit',
-	});
-	my $data           = ( %{ $res->{'query'}->{'pages'} })[1];
-	$edit_token      = $data->{'edittoken'};
+# 	my $res = $mw->api({
+# 	    action  => 'query',
+# 	    titles  => 'Testos',
+# 	    prop    => 'info|revisions',
+# 	    intoken => 'edit',
+# 	});
+# 	my $data           = ( %{ $res->{'query'}->{'pages'} })[1];
+# 	$edit_token      = $data->{'edittoken'};
     }
 
     bless($self, $class);
     return $self;
+}
+
+sub wiki_get_namespaces {
+    my $self = shift;
+    my %return;
+    my $res = $mw->api({
+            action => 'query',
+            meta   => 'siteinfo',
+            siprop => 'namespaces'
+    });
+
+    foreach my $id (keys %{ $res->{query}->{namespaces} }) {
+        $return{$id} = $res->{query}->{namespaces}->{$id}->{'*'};
+    }
+    if  (!($return{1} or $_[0] > 1)) {
+        %return = $mw->get_namespace_names($_[0] + 1);
+    }
+    return \%return;
+}
+
+# sub delete_archived_image {
+#     my $self    = shift;
+#     my $archive = shift;
+#     my $summary = shift || 'BOT: deleting old version of image by command';
+# 
+#     my ($timestamp, $file) = split(m/!/, $archive);
+# 
+#     my ($token) = $self->_get_edittoken($file);
+# 
+#     my $res = $self->{'api'}->api({
+#         action   => 'delete',
+#         title    => "File:$file",
+#         token    => $token,
+#         reason   => $summary,
+#         oldimage => $archive,
+#     });
+#     return $self->_handle_api_error() unless $res;
+# 
+#     return $res;
+# 
+# }
+
+sub wiki_get_categories {
+    my $self = shift;
+    my $res = wiki_get_all_pages($self, 14);
+    return $res;
+}
+
+sub wiki_get_images {
+    my $self = shift;
+    my $res = wiki_get_all_pages($self, 6);
+    return $res;
+}
+
+sub wiki_get_all_categories {
+    my $self = shift;
+    $array = ();
+
+    $mw->list ( { action => 'query',
+	    list => 'allcategories', aclimit=>'5000',},
+	{ max => 1000, hook => \&wiki_add_url } )
+		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+    return $array;
+}
+
+sub wiki_get_all_images {
+    my $self = shift;
+    $array = ();
+
+    $mw->list ( { action => 'query',
+	    list => 'allimages', ailimit=>'5000',},
+	{ max => 1000, hook => \&wiki_add_url } )
+		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+    return $array;
 }
 
 sub wiki_get_page {
@@ -60,23 +141,48 @@ sub wiki_get_page {
 
 sub wiki_delete_page {
   my ($self, $title) = @_;
-  my $page = $mw->get_page( { title => $title } );
-  unless ( $page->{missing} ) {
-    $mw->edit( { action => 'delete', title => $title, reason => 'no longer needed' } )
-    || die "Could not delete url $title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
-  }
+
+    my @img = ();
+    if (ref($title) eq "ARRAY") {
+      @img = @$title;
+    } elsif (ref($title) eq "") {
+      ## check if $images is a file or an url
+	if (-f "$title") {
+	    open(FILE, "$title");
+	    @img = <FILE>;
+	    close FILE;
+	} else {
+	  push @img, $title;
+	}
+    } else {
+      die "Unknown type for images: ".Dumper($title);
+    }
+
+    foreach my $url (@img) {
+      chomp $url;
+#       $mw->api ( { action => 'delete',
+# 	  token => $edit_token,
+# 	  title => "$url"}
+#       )   || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+
+      my $page = $mw->get_page( { title => $url } );
+      unless ( defined $page->{missing} ) {
+	print "\tDelete page $url.\n";
+	$mw->edit( { action => 'delete', title => $url, reason => 'no longer needed' } )
+	|| die "Could not delete url $url: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
+      }
+    }
 }
 
-sub wiki_delete_images {
-    my ($self, $images) = @_;
-#     print "\t-Delete previous files from wiki.\t". (WikiCommons::get_time_diff) ."\n";
-    ## check if $images is a file or is a page
-#     $mw->api ( { action => 'delete',
-# 	token => $edit_token,
-# 	title => 'File:MIND-iPhonEX_5.31.003_Manager_User_Manual_html_m5b0080ed.png'}
-#     )   || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+sub wiki_get_deleted_revs {
+    my $self = shift;
+    $array = ();
 
-#     print "\t+Delete previous files from wiki.\t". (WikiCommons::get_time_diff) ."\n";
+    $mw->list ( { action => 'query',
+	    list => 'deletedrevs', drlimit=>'5000',drprop    => 'revid|user',},
+	{ max => 1000, hook => \&wiki_add_url2 } )
+		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+    return $array;
 }
 
 sub wiki_edit_page {
@@ -126,7 +232,7 @@ sub wiki_get_nonredirects {
     $mw->list ( { action => 'query',
 	    list => 'allpages', aplimit=>'5000',
 	    apnamespace => "$ns", apfilterredir => "nonredirects" },
-	{ max => 1000, hook => \&wiki_print_title } )
+	{ max => 1000, hook => \&wiki_add_url } )
 		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     return $array;
 }
@@ -137,7 +243,7 @@ sub wiki_get_redirects {
     $mw->list ( { action => 'query',
 	    list => 'allpages', aplimit=>'5000',
 	    apnamespace => "$ns", apfilterredir => "redirects" },
-	{ max => 1000, hook => \&wiki_print_title } )
+	{ max => 1000, hook => \&wiki_add_url } )
 		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     return $array;
 }
@@ -148,7 +254,7 @@ sub wiki_get_all_pages {
     $mw->list ( { action => 'query',
 	    list => 'allpages', aplimit=>'5000',
 	    apnamespace => "$ns" },
-	{ max => 1000, hook => \&wiki_print_title } )
+	{ max => 1000, hook => \&wiki_add_url } )
 		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     return $array;
 }
@@ -163,7 +269,7 @@ sub wiki_get_unused_images {
 	$nr_all++;
         my $pages = wiki_get_pages_using($self, $image, 1);
         if (! defined $pages || scalar(@$pages) == 0) {
-	    print "$image\n";
+# 	    print "$image\n";
 	    push @$unused_img, $image;
 	    $nr_ok++;
         }
@@ -176,24 +282,52 @@ sub wiki_get_pages_using {
     my ($self, $file, $nr) = @_;
     my $limit = 5000; my $max = 1000;
     if (defined $nr ) {
-	$limit = 1; $max = 1;
+	$limit = $nr; $max = 1;
     }
     $array = ();
     $mw->list ( { action => 'query',
 	    list => 'imageusage', iulimit => "$limit",
 	    iutitle => "$file" },
-	{ max => "$max", hook => \&wiki_print_title } )
+	{ max => "$max", hook => \&wiki_add_url } )
 		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     return $array;
 } 
 
-sub wiki_print_title {
+sub wiki_get_pages_in_category {
+    my ($self, $cat, $nr) = @_;
+    my $limit = 5000; my $max = 1000;
+    if (defined $nr ) {
+	$limit = $nr; $max = 1;
+    }
+    $array = ();
+    $mw->list ( { action => 'query',
+	    list => 'categorymembers', iulimit => "$limit",
+	    cmtitle => "$cat" },
+	{ max => "$max", hook => \&wiki_add_url } )
+		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+    return $array;
+} 
+
+sub wiki_add_url {
     my ( $ref) = @_;
+
     foreach (@$ref) {
+	if ( (scalar keys %$_) && defined $_->{'*'}) {
+	    push @$array, $_->{'*'}."\n";
+	    next;
+	}
 	push @$array, $_->{title};
 # 	$nr_pages++;
     }
 #     print "\tRetrieved $nr_pages pages.\n" if ($nr_pages%1000 == 0);
+}
+
+sub wiki_add_url2 {
+    my ( $ref) = @_;
+
+    foreach (@$ref) {
+	print Dumper($_);
+    }
 }
 
 return 1;

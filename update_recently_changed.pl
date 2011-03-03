@@ -36,14 +36,14 @@ print "Connected.\n";
 my $sql_query="select rc_timestamp, rc_user_text, rc_title
   from recentchanges rc, page p
  where rc_title not in
-       ('Test', 'Common.js', 'RecentlyModified', 'Main_Page')
+       ('Test', 'Common.js', 'RecentlyModified', 'Main_Page', 'Test', 'Test1', 'Test2')
    and rc_namespace = 0
    and rc.rc_title = p.page_title
    and rc_timestamp = (select max(rc_timestamp)
                          from recentchanges rcs
                         where rc_namespace = 0
                           and rcs.rc_title = rc.rc_title
-                          and abs(rcs.rc_new_len - rcs.rc_old_len) > 20
+                          and abs(rcs.rc_new_len - rcs.rc_old_len) > 100
                           /*and ((rc_new<>1 and rc_user_text <> 'Cristian.falcas'
                           and rc_user_text <> '10.0.6.78'
                           and rc_user_text <> '10.0.4.128') or rc_new=1)*/)
@@ -52,7 +52,7 @@ my $sql_query="select rc_timestamp, rc_user_text, rc_title
 print "Query...\n";
 my $query = $db->prepare($sql_query); 
 $query->execute();
-my $max_size = 40;
+my $max_size = 45;
 while (my ($time, $user, $page) = $query->fetchrow_array ){
   my $new_page = $page;
   $new_page =~ s/_/\ /g;

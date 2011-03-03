@@ -378,6 +378,9 @@ sub reset_time {
 sub array_diff {
     print "-Compute difference and uniqueness.\n";
     my ($arr1, $arr2) = @_;
+    my %seen = (); my @uniq1 = grep { ! $seen{$_} ++ } @$arr1; $arr1 = \@uniq1;
+    %seen = (); my @uniq2 = grep { ! $seen{$_} ++ } @$arr2; $arr2 = \@uniq2;
+
     my (@only_in_arr1, @only_in_arr2, @common) = ();
 ## union: all, intersection: common, difference: unique in a and b
     my (@union, @intersection, @difference) = ();

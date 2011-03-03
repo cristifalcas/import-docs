@@ -45,17 +45,17 @@ sub add_document{
     $sr = (split '_', $sr)[0];
     my $ns = "";
     if ($domain =~ m/^iphonex$/i) {
-        $ns = "CRM_iPhonex:";
+        $ns = "CRM_iPhonex";
     } elsif ($domain =~ m/^phonexone$/i) {
-        $ns = "CRM_PhonexONE:";
+        $ns = "CRM_PhonexONE";
     } elsif ($domain =~ m/^sentori$/i) {
-        $ns = "CRM:Sentori";
+        $ns = "CRM_Sentori";
     } elsif ($domain =~ m/^docs$/i) {
         return; ##empty old crm
     } else {
       die "Domain should be mind, phonex, sentori.\n";
     }
-    my $page_url = "$ns$values[0]".$url_sep."$sr";
+    my $page_url = "$values[0]".$url_sep."$sr";
     chomp $page_url;
     die "No page for $doc_file.\n" if ($page_url eq "" );
 
@@ -64,8 +64,9 @@ sub add_document{
     ++$count_files;
     print "\tNumber of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n" if ($count_files%1000 == 0);
 
-    die "Page already exists.: $page_url\n" if exists $pages_toimp_hash->{$page_url};
-    $pages_toimp_hash->{$page_url} = [$md5, $rel_path, "", "real", \@categories];
+    die "Page already exists.: $ns$page_url\n" if exists $pages_toimp_hash->{"$ns:$page_url"};
+    $pages_toimp_hash->{"$ns:$page_url"} = [$md5." redirect", $rel_path, "", "real", \@categories];
+    $pages_toimp_hash->{"CRM:$page_url"} = [$md5, $rel_path, "", "real", \@categories];
 }
 
 sub get_documents {
