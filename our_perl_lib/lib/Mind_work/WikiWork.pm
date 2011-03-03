@@ -179,7 +179,8 @@ sub wiki_get_deleted_revs {
     $array = ();
 
     $mw->list ( { action => 'query',
-	    list => 'deletedrevs', drlimit=>'5000',drprop    => 'revid|user',},
+	    list => 'deletedrevs', drlimit=>'5000',
+	    drprop    => 'revid|user',},
 	{ max => 1000, hook => \&wiki_add_url2 } )
 		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     return $array;
