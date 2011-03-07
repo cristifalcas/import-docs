@@ -27,7 +27,7 @@ BEGIN {
     }
 }
 
-use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."../our_perl_lib/lib";
+use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."./our_perl_lib/lib";
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 use File::Path qw(remove_tree);
@@ -38,7 +38,8 @@ my $workdir = "/media/share/Documentation/cfalcas/q/import_docs/work/";
 my $our_wiki;
 $our_wiki = new WikiWork();
 my ($local_pages, $wiki_pages);
-my $view_only = 0;
+my $view_only = shift;
+$view_only = 1 if ! defined $view_only;
 
 sub fixnamespaces {
   my $namespaces = shift;
@@ -46,7 +47,8 @@ sub fixnamespaces {
   foreach my $ns_nr (keys %$namespaces){
     if ($ns_nr >= 100) {
 	my $name = $namespaces->{$ns_nr};
-	if ($name =~ m/^(SC |CRM )/) {
+	$name =~ s/ /_/g;
+	if ($name =~ m/^(SC_|CRM_)/) {
 	    $res->{'real'}->{$name} = $ns_nr;
 	} elsif ($name =~ m/^(SC|CRM)$/) {
 	    $res->{'redir'}->{$name} = $ns_nr;
@@ -68,7 +70,7 @@ sub fix_wiki_sc_type {
   foreach my $ns (keys %$hash){
     $array = $our_wiki->wiki_get_nonredirects("$hash->{$ns}");
     foreach my $url (@$array) {
-      print "rm page $url\n";
+      print "rm redir page $url\n";
       $our_wiki->wiki_delete_page($url) if ( $our_wiki->wiki_exists_page("$url") && ! $view_only);
     }
   }
@@ -77,7 +79,7 @@ sub fix_wiki_sc_type {
   foreach my $ns (keys %$hash){
     $array = $our_wiki->wiki_get_redirects("$hash->{$ns}");
     foreach my $url (@$array) {
-      print "rm page $url\n";
+      print "rm real page $url\n";
       $our_wiki->wiki_delete_page($url) if ( $our_wiki->wiki_exists_page("$url") && ! $view_only);
     }
   }
@@ -140,21 +142,26 @@ sub scdoubleredirects {
 }
 
 sub unused_images_dirty {
-  my $total = 2000;
+  my $total = 1500;
   my $link = "http://localhost/wiki/index.php?title=Special:UnusedFiles&limit=$total&offset=0";
   my $res = `lynx -dump "$link"`;
 
   my $i = 1;
+  my $seen = {};
   foreach my $elem (split '\n', $res){
 #       $elem =~ s/\x{e2}\x{80}\x{8e}//g;
       next if $elem !~ m/^\s*[0-9]+\.\s*http:\/\/localhost\/wiki\/index.php\/File:/;
       $elem =~ s/^\s*[0-9]+\.\s*http:\/\/localhost\/wiki\/index.php\///;
+      next if $seen->{$elem};
+      $i++;
+      $seen->{$elem} = 1;
+      $elem =~ s/%27/'/g;
+      $elem =~ s/%26/&/g;
+      print "rm file $i\n\t$elem.\n";
       if (! $our_wiki->wiki_exists_page("$elem")) {
-	print "add page $elem.\n";
+	print "add page \n\t$elem.\n";
 	$our_wiki->wiki_edit_page("$elem", "----") if ( ! $view_only);
       }
-      print "rm file $elem: $i out of $total.\n";
-      $i++;
       $our_wiki->wiki_delete_page("$elem") if ( ! $view_only);
   }
 }
@@ -192,30 +199,33 @@ sub getlocalpages {
   my @allfiles = ();
   foreach my $adir (@alldirs) {
     opendir(DIR, "$workdir/$adir") || die("Cannot open directory $adir: $!.\n");
-    print "Get local files from $adir.\n";
+    print "Get local files from $adir: ";
+    my $count = 0;
     foreach my $file (grep { (!/^\.\.?$/) && -d "$workdir/$adir/$_" } readdir(DIR)) {
+      $count++;
       my $ns = "";
       if ( $file =~ m/^(.*?):(.*)$/ ) {
         $ns = $1;
+	$ns =~ s/ /_/g;
         $file = $2;
-	$ns =~ s/_/ /g;
         $file = WikiCommons::capitalize_string($file, 'onlyfirst');
 	$file = "$ns:$file";
       }
-      $file =~ s/_/ /g;
+      my $normalyze_file = $file;
+      $normalyze_file =~ s/ /_/g;
       if ($ns eq "") {
-	$local_pages->{'private'}->{$file} = "$adir";
+	$local_pages->{'private'}->{$normalyze_file} = "$adir/$file";
       } elsif ( defined $namespaces->{'redir'}->{$ns} ){
-	$local_pages->{'redir'}->{$file} = "$adir";
+	$local_pages->{'redir'}->{$normalyze_file} = "$adir/$file";
       } elsif ( defined $namespaces->{'real'}->{$ns} ){
-	$local_pages->{'real'}->{$file} = "$adir";
+	$local_pages->{'real'}->{$normalyze_file} = "$adir/$file";
       } elsif ( defined $namespaces->{'normal'}->{$ns} ){
-	$local_pages->{'normal'}->{$file} = "$adir";
+	$local_pages->{'normal'}->{$normalyze_file} = "$adir/$file";
       }
     }
     closedir(DIR);
+    print "$count\n";
   }
-
   return $local_pages;
 }
 
@@ -231,7 +241,14 @@ sub getwikipages {
     @arr = ();
     foreach my $ns (keys %$tmp) {
       my $def = $our_wiki->wiki_get_all_pages($namespaces->{$nstype}->{$ns});
-      foreach (@$def) { if (defined $_) {push @arr, $_} };
+      foreach my $page (@$def) { 
+	if (defined $page) {
+# 	    my $tmp_page = $page;
+# 	    $tmp_page =~ s/^($ns:)//;
+	    $page =~ s/ /_/g;
+	    push @arr, "$page";
+	} 
+      };
     }
     my %hash = map { $_ => 1 } @arr;
     $wiki_pages->{$nstype} = \%hash;
@@ -246,11 +263,14 @@ sub syncronize_local_wiki {
     my @arr1 = (sort keys %$hash1);
     my @arr2 = (sort keys %$hash2);
     my ($only_in1, $only_in2, $common) = WikiCommons::array_diff( \@arr1, \@arr2 );
+    print "$tmp\n";
     print "only in local: ".Dumper($only_in1); print "only in wiki: ".Dumper($only_in2);
 
     foreach my $local (@$only_in1) {
-      print "rm dir $workdir/$local_pages->{$tmp}->{$local}/$local\n";
-      remove_tree("$workdir/$local_pages->{$tmp}->{$local}/$local")  if ! $view_only || die "Can't remove dir $workdir/$local_pages->{$tmp}->{$local}/$local: $?.\n";
+      print "rm dir $workdir/$local_pages->{$tmp}->{$local}\n";
+      if ( ! $view_only ) {
+	remove_tree("$workdir/$local_pages->{$tmp}->{$local}") || die "Can't remove dir $workdir/$local_pages->{$tmp}->{$local}: $?.\n";
+      }
       delete $local_pages->{$tmp}->{$local};
     }
     foreach my $wiki (@$only_in2) {
@@ -262,23 +282,25 @@ sub syncronize_local_wiki {
 }
 
 
-# print "##### Fix wiki sc type:\n";
-# my $namespaces = $our_wiki->wiki_get_namespaces;
-# $namespaces = fixnamespaces($namespaces);
-# fix_wiki_sc_type($namespaces);
-# print "##### Remove unused categories:\n";
-# unused_categories;
-# print "##### Add missing categories:\n";
-# wanted_categories;
-# print "##### Fix broken redirects:\n";
-# broken_redirects;
-# print "##### Fix double redirects:\n";
-# scdoubleredirects;
-# print "##### Syncronize:\n";
-# $local_pages = getlocalpages($namespaces);
-# $wiki_pages = getwikipages($namespaces);
-# syncronize_local_wiki;
-
-### do not use
+print "##### Fix wiki sc type:\n";
+my $namespaces = $our_wiki->wiki_get_namespaces;
+$namespaces = fixnamespaces($namespaces);
+print Dumper($namespaces);
+fix_wiki_sc_type($namespaces);
+print "##### Remove unused categories:\n";
+unused_categories;
+print "##### Add missing categories:\n";
+wanted_categories;
+print "##### Fix broken redirects:\n";
+broken_redirects;
+print "##### Fix double redirects:\n";
+scdoubleredirects;
+# print "##### Fix missing files:\n";
 # fix_missing_files();
-# unused_images_dirty;
+print "##### Remove unused images:\n";
+unused_images_dirty;
+print "##### Syncronize:\n";
+$local_pages = getlocalpages($namespaces);
+$wiki_pages = getwikipages($namespaces);
+syncronize_local_wiki;
+

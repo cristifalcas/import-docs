@@ -69,7 +69,10 @@ sub get_documents {
 			print "\tSC type is unknown: $sc_type.\n";
 			$sc_type = "Bug";
 		    }
-		    if ($node =~ m/^B/i) {
+		    if ( $path_files =~ m/canceled/i ) {
+# print "$path_files\n";exit 1;
+			$url_namespace = "SC_Canceled";
+		    } elsif ($node =~ m/^B/i) {
 			$url_namespace = "SC_iPhonex_$sc_type";
 		    } elsif ($node =~ m/^F/i) {
 			$url_namespace = "SC_SIP_$sc_type";

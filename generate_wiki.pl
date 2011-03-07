@@ -372,28 +372,30 @@ sub generate_pages_to_delete_to_import {
     print "Done separating urls in real and links.\t". (WikiCommons::get_time_diff) ."\n";
 #     ($to_delete, $to_keep) = generate_cleaned_real_and_links($to_delete, $to_keep);
     if ($path_type eq "sc_docs" || $path_type =~ m/^crm_/){
-# 	foreach my $url (keys %$pages_toimp_hash) {
-# 	    if ( $url =~ m/^SC_(.*)?:(.*)/ || $url =~ m/^CRM_(.*)?:(.*) /) {
-# 		my $new_delete = "SC:$2" if $url =~ m/^SC_/;
-# 		my $new_delete = "CRM:$2" if $url =~ m/^CRM_/;
-# 		if (exists $to_keep->{$new_delete} && ! defined $pages_toimp_hash->{$new_delete}) {
-# 		    $to_delete->{$new_delete} = $to_keep->{$new_delete};
-# 		    $pages_toimp_hash->{$new_delete} = $to_keep->{$new_delete};
-# 		    delete ($to_keep->{$new_delete});
-# 		}
-# 	    }
-# 	}
-# 	foreach my $url (keys %$to_keep) {
-# 	    if ( $url =~ m/^SC_(.*)?:(.*)/ || $url =~ m/^CRM_(.*)?:(.*)/ ) {
-# 		my $new_delete = "SC:$2" if $url =~ m/^SC_/;
-# 		my $new_delete = "CRM:$2" if $url =~ m/^CRM_/;
-# 		if (exists $pages_toimp_hash->{$new_delete} && ! defined $pages_toimp_hash->{$url}) {
-# 		    $to_delete->{$url} = $to_keep->{$url};
-# 		    $pages_toimp_hash->{$url} = $to_keep->{$url};
-# 		    delete ($to_keep->{$url});
-# 		}
-# 	    }
-# 	}
+	foreach my $url (keys %$pages_toimp_hash) {
+	    if ( $url =~ m/^SC_(.*)?:(.*)/ || $url =~ m/^CRM_(.*)?:(.*) /) {
+		my $ns = $1; my $url_name = $2;
+		my $new_delete = "SC:$url_name" if $url =~ m/^SC_/;
+		$new_delete = "CRM:$url_name" if $url =~ m/^CRM_/;
+		if (exists $to_keep->{$new_delete} && ! defined $pages_toimp_hash->{$new_delete}) {
+		    $to_delete->{$new_delete} = $to_keep->{$new_delete};
+		    $pages_toimp_hash->{$new_delete} = $to_keep->{$new_delete};
+		    delete ($to_keep->{$new_delete});
+		}
+	    }
+	}
+	foreach my $url (keys %$to_keep) {
+	    if ( $url =~ m/^SC_(.*)?:(.*)/ || $url =~ m/^CRM_(.*)?:(.*)/ ) {
+		my $ns = $1; my $url_name = $2;
+		my $new_delete = "SC:$url_name" if $url =~ m/^SC_/;
+		$new_delete = "CRM:$url_name" if $url =~ m/^CRM_/;
+		if (exists $pages_toimp_hash->{$new_delete} && ! defined $pages_toimp_hash->{$url}) {
+		    $to_delete->{$url} = $to_keep->{$url};
+		    $pages_toimp_hash->{$url} = $to_keep->{$url};
+		    delete ($to_keep->{$url});
+		}
+	    }
+	}
     }
     generate_cleaned_real_and_links($to_keep);
     print "Done final cleaning of urls.\t". (WikiCommons::get_time_diff) ."\n";
@@ -761,6 +763,7 @@ if ($path_type eq "mind_svn") {
 	if ($url !~ m/^SC:(.*)/i) {
 	    my $crt_name = $url;
 	    $crt_name =~ s/(SC.*)?:(.*)/$2/i;
+	    next if ! $our_wiki->wiki_exists_page("SC:$crt_name");
 	    print "\tmake redirect from SC:$crt_name to $url.\n";
 	    $our_wiki->wiki_delete_page("$url") if $our_wiki->wiki_exists_page("$url");
 	    next if defined $wrong_hash->{$url};

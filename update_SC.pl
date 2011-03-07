@@ -46,10 +46,10 @@ use URI::Escape;
 use Data::Compare;
 use Mind_work::WikiCommons;
 
-die "We need the temp path, the destination path and sc type:b1-5, f, i, h, r, d, t.\n" if ( $#ARGV != 2 );
+die "We need the temp path, the destination path and sc type:b1-5, f, i, h, r, d, t, cancel.\n" if ( $#ARGV != 2 );
 our ($tmp_path, $to_path, $sc_type) = @ARGV;
 
-die "sc type should be:b1-5, f, i, h, r, d, t.\n" if $sc_type !~ m/(^[fihrdt]$)|(^b[1-5]$)/i;
+die "sc type should be:b1-5, f, i, h, r, d, t, cancel.\n" if $sc_type !~ m/(^[fihrdt]$)|(^b[1-5]$)|(^cancel$)/i;
 $sc_type = uc $sc_type;
 
 remove_tree("$tmp_path");
@@ -327,12 +327,14 @@ sub sql_get_common_info {
     my $select = join ',', @select;
     my $type;
     if ( $sc_type =~ m/b([1-5])/i ) {
-	$type = 'B';
+	$type = "B";
+    } elsif ($sc_type =~ m/cancel/i) {
+	$type = "B"
     } else {
 	$type = $sc_type;
     }
 
-    $SEL_INFO = "select $select" . $SEL_INFO . " where prj.projectcode = '$type'";
+    $SEL_INFO = "select $select" . $SEL_INFO . " where prj.projectcode = \'$type\'";
     my @info = ();
     my $sth = $dbh->prepare($SEL_INFO);
 
@@ -485,31 +487,40 @@ sub sql_get_all_changes {
 	$ver = "(version >= \'7.0\' or version is null)";
     }
 
+    my $no_cancel = "and status <> \'Cancel\'
+	and status <> \'Inform-Cancel\'
+	and status <> \'Market-Cancel\'";
+
     if ($sc_type =~ m/B[0-5]/) {
 	$cond = "projectcode = \'B\' and $ver";
     } elsif ($sc_type eq 'F') {
 	$cond = "projectcode = \'F\'";
     } elsif ($sc_type eq 'I') {
-	$cond  = "projectcode = \'I\' and nvl(fixversion,100)>=\'4.00\'";
+	$cond  = "projectcode = \'I\' and nvl(fixversion,100) >= \'4.00\'";
     } elsif ($sc_type eq 'H') {
 	$cond  = "projectcode = \'H\' and writtendatetime > \'1Jan2008\'";
     } elsif ($sc_type eq 'R') {
 	$cond  = "projectcode = \'R\'";
     } elsif ($sc_type eq 'D') {
-	$cond  = "projectcode = \'D\' and nvl(fixversion,100)>='2.30'";
+	$cond  = "projectcode = \'D\' and nvl(fixversion,100) >= \'2.30\'";
+    } elsif ($sc_type eq 'CANCEL') {
+	$no_cancel = "
+((projectcode = \'B\' and version >= \'5.0\') or
+(projectcode = \'F\') or
+(projectcode = \'I\' and nvl(fixversion,100) >= \'4.00\') or
+(projectcode = \'H\' and writtendatetime > \'1Jan2008\') or
+(projectcode = \'R\') or
+(projectcode = \'D\' and nvl(fixversion,100) >= \'2.30\')) and
+(status = \'Cancel\' or status = \'Inform-Cancel\' or status = \'Market-Cancel\')";
     } elsif ($sc_type eq 'T') {
 	$cond  = "projectcode = \'T\'";
     } else {
 	die "Impossible.\n";
     }
 
-    my $no_cancel = "status <> \'Cancel\'
-	and status<> \'Inform-Cancel\'
-	and status <> \'Market-Cancel\'";
-
     my $SEL_CHANGES = "select changeid, nvl(crc,0), status, projectcode
 	from scchange
-	where $cond and $no_cancel";
+	where $cond $no_cancel";
 
     my $sth = $dbh->prepare($SEL_CHANGES);
     $sth->execute();

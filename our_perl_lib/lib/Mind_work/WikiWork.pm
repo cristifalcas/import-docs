@@ -209,7 +209,8 @@ sub wiki_import_files {
 
 sub wiki_exists_page {
     my ($self, $title) = @_;
-    my $page = $mw->get_page( { title => $title } );
+    my $page = $mw->get_page( { title => "$title" } );
+
     unless ( $page->{'*'} ) {
     return 0;
     }
