@@ -42,7 +42,10 @@ sub get_documents {
 	$count++;
 	print "\tDone $count from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($count%1000 == 0);
 # next if $node ne 'B14861';
-	die "Can't find files_info or General wiki.\n" if (! -e "$path_files/$node/$files_info_file" || ! -e "$path_files/$node/$general_wiki_file");
+	if (! -e "$path_files/$node/$files_info_file" || ! -e "$path_files/$node/$general_wiki_file") {
+	    die "Can't find files_info or General wiki: $path_files/$node.\n";
+	    next;
+	}
 
 	my $md5 = "$node";
 	open(FH, "$path_files/$node/$files_info_file") || die("Could not open file!");
@@ -88,7 +91,7 @@ sub get_documents {
 			$url_namespace = "SC_Nagios_$sc_type";
 		    } else {
 			$url_namespace = "SC_iPhonex_$sc_type";
-die "no namespace here: $node.\n".Dumper(@data);
+die "no namespace here 1: $node.\n".Dumper(@data);
 		    }
 		    push @categories, "RealNameSpace ".$url_namespace;
 		    next;
@@ -123,7 +126,7 @@ die "no namespace here: $node.\n".Dumper(@data);
 	    $info_crt_h->{$tmp[0]}->{'revision'} = "$tmp[3]";
 	}
 
-die "no namespace here: $node.\n".Dumper(@data) if $url_namespace eq "";
+die "no namespace here 2: $node.\n".Dumper(@data) if $url_namespace eq "";
 	$pages_toimp_hash->{"$url_namespace:$node"} = [$md5." redirect", "$node", $info_crt_h, "real", \@categories];
 	$pages_toimp_hash->{"SC:$node"} = [$md5, "$node", $info_crt_h, "real", \@categories];
     }

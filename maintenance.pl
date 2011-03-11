@@ -304,3 +304,18 @@ $local_pages = getlocalpages($namespaces);
 $wiki_pages = getwikipages($namespaces);
 syncronize_local_wiki;
 
+# compressOld.php
+
+## all files deleted deleteArchivedFiles.php
+# rm -rf /media/share/wiki_images/deleted/*
+# delete from filearchive;
+## all files overwriten
+# rm -rf /media/share/wiki_images/archive/*
+# oldimage by oi_timestamp
+
+## all pages deleted: deleteArchivedRevisions.php
+# archive ar_namespace, ar_title
+## holds the wikitext of individual page revisions: PurgeOldText.php
+# text
+## holds metadata for every edit done to a page
+# revision

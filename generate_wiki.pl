@@ -93,6 +93,7 @@ if ($options->{'r'}){
 
 my $delete_categories = "yes";
 my $make_categories = "yes";
+my $big_dump_mode = "yes";
 if (defined $options->{'c'}) {
     if ($options->{'c'} =~ m/^y$/i){
 	$delete_categories = "yes";
@@ -371,7 +372,7 @@ sub generate_pages_to_delete_to_import {
     ($to_delete, $to_keep) = generate_real_and_links($to_delete, $to_keep);
     print "Done separating urls in real and links.\t". (WikiCommons::get_time_diff) ."\n";
 #     ($to_delete, $to_keep) = generate_cleaned_real_and_links($to_delete, $to_keep);
-    if ($path_type eq "sc_docs" || $path_type =~ m/^crm_/){
+    if ( $big_dump_mode ne "yes" && ($path_type eq "sc_docs" || $path_type =~ m/^crm_/)){
 	foreach my $url (keys %$pages_toimp_hash) {
 	    if ( $url =~ m/^SC_(.*)?:(.*)/ || $url =~ m/^CRM_(.*)?:(.*) /) {
 		my $ns = $1; my $url_name = $2;
@@ -593,7 +594,7 @@ sub work_link {
 	my $svn_url = $pages_toimp_hash->{$url}[$svn_url_pos];
 	$svn_url = uri_escape( $svn_url,"^A-Za-z\/:0-9\-\._~%" );
 
-	my $head_text = "<center>\'\'\'This file was shamesly copied from the following url: [[SVN:$link_to]] because the doc files are identical.\'\'\'\n\n";
+	my $head_text = "<center>\'\'\'This file was shamesly copied from the following url: [[$link_to]] because the doc files are identical.\'\'\'\n\n";
 	$head_text .= "The original document can be found at [$svn_url this address]\n" if ($svn_url ne "");
 	$head_text .= "</center>\n----\n\n\n\n\n\n".$wiki."\n----\n\n";
 	$wiki = $head_text;

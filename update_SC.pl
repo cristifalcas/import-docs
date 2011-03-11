@@ -24,12 +24,6 @@ BEGIN {
     }
 }
 
-#   --8466  '5.0' and version < '5.3'
-#   --11077 '5.3' and version < '6.0'
-#   --11652 '6.0' and version < '6.5'
-#   --12683 '6.5' and version < '7.0'
-#   --1089  '7.0' or version is null
-
 use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."our_perl_lib/lib";
 use DBI;
 use Net::FTP;
@@ -53,8 +47,8 @@ die "sc type should be:b1-5, f, i, h, r, d, t, cancel.\n" if $sc_type !~ m/(^[fi
 $sc_type = uc $sc_type;
 
 remove_tree("$tmp_path");
-WikiCommons::makedir ("$tmp_path");
-WikiCommons::makedir ("$to_path");
+WikiCommons::makedir ("$tmp_path", 1);
+WikiCommons::makedir ("$to_path", 1);
 $tmp_path = abs_path("$tmp_path");
 $to_path = abs_path("$to_path");
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
@@ -66,9 +60,9 @@ our $files_info = "files_info.txt";
 our $general_template_file = "$path_prefix/SC_template.txt";
 my $svn_type = "remote";
 # my $svn_type = "local";
-my $svn_local_path = "/mnt/SC/";
+# my $svn_local_path = "/mnt/SC/";
 my $svn_update = "yes";
-my $force_db_update = "yes";
+my $force_db_update = "no";
 my $bulk_svn_update = "no";
 
 die "Templare file missing.\n" if ! -e $general_template_file;
@@ -436,6 +430,7 @@ sub sql_get_changeinfo {
 	@info = @row;
 	chomp @info;
     }
+
     return \@info;
 }
 
@@ -484,7 +479,8 @@ sub sql_get_all_changes {
     } elsif ($sc_type eq 'B4') {
 	$ver = "version >= \'6.5\' and version < \'7.0\'";
     } elsif ($sc_type eq 'B5') {
-	$ver = "(version >= \'7.0\' or version is null)";
+	$ver = "(version >= \'7.0\' or
+	(nvl(version, 1) < \'5.0\' and fixversion > \'5.0\'))";
     }
 
     my $no_cancel = "and status <> \'Cancel\'
@@ -501,6 +497,8 @@ sub sql_get_all_changes {
 	$cond  = "projectcode = \'H\' and writtendatetime > \'1Jan2008\'";
     } elsif ($sc_type eq 'R') {
 	$cond  = "projectcode = \'R\'";
+    } elsif ($sc_type eq 'T') {
+	$cond  = "projectcode = \'T\'";
     } elsif ($sc_type eq 'D') {
 	$cond  = "projectcode = \'D\' and nvl(fixversion,100) >= \'2.30\'";
     } elsif ($sc_type eq 'CANCEL') {
@@ -510,10 +508,9 @@ sub sql_get_all_changes {
 (projectcode = \'I\' and nvl(fixversion,100) >= \'4.00\') or
 (projectcode = \'H\' and writtendatetime > \'1Jan2008\') or
 (projectcode = \'R\') or
+(projectcode = \'T\') or
 (projectcode = \'D\' and nvl(fixversion,100) >= \'2.30\')) and
 (status = \'Cancel\' or status = \'Inform-Cancel\' or status = \'Market-Cancel\')";
-    } elsif ($sc_type eq 'T') {
-	$cond  = "projectcode = \'T\'";
     } else {
 	die "Impossible.\n";
     }
@@ -783,24 +780,21 @@ sub write_control_file {
 sub move_dir {
     my ($src, $trg) = @_;
     die "\tTarget $trg is a file.\n" if (-f $trg);
-    if (! -d $trg) {
-	move("$src", "$trg") or die "Move dir $src to $trg failed: $!\n";
-    } else {
-	opendir(DIR, "$src") || die("Cannot open directory $src.\n");
-	my @files = grep { (!/^\.\.?$/) } readdir(DIR);
-	closedir(DIR);
-	foreach my $file (@files){
-	    move("$src/$file", "$trg/") or die "Move file $src/$file to $trg failed: $!\n";
-	}
-	remove_tree("$src");
+    WikiCommons::makedir("$trg", 1) if (! -e $trg);
+# 	move("$src", "$trg") or die "Move dir $src to $trg failed: $!\n";
+#     } else {
+    opendir(DIR, "$src") || die("Cannot open directory $src.\n");
+    my @files = grep { (!/^\.\.?$/) } readdir(DIR);
+    closedir(DIR);
+    foreach my $file (@files){
+	move("$src/$file", "$trg/") or die "Move file $src/$file to $trg failed: $!\n";
     }
+    remove_tree("$src");
+#     }
 }
 
 sub clean_existing_dir {
-    my ($change_id, $svn_docs, $prev_info) = @_;
-#     my $prev_info = {};
-    # get all doc files from "$to_path/$change_id" and remove them if they are not in $svn_docs
-# 	$prev_info = get_previous("$to_path/$change_id/$files_info");
+    my ($change_id, $svn_docs) = @_;
     return if ! -e "$to_path/$change_id";
     opendir(DIR, "$to_path/$change_id") || die "Cannot open directory $to_path/$change_id: $!.\n";
     my @files = grep { (!/^\.\.?$/) && -f "$to_path/$change_id/$_" && "$_" =~ /\.doc$/} readdir(DIR);
@@ -812,7 +806,6 @@ sub clean_existing_dir {
 	    unlink("$to_path/$change_id/$file") or die "Could not delete the file $file: $!\n" ;
 	}
     }
-#     return $prev_info;
 }
 
 sub remove_old_dirs {
@@ -846,6 +839,8 @@ write_common_info ($index_comm, $info_comm);
 my $crt_hash = sql_get_all_changes();
 my ($index, $SEL_INFO) = sql_generate_select_changeinfo();
 
+my $total = scalar (keys %$crt_hash);
+# print "total $total\n"; exit 1;
 remove_old_dirs(keys %$crt_hash);
 
 if ($bulk_svn_update eq "yes"){
@@ -854,7 +849,7 @@ if ($bulk_svn_update eq "yes"){
 	my $tmp = @$info_comm[$index_comm->{$key}];
 	# print "$key = @$info_comm[$index_comm->{$key}]\n";
 	next if ($tmp !~ "^http://" || defined $svn_info_all->{$tmp});
-	$tmp =~ s/$db_relpath/$svn_local_path/ if ($svn_type eq "local");
+# 	$tmp =~ s/$db_relpath/$svn_local_path/ if ($svn_type eq "local");
 	while ( ! defined $svn_info_all->{$tmp} && $retries < 3){
 	    print "\tRetrieve svn list for $key.\t". (time() - $time) ."\n";
 	    my $res = svn_list($tmp);
@@ -867,10 +862,9 @@ if ($bulk_svn_update eq "yes"){
 
 ## problem: after the first run we can have missing documents, but the general_info will not be updated
 my $count = 0;
-my $total = scalar (keys %$crt_hash);
 foreach my $change_id (sort keys %$crt_hash){
 #     next if $change_id ne "F00012";
-# next if $change_id ne "B00700";
+# next if $change_id ne "H600021";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -888,17 +882,17 @@ foreach my $change_id (sort keys %$crt_hash){
     my $update_control_file = 0;
     if ($svn_update ne "no") {
 	my $svn_docs = sql_get_svn_docs($change_id);
-	clean_existing_dir($change_id, $svn_docs, $prev_info);
+	clean_existing_dir($change_id, $svn_docs);
 
 	foreach my $key (sort keys %$svn_docs) {
 	    my $dir = @$info_comm[$index_comm->{$key}];
-	    $dir =~ s/$db_relpath/$svn_local_path/ if ($svn_type eq "local");
+# 	    $dir =~ s/$db_relpath/$svn_local_path/ if ($svn_type eq "local");
 	    my $file = $svn_docs->{$key};
 	    my $res = svn_list("$dir", "$file");
 
 	    my $doc_rev = $res->{'commit'}->{'revision'};
 	    my $doc_size = $res->{'size'};
-	    if ( ! defined $res || ! defined $doc_rev && ! defined $doc_size) {
+	    if ( ! defined $res || (! defined $doc_rev && ! defined $doc_size)) {
 		print "\tSC $change_id says we have document for $key, but we don't have anything on svn.\n";
 		$missing_documents->{$key} = "$dir/$file";
 		next;
@@ -925,7 +919,7 @@ foreach my $change_id (sort keys %$crt_hash){
     $crt_info->{'SC_info'}->{'size'} = @$arr[1];
     $crt_info->{'SC_info'}->{'revision'} = @$arr[2];
     my $cat = ();
-    if ( ! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) || $force_db_update eq "yes" ) {
+    if ( ! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) || $update_control_file || $force_db_update eq "yes" ) {
  	print "\tUpdate SC info.\n";
 
 	my $prev = 'NULL';
@@ -937,6 +931,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	print "\tChanged status: $crt_info->{'SC_info'}->{'revision'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'revision'} && "$crt_info->{'SC_info'}->{'revision'}" ne "$prev");
 
 	my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
+	## some SR's are completly empty, so ignore them
 	next if (scalar @$info_ret == 0);
 	my $modules = sql_get_modules( split ',', @$info_ret[$index->{'modules'}] ) if defined @$info_ret[$index->{'modules'}];
 	my $tester = sql_get_workers_names( split ',', @$info_ret[$index->{'tester'}] ) if defined @$info_ret[$index->{'tester'}];
@@ -946,8 +941,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	$cat = $categories;
 	foreach my $key (sort keys %$missing_documents) {
 	    my $link = $missing_documents->{$key};
-	    $link =~ s/\s/%20/;
-# 	    $link = uri_escape( $link );
+	    $link =~ s/\s/%20/g;
 	    $txt .= "\nMissing \'\'\'$key\'\'\' from [$link this] svn address, but database says it should exist.\n";
 	}
 
@@ -960,9 +954,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	$update_control_file++;
     }
 
-#     $cat = [ $prev_info->{'Categories'}->{'name'} || "", $prev_info->{'Categories'}->{'size'} || "", $prev_info->{'Categories'}->{'revision'} || "" ] if ! defined $cat;
     write_control_file($crt_info, $work_dir, $cat) if $update_control_file;
-#     write_control_file($crt_info, $work_dir, $cat);
 
     move_dir("$work_dir", "$to_path/$change_id/");
     print "+Finish working for $change_id: nr $count of $total.\t$dif\n";

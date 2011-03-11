@@ -24,7 +24,7 @@ case "$1" in
     perl "$SCRIPT_PATH"/update_SC.pl "$SCRIPT_PATH"/tmp/r  "$SCRIPT_PATH"/Documentation/sc/scpmg_docs/	r  &> "$LOG_PATH"update_sc_r &
     perl "$SCRIPT_PATH"/update_SC.pl "$SCRIPT_PATH"/tmp/d  "$SCRIPT_PATH"/Documentation/sc/scphonexone_docs/	d  &> "$LOG_PATH"update_sc_d &
     perl "$SCRIPT_PATH"/update_SC.pl "$SCRIPT_PATH"/tmp/t  "$SCRIPT_PATH"/Documentation/sc/scnagios_docs/	t  &> "$LOG_PATH"update_sc_t &
-    perl "$SCRIPT_PATH"/update_SC.pl "$SCRIPT_PATH"/tmp/cancel  "$SCRIPT_PATH"/Documentation/sc/sccanceled_docs/	cancel  &> "$LOG_PATH"update_sc_c &
+    perl "$SCRIPT_PATH"/update_SC.pl "$SCRIPT_PATH"/tmp/cancel  "$SCRIPT_PATH"/Documentation/sc/sccanceled_docs/	cancel  &> "$LOG_PATH"update_sc_cancel &
   ;;
 "import_sc")
     perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/scmind_docs_5.3/	-n sc_docs &> "$LOG_PATH"import_sc_5.3
@@ -38,7 +38,7 @@ case "$1" in
     perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/scpmg_docs/ 	-n sc_docs &> "$LOG_PATH"import_sc_r
     perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/scphonexone_docs/ 	-n sc_docs &> "$LOG_PATH"import_sc_d
     perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/scnagios_docs/ 	-n sc_docs &> "$LOG_PATH"import_sc_t
-#     perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/sccanceled_docs/ 	-n sc_docs &> "$LOG_PATH"import_sc_t
+    perl "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/sccanceled_docs/ 	-n sc_docs &> "$LOG_PATH"import_sc_cancel
   ;;
 "import_crm")
     perl "$SCRIPT_PATH"/update_CRM.pl "$SCRIPT_PATH"/Documentation/crm/crm_iphonex/   m &> "$LOG_PATH"update_crm_iphonex
