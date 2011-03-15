@@ -93,7 +93,7 @@ if ($options->{'r'}){
 
 my $delete_categories = "yes";
 my $make_categories = "yes";
-my $big_dump_mode = "yes";
+my $big_dump_mode = "no";
 if (defined $options->{'c'}) {
     if ($options->{'c'} =~ m/^y$/i){
 	$delete_categories = "yes";
@@ -153,7 +153,7 @@ sub create_wiki {
 	print "Path $work_dir already exists. Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
 	my $name_bad = "$bad_dir/$page_url".time();
 	WikiCommons::makedir("$name_bad");
-	move("$work_dir", "$name_bad") || die "Can't move dir $work_dir\n\tto $name_bad\n: $!.\n";
+	WikiCommons::move_dir("$work_dir", "$name_bad");
 	die "Directory still exists." if ( -d $work_dir);
     }
     WikiCommons::makedir ("$work_dir");
@@ -252,7 +252,7 @@ sub get_existing_pages {
 		my @q = split '/', $dir;
 		my $name_bad = "$bad_dir/$q[$#q]".time();
 # 		WikiCommons::makedir("$name_bad");
-		move("$dir","$name_bad") || die "Can't move dir $dir to $name_bad: $!.\n";;
+		WikiCommons::move_dir("$dir","$name_bad");
 		die "\tDirectory still exists." if ( -d $dir);
 	    }
 	} else {
@@ -364,33 +364,32 @@ sub generate_cleaned_real_and_links {
 #     return ($to_delete, $to_keep);
 }
 
-sub generate_pages_to_delete_to_import {
-    my ( $to_delete, $to_keep ) = {};
-    print "Start generating new/updated/to_delete/to_keep urls.\t". (WikiCommons::get_time_diff) ."\n";
-    ($to_delete, $to_keep) = generate_new_updated_pages($to_delete, $to_keep);
-    print "Done generating new/updated urls.\t". (WikiCommons::get_time_diff) ."\n";
-    ($to_delete, $to_keep) = generate_real_and_links($to_delete, $to_keep);
-    print "Done separating urls in real and links.\t". (WikiCommons::get_time_diff) ."\n";
-#     ($to_delete, $to_keep) = generate_cleaned_real_and_links($to_delete, $to_keep);
-    if ( $big_dump_mode ne "yes" && ($path_type eq "sc_docs" || $path_type =~ m/^crm_/)){
+sub generate_pages_for_real_and_redir {
+    my ($to_delete, $to_keep) = @_;
+    if ( $big_dump_mode ne "yes" && ($path_type eq "sc_docs" || $path_type =~ m/^crm_/i )){
+	my $redirect_url = "";
+	### we import SC_XXX, but not SC:
+	### SC: exists only in to_keep,
 	foreach my $url (keys %$pages_toimp_hash) {
-	    if ( $url =~ m/^SC_(.*)?:(.*)/ || $url =~ m/^CRM_(.*)?:(.*) /) {
+	    if ( $url =~ m/^SC_(.*)?:(.*)$/i || $url =~ m/^CRM_(.*)?:(.*)$/i ) {
 		my $ns = $1; my $url_name = $2;
-		my $new_delete = "SC:$url_name" if $url =~ m/^SC_/;
-		$new_delete = "CRM:$url_name" if $url =~ m/^CRM_/;
-		if (exists $to_keep->{$new_delete} && ! defined $pages_toimp_hash->{$new_delete}) {
-		    $to_delete->{$new_delete} = $to_keep->{$new_delete};
-		    $pages_toimp_hash->{$new_delete} = $to_keep->{$new_delete};
-		    delete ($to_keep->{$new_delete});
+		$redirect_url = "SC:$url_name" if $url =~ m/^SC_/;
+		$redirect_url = "CRM:$url_name" if $url =~ m/^CRM_/;
+		if (defined $to_keep->{$redirect_url} && ! defined $pages_toimp_hash->{$redirect_url}) {
+		    $to_delete->{$redirect_url} = $to_keep->{$redirect_url};
+		    $pages_toimp_hash->{$redirect_url} = $to_keep->{$redirect_url};
+		    delete ($to_keep->{$redirect_url});
 		}
 	    }
 	}
+	### we import SC:, but we don't import SC_XXX:
+	### SC_XXX exists only in to_keep
 	foreach my $url (keys %$to_keep) {
-	    if ( $url =~ m/^SC_(.*)?:(.*)/ || $url =~ m/^CRM_(.*)?:(.*)/ ) {
+	    if ( $url =~ m/^SC_(.*)?:(.*)$/i || $url =~ m/^CRM_(.*)?:(.*)$/i ) {
 		my $ns = $1; my $url_name = $2;
-		my $new_delete = "SC:$url_name" if $url =~ m/^SC_/;
-		$new_delete = "CRM:$url_name" if $url =~ m/^CRM_/;
-		if (exists $pages_toimp_hash->{$new_delete} && ! defined $pages_toimp_hash->{$url}) {
+		$redirect_url = "SC:$url_name" if $url =~ m/^SC_/;
+		$redirect_url = "CRM:$url_name" if $url =~ m/^CRM_/;
+		if (defined $pages_toimp_hash->{$redirect_url} && ! defined $pages_toimp_hash->{$url}) {
 		    $to_delete->{$url} = $to_keep->{$url};
 		    $pages_toimp_hash->{$url} = $to_keep->{$url};
 		    delete ($to_keep->{$url});
@@ -398,6 +397,18 @@ sub generate_pages_to_delete_to_import {
 	    }
 	}
     }
+    return $to_delete, $to_keep;
+}
+
+sub generate_pages_to_delete_to_import {
+    my ( $to_delete, $to_keep ) = {};
+    print "Start generating new/updated/to_delete/to_keep urls.\t". (WikiCommons::get_time_diff) ."\n";
+    ($to_delete, $to_keep) = generate_new_updated_pages($to_delete, $to_keep);
+    print "Done generating new/updated urls.\t". (WikiCommons::get_time_diff) ."\n";
+    ($to_delete, $to_keep) = generate_real_and_links($to_delete, $to_keep);
+    print "Done separating urls in real and links.\t". (WikiCommons::get_time_diff) ."\n";
+    ($to_delete, $to_keep) = generate_pages_for_real_and_redir($to_delete, $to_keep);
+    print "Done cleaning real and redirects.\t". (WikiCommons::get_time_diff) ."\n";
     generate_cleaned_real_and_links($to_keep);
     print "Done final cleaning of urls.\t". (WikiCommons::get_time_diff) ."\n";
 
@@ -413,35 +424,44 @@ sub generate_pages_to_delete_to_import {
 }
 
 sub delete_categories {
+    my ($files, $categories_dir) = @_;
     return if (WikiCommons::is_remote eq "yes");
-    my $categories_dir = "$wiki_dir/categories/";
-    my @files = ();
-    if (-e "$wiki_dir/categories/") {
-	opendir(DIR, "$categories_dir") || die("Cannot open directory $categories_dir.\n");
-	@files = grep { (!/^\.\.?$/) && -d "$categories_dir/$_" } readdir(DIR);
-	closedir(DIR);
-    }
-    foreach my $category (@files) {
-	print "-Delete category $category.\t". (WikiCommons::get_time_diff) ."\n";
+
+    print "-Delete categories.\t". (WikiCommons::get_time_diff) ."\n";
+    foreach my $category (@$files) {
+	$category = "Category:";
 	if ( -d "$categories_dir/$category" ) {
+	    print "\tDelete category $category.\t". (WikiCommons::get_time_diff) ."\n";
 	    my ($name,$dir,$suffix) = fileparse("$categories_dir/$category", qr/\.[^.]*/);
 	    $our_wiki->wiki_delete_page("$name$suffix") if ( $our_wiki->wiki_exists_page("$name$suffix") );
 	    remove_tree("$dir$name$suffix") || die "Can't remove dir $dir$name$suffix: $?.\n";
 	} else {
 	    print "Extra file in $categories_dir: $categories_dir/$category.\n";
 	}
-	print "+Delete category $category.\t". (WikiCommons::get_time_diff) ."\n";
     }
+    print "+Delete categories.\t". (WikiCommons::get_time_diff) ."\n";
 }
 
 sub make_categories {
     return 1 if ( $make_categories eq "no");
     my $url = "";
-    delete_categories if ( $delete_categories eq "yes");
+    my $categories_dir = "$wiki_dir/categories/";
+    my @files = ();
+    if (-e "$wiki_dir/categories/") {
+	opendir(DIR, "$categories_dir") || die("Cannot open directory $categories_dir.\n");
+	@files = grep { (!/^\.\.?$/) && -d "$categories_dir/$_" } readdir(DIR);
+	closedir(DIR);
+	s/^Category:// for (@files);
+    }
 
+    my $general_categories_hash = $coco->get_categories;
+    my @crt_categories = (sort keys %$general_categories_hash);
+    my ($only_in1, $only_in2, $intersection) = WikiCommons::array_diff(\@files, \@crt_categories);
+# print Dumper($only_in1);print Dumper($only_in2);print Dumper($intersection);#exit 1;
+
+    delete_categories(\@files,$categories_dir) if ( $delete_categories eq "yes");
     return if ($delete_everything eq "yes");
     print "-Making categories.\t". (WikiCommons::get_time_diff) ."\n";
-    my $general_categories_hash = $coco->get_categories;
     foreach my $key (sort keys %$general_categories_hash) {
 	my $text = "----\n\n";
 	$url = "Category:$key";
@@ -519,7 +539,7 @@ sub insertdata {
     if ($fail){
 	my $name_bad = "$bad_dir/$url".time();
 	WikiCommons::makedir("$name_bad");
-	move("$work_dir","$name_bad");
+	WikiCommons::move_dir("$work_dir","$name_bad");
     }
 }
 
@@ -537,7 +557,7 @@ sub work_real {
 	my $wiki = create_wiki($url, "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]");
 	if (! defined $wiki ){
 	    WikiCommons::makedir("$bad_dir/$url");
-	    move("$wiki_dir/$url","$bad_dir/$url");
+	    WikiCommons::move_dir("$wiki_dir/$url","$bad_dir/$url");
 	    delete($pages_toimp_hash->{$url});
 	    next;
 	}
@@ -894,7 +914,7 @@ if ($path_type eq "mind_svn") {
 	}
 	if ($wrong eq "yes" ){
 	    my $name_bad = "$bad_dir/$url".time();
-	    move("$path_files/$rel_path", "$name_bad") || die "Can't move dir $path_files/$rel_path\n\tto $name_bad\n: $!.\n";
+	    WikiCommons::move_dir("$path_files/$rel_path", "$name_bad");
 	    $wrong_hash->{$url} = 1;
 # 	    WikiCommons::copy_dir ("$path_files/$rel_path", "$name_bad");
 # 	    remove_tree("$path_files/$rel_path") || die "Can't remove dir $path_files/$rel_path: $?.\n";

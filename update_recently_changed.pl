@@ -38,7 +38,7 @@ my $sql_query="select rc_timestamp, rc_user_text, rc_title
  where rc_title not in
        ('Test', 'Common.js', 'RecentlyModified', 'Main_Page', 
         'Test', 'Test1', 'Test2', 'SIP', 'Maintenance_on_wiki', 
-    	'Automatically_import_documents_to_wiki')
+    	'Automatically_import_documents_to_wiki', 'Wiki_extensions')
    and rc_namespace = 0
    and rc.rc_title = p.page_title
    and rc_timestamp = (select max(rc_timestamp)

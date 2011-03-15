@@ -10,6 +10,7 @@ use File::Copy;
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 use XML::Simple;
+use LWP::UserAgent;
 
 our $start_time = 0;
 our $clean_up = {};
@@ -56,6 +57,45 @@ sub svn_info {
     }
     $output =~ s/\/$//gm;
     return $output;
+}
+
+sub http_get {
+    my ($url_path, $local_path, $svn_user, $svn_pass) = @_;
+    my $ua = LWP::UserAgent->new;
+    my $count = 1;
+    my $content = "";
+    my ($name,$dir,$suffix) = fileparse($url_path, qr/\.[^.]*/);
+    my $request = HTTP::Request->new(GET => "$dir");
+    $request->authorization_basic("$svn_user", "$svn_pass") if defined $svn_user && defined $svn_pass;
+
+    print "\t-Get from url $url_path.\n";
+    my $retries = 0;
+    while ($retries < 3) {
+	$request->uri( $url_path );
+	my $response = $ua->request($request);
+	if ($response->is_success) {
+	    $content .= $response->content;
+# 	    print $response->decoded_content;
+	    last;
+	}else {
+	    if ($response->status_line eq "404 Not Found") {
+		return;
+	    } else {
+		print Dumper($response->status_line) ."\tfor file $url_path\n" ;
+		$retries++;
+	    }
+	}
+    }
+    die "Unknown error when retrieving file $url_path.\n" if $retries >= 3;
+    my $res = "";
+    if ( defined $local_path && $local_path !~ m/^\s*$/i ) {
+	write_file("$local_path/$name$suffix", $content);
+	$res = "$local_path/$name$suffix";
+    } else {
+	$res = $content;
+    }
+    print "\t+Get from url $url_path.\n";
+    return "$res";
 }
 
 sub is_remote {
@@ -123,6 +163,19 @@ sub copy_dir {
     }
     closedir $dh;
     return;
+}
+
+sub move_dir {
+    my ($src, $trg) = @_;
+    die "\tTarget $trg is a file.\n" if (-f $trg);
+    makedir("$trg", 1) if (! -e $trg);
+    opendir(DIR, "$src") || die("Cannot open directory $src.\n");
+    my @files = grep { (!/^\.\.?$/) } readdir(DIR);
+    closedir(DIR);
+    foreach my $file (@files){
+	move("$src/$file", "$trg/$file") or die "Move file $src/$file to $trg failed: $!\n";
+    }
+    remove_tree("$src") || die "Can't remove dir $src.\n";
 }
 
 sub write_file {

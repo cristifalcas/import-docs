@@ -27,7 +27,6 @@ BEGIN {
 use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."our_perl_lib/lib";
 use DBI;
 use Net::FTP;
-use LWP::UserAgent;
 use File::Path qw(make_path remove_tree);
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
@@ -72,7 +71,6 @@ my $svn_info_all = {};
 my $url_sep = WikiCommons::get_urlsep;
 
 our $dbh;
-our $request;
 
 our @doc_types = (
 'Market document', 'Market review document',
@@ -492,7 +490,7 @@ sub sql_get_all_changes {
     } elsif ($sc_type eq 'F') {
 	$cond = "projectcode = \'F\'";
     } elsif ($sc_type eq 'I') {
-	$cond  = "projectcode = \'I\' and nvl(fixversion,100) >= \'4.00\'";
+	$cond  = "projectcode = \'I\' and (nvl(version,100) >= \'4.00\' or nvl(fixversion,100) >= \'4.00\')";
     } elsif ($sc_type eq 'H') {
 	$cond  = "projectcode = \'H\' and writtendatetime > \'1Jan2008\'";
     } elsif ($sc_type eq 'R') {
@@ -500,17 +498,18 @@ sub sql_get_all_changes {
     } elsif ($sc_type eq 'T') {
 	$cond  = "projectcode = \'T\'";
     } elsif ($sc_type eq 'D') {
-	$cond  = "projectcode = \'D\' and nvl(fixversion,100) >= \'2.30\'";
+	$cond  = "projectcode = \'D\' and (nvl(version,100) >= \'2.30\' or nvl(fixversion,100) >= \'2.30\')";
     } elsif ($sc_type eq 'CANCEL') {
-	$no_cancel = "
-((projectcode = \'B\' and version >= \'5.0\') or
-(projectcode = \'F\') or
-(projectcode = \'I\' and nvl(fixversion,100) >= \'4.00\') or
-(projectcode = \'H\' and writtendatetime > \'1Jan2008\') or
-(projectcode = \'R\') or
-(projectcode = \'T\') or
-(projectcode = \'D\' and nvl(fixversion,100) >= \'2.30\')) and
-(status = \'Cancel\' or status = \'Inform-Cancel\' or status = \'Market-Cancel\')";
+	$cond = "";
+	$no_cancel = "((projectcode = 'B' and (version >= '5.0' or (nvl(version, 1) < '5.0' and fixversion > '5.0'))) or
+       (projectcode = 'F') or
+       (projectcode = 'I' and (nvl(version, 100) >= '4.00' or nvl(fixversion, 100) >= '4.00')) or
+       (projectcode = 'H' and writtendatetime > '1Jan2008') or
+       (projectcode = 'R') or
+       (projectcode = 'T') or
+       (projectcode = 'D' and (nvl(version, 100) >= '2.30' or nvl(fixversion, 100) >= '2.30')))
+   and (status = 'Cancel' or status = 'Inform-Cancel' or
+       status = 'Market-Cancel')";
     } else {
 	die "Impossible.\n";
     }
@@ -701,34 +700,6 @@ sub get_previous {
 #     print "Disconnect to ftp.\n";
 # }
 
-sub http_svn_get {
-    my ($url_path, $local_path) = @_;
-    my $ua = LWP::UserAgent->new;
-    my $count = 1;
-
-    print "\t-Get from svn url $url_path.\n";
-    my ($name,$dir,$suffix) = fileparse($url_path, qr/\.[^.]*/);
-    my $retries = 0;
-    while ($retries < 3) {
-	$request->uri( $url_path );
-	my $response = $ua->request($request, "$local_path/$name$suffix");
-	if ($response->is_success) {
-	    print $response->decoded_content;
-	    last;
-	}else {
-	    if ($response->status_line eq "404 Not Found") {
-		return;
-	    } else {
-		print Dumper($response->status_line) ."\tfor file $url_path\n" ;
-		$retries++;
-	    }
-	}
-    }
-    die "Unknown error when retrieving file $url_path.\n" if $retries >= 3;
-    print "\t+Get from svn url $url_path.\n";
-    return "$local_path/$name$suffix";
-}
-
 sub write_common_info {
     my ($index_comm, $info_comm) = @_;
     my $text = "";
@@ -777,21 +748,21 @@ sub write_control_file {
     write_file("$dir/$files_info", "$text");
 }
 
-sub move_dir {
-    my ($src, $trg) = @_;
-    die "\tTarget $trg is a file.\n" if (-f $trg);
-    WikiCommons::makedir("$trg", 1) if (! -e $trg);
-# 	move("$src", "$trg") or die "Move dir $src to $trg failed: $!\n";
-#     } else {
-    opendir(DIR, "$src") || die("Cannot open directory $src.\n");
-    my @files = grep { (!/^\.\.?$/) } readdir(DIR);
-    closedir(DIR);
-    foreach my $file (@files){
-	move("$src/$file", "$trg/") or die "Move file $src/$file to $trg failed: $!\n";
-    }
-    remove_tree("$src");
+# sub move_dir {
+#     my ($src, $trg) = @_;
+#     die "\tTarget $trg is a file.\n" if (-f $trg);
+#     WikiCommons::makedir("$trg", 1) if (! -e $trg);
+# # 	move("$src", "$trg") or die "Move dir $src to $trg failed: $!\n";
+# #     } else {
+#     opendir(DIR, "$src") || die("Cannot open directory $src.\n");
+#     my @files = grep { (!/^\.\.?$/) } readdir(DIR);
+#     closedir(DIR);
+#     foreach my $file (@files){
+# 	move("$src/$file", "$trg/") or die "Move file $src/$file to $trg failed: $!\n";
 #     }
-}
+#     remove_tree("$src");
+# #     }
+# }
 
 sub clean_existing_dir {
     my ($change_id, $svn_docs) = @_;
@@ -863,7 +834,7 @@ if ($bulk_svn_update eq "yes"){
 ## problem: after the first run we can have missing documents, but the general_info will not be updated
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id ne "F00012";
+#     next if $change_id ne "B27672";
 # next if $change_id ne "H600021";
 # B099626, B03761
 ## special chars: B06390
@@ -904,9 +875,7 @@ foreach my $change_id (sort keys %$crt_hash){
 
 	    if ( ! Compare($crt_info->{$key}, $prev_info->{$key}) ) {
 		print "\tUpdate svn http for $key.\n";
-		$request = HTTP::Request->new(GET => "$dir");
-		$request->authorization_basic("$svn_user", "$svn_pass");
-		my $file_res = http_svn_get("$dir/$file", "$work_dir");
+		my $file_res = WikiCommons::http_get("$dir/$file", "$work_dir", "$svn_user", "$svn_pass");
 		move("$file_res", "$work_dir/$key.doc") || die "can't move file $file_res to $work_dir/$key.doc: $!.\n";
 		$update_control_file++;
 	    }
@@ -956,7 +925,7 @@ foreach my $change_id (sort keys %$crt_hash){
 
     write_control_file($crt_info, $work_dir, $cat) if $update_control_file;
 
-    move_dir("$work_dir", "$to_path/$change_id/");
+    WikiCommons::move_dir("$work_dir", "$to_path/$change_id/");
     print "+Finish working for $change_id: nr $count of $total.\t$dif\n";
 }
 

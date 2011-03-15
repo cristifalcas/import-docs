@@ -267,16 +267,24 @@ sub get_customers {
 
 sub get_allsrs {
     my $cust = shift;
+#     my $SEL_INFO = '
+# select t1.rsceventsscno, count(t1.rsceventssrno)
+#   from tblscevents t1
+#  where t1.rsceventscompanycode = :CUST_CODE
+#    and t1.rsceventsscno in
+#        (select t.rscmainrecscno
+#           from tblscmainrecord t
+#          where t.rscmainreccustcode = :CUST_CODE
+# 	   and t.rscmainrecdeptcode in '.$dept.'
+#            and t.rscmainreclasteventdate >= \'20000101\')
+#  group by t1.rsceventsscno';
     my $SEL_INFO = '
 select t1.rsceventsscno, count(t1.rsceventssrno)
-  from tblscevents t1
+  from tblscevents t1, tblscmainrecord t2
  where t1.rsceventscompanycode = :CUST_CODE
-   and t1.rsceventsscno in
-       (select t.rscmainrecscno
-          from tblscmainrecord t
-         where t.rscmainreccustcode = :CUST_CODE
-	   and t.rscmainrecdeptcode in '.$dept.'
-           and t.rscmainreclasteventdate >= \'20000101\')
+   and t1.rsceventsscno = t2.rscmainrecscno
+   and t2.rscmainreccustcode = t1.rsceventscompanycode
+   and t2.rscmainreclasteventdate >= \'20000101\'
  group by t1.rsceventsscno';
 
     my $sth = $dbh->prepare($SEL_INFO);
@@ -591,11 +599,11 @@ sub get_color {
     } elsif (keys %{$hash->{'customer_contact'}}) {
 	### this is a customer message
 	$color = "<font color=\"blue\">\n";
-	my $dept = "";
+	my $department = "";
 	my $pos = "";
-	$dept = "department = $hash->{customer_contact}->{department}" if $hash->{'customer_contact'}->{'department'} ne ' ';
+	$department = "department = $hash->{customer_contact}->{department}" if $hash->{'customer_contact'}->{'department'} ne ' ';
 	$pos = "position = $hash->{customer_contact}->{position}" if $hash->{'customer_contact'}->{'position'} ne ' ';
-	$name = "$hash->{'customer_contact'}->{'first_name'} $hash->{'customer_contact'}->{'last_name'} ([mailto:$hash->{'customer_contact'}->{'email'} $hash->{'customer_contact'}->{'email'}]);\nPhone = $hash->{'customer_contact'}->{'phone'}; Mobile phone = $hash->{'customer_contact'}->{'phone_mobile'}\n$dept; $pos";
+	$name = "$hash->{'customer_contact'}->{'first_name'} $hash->{'customer_contact'}->{'last_name'} ([mailto:$hash->{'customer_contact'}->{'email'} $hash->{'customer_contact'}->{'email'}]);\nPhone = $hash->{'customer_contact'}->{'phone'}; Mobile phone = $hash->{'customer_contact'}->{'phone_mobile'}\n$department; $pos";
     } else {
 	$color = "<font color=\"#0000FF\">\n";
 	print "\tNo customer and no mind engineer. Maybe a customer message.\n";
@@ -655,7 +663,17 @@ sub write_sr {
 		}
 	    }
 # 	    $wiki .= "$color\n$sr_text\n$attachements\n</div>\n" if ($sr_text ne '' || $attachements ne '');
-	    $attachements .= "\n\nSC reference: [[SC:$ref->{'ref1'}|$ref->{'ref1'}]]" if defined $ref->{'ref1'} && $ref->{'ref1'} !~ m/^\s*$/;
+	    my $reference =  $ref->{'ref1'};
+	    if ( defined $reference && $reference !~ m/^\s*$/ ){
+		my @arr_ref = split /[,\.;_\-\s+]/, $reference;
+		my $replacement = "";
+		foreach my $sc_ref (@arr_ref) {
+		    next if $sc_ref =~ m/^\s*$/;
+		    $sc_ref =~ s/SC[\-_:\s]*//;
+		    $replacement .= "[[SC:$sc_ref|$sc_ref]] ";
+		}
+		$attachements .= "\n\nSC reference: $replacement";
+	    }
 	    $wiki .= "$color\n$sr_text\n$attachements\n</font>\n" if ($sr_text ne '' || $attachements ne '');
 	    $wiki .= "----\n";
 	}
@@ -721,7 +739,7 @@ my @new_cust_arr = ();
 foreach my $cust (sort keys %$customers){
     print "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
 # print "$customers->{$cust}->{'displayname'}\n";next;
-# next if $customers->{$cust}->{'displayname'} ne "Bell Atlantic";
+# next if $customers->{$cust}->{'displayname'} ne "Revol";
 # next if $cust != 381;
 #     next if (! defined $customers->{$cust}->{'ver'} || $customers->{$cust}->{'ver'} lt "5.00")
 # 	    && $customers->{$cust}->{'displayname'} ne "Billing";

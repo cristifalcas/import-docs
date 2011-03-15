@@ -24,6 +24,7 @@ our $mw;
 our $bmw;
 our $edit_token;
 our $array = ();
+our $hash = ();
 my $nr_pages = 0;
 
 sub wiki_on_error {
@@ -44,15 +45,6 @@ sub new {
 	$mw->{config}->{on_error} = \&wiki_on_error;
 	$mw->login( {lgname => $wiki_user, lgpassword => $wiki_pass } )
 	    || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
-
-# 	my $res = $mw->api({
-# 	    action  => 'query',
-# 	    titles  => 'Testos',
-# 	    prop    => 'info|revisions',
-# 	    intoken => 'edit',
-# 	});
-# 	my $data           = ( %{ $res->{'query'}->{'pages'} })[1];
-# 	$edit_token      = $data->{'edittoken'};
     }
 
     bless($self, $class);
@@ -77,27 +69,19 @@ sub wiki_get_namespaces {
     return \%return;
 }
 
-# sub delete_archived_image {
-#     my $self    = shift;
-#     my $archive = shift;
-#     my $summary = shift || 'BOT: deleting old version of image by command';
-# 
-#     my ($timestamp, $file) = split(m/!/, $archive);
-# 
-#     my ($token) = $self->_get_edittoken($file);
-# 
-#     my $res = $self->{'api'}->api({
-#         action   => 'delete',
-#         title    => "File:$file",
-#         token    => $token,
-#         reason   => $summary,
-#         oldimage => $archive,
-#     });
-#     return $self->_handle_api_error() unless $res;
-# 
-#     return $res;
-# 
-# }
+sub delete_archived_image {
+    my ($self, $archive) = @_;
+    my $summary = 'deleting old version of image';
+    my ($timestamp, $file) = split(m/!/, $archive);
+
+    my $res = $mw->api({
+        action   => 'delete',
+        title    => "File:$file",
+        reason   => $summary,
+        oldimage => $archive,
+    });
+    return $res;
+}
 
 sub wiki_get_categories {
     my $self = shift;
@@ -160,10 +144,6 @@ sub wiki_delete_page {
 
     foreach my $url (@img) {
       chomp $url;
-#       $mw->api ( { action => 'delete',
-# 	  token => $edit_token,
-# 	  title => "$url"}
-#       )   || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
 
       my $page = $mw->get_page( { title => $url } );
       unless ( defined $page->{missing} ) {
@@ -175,15 +155,18 @@ sub wiki_delete_page {
 }
 
 sub wiki_get_deleted_revs {
-    my $self = shift;
+    my ($self, $ns) = @_;
+    $ns = 0 if not defined $ns;
     $array = ();
 
     $mw->list ( { action => 'query',
-	    list => 'deletedrevs', drlimit=>'5000',
+	    list => 'deletedrevs', 
+	    drlimit => '50', 
+	    drnamespace => $ns,
 	    drprop    => 'revid|user',},
-	{ max => 1000, hook => \&wiki_add_url2 } )
+	{ max => 10, hook => \&wiki_add_url2 } )
 		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
-    return $array;
+    return $hash;
 }
 
 sub wiki_edit_page {
@@ -314,11 +297,16 @@ sub wiki_add_url {
     my ( $ref) = @_;
 
     foreach (@$ref) {
+	my $info = $_->{title};
+# print Dumper($_);
 	if ( (scalar keys %$_) && defined $_->{'*'}) {
-	    push @$array, $_->{'*'}."\n";
-	    next;
+# 	    chomp  $_->{'*'};
+# 	    push @$array, $_->{'*'}."\n";
+# 	    next;
+	    $info = $_->{'*'};
 	}
-	push @$array, $_->{title};
+	chomp $info;
+	push @$array, $info;
 # 	$nr_pages++;
     }
 #     print "\tRetrieved $nr_pages pages.\n" if ($nr_pages%1000 == 0);
@@ -326,9 +314,16 @@ sub wiki_add_url {
 
 sub wiki_add_url2 {
     my ( $ref) = @_;
+    my $q = ();
 
     foreach (@$ref) {
-	print Dumper($_);
+# 	my $w = $_->{'revisions'}->{'timestamp'};
+# 	$w =~ s/[TZ:-]//g;
+	push @$q, $_->{'title'};
+# 	push @$q, "$w!$_->{'title'}";
+# 	push @$q, $_->{'revisions'}->{'revid'};
+	push @$q, $_->{'revisions'};
+	$hash->{$_->{'ns'}} = $q;
     }
 }
 
