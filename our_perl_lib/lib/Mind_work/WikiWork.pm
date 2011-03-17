@@ -33,6 +33,7 @@ sub wiki_on_error {
     $mw->{response}->{_request}->{_content}="*** deleted ***";
     print "3. Error response: " . Dumper($mw->{response})."\n";
     print "4. Error stacktrace: " . $mw->{error}->{stacktrace}."\n";
+    print "time elapsed"."\t". (WikiCommons::get_time_diff) ."\n";
     die;
 }
 
@@ -147,6 +148,7 @@ sub wiki_delete_page {
 
       my $page = $mw->get_page( { title => $url } );
       unless ( defined $page->{missing} ) {
+# next if $url =~ m/^File:/;
 	print "\tDelete page $url.\n";
 	$mw->edit( { action => 'delete', title => $url, reason => 'no longer needed' } )
 	|| die "Could not delete url $url: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";

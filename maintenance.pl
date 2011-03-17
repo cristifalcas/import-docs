@@ -112,23 +112,29 @@ sub fix_wiki_sc_type {
 
 sub unused_categories {
     my $all_categories = $our_wiki->wiki_get_categories();
+    my $result = ();
     foreach my $cat (@$all_categories) {
 	my $res = $our_wiki->wiki_get_pages_in_category($cat, 1);
 	next if defined $res;
-	print "rm page $cat\n";
-	$our_wiki->wiki_delete_page($cat) if ( $our_wiki->wiki_exists_page("$cat") && ! $view_only);
+	push @$result, $res;
+# 	print "rm page $cat\n";
+# 	$our_wiki->wiki_delete_page($cat) if ( $our_wiki->wiki_exists_page("$cat") && ! $view_only);
     }
+    return $result;
 }
 
 sub wanted_categories {
   my $link = "http://localhost/wiki/index.php?title=Special:WantedCategories&limit=2000&offset=0";
   my $res = get_results($link);
+  my $result = ();
   foreach my $elem (@$res){
       $elem =~ s/ \(page does not exist\)$//;
       my $cat = "Category:$elem";
-      print "add category $cat.\n";
-      $our_wiki->wiki_edit_page("$cat", "----") if ! $view_only;
+      push @$result, $cat;
+#       print "add category $cat.\n";
+#       $our_wiki->wiki_edit_page("$cat", "----") if ! $view_only;
   }
+  return $result;
 }
 
 sub broken_redirects {
@@ -157,7 +163,7 @@ sub scdoubleredirects {
 }
 
 sub unused_images_dirty {
-  my $link = "http://localhost/wiki/index.php?title=Special:UnusedFiles&limit=2000&offset=0";
+  my $link = "http://localhost/wiki/index.php?title=Special:UnusedFiles&limit=1000&offset=0";
   my $res = get_results($link, "table");
   foreach my $elem (@$res){
       $elem =~ s/%27/'/g;
@@ -174,11 +180,22 @@ sub unused_images_dirty {
 sub fix_wanted_pages {
   my $link = "http://localhost/wiki/index.php?title=Special:WantedPages&limit=2000&offset=0";
   my $res = get_results($link);
+  my ($cat, $sc, $crm, $other) = ();
   foreach my $elem (@$res){
       next if $elem eq "Special:WhatLinksHere";
       $elem =~ s/ \(page does not exist\)$//;
-      print "$elem\n";#
+#       print "$elem\n";#
+      if ($elem =~ m/^SC:/) {
+	push @$sc, $elem;
+      } elsif ($elem =~ m/^CRM:/) {
+	push @$crm, $elem;
+      } elsif ($elem =~ m/^Category:/) {
+	push @$cat, $elem;
+      } else {
+	push @$other, $elem;
+      }
   }
+  return ($cat, $sc, $crm, $other);
 }
 
 sub fix_missing_files {
@@ -287,16 +304,15 @@ sub syncronize_local_wiki {
   }
 }
 
-
 print "##### Fix wiki sc type:\n";
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
 # print Dumper($namespaces);
 fix_wiki_sc_type($namespaces);
 print "##### Remove unused categories:\n";
-unused_categories;
+my $unused = unused_categories();
 print "##### Add missing categories:\n";
-wanted_categories;
+my $wanted = wanted_categories();
 print "##### Fix broken redirects:\n";
 broken_redirects;
 print "##### Fix double redirects:\n";
@@ -306,7 +322,8 @@ scdoubleredirects;
 print "##### Remove unused images:\n";
 unused_images_dirty;
 print "##### Wanted pages:\n";
-fix_wanted_pages;
+my ($cat, $sc, $crm, $other) = fix_wanted_pages();
+print Dumper($unused, $wanted, $cat, $sc, $crm, $other);
 print "##### Syncronize:\n";
 $local_pages = getlocalpages($namespaces);
 $wiki_pages = getwikipages($namespaces);

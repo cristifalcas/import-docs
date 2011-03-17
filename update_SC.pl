@@ -136,7 +136,7 @@ sub general_info {
 	    push @categories, "customer $cust";
 	}
 	$final_cust = $cust;
-	$cust = "\[\[:Category:$cust\|$cust\]\]";
+	$cust = "\[\[:Category:$cust\|$cust\]\]" if $cust ne "All";
     }
 
     if (scalar @all_custs){
@@ -156,7 +156,7 @@ sub general_info {
 	    $bug =~ s/^(SR#|SR)\s+(No\.\s+)?//gi;
 	    $bug =~ s/\s+/ /g;
 	    $bug =~ s/(^\s+)|(\s+$)//g;
-	    if ($bug =~ m/^\s*([^\/\\]*)(\/|\\)\s*([0-9]{1,})\s*$/){
+	    if ($bug =~ m/^\s*([^\/\\]*)(\/|\\)\s*([0-9]{1,})\s*$/ && $final_cust ne "All"){
 		my $q = $1;
 		my $w = $3;
 		$q =~ s/^\s*SR\s*$//i;
@@ -172,7 +172,7 @@ sub general_info {
 			$tmp .= " $q$url_sep$w";
 		    }
 		}
-	    } elsif ($bug =~ m/^\s*([0-9]{1,})\s*$/ && $final_cust ne ""){
+	    } elsif ($bug =~ m/^\s*([0-9]{1,})\s*$/ && $final_cust ne "" && $final_cust ne "All"){
 		$tmp .= " [[CRM:$final_cust$url_sep$1]]";
 	    } else {
 		$tmp .= " $bug";
@@ -834,7 +834,7 @@ if ($bulk_svn_update eq "yes"){
 ## problem: after the first run we can have missing documents, but the general_info will not be updated
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id ne "B27672";
+#     next if $change_id ne "B103229";
 # next if $change_id ne "H600021";
 # B099626, B03761
 ## special chars: B06390

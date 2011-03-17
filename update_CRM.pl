@@ -518,6 +518,7 @@ MIND CTI eService, Israel Center)\n+[a-zA-Z0-9 ,]{0,}\n+$tmp\n+Service Call Data
     $text =~ s/([^\n])\n([^\n])/$1\n\n$2/gm;
 
     $text =~ s/(~+)([^~])/<nowiki>$1<\/nowiki>$2/gm;
+    $text =~ s/(\[\[)(.*)/<nowiki>$1<\/nowiki>$2/gm;
     $text =~ s/^(\*|\#|\;|\:|\=|\!|\||----|\{\|)/<nowiki>$1<\/nowiki>/gm;
     $text =~ s/<!---/<nowiki><!---<\/nowiki>/gm;
 
@@ -739,8 +740,7 @@ my @new_cust_arr = ();
 foreach my $cust (sort keys %$customers){
     print "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
 # print "$customers->{$cust}->{'displayname'}\n";next;
-# next if $customers->{$cust}->{'displayname'} ne "Revol";
-# next if $cust != 381;
+# next if $customers->{$cust}->{'displayname'} ne "Billing";
 #     next if (! defined $customers->{$cust}->{'ver'} || $customers->{$cust}->{'ver'} lt "5.00")
 # 	    && $customers->{$cust}->{'displayname'} ne "Billing";
 # 	    && $customers->{$cust}->{'displayname'} !~ m/mtpcs/i;
@@ -768,6 +768,7 @@ foreach my $cust (sort keys %$customers){
     my $nr = 0;
     foreach my $sr (sort {$a<=>$b} keys %$crt_srs) {
 # print "$sr\n";next if $sr != 160;
+# next if $sr != 835;
 # print "$sr\n";next if $sr < 22;
 	my $info = {};
 	$info = get_sr($cust, $sr);

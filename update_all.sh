@@ -41,10 +41,12 @@ case "$1" in
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/scnagios_docs/ 	-n sc_docs &> "$LOG_PATH"import_sc_t
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/sc/sccanceled_docs/ 	-n sc_docs &> "$LOG_PATH"import_sc_cancel
   ;;
+"update_crm")
+    $CMD "$SCRIPT_PATH"/update_CRM.pl "$SCRIPT_PATH"/Documentation/crm/crm_iphonex/   m &> "$LOG_PATH"update_crm_iphonex &
+    $CMD "$SCRIPT_PATH"/update_CRM.pl "$SCRIPT_PATH"/Documentation/crm/crm_phonexone/ p &> "$LOG_PATH"update_crm_phonexone &
+    $CMD "$SCRIPT_PATH"/update_CRM.pl "$SCRIPT_PATH"/Documentation/crm/crm_sentori/   s &> "$LOG_PATH"update_crm_sentori &
+  ;;
 "import_crm")
-    $CMD "$SCRIPT_PATH"/update_CRM.pl "$SCRIPT_PATH"/Documentation/crm/crm_iphonex/   m &> "$LOG_PATH"update_crm_iphonex
-    $CMD "$SCRIPT_PATH"/update_CRM.pl "$SCRIPT_PATH"/Documentation/crm/crm_phonexone/ p &> "$LOG_PATH"update_crm_phonexone
-    $CMD "$SCRIPT_PATH"/update_CRM.pl "$SCRIPT_PATH"/Documentation/crm/crm_sentori/   s &> "$LOG_PATH"update_crm_sentori
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/crm/crm_iphonex/   -n crm_iphonex &> "$LOG_PATH"import_crm_iphonex
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/crm/crm_phonexone/ -n crm_phonexone &> "$LOG_PATH"import_crm_phonexone
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$SCRIPT_PATH"/Documentation/crm/crm_sentori/   -n crm_sentori &> "$LOG_PATH"import_crm_sentori
