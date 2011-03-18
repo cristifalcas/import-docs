@@ -116,7 +116,7 @@ sub unused_categories {
     foreach my $cat (@$all_categories) {
 	my $res = $our_wiki->wiki_get_pages_in_category($cat, 1);
 	next if defined $res;
-	push @$result, $res;
+	push @$result, $cat;
 # 	print "rm page $cat\n";
 # 	$our_wiki->wiki_delete_page($cat) if ( $our_wiki->wiki_exists_page("$cat") && ! $view_only);
     }
@@ -184,10 +184,11 @@ sub fix_wanted_pages {
   foreach my $elem (@$res){
       next if $elem eq "Special:WhatLinksHere";
       $elem =~ s/ \(page does not exist\)$//;
+#       $elem =~ s/ /_/g;
 #       print "$elem\n";#
-      if ($elem =~ m/^SC:/) {
+      if ($elem =~ m/^SC[:_]/) {
 	push @$sc, $elem;
-      } elsif ($elem =~ m/^CRM:/) {
+      } elsif ($elem =~ m/^CRM[:_]/) {
 	push @$crm, $elem;
       } elsif ($elem =~ m/^Category:/) {
 	push @$cat, $elem;
@@ -229,14 +230,13 @@ sub getlocalpages {
     foreach my $file (grep { (!/^\.\.?$/) && -d "$workdir/$adir/$_" } readdir(DIR)) {
       $count++;
       my $ns = "";
+      my $normalyze_file = $file;
       if ( $file =~ m/^(.*?):(.*)$/ ) {
         $ns = $1;
-	$ns =~ s/ /_/g;
-        $file = $2;
-        $file = WikiCommons::capitalize_string($file, 'onlyfirst');
-	$file = "$ns:$file";
+	$normalyze_file = $2;
+        $normalyze_file = WikiCommons::capitalize_string( $normalyze_file, 'onlyfirst' );
+	$normalyze_file = "$ns:$normalyze_file";
       }
-      my $normalyze_file = $file;
       $normalyze_file =~ s/ /_/g;
       if ($ns eq "") {
 	$local_pages->{'private'}->{$normalyze_file} = "$adir/$file";
@@ -280,30 +280,31 @@ sub getwikipages {
 }
 
 sub syncronize_local_wiki {
-  for my $tmp ('redir', 'real', 'normal'){
-    my $hash1 = $local_pages->{$tmp};
-    my $hash2 = $wiki_pages->{$tmp};
-    my @arr1 = (sort keys %$hash1);
-    my @arr2 = (sort keys %$hash2);
-    my ($only_in1, $only_in2, $common) = WikiCommons::array_diff( \@arr1, \@arr2 );
-    print "$tmp\n";
-    print "only in local: ".Dumper($only_in1); print "only in wiki: ".Dumper($only_in2);
-
-    foreach my $local (@$only_in1) {
-      print "rm dir $workdir/$local_pages->{$tmp}->{$local}\n";
-      if ( ! $view_only ) {
-	remove_tree("$workdir/$local_pages->{$tmp}->{$local}") || die "Can't remove dir $workdir/$local_pages->{$tmp}->{$local}: $?.\n";
-      }
-      delete $local_pages->{$tmp}->{$local};
+    for my $tmp ('redir', 'real', 'normal'){
+	my $hash1 = $local_pages->{$tmp};
+	my $hash2 = $wiki_pages->{$tmp};
+	my @arr1 = (sort keys %$hash1);
+	my @arr2 = (sort keys %$hash2);
+	my ($only_in1, $only_in2, $common) = WikiCommons::array_diff( \@arr1, \@arr2 );
+	print "$tmp\n";
+	print "only in local: ".Dumper($only_in1); print "only in wiki: ".Dumper($only_in2);
+# next;
+	foreach my $local (@$only_in1) {
+	    print "rm dir $workdir/$local_pages->{$tmp}->{$local}\n";
+	    if ( ! $view_only ) {
+		remove_tree("$workdir/$local_pages->{$tmp}->{$local}") || die "Can't remove dir $workdir/$local_pages->{$tmp}->{$local}: $?.\n";
+	    }
+	    delete $local_pages->{$tmp}->{$local};
+	}
+	foreach my $wiki (@$only_in2) {
+	    print "rm page $wiki\n";
+	    $our_wiki->wiki_delete_page($wiki) if ( $our_wiki->wiki_exists_page("$wiki") && ! $view_only);
+	    delete $wiki_pages->{$tmp}->{$wiki};
+	}
     }
-    foreach my $wiki (@$only_in2) {
-      print "rm page $wiki\n";
-      $our_wiki->wiki_delete_page($wiki) if ( $our_wiki->wiki_exists_page("$wiki") && ! $view_only);
-      delete $wiki_pages->{$tmp}->{$wiki};
-    }
-  }
 }
 
+my $q = $our_wiki->wiki_get_pages_linking_to("SC:B23635");print Dumper($q);exit 1;
 print "##### Fix wiki sc type:\n";
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);

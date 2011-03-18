@@ -666,14 +666,17 @@ sub write_sr {
 # 	    $wiki .= "$color\n$sr_text\n$attachements\n</div>\n" if ($sr_text ne '' || $attachements ne '');
 	    my $reference =  $ref->{'ref1'};
 	    if ( defined $reference && $reference !~ m/^\s*$/ ){
-		my @arr_ref = split /[,\.;_\-\s+]/, $reference;
+		my @arr_ref = split /[,\.;:_\-\s\/+&]/, $reference;
 		my $replacement = "";
 		foreach my $sc_ref (@arr_ref) {
-		    next if $sc_ref =~ m/^\s*$/;
-		    $sc_ref =~ s/SC[\-_:\s]*//;
-		    $replacement .= "[[SC:$sc_ref|$sc_ref]] ";
+		    $sc_ref =~ s/^\s*SC\s*//;
+		    if ($sc_ref =~ m/^\s*$/ || $sc_ref !~ m/^\s*[a-z][0-9]{3,}\s*$/i ){
+		      $replacement .= "$sc_ref ";
+		    } else {
+		      $replacement .= "[[SC:$sc_ref|$sc_ref]] ";
+		    }
 		}
-		$attachements .= "\n\nSC reference: $replacement";
+		$attachements .= "\n\nSC reference: $replacement" if $replacement !~ m/^\s*$/;
 	    }
 	    $wiki .= "$color\n$sr_text\n$attachements\n</font>\n" if ($sr_text ne '' || $attachements ne '');
 	    $wiki .= "----\n";

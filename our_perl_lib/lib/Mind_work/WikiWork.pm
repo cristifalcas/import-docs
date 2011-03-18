@@ -278,6 +278,17 @@ sub wiki_get_pages_using {
 	{ max => "$max", hook => \&wiki_add_url } )
 		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     return $array;
+}
+
+sub wiki_get_pages_linking_to {
+    my ($self, $url) = @_;
+    $array = ();
+    $mw->list ( { action => 'query',
+	    list => 'backlinks', bllimit => "5000",
+	    bltitle => "$url" },
+	{ max => "1000", hook => \&wiki_add_url } )
+		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+    return $array;
 } 
 
 sub wiki_get_pages_in_category {

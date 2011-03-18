@@ -496,7 +496,7 @@ sub get_correct_customer{
 	    || $name eq "France Telecom El-Salvador";
     return "Kocnet" if $name eq "Koçnet" || $name eq "Kocent";
     return "ITN" if $name eq "ITN Nigeria" || $name eq "ITN nigeria" || $name eq "INT";
-    return "CTI Billing" if $name eq "CTI Billng";
+    return "CTIBS" if $name eq "CTI Billng" || $name eq "Cti billing";
     return "CAT" if $name eq "CAT (& all Vocaltec customers)" || $name eq "CAT and others" || $name eq "CAT Thailand";
     return "AMT Group" if $name eq "AMT";
     return "AZUL" if $name eq "US lab (for Azultel)" || $name eq "Azultel - US" || $name eq "Azultel +  ALL";# || $name eq "AzulTel" || $name eq "Azultel" || $name eq "azultel";

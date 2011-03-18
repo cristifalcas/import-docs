@@ -122,7 +122,7 @@ sub general_info {
     }
     $general =~ s/%tester%/$tmp/g;
     $tmp = @$info[$index->{'customer'}];
-    my @all_custs = split /,|;/, @$info[$index->{'customer'}];
+    my @all_custs = split /,|;|\./, @$info[$index->{'customer'}];
 
     my $final_cust = "";
     foreach my $cust (@all_custs) {
@@ -130,13 +130,15 @@ sub general_info {
 	$cust =~ s/B08571//;
 	next if $cust =~ m/^\s*$/;
 	$cust =~ s/(^\s*)|(\s*$)//g;
-	my $corr_cust = WikiCommons::get_correct_customer($cust);
-	if (defined $corr_cust ) {
+	my $corr_cust = WikiCommons::get_correct_customer( $cust );
+	if (defined $corr_cust) {
 	    $cust = $corr_cust;
 	    push @categories, "customer $cust";
 	}
-	$final_cust = $cust;
-	$cust = "\[\[:Category:$cust\|$cust\]\]" if $cust ne "All";
+	if ($cust !~ m/^\s*[.,:;-_=]\s*All\s*$/i && defined $corr_cust ) {
+	  $final_cust = $cust;
+	  $cust = "\[\[:Category:$cust\|$cust\]\]";
+	}
     }
 
     if (scalar @all_custs){
@@ -156,7 +158,7 @@ sub general_info {
 	    $bug =~ s/^(SR#|SR)\s+(No\.\s+)?//gi;
 	    $bug =~ s/\s+/ /g;
 	    $bug =~ s/(^\s+)|(\s+$)//g;
-	    if ($bug =~ m/^\s*([^\/\\]*)(\/|\\)\s*([0-9]{1,})\s*$/ && $final_cust ne "All"){
+	    if ($bug =~ m/^\s*([^\/\\]*)(\/|\\)\s*([0-9]{1,})\s*$/ && $final_cust !~ m/All/i){
 		my $q = $1;
 		my $w = $3;
 		$q =~ s/^\s*SR\s*$//i;
@@ -172,7 +174,7 @@ sub general_info {
 			$tmp .= " $q$url_sep$w";
 		    }
 		}
-	    } elsif ($bug =~ m/^\s*([0-9]{1,})\s*$/ && $final_cust ne "" && $final_cust ne "All"){
+	    } elsif ($bug =~ m/^\s*([0-9]{1,})\s*$/ && $final_cust ne "" && $final_cust !~ m/All/i){
 		$tmp .= " [[CRM:$final_cust$url_sep$1]]";
 	    } else {
 		$tmp .= " $bug";
@@ -481,24 +483,24 @@ sub sql_get_all_changes {
 	(nvl(version, 1) < \'5.0\' and fixversion > \'5.0\'))";
     }
 
-    my $no_cancel = "and status <> \'Cancel\'
-	and status <> \'Inform-Cancel\'
-	and status <> \'Market-Cancel\'";
+    my $no_cancel = "and status <> 'Cancel'
+	and status <> 'Inform-Cancel'
+	and status <> 'Market-Cancel'";
 
     if ($sc_type =~ m/B[0-5]/) {
-	$cond = "projectcode = \'B\' and $ver";
+	$cond = "projectcode = 'B' and $ver";
     } elsif ($sc_type eq 'F') {
-	$cond = "projectcode = \'F\'";
+	$cond = "projectcode = 'F'";
     } elsif ($sc_type eq 'I') {
-	$cond  = "projectcode = \'I\' and (nvl(version,100) >= \'4.00\' or nvl(fixversion,100) >= \'4.00\')";
+	$cond  = "projectcode = 'I' and (nvl(version,100) >= '4.00' or nvl(fixversion,100) >= '4.00')";
     } elsif ($sc_type eq 'H') {
-	$cond  = "projectcode = \'H\' and writtendatetime > \'1Jan2008\'";
+	$cond  = "projectcode = 'H' and writtendatetime > '1Jan2008'";
     } elsif ($sc_type eq 'R') {
-	$cond  = "projectcode = \'R\'";
+	$cond  = "projectcode = 'R'";
     } elsif ($sc_type eq 'T') {
-	$cond  = "projectcode = \'T\'";
+	$cond  = "projectcode = 'T'";
     } elsif ($sc_type eq 'D') {
-	$cond  = "projectcode = \'D\' and (nvl(version,100) >= \'2.30\' or nvl(fixversion,100) >= \'2.30\')";
+	$cond  = "projectcode = 'D' and (nvl(version,100) >= '2.30' or nvl(fixversion,100) >= '2.30')";
     } elsif ($sc_type eq 'CANCEL') {
 	$cond = "";
 	$no_cancel = "((projectcode = 'B' and (version >= '5.0' or (nvl(version, 1) < '5.0' and fixversion > '5.0'))) or
@@ -834,7 +836,7 @@ if ($bulk_svn_update eq "yes"){
 ## problem: after the first run we can have missing documents, but the general_info will not be updated
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id ne "B103229";
+#     next if $change_id ne "B11846";
 # next if $change_id ne "H600021";
 # B099626, B03761
 ## special chars: B06390

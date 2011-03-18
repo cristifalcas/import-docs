@@ -456,7 +456,7 @@ sub make_categories {
 
     my $general_categories_hash = $coco->get_categories;
     my @crt_categories = (sort keys %$general_categories_hash);
-    my ($only_in1, $only_in2, $intersection) = WikiCommons::array_diff(\@files, \@crt_categories);
+    my ($only_in1, $only_in2, $intersection) = WikiCommons::array_diff( \@files, \@crt_categories );
 # print Dumper($only_in1);print Dumper($only_in2);print Dumper($intersection);#exit 1;
 
     delete_categories(\@files,$categories_dir) if ( $delete_categories eq "yes");
