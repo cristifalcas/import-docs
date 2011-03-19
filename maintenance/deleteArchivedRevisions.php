@@ -1,0 +1,1 @@
+/var/www/html/wiki/maintenance/deleteArchivedRevisions.php
