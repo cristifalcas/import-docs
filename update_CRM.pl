@@ -232,15 +232,21 @@ sub get_problem_types {
 }
 
 sub get_customers {
-    my $SEL_INFO = 'select unique a.rcustcompanycode, a.rcustcompanyname, a.rcustiddisplay
+    my $SEL_INFO = "select unique a.rcustcompanycode,
+       a.rcustcompanyname,
+       a.rcustiddisplay,
+       c.rdeptcustdeptcode
   from tblcustomers a, tblsuppdept b, tbldeptsforcustomers c
  where a.rcustcompanycode = c.rdeptcustcompanycode
    and b.rsuppdeptcode = c.rdeptcustdeptcode
-   and c.rcuststatus = \'A\'
-   and a.rcuststatus = \'A\'
-   and b.rsuppdeptstatus = \'A\'
+   and c.rcuststatus = 'A'
+   and a.rcuststatus = 'A'
+   and b.rsuppdeptstatus = 'A'
    and a.rcustlastscno > 10
-   and c.rdeptcustdeptcode in '.$dept;
+   and c.ractivitydate = (select max(ractivitydate)
+                            from tbldeptsforcustomers
+                           where rdeptcustcompanycode = a.rcustcompanycode
+                             and rcuststatus = 'A') ".$dept;
 
 #     my $SEL_INFO = '
 # select t.rcustcompanycode,
