@@ -304,7 +304,17 @@ sub syncronize_local_wiki {
     }
 }
 
-my $q = $our_wiki->wiki_get_pages_linking_to("SC:B23635");print Dumper($q);exit 1;
+# open(DAT, "new  1.txt") || die("Could not open file!");
+# my @raw_data=<DAT>;
+# chomp @raw_data;
+# close(DAT);
+# foreach my $w (@raw_data) {
+#   my $q = $our_wiki->wiki_get_pages_linking_to("$w");
+#   foreach my $e (@$q){
+#     $our_wiki->wiki_delete_page($e);
+#   }
+# }
+# exit 1;
 print "##### Fix wiki sc type:\n";
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
