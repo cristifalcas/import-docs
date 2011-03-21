@@ -234,8 +234,7 @@ sub get_problem_types {
 sub get_customers {
     my $SEL_INFO = "select unique a.rcustcompanycode,
        a.rcustcompanyname,
-       a.rcustiddisplay,
-       c.rdeptcustdeptcode
+       a.rcustiddisplay
   from tblcustomers a, tblsuppdept b, tbldeptsforcustomers c
  where a.rcustcompanycode = c.rdeptcustcompanycode
    and b.rsuppdeptcode = c.rdeptcustdeptcode
@@ -246,7 +245,8 @@ sub get_customers {
    and c.ractivitydate = (select max(ractivitydate)
                             from tbldeptsforcustomers
                            where rdeptcustcompanycode = a.rcustcompanycode
-                             and rcuststatus = 'A') ".$dept;
+                             and rcuststatus = 'A')
+   and c.rdeptcustdeptcode in ".$dept;
 
 #     my $SEL_INFO = '
 # select t.rcustcompanycode,
@@ -524,8 +524,11 @@ MIND CTI eService, Israel Center)\n+[a-zA-Z0-9 ,]{0,}\n+$tmp\n+Service Call Data
     $text =~ s/([^\n])\n([^\n])/$1\n\n$2/gm;
 
     $text =~ s/(~+)([^~])/<nowiki>$1<\/nowiki>$2/gm;
-    $text =~ s/(\[\[)(.*)/<nowiki>$1<\/nowiki>$2/gm;
+    $text =~ s/(\[\[)/<nowiki>$1<\/nowiki>/gm;
     $text =~ s/^(\*|\#|\;|\:|\=|\!|\||----|\{\|)/<nowiki>$1<\/nowiki>/gm;
+    $text =~ s/(\[mailto:)/<nowiki>$1<\/nowiki>/gm;
+    $text =~ s/(\[https?:)/<nowiki>$1<\/nowiki>/gm;
+
     $text =~ s/<!---/<nowiki><!---<\/nowiki>/gm;
 
     return $text;

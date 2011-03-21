@@ -158,7 +158,7 @@ sub general_info {
 	    $bug =~ s/^(SR#|SR)\s+(No\.\s+)?//gi;
 	    $bug =~ s/\s+/ /g;
 	    $bug =~ s/(^\s+)|(\s+$)//g;
-	    if ($bug =~ m/^\s*([^\/\\]*)(\/|\\)\s*([0-9]{1,})\s*$/ && $final_cust !~ m/All/i){
+	    if ($bug =~ m/^\s*([^\/\\]*)(\/|\\)\s*([0-9]{1,})\s*$/ && $final_cust !~ m/All/i && $final_cust !~ m/^\s*$/ ){
 		my $q = $1;
 		my $w = $3;
 		$q =~ s/^\s*SR\s*$//i;
@@ -174,7 +174,7 @@ sub general_info {
 			$tmp .= " $q$url_sep$w";
 		    }
 		}
-	    } elsif ($bug =~ m/^\s*([0-9]{1,})\s*$/ && $final_cust ne "" && $final_cust !~ m/All/i){
+	    } elsif ($bug =~ m/^\s*([0-9]{1,})\s*$/ && $final_cust !~ m/^\s*$/ && $final_cust !~ m/All/i){
 		$tmp .= " [[CRM:$final_cust$url_sep$1]]";
 	    } else {
 		$tmp .= " $bug";

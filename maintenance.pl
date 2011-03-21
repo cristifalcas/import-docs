@@ -178,7 +178,7 @@ sub unused_images_dirty {
 }
 
 sub fix_wanted_pages {
-  my $link = "http://localhost/wiki/index.php?title=Special:WantedPages&limit=2000&offset=0";
+  my $link = "http://localhost/wiki/index.php?title=Special:WantedPages&limit=3000&offset=0";
   my $res = get_results($link);
   my ($cat, $sc, $crm, $other) = ();
   foreach my $elem (@$res){
@@ -186,9 +186,9 @@ sub fix_wanted_pages {
       $elem =~ s/ \(page does not exist\)$//;
 #       $elem =~ s/ /_/g;
 #       print "$elem\n";#
-      if ($elem =~ m/^SC[:_]/) {
+      if ($elem =~ m/^SC:[A-Z][0-9]+$/) {
 	push @$sc, $elem;
-      } elsif ($elem =~ m/^CRM[:_]/) {
+      } elsif ($elem =~ m/^CRM:[A-Z][0-9]+$/) {
 	push @$crm, $elem;
       } elsif ($elem =~ m/^Category:/) {
 	push @$cat, $elem;
@@ -286,9 +286,8 @@ sub syncronize_local_wiki {
 	my @arr1 = (sort keys %$hash1);
 	my @arr2 = (sort keys %$hash2);
 	my ($only_in1, $only_in2, $common) = WikiCommons::array_diff( \@arr1, \@arr2 );
-	print "$tmp\n";
-	print "only in local: ".Dumper($only_in1); print "only in wiki: ".Dumper($only_in2);
-# next;
+	print "$tmp only in local: ".Dumper($only_in1); print "$tmp only in wiki: ".Dumper($only_in2);
+	die "Too many to delete.\n" if scalar @$only_in1 > 200 || scalar @$only_in2 > 200;
 	foreach my $local (@$only_in1) {
 	    print "rm dir $workdir/$local_pages->{$tmp}->{$local}\n";
 	    if ( ! $view_only ) {
@@ -304,15 +303,18 @@ sub syncronize_local_wiki {
     }
 }
 
-# open(DAT, "new  1.txt") || die("Could not open file!");
-# my @raw_data=<DAT>;
-# chomp @raw_data;
-# close(DAT);
-# foreach my $w (@raw_data) {
-#   my $q = $our_wiki->wiki_get_pages_linking_to("$w");
-#   foreach my $e (@$q){
-#     $our_wiki->wiki_delete_page($e);
-#   }
+# if ( -f "new  1.txt" ) {
+#     open(DAT, "new  1.txt") || die("Could not open file!");
+#     my @raw_data=<DAT>;
+#     chomp @raw_data;
+#     close(DAT);
+#     foreach my $w (@raw_data) {
+# 	print "$w\n";
+# 	my $q = $our_wiki->wiki_get_pages_linking_to("$w");
+# 	foreach my $e (@$q){
+# 	    $our_wiki->wiki_delete_page($e);
+# 	}
+#     }
 # }
 # exit 1;
 print "##### Fix wiki sc type:\n";
