@@ -192,6 +192,14 @@ sub general_info {
     $general =~ s/%product%/@$info[$index->{'productname'}]/;
     $general =~ s/%full_status%/@$info[$index->{'fullstatus'}]/;
     $general =~ s/%status%/@$info[$index->{'status'}]/;
+    if (@$info[$index->{'cancel_remark'}] !~ m/^\s*$/) {
+      $tmp = @$info[$index->{'cancel_remark'}];
+      $tmp =~ s/([a-z][0-9]+)/[[SC:$1|$1]]/gi;
+      $general =~ s/%cancel_reason%/Cancel remark: $tmp/;
+    } else {
+      $general =~ s/%cancel_reason%\n//;
+    }
+
     $general =~ s/%fix_version%/@$info[$index->{'fixversion'}]/g;
 #     $tmp = @$info[$index->{'fixversion'}];
 #     $tmp =~ s/(^\s*)|(\s*$)//;
@@ -374,6 +382,7 @@ sub sql_generate_select_changeinfo {
 	'initiator'		=> 'a.initiator',
 	'tester'		=> 'nvl(a.testincharge,-1)',
 	'dealer'		=> 'nvl(a.dealer,-1)',
+	'cancel_remark'		=> 'nvl(a.cancelinformremark,\' \')',
 	};
 
     my %index;
@@ -836,7 +845,7 @@ if ($bulk_svn_update eq "yes"){
 ## problem: after the first run we can have missing documents, but the general_info will not be updated
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id ne "B11846";
+#     next if $change_id ne "B099953";
 # next if $change_id ne "H600021";
 # B099626, B03761
 ## special chars: B06390

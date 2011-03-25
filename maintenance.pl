@@ -163,7 +163,7 @@ sub scdoubleredirects {
 }
 
 sub unused_images_dirty {
-  my $link = "http://localhost/wiki/index.php?title=Special:UnusedFiles&limit=1000&offset=0";
+  my $link = "http://localhost/wiki/index.php?title=Special:UnusedFiles&limit=2000&offset=0";
   my $res = get_results($link, "table");
   foreach my $elem (@$res){
       $elem =~ s/%27/'/g;
@@ -303,28 +303,29 @@ sub syncronize_local_wiki {
     }
 }
 
-# if ( -f "new  1.txt" ) {
-#     open(DAT, "new  1.txt") || die("Could not open file!");
-#     my @raw_data=<DAT>;
-#     chomp @raw_data;
-#     close(DAT);
-#     foreach my $w (@raw_data) {
-# 	print "$w\n";
-# 	my $q = $our_wiki->wiki_get_pages_linking_to("$w");
-# 	foreach my $e (@$q){
-# 	    $our_wiki->wiki_delete_page($e);
-# 	}
-#     }
-# }
+if ( -f "new 1.txt" ) {
+    open(DAT, "new 1.txt") || die("Could not open file!");
+    my @raw_data=<DAT>;
+    chomp @raw_data;
+    close(DAT);
+    foreach my $w (@raw_data) {
+	my $q = $our_wiki->wiki_get_pages_linking_to("$w");
+	print "$w\n";
+# 	print Dumper($q);next;
+	foreach my $e (@$q){
+	    $our_wiki->wiki_delete_page($e);
+	}
+    }
+}
 # exit 1;
 print "##### Fix wiki sc type:\n";
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
 # print Dumper($namespaces);
 fix_wiki_sc_type($namespaces);
-print "##### Remove unused categories:\n";
+print "##### Get unused categories:\n";
 my $unused = unused_categories();
-print "##### Add missing categories:\n";
+print "##### Get missing categories:\n";
 my $wanted = wanted_categories();
 print "##### Fix broken redirects:\n";
 broken_redirects;
@@ -336,12 +337,17 @@ print "##### Remove unused images:\n";
 unused_images_dirty;
 print "##### Wanted pages:\n";
 my ($cat, $sc, $crm, $other) = fix_wanted_pages();
+# my @arr1 = @$unused;
+# my @arr2 = (@$wanted, @$cat);
+# my ($only_in1, $only_in2, $common) = WikiCommons::array_diff( \@arr1, \@arr2 );
+# system("/media/share/Documentation/cfalcas/q/import_docs/update_customers.pl", "/media/share/Documentation/cfalcas/q/import_docs/", @$only_in2, @$common);
+# print Dumper($only_in2, $common);
 print Dumper($unused, $wanted, $cat, $sc, $crm, $other);
+# exit 1;
 print "##### Syncronize:\n";
 $local_pages = getlocalpages($namespaces);
 $wiki_pages = getwikipages($namespaces);
 syncronize_local_wiki;
-
 
 # compressOld.php
 

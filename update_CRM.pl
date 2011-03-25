@@ -248,16 +248,6 @@ sub get_customers {
                              and rcuststatus = 'A')
    and c.rdeptcustdeptcode in ".$dept;
 
-#     my $SEL_INFO = '
-# select t.rcustcompanycode,
-#        t.rcustcompanyname,
-#        t.rcustiddisplay,
-#        q.value_text
-#   from tblcustomers t, tblattrib_values q, tblattributes w
-#  where t.rcuststatus = \'A\'
-#    and w.attribname = \'Latest Version\'
-#    and w.attribisn = q.attrib_isn
-#    and q.attrib_object_code1 = t.rcustcompanycode';
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
@@ -273,25 +263,20 @@ sub get_customers {
 
 sub get_allsrs {
     my $cust = shift;
-#     my $SEL_INFO = '
+#     my $SEL_INFO = "
 # select t1.rsceventsscno, count(t1.rsceventssrno)
-#   from tblscevents t1
+#   from tblscevents t1, tblscmainrecord t2
 #  where t1.rsceventscompanycode = :CUST_CODE
-#    and t1.rsceventsscno in
-#        (select t.rscmainrecscno
-#           from tblscmainrecord t
-#          where t.rscmainreccustcode = :CUST_CODE
-# 	   and t.rscmainrecdeptcode in '.$dept.'
-#            and t.rscmainreclasteventdate >= \'20000101\')
-#  group by t1.rsceventsscno';
-    my $SEL_INFO = '
+#    and t1.rsceventsscno = t2.rscmainrecscno
+#    and t2.rscmainreccustcode = t1.rsceventscompanycode
+#    and t2.rscmainreclasteventdate >= '20000101'
+#  group by t1.rsceventsscno";
+
+    my $SEL_INFO = "
 select t1.rsceventsscno, count(t1.rsceventssrno)
-  from tblscevents t1, tblscmainrecord t2
+  from tblscevents t1
  where t1.rsceventscompanycode = :CUST_CODE
-   and t1.rsceventsscno = t2.rscmainrecscno
-   and t2.rscmainreccustcode = t1.rsceventscompanycode
-   and t2.rscmainreclasteventdate >= \'20000101\'
- group by t1.rsceventsscno';
+ group by t1.rsceventsscno";
 
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->bind_param( ":CUST_CODE", $cust );
@@ -368,7 +353,9 @@ select t.rscmainproblemdescription,
     $sth->bind_param( ":CUSTOMER", $customer );
     $sth->bind_param( ":SRSCNO", $srscno );
     $sth->execute();
+    my $ok = 0;
     while ( my @row=$sth->fetchrow_array() ) {
+	$ok++;
 	$info->{'desc'} = $row[0];
 	$info->{'priority'}->{$_} = $priorities->{$row[1]}->{$_} foreach (keys %{$priorities->{$row[1]}});
 	$info->{'incharge'}->{$_} = $staff->{$row[2]}->{$_} foreach (keys %{$staff->{$row[2]}});
@@ -385,6 +372,7 @@ select t.rscmainproblemdescription,
     }
     $info->{'number'} = $srscno;
     $info->{'customer'} = $customers->{$customer}->{'displayname'};
+    print "Strange things for $customer:\n".Dumper($info) if $ok != 1;
     return $info;
 }
 
@@ -519,12 +507,12 @@ MIND CTI eService, Israel Center)\n+[a-zA-Z0-9 ,]{0,}\n+$tmp\n+Service Call Data
 #     }
 # print "$text\n";exit 1;
 
-    $text = WikiClean::fix_wiki_link_to_sc( $text );
     $text = WikiClean::fix_small_issues( $text );
     $text =~ s/([^\n])\n([^\n])/$1\n\n$2/gm;
 
     $text =~ s/(~+)([^~])/<nowiki>$1<\/nowiki>$2/gm;
     $text =~ s/(\[\[)/<nowiki>$1<\/nowiki>/gm;
+    $text = WikiClean::fix_wiki_link_to_sc( $text );
     $text =~ s/^(\*|\#|\;|\:|\=|\!|\||----|\{\|)/<nowiki>$1<\/nowiki>/gm;
     $text =~ s/(\[mailto:)/<nowiki>$1<\/nowiki>/gm;
     $text =~ s/(\[https?:)/<nowiki>$1<\/nowiki>/gm;
@@ -731,6 +719,7 @@ sub get_previous_customers {
     return $info;
 }
 
+# select * from tblscmainrecord t where t.rscmainreccustcode = 309 and t.rscmainrecscno = 25;
 $ENV{NLS_LANG} = 'AMERICAN_AMERICA.AL32UTF8';
 # $ENV{NLS_NCHAR} = 'AMERICAN_AMERICA.UTF8';
 sql_connect('10.0.10.92', 'BILL', 'service25', 'service25');
@@ -786,6 +775,7 @@ foreach my $cust (sort keys %$customers){
 	$info = get_sr($cust, $sr);
 	my $name = "$dir/".sprintf("%07d", $sr)."_".(scalar keys %$info);
 	$info->{'0'} = get_sr_desc($cust, $sr);
+	next if ! defined $info->{'0'}->{'desc'};
 # 	write_xml ($info, $name);
 	my $txt = write_sr($info);
 	write_file ( "$name.wiki", $txt);

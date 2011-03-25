@@ -191,14 +191,14 @@ $dbh->{RowCacheSize}  = 0;
 $dbh->{LongReadLen} = 1024 * 1024;
 $dbh->{LongTruncOk}   = 0;
 
-    my $SEL_INFO = 'select unique a.rcustcompanycode, a.rcustcompanyname, a.rcustiddisplay
+    my $SEL_INFO = "select unique a.rcustcompanycode, a.rcustcompanyname, a.rcustiddisplay
   from tblcustomers a, tblsuppdept b, tbldeptsforcustomers c
  where a.rcustcompanycode = c.rdeptcustcompanycode
    and b.rsuppdeptcode = c.rdeptcustdeptcode
-   and c.rcuststatus = \'A\'
-   and a.rcuststatus = \'A\'
-   and b.rsuppdeptstatus = \'A\'
-   and a.rcustlastscno > 10';
+   and c.rcuststatus = 'A'
+   and a.rcuststatus = 'A'
+   and b.rsuppdeptstatus = 'A'
+   and a.rcustlastscno > 10";
 
 my $sth = $dbh->prepare($SEL_INFO);
 $sth->execute();

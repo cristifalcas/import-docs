@@ -91,9 +91,14 @@ if ($options->{'r'}){
     $remote_work = "yes";
 }
 
+my $all_real = "no";
+my $delete_everything = "no";
 my $delete_categories = "yes";
 my $make_categories = "yes";
-my $big_dump_mode = "no";
+my $big_dump_mode = "yes";
+my $pid_old = "100000";
+my $type_old = "";
+
 if (defined $options->{'c'}) {
     if ($options->{'c'} =~ m/^y$/i){
 	$delete_categories = "yes";
@@ -121,11 +126,6 @@ my $remote_work_path = "$path_prefix/remote_batch_files";
 my $wiki_result = "result";
 my $wiki_files_uploaded = "wiki_files_uploaded.txt";
 my $wiki_files_info = "wiki_files_info.txt";
-
-my $delete_everything = "no";
-my $pid_old = "100000";
-my $all_real = "no";
-my $type_old = "";
 
 my $pages_toimp_hash = {};
 my $pages_local_hash = {};
@@ -784,10 +784,13 @@ if ($path_type eq "mind_svn") {
 	if ($url !~ m/^SC:(.*)/i) {
 	    my $crt_name = $url;
 	    $crt_name =~ s/(SC.*)?:(.*)/$2/i;
-	    next if ! $our_wiki->wiki_exists_page("SC:$crt_name");
+	    if (! $our_wiki->wiki_exists_page("SC:$crt_name") || defined $wrong_hash->{$url}) {
+		remove_tree("$wiki_dir/$url/") if -d "$wiki_dir/$url/";
+		remove_tree("$wiki_dir/SC:$crt_name/") if -d "$wiki_dir/SC:$crt_name/";
+		next;
+	    }
 	    print "\tmake redirect from SC:$crt_name to $url.\n";
 	    $our_wiki->wiki_delete_page("$url") if $our_wiki->wiki_exists_page("$url");
-	    next if defined $wrong_hash->{$url};
 	    $our_wiki->wiki_move_page("SC:$crt_name", "$url");
 
 	    my $text = "md5 = ".$pages_toimp_hash->{$url}[$md5_pos]."\n";
