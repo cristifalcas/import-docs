@@ -811,7 +811,7 @@ sub get_wiki_images {
 	$pic_name =~ s/(.*?)(\|.*)/$1/;
 	my $info = image_info("$dir/$pic_name");
 	if (my $error = $info->{error}) {
-	    print "Can't parse image info for $dir $pic_name: $error.\t". (WikiCommons::get_time_diff) ."\n";
+	    print "Can't parse image info for dir \"$dir\", file \"$pic_name\":\n\t $error.\t". (WikiCommons::get_time_diff) ."\n";
 	    die "" if $dir !~ m/CMS:MIND-IPhonEX CMS 80.00.020/;
 	    next;
 	}

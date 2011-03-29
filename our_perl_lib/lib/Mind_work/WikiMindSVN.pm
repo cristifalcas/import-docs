@@ -104,7 +104,6 @@ sub add_document {
 
     my @values = split('\/', $str);
 
-    $dir_type = "SC" if ($name =~ m/^B[[:digit:]]{4,}\s+/);
     my $url_sep = WikiCommons::get_urlsep;
     if ($str =~ m/.*\/([^\/]+)(branded|users? manuals?)\//i) {
 	$customer = "$1";
@@ -196,7 +195,7 @@ sub add_document {
     } elsif ($dir_type eq "Projects_Common") {
         $rest = fix_rest_dirs ($str, quotemeta $values[$#values]);
 #         $customer = "_Common for all customers_";
-        $fixed_name = WikiCommons::fix_name ($name, $customer);
+        $fixed_name = WikiCommons::fix_name ( $name, $customer );
     } elsif ($dir_type eq "Projects_Deployment_Common") {
 	if ( scalar @values == 1 ) {
 	    $rest = "";
@@ -205,14 +204,13 @@ sub add_document {
 	}
 #         $customer = "_Common for all customers_";
         $fixed_name = WikiCommons::fix_name ( $name, $customer );
-    } elsif ($dir_type eq "SC") {
-	$basic_url = "$name";
-	return 1;
+#     } elsif ($dir_type eq "SC") {
+# 	$basic_url = "$name";
     } else { die "Unknown document type: $dir_type.\n" }
 
     $basic_url = "$basic_url$url_sep$customer" if ($customer ne "");
 
-    if ($dir_type eq "Docs_POS") {
+    if ($dir_type eq "Docs_POS" && $name !~ m/^B[[:digit:]]{4,}\s+/) {
 	$fixed_name =~ s/$ver//g;
 	$fixed_name =~ s/^\s?pos[-_ \t]?//i;
 	$fixed_name = "POS $fixed_name";
@@ -222,12 +220,27 @@ sub add_document {
     $fixed_name = WikiCommons::capitalize_string( $fixed_name, 'first' );
     $fixed_name =~ s/\s+/ /g;
     my $page_url = "$fixed_name$basic_url";
+    $page_url =~ s/[\[\]\/]/ /g;
     $page_url =~ s/\s+/ /g;
 #     my $page_url_caps = WikiCommons::capitalize_string( $page_url, 'small' );
     die "No page for $doc_file.\n" if ($page_url eq "");
 
     ++$count_files;
     print "\tNumber of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n" if ($count_files%100 == 0);
+    ### SC notes
+    if ($name =~ m/^B[[:digit:]]{4,}\s+/){
+	$page_url = "SVN_SC:$page_url";
+	my @categories = ();
+# 	$main = "$main$url_sep"."SVN_SC", push @categories, $main if $main ne "";
+# 	$big_ver = "$big_ver$url_sep"."SVN_SC", push @categories, $big_ver if $big_ver ne "";
+# 	generate_categories("", $main, $big_ver, "", "SVN SC Documents", "");
+# 	push @categories, $customer;
+# 	print "$page_url\n".Dumper(@categories);
+# 	return 0;
+# 	print "We already have page $page_url.\n\t$rel_path\n".Dumper($pages_toimp_hash->{$page_url}) if defined $pages_toimp_hash->{$page_url};
+	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
+	return 0;
+    }
     ### Release Notes
     if ($dir =~ /\/(.*? )?Release Notes\//i) {
 	return 1 if $ver_fixed lt "5.00";
@@ -247,7 +260,7 @@ sub add_document {
 	push @categories, $main;
 	push @categories, $big_ver;
 	generate_categories("", $main, $big_ver, "", $dir_type, "");
-	die "RN $page_url already exists:\n\t$rel_path\n".Dumper($pages_toimp_hash->{$page_url}) if exists $pages_toimp_hash->{$page_url};
+	die "RN $page_url already exists:\n\t$rel_path\n".Dumper($pages_toimp_hash->{$page_url}) if defined $pages_toimp_hash->{$page_url};
 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
 	return 0;
     } else {
@@ -258,7 +271,7 @@ sub add_document {
 
 # print "2. $page_url\n";
     return 1 if $ver_fixed lt "5.00" && $ver_fixed ne "";
-    if (exists $pages_ver->{$page_url}->{'ver'} ){
+    if (defined $pages_ver->{$page_url}->{'ver'} ){
 	if ($pages_ver->{$page_url}->{'ver'} gt "$full_ver"){
 # print "skip $full_ver because we have $pages_ver->{$page_url}->{'ver'}\n";
 	    return 0;
@@ -281,7 +294,7 @@ sub add_document {
 
 	    if ($new ne $old) {
 		my $id = 1;
-		$id = $pages_ver->{$page_url}->{'id'} + 1 if (exists $pages_ver->{$page_url}->{'id'});
+		$id = $pages_ver->{$page_url}->{'id'} + 1 if (defined $pages_ver->{$page_url}->{'id'});
 # print "add extra $page_url because $full_ver is the same as $pages_ver->{$page_url}->{'ver'}\n";
 		my $new_url = $page_url."$url_sep"."$id";
 		push(@{$pages_ver->{$page_url}->{'urls'}}, $new_url);

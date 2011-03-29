@@ -2,6 +2,7 @@
 print "Start.\n";
 use warnings;
 use strict;
+
 $SIG{__WARN__} = sub { die @_ };
 
 # categories:
@@ -93,19 +94,19 @@ if ($options->{'r'}){
 
 my $all_real = "no";
 my $delete_everything = "no";
-my $delete_categories = "yes";
+# my $delete_categories = "yes";
 my $make_categories = "yes";
-my $big_dump_mode = "yes";
+my $big_dump_mode = "no";
 my $pid_old = "100000";
 my $type_old = "";
 
 if (defined $options->{'c'}) {
     if ($options->{'c'} =~ m/^y$/i){
-	$delete_categories = "yes";
+# 	$delete_categories = "yes";
 	$make_categories = "yes";
     }
     if ($options->{'c'} =~ m/^n$/i){
-	$delete_categories = "no";
+# 	$delete_categories = "no";
 	$make_categories = "no";
     }
 }
@@ -429,7 +430,6 @@ sub delete_categories {
 
     print "-Delete categories.\t". (WikiCommons::get_time_diff) ."\n";
     foreach my $category (@$files) {
-	$category = "Category:";
 	if ( -d "$categories_dir/$category" ) {
 	    print "\tDelete category $category.\t". (WikiCommons::get_time_diff) ."\n";
 	    my ($name,$dir,$suffix) = fileparse("$categories_dir/$category", qr/\.[^.]*/);
@@ -451,20 +451,22 @@ sub make_categories {
 	opendir(DIR, "$categories_dir") || die("Cannot open directory $categories_dir.\n");
 	@files = grep { (!/^\.\.?$/) && -d "$categories_dir/$_" } readdir(DIR);
 	closedir(DIR);
-	s/^Category:// for (@files);
+# 	s/^Category:// for (@files);
     }
 
     my $general_categories_hash = $coco->get_categories;
     my @crt_categories = (sort keys %$general_categories_hash);
+    s/^/Category:/ for (@crt_categories);
     my ($only_in1, $only_in2, $intersection) = WikiCommons::array_diff( \@files, \@crt_categories );
-# print Dumper($only_in1);print Dumper($only_in2);print Dumper($intersection);#exit 1;
+# print Dumper($only_in1);print Dumper($only_in2);print Dumper($intersection);exit 1;
 
-    delete_categories(\@files,$categories_dir) if ( $delete_categories eq "yes");
+    delete_categories($only_in1,$categories_dir);
     return if ($delete_everything eq "yes");
     print "-Making categories.\t". (WikiCommons::get_time_diff) ."\n";
-    foreach my $key (sort keys %$general_categories_hash) {
+#     foreach my $key (sort keys %$general_categories_hash) {
+    foreach my $key (@$only_in2) {
 	my $text = "----\n\n";
-	$url = "Category:$key";
+	$url = "$key";
 	if (ref $general_categories_hash->{$key}) {
 	    foreach my $sec_key (sort keys %{$general_categories_hash->{$key}} ) {
 		$text .= "\[\[Category:$sec_key\]\]\n" if exists $general_categories_hash->{$key}->{$sec_key} ;

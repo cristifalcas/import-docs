@@ -253,7 +253,9 @@ sub _image {
   return '' unless $node->attr('src');
 
   my $alt = $node->attr('alt') || '';
-  my $img = basename( URI->new($node->attr('src'))->path );
+  my $name = $node->attr('src');
+  $name = "./$name" if $name !~ m/^\.\//i;
+  my $img = basename( URI->new($name)->path );
   my $width = $node->attr('width') || '';
 
 #   return sprintf '[[Image:%s|%spx|%s]]', $img, $width, $alt if $alt and $width;
