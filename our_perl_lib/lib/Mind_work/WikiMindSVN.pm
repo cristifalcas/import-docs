@@ -231,12 +231,10 @@ sub add_document {
     if ($name =~ m/^B[[:digit:]]{4,}\s+/){
 	$page_url = "SVN_SC:$page_url";
 	my @categories = ();
-# 	$main = "$main$url_sep"."SVN_SC", push @categories, $main if $main ne "";
-# 	$big_ver = "$big_ver$url_sep"."SVN_SC", push @categories, $big_ver if $big_ver ne "";
-# 	generate_categories("", $main, $big_ver, "", "SVN SC Documents", "");
+	$main = "$main$url_sep"."SVN_SC", push @categories, $main if $main ne "";
+	$big_ver = "$big_ver$url_sep"."SVN_SC", push @categories, $big_ver if $big_ver ne "";
+	generate_categories("", $main, $big_ver, "", "SVN SC Documents", "");
 # 	push @categories, $customer;
-# 	print "$page_url\n".Dumper(@categories);
-# 	return 0;
 # 	print "We already have page $page_url.\n\t$rel_path\n".Dumper($pages_toimp_hash->{$page_url}) if defined $pages_toimp_hash->{$page_url};
 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
 	return 0;
