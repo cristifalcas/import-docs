@@ -220,8 +220,6 @@ sub add_document {
     $fixed_name = WikiCommons::capitalize_string( $fixed_name, 'first' );
     $fixed_name =~ s/\s+/ /g;
     my $page_url = "$fixed_name$basic_url";
-    $page_url =~ s/[\[\]\/]/ /g;
-    $page_url =~ s/\s+/ /g;
 #     my $page_url_caps = WikiCommons::capitalize_string( $page_url, 'small' );
     die "No page for $doc_file.\n" if ($page_url eq "");
 
