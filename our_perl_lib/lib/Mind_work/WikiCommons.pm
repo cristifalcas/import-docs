@@ -308,7 +308,7 @@ sub fix_name {
     $fixed_name =~ s/[-_ \t]$customer\s*$//i;
 
     $fixed_name =~ s/([[:digit:]])_/$1\./gi;
-    $fixed_name =~ s/[=\[\]\/#_]/ /g;
+    $fixed_name =~ s/[\[\]\/#_\"]/ /g;
 #     $fixed_name =~ s/_/ /gi;
     my $yet_another_version_style = $ver;
     if (defined $ver && defined $main) {

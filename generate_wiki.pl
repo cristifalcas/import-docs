@@ -165,7 +165,7 @@ sub create_wiki {
     $doc_file = "$work_dir/$new_file$suffix";
 
     if ( -f $doc_file ) {
-	WikiCommons::generate_html_file($doc_file);
+	WikiCommons::generate_html_file( $doc_file );
 	my $html_file = "$work_dir/$new_file.html";
 
 	if ( -f $html_file && ! -e ".~lock.$new_file#") {
@@ -221,7 +221,7 @@ sub get_existing_pages {
 	    next if ($dir eq "$wiki_dir/categories");
 	    $crt_nr++;
 	    print "\tDone $crt_nr from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($crt_nr%100 == 0);
-	    if ( -f "$dir/$wiki_files_info" && -f "$dir/$wiki_files_info") {
+	    if ( -f "$dir/$wiki_files_info" && -s "$dir/$wiki_files_info") {
 		open(FILE, "$dir/$wiki_files_info");
 		my @info_text = <FILE>;
 		close FILE;
@@ -231,11 +231,11 @@ sub get_existing_pages {
 		    next;
 		}
 
-		my $md5 = (split ('=', $info_text[$md5_pos]))[1];
-		my $rel_path = (split ('=', $info_text[$rel_path_pos]))[1];
-# 		$rel_path = Encode::decode ('utf8', $rel_path);
-		my $svn_url = (split ('=', $info_text[$svn_url_pos]))[1];
-		my $url_type = (split ('=', $info_text[$link_type_pos]))[1];
+		my $md5 = $info_text[$md5_pos]; $md5 =~ s/(.*?)=\s*//;
+		my $rel_path = $info_text[$rel_path_pos]; $rel_path =~ s/(.*?)=\s*//;
+		my $svn_url = $info_text[$svn_url_pos]; $svn_url =~ s/(.*?)=\s*//;
+		my $url_type = $info_text[$link_type_pos]; $url_type =~ s/(.*?)=\s*//;
+
 		if (!(defined $md5 && defined $rel_path && defined $url_type && defined $svn_url)){
 		    print "\tFile $dir/$wiki_files_info does not have the correct information.\n";
 		    next;
@@ -279,7 +279,6 @@ sub generate_new_updated_pages {
 	    delete($pages_toimp_hash->{$url});
 	} else {
 	    if (exists $pages_toimp_hash->{$url}) {
-# print Dumper($pages_local_hash->{$url});die;
 		print "Url $url will be updated because: \n\t\tcrt_md5\n\t\t\t$pages_local_hash->{$url}[$md5_pos] <> \n\t\t\t$pages_toimp_hash->{$url}[$md5_pos] or \n\t\tcrt_rel_path \n\t\t\t$pages_local_hash->{$url}[$rel_path_pos] <> \n\t\t\t$pages_toimp_hash->{$url}[$rel_path_pos].\n";
 	    } else {
 		print "Delete url $url because it doesn't exist anymore.\n";
@@ -458,7 +457,6 @@ sub make_categories {
     my @crt_categories = (sort keys %$general_categories_hash);
     s/^/Category:/ for (@crt_categories);
     my ($only_in1, $only_in2, $intersection) = WikiCommons::array_diff( \@files, \@crt_categories );
-# print Dumper($only_in1);print Dumper($only_in2);print Dumper($intersection);exit 1;
 
     delete_categories($only_in1,$categories_dir);
     return if ($delete_everything eq "yes");
@@ -588,9 +586,9 @@ sub work_link {
     my $md5_map = {};
     push @{$md5_map->{$to_keep->{$_}[$md5_pos]}{$to_keep->{$_}[$link_type_pos]}}, ($_) foreach (keys %$to_keep);
     foreach my $md5 (keys %$md5_map) {
-	my $nr_real = scalar @{ $md5_map->{$md5}{"real"} } if (exists $md5_map->{$md5}{"real"});
-	my $nr_link = scalar @{ $md5_map->{$md5}{"link"} } if (exists $md5_map->{$md5}{"link"});
-	die "We should only have ONE real link: real=$nr_real link=$nr_link.\n" if ($nr_real != 1 && $nr_link != 0);
+	my $nr_real = 0; $nr_real = scalar @{ $md5_map->{$md5}{"real"} } if (exists $md5_map->{$md5}{"real"});
+	my $nr_link = 0; $nr_link = scalar @{ $md5_map->{$md5}{"link"} } if (exists $md5_map->{$md5}{"link"});
+	die "We should only have ONE real link: real=$nr_real link=$nr_link.\n" if ($nr_real != 1);
     }
     my $total_nr = scalar keys %$pages_toimp_hash;
     my $crt_nr = 0;
@@ -651,6 +649,7 @@ sub work_begin {
 
 # print "$_\n" foreach sort keys %$pages_toimp_hash; exit 1;
     if (WikiCommons::is_remote ne "yes") {
+        die "Too many to delete.\n" if (keys %$to_delete) > 1000;
 	foreach my $url (sort keys %$to_delete) {
 	    print "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";
 	    $our_wiki->wiki_delete_page("$wiki_dir/$url/$wiki_files_uploaded");

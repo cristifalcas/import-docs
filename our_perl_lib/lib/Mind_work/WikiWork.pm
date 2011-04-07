@@ -192,6 +192,37 @@ sub wiki_import_files {
     print "\t+Uploading files for url $url.\t". (WikiCommons::get_time_diff) ."\n";
 }
 
+sub wiki_upload_file {
+    my ($self, $files) = @_;
+    $mw->{config}->{upload_url} = "$wiki_url/index.php/Special:Upload";
+# print Dumper($mw);
+    my @images = ();
+
+    if (ref($files) eq "ARRAY") {
+	@images = @$files;
+    } elsif (ref($files) eq "") {
+	push @images, $files;
+    } else {
+	die "as\n";
+    }
+    foreach my $img (@images) {
+	print "\t-Start uploading file $img.\n";
+	open FILE, "$img" or die $!;
+	binmode FILE;
+	my ($buffer, $data);
+	while ( read(FILE, $buffer, 65536) )  {
+	    $data .= $buffer;
+	}
+	close(FILE);
+# print Dumper($data);
+	my ($name,$dir,$suffix) = fileparse($img, qr/\.[^.]*/);
+	$mw->upload( { title => "$name$suffix",
+		    summary => 'This is the summary to go on the Image:file.jpg page',
+		    data => $data } ) || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+	print "\t+Start uploading file $img.\n";
+    }
+}
+
 sub wiki_exists_page {
     my ($self, $title) = @_;
     my $page = $mw->get_page( { title => "$title" } );
@@ -310,13 +341,14 @@ sub wiki_add_url {
     my ( $ref) = @_;
 
     foreach (@$ref) {
-	my $info = $_->{title};
+	my $info;
 # print Dumper($_);
 	if ( (scalar keys %$_) && defined $_->{'*'}) {
-# 	    chomp  $_->{'*'};
-# 	    push @$array, $_->{'*'}."\n";
-# 	    next;
 	    $info = $_->{'*'};
+	} elsif ((scalar keys %$_) && defined $_->{'name'}) {
+	    $info = $_->{name};
+	} else {
+	    $info = $_->{title};
 	}
 	chomp $info;
 	push @$array, $info;

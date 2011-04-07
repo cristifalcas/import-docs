@@ -218,6 +218,7 @@ sub add_document {
     $fixed_name = fix_naming($fixed_name, $customer) if ($dir !~ /\/(.*? )?Release Notes\//i);
     $fixed_name = WikiCommons::normalize_text( $fixed_name );
     $fixed_name = WikiCommons::capitalize_string( $fixed_name, 'first' );
+    $fixed_name =~ s/[\+\$]/ /g;
     $fixed_name =~ s/\s+/ /g;
     my $page_url = "$fixed_name$basic_url";
 #     my $page_url_caps = WikiCommons::capitalize_string( $page_url, 'small' );
@@ -338,13 +339,13 @@ sub get_documents {
 	print "-Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
 	$count_files = 0;
 	find ({
-	    wanted => sub { add_document ($File::Find::name, $append_dir, "$self->{path_files}", "$url_sep") if -f && (/(\.doc|\.docx|\.rtf)$/i) },},
+	    wanted => sub { add_document ($File::Find::name, $append_dir, "$self->{path_files}", "$url_sep") if -f && (/(\.doc|\.docx|\.rtf)$/i || /.*parameter.*Description.*\.xls$/i) },},
 	    "$self->{path_files}/$append_dir"
 	    ) if  (-d "$self->{path_files}/$append_dir");
-	find ({
-	    wanted => sub { add_document ($File::Find::name, $append_dir, "$self->{path_files}", "$url_sep") if -f && /.*parameter.*Description.*\.xls$/i },},
-	    "$self->{path_files}/$append_dir"
-	    ) if  (-d "$self->{path_files}/$append_dir");
+# 	find ({
+# 	    wanted => sub { add_document ($File::Find::name, $append_dir, "$self->{path_files}", "$url_sep") if -f && /.*parameter.*Description.*\.xls$/i },},
+# 	    "$self->{path_files}/$append_dir"
+# 	    ) if  (-d "$self->{path_files}/$append_dir");
 	print "\tTotal number of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n";
 	print "+Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
     }

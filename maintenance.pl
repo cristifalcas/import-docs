@@ -93,18 +93,20 @@ sub fix_wiki_sc_type {
   my $hash = $namespaces->{'redir'};
   foreach my $ns (keys %$hash){
     $array = $our_wiki->wiki_get_nonredirects("$hash->{$ns}");
+    print "Found ". (scalar @$array) . " pages in namespace $ns.\n" if defined $array;
     foreach my $url (@$array) {
       print "rm redir page $url\n";
-      $our_wiki->wiki_delete_page($url) if ( $our_wiki->wiki_exists_page("$url") && ! $view_only);
+      $our_wiki->wiki_delete_page($url) if ( ! $view_only && $our_wiki->wiki_exists_page("$url") );
     }
   }
 
   $hash = $namespaces->{'real'};
   foreach my $ns (keys %$hash){
     $array = $our_wiki->wiki_get_redirects("$hash->{$ns}");
+    print "Found ". (scalar @$array) . " pages in namespace $ns.\n" if defined $array;
     foreach my $url (@$array) {
       print "rm real page $url\n";
-      $our_wiki->wiki_delete_page($url) if ( $our_wiki->wiki_exists_page("$url") && ! $view_only);
+      $our_wiki->wiki_delete_page($url) if ( ! $view_only && $our_wiki->wiki_exists_page("$url") );
     }
   }
 
@@ -169,10 +171,10 @@ sub unused_images_dirty {
       $elem =~ s/%27/'/g;
       $elem =~ s/%26/&/g;
       print "rm file $elem.\n";
-      if (! $our_wiki->wiki_exists_page("$elem")) {
-	print "add page \n\t$elem.\n";
-	$our_wiki->wiki_edit_page("$elem", "----") if ( ! $view_only);
-      }
+#       if (! $our_wiki->wiki_exists_page("$elem")) {
+# 	print "add page \n\t$elem.\n";
+# 	$our_wiki->wiki_edit_page("$elem", "----") if ( ! $view_only);
+#       }
       $our_wiki->wiki_delete_page("$elem") if ( ! $view_only);
   }
 }
@@ -205,13 +207,19 @@ sub fix_missing_files {
   my $res = get_results($link);
   my $missing = {};
   foreach my $elem (@$res){
+    next if $elem eq "Special:WhatLinksHere";
+    $elem =~ s/ \(page does not exist\)//;
     my $arr = $our_wiki->wiki_get_pages_using("$elem");
-    foreach my $file (@$arr) {
-      print "rm page $file\n";
-      $our_wiki->wiki_delete_page($file) if ( $our_wiki->wiki_exists_page("$file") && ! $view_only);
+    foreach my $page (@$arr) {
+	print "Get page $page for file $elem.\n";
+	$missing->{$page} = 1;
     }
   }
-
+  foreach my $page (keys %$missing) {
+      next if $page eq "CMS:MIND-IPhonEX CMS 80.00.020" && $page !~ m/[a-b _]+:/i;
+      print "rm page $page.\n";
+      $our_wiki->wiki_delete_page($page) if ( $our_wiki->wiki_exists_page("$page") && ! $view_only);
+  }
 }
 
 sub getlocalpages {
@@ -222,7 +230,6 @@ sub getlocalpages {
   my @alldirs = grep { (!/^\.\.?$/) && m/workfor/ && -d "$workdir/$_" } readdir(DIR);
   closedir(DIR);
 
-  my @allfiles = ();
   foreach my $adir (@alldirs) {
     opendir(DIR, "$workdir/$adir") || die("Cannot open directory $adir: $!.\n");
     print "Get local files from $adir: ";
@@ -252,6 +259,43 @@ sub getlocalpages {
     print "$count\n";
   }
   return $local_pages;
+}
+
+sub getlocalimages {
+  our $namespaces = shift;
+  use File::Find;
+  our $local_pages = {};
+  print "Get local images.\n";
+  our $count = 0;
+  sub process_file {
+      my ($file, $full_path) = @_;
+      $count++;
+      $local_pages->{$file} = "$full_path";
+#       die if $count >10;
+  };
+
+  my $images_dir = "/var/www/html/wiki/images/";
+  opendir(DIR, "$images_dir") || die("Cannot open directory $images_dir: $!.\n");
+  my @alldirs = grep { (!/^\.\.?$/) && m/^.$/ && -d "$images_dir/$_" } readdir(DIR);
+  closedir(DIR);
+  foreach my $dir (@alldirs) {
+    eval {find ({wanted => sub { process_file ($_,$File::Find::name) if -f $_ },}, "$images_dir/$dir")};
+  }
+
+  return $local_pages;
+}
+
+sub getdbimages {
+  use DBI;
+  my $files = {};
+  my $db = DBI->connect('DBI:mysql:wikidb', 'wikiuser', '!0wikiuser@9') || die "Could not connect to database: $DBI::errstr";
+  my $sql_query="select distinct il_to from imagelinks";
+  my $query = $db->prepare($sql_query);
+  $query->execute();
+  while (my ($file) = $query->fetchrow_array ){
+    $files->{"$file"} = 1;
+  }
+  return $files;
 }
 
 sub getwikipages {
@@ -303,6 +347,28 @@ sub syncronize_local_wiki {
     }
 }
 
+sub fix_images {
+  my $namespaces = shift;
+
+  my $wiki_images = $our_wiki->wiki_get_all_images();
+  my $local_images = getlocalimages($namespaces);
+  my @local_images = keys %$local_images;
+#   my $db_images = getdbimages;
+#   my @db_images = keys %$db_images;
+
+#   my ($only_in1, $only_in2, $common) = WikiCommons::array_diff( \@db_images, $wiki_images);
+#   ## Files are not imported for those, but are used (missing files):
+#   print Dumper($only_in1);
+#   ## Nobody links here (unused files):
+#   print Dumper($only_in2);
+
+  my ($only_in_wiki, $only_in_fs, $common_all) = WikiCommons::array_diff( $wiki_images, \@local_images);
+  ## Files are missing from the fs
+  print Dumper($only_in_wiki);
+  ## Files found here are not used
+  print Dumper($only_in_fs);
+}
+
 if ( -f "new 1.txt" ) {
     open(DAT, "new 1.txt") || die("Could not open file!");
     my @raw_data=<DAT>;
@@ -317,33 +383,29 @@ if ( -f "new 1.txt" ) {
 	}
     }
 }
-# exit 1;
-print "##### Fix wiki sc type:\n";
+
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
-# print Dumper($namespaces);
+
+# # print Dumper($namespaces);
+print "##### Fix wiki sc type:\n";
 fix_wiki_sc_type($namespaces);
-print "##### Get unused categories:\n";
-my $unused = unused_categories();
-print "##### Get missing categories:\n";
-my $wanted = wanted_categories();
 print "##### Fix broken redirects:\n";
 broken_redirects;
 print "##### Fix double redirects:\n";
 scdoubleredirects;
-# print "##### Fix missing files:\n";
-# fix_missing_files();
+print "##### Fix missing files:\n";
+fix_missing_files();
 print "##### Remove unused images:\n";
 unused_images_dirty;
-print "##### Wanted pages:\n";
-my ($cat, $sc, $crm, $other) = fix_wanted_pages();
-# my @arr1 = @$unused;
-# my @arr2 = (@$wanted, @$cat);
-# my ($only_in1, $only_in2, $common) = WikiCommons::array_diff( \@arr1, \@arr2 );
-# system("/media/share/Documentation/cfalcas/q/import_docs/update_customers.pl", "/media/share/Documentation/cfalcas/q/import_docs/", @$only_in2, @$common);
-# print Dumper($only_in2, $common);
-print Dumper($unused, $wanted, $cat, $sc, $crm, $other);
-# exit 1;
+# print "##### Wanted pages:\n";
+# my ($cat, $sc, $crm, $other) = fix_wanted_pages();
+# print "##### Get unused categories:\n";
+# my $unused = unused_categories();
+# print "##### Get missing categories:\n";
+# my $wanted = wanted_categories();
+print "##### Syncronize wiki files with fs files.\n";
+# fix_images($namespaces);
 print "##### Syncronize:\n";
 $local_pages = getlocalpages($namespaces);
 $wiki_pages = getwikipages($namespaces);

@@ -149,7 +149,6 @@ WikiCommons::write_file("$dir/".++$i.". tree_clean_div.$name.html", tree_to_html
 
     $tree = tree_clean_span($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_clean_span.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
-
     $tree = tree_clean_font($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_clean_font.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
 
@@ -161,7 +160,8 @@ WikiCommons::write_file("$dir/".++$i.". tree_clean_headings.$name.html", tree_to
 
     $tree = tree_clean_lists($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_clean_lists.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
-
+    $tree = tree_clean_span_to_div($tree);
+WikiCommons::write_file("$dir/".++$i.". tree_clean_span_to_div.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
 ## can't do it
 #     $html = html_fix_html_tabs($html);
 # WikiCommons::write_file("$dir/html_fix_html_tabs.$name.html", $html, 1);
@@ -274,6 +274,24 @@ sub tree_remove_empty_element {
     if ( $a_tag->as_text =~ m/^\s*$/ && ! $has_content ) {
 	$a_tag->detach;
     }
+}
+
+sub tree_clean_span_to_div {
+    my ($tree, $tag) = @_;
+    ## multiline span
+    foreach my $a_tag ($tree->guts->look_down(_tag => "span")) {
+	my $multi = 0;
+	my $txt = "";
+	$multi++ if scalar $a_tag->look_down(_tag => "br");
+# 	foreach my $content ($a_tag->content_list()) {
+# 	    next if (ref $content);
+# 	    $multi++ if $content =~ m/\n{2,}/s;
+# 	    $txt .= $content;
+# 	}
+ $a_tag->tag("mind_tag") if $multi;
+# print $a_tag->as_text."\n" if $multi;
+    }
+    return $tree;
 }
 
 sub tree_clean_span {
@@ -627,7 +645,6 @@ sub html_tidy {
 
 sub make_wiki_from_html {
     my $html_file = shift;
-#     my $html_file = "./MINDBill 6.60.003 Manager User Manual.html";
     my ($name,$dir,$suffix) = fileparse($html_file, qr/\.[^.]*/);
 
     open (FILEHANDLE, "$html_file") or die "at wiki from html Can't open file $html_file: ".$!."\n";
@@ -649,12 +666,14 @@ sub make_wiki_from_html {
     WikiCommons::write_file("$dir/parsed.$name.html", $parsed_html, 1) if $debug eq "yes";
 
     print "\t+Generating wiki file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
+    $wiki =~ s/mind_tag/div/gm;
 
     my $image_files = ();
     print "\t-Fixing wiki.\t". (WikiCommons::get_time_diff) ."\n";
 #     $wiki =~ s/[ ]{8}/\t/gs;
     $wiki = fix_wiki_chars($wiki);
 WikiCommons::write_file("$dir/fix_wiki_chars.$name.txt", $wiki, 1) if $debug eq "yes";
+# exit 1;
     $image_files = get_wiki_images( $wiki, $image_files, $dir );
 WikiCommons::write_file("$dir/get_wiki_images.$name.txt", $wiki, 1) if $debug eq "yes";
     $wiki = fix_wiki_footers( $wiki );
@@ -718,6 +737,10 @@ sub fix_small_issues {
     ## remove consecutive blank lines
     $wiki =~ s/(\n){4,}/\n\n/gs;
     $wiki =~ s/^[ \t]+//mg;
+    ## collapse spaces
+    $wiki =~ s/[ \t]{2,}/ /mg;
+    ## remove  unnecessary new lines
+    $wiki =~s/([a-z])\n([a-z])/$1 $2/mgi;
     ## more new lines for menus and tables
     $wiki =~ s/^([ \t]*=+[ \t]*)(.*?)([ \t]*=+[ \t]*)$/\n\n$1$2$3\n/gm;
     $wiki =~ s/^\{\|(.*)$/\n\{\|$1 {{prettytable}} /mg;
