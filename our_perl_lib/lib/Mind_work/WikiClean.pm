@@ -147,10 +147,10 @@ WikiCommons::write_file("$dir/".++$i.". tree_clean_empty_p.$name.html", tree_to_
     $tree = tree_clean_div($tree) || return undef;
 WikiCommons::write_file("$dir/".++$i.". tree_clean_div.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
 
-    $tree = tree_clean_span($tree);
-WikiCommons::write_file("$dir/".++$i.". tree_clean_span.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
     $tree = tree_clean_font($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_clean_font.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
+    $tree = tree_clean_span($tree);
+WikiCommons::write_file("$dir/".++$i.". tree_clean_span.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
 
     $tree = tree_clean_tables($tree) || return undef;
 WikiCommons::write_file("$dir/".++$i.". tree_clean_tables.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
@@ -272,7 +272,7 @@ sub tree_remove_empty_element {
     }
 
     if ( $a_tag->as_text =~ m/^\s*$/ && ! $has_content ) {
-	$a_tag->detach;
+	$a_tag->replace_with_content;
     }
 }
 
