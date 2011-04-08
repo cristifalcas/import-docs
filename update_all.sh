@@ -58,6 +58,9 @@ case "$1" in
 "update_customers")
     $CMD "$SCRIPT_PATH"/update_customers.pl "$SCRIPT_PATH"/ &> "$LOG_PATH"update_customers &
   ;;
+"maintenance")
+    $CMD "$SCRIPT_PATH"/maintenance.pl 0 &> "$LOG_PATH"maintenance &
+  ;;
 *)
     echo "Incorrect parameter"
     exit 1

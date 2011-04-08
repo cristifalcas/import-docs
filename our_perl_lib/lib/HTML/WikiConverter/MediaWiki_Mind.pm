@@ -145,7 +145,7 @@ sub rules {
     a   => { replace => \&_link },
 
     ul => { line_format => 'multi', block => 1, preserve => 1 },
-    ol => { line_format => 'multi', block => 1, preserve => 1, attributes => [ @common_attrs, qw/ start / ] },
+    ol => { line_format => 'multi', block => 1, preserve => 1, attributes => [ @common_attrs, qw/ start type / ] },
     dl => { line_format => 'multi', block => 1 },
 
     li => { preserve => 1 },
@@ -160,7 +160,7 @@ sub rules {
     ins        => { preserve => 1, attributes => [ @common_attrs, qw/ cite datetime / ] },
 #     font       => { preserve => 1, attributes => [ @common_attrs, qw/ size color face / ] },
     font       => { preserve => 1, attributes => [ @common_attrs, qw/ color / ] },
-    mind_tag       => { preserve => 1, attributes => \@block_attrs  },
+    mind_tag   => { preserve => 1, attributes => \@block_attrs  },
     # Headings (h1-h6)
     h1 => { start => \&_hr_start, end => \&_hr_end, block => 1, trim => 'both', line_format => 'single' },
     h2 => { start => \&_hr_start, end => \&_hr_end, block => 1, trim => 'both', line_format => 'single' },
