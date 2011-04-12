@@ -819,6 +819,8 @@ sub fix_wiki_chars {
     $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{bb}/\x{e2}\x{9c}\x{98}/gsi;
     ## CIRCLE BACKSLASH
     $wiki =~ s/\x{EF}\x{81}\x{2014}/\x{e2}\x{9c}\x{98}/gsi;
+    ## some strange spaces
+    $wiki =~ s/\x{c2}\x{a0}/ /gsi;
 
     $wiki =~ s/\x{ef}\x{80}\x{b2}/2/gsi;
     $wiki =~ s/\x{ef}\x{80}\x{b0}/0/gsi;
