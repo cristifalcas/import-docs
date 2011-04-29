@@ -99,6 +99,7 @@ my $make_categories = "yes";
 my $big_dump_mode = "no";
 my $pid_old = "100000";
 my $type_old = "";
+my $failed = {};
 
 if (defined $options->{'c'}) {
     if ($options->{'c'} =~ m/^y$/i){
@@ -541,6 +542,7 @@ sub insertdata {
 	WikiCommons::makedir("$name_bad");
 	WikiCommons::move_dir("$work_dir","$name_bad");
     }
+    delete $failed->{$url};
 }
 
 sub work_real {
@@ -657,7 +659,9 @@ sub work_begin {
 	    remove_tree("$wiki_dir/$url") || die "Can't remove dir $wiki_dir/$url: $?.\n";
 	}
     }
+    use Storable qw(dclone);
 
+    $failed = dclone($pages_toimp_hash);
 #    return ($to_delete, $to_keep);
     return $to_keep;
 }
@@ -725,7 +729,7 @@ if ($path_type eq "mind_svn") {
 	    $crt_name =~ s/(CRM.*)?:(.*)/$2/i;
 	    print "\tmake redirect from CRM:$crt_name to $url.\n";
 	    $our_wiki->wiki_delete_page("$url") if $our_wiki->wiki_exists_page("$url");
-# 	    next if defined $wrong_hash->{$url};
+	    next if defined $wrong_hash->{$url};
 	    $our_wiki->wiki_move_page("CRM:$crt_name", "$url");
 
 	    my $text = "md5 = ".$pages_toimp_hash->{$url}[$md5_pos]."\n";
@@ -737,6 +741,7 @@ if ($path_type eq "mind_svn") {
 	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
 	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_info", $text);
 	    delete($pages_toimp_hash->{$url});
+	    delete $failed->{$url};
 	    next;
 	}
 
@@ -803,6 +808,7 @@ if ($path_type eq "mind_svn") {
 	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
 	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_info", $text);
 	    delete($pages_toimp_hash->{$url});
+	    delete $failed->{$url};
 	    next;
 	}
 
@@ -989,5 +995,7 @@ sub quick_and_dirty_html_to_wiki {
 }
 
 # quick_and_dirty_html_to_wiki
+@tmp = (sort keys %$failed);
+print "Failed:\n".Dumper(@tmp) if @tmp;
 print "End.\n";
 unlink("$pid_file") or die "Could not delete the file $pid_file: ".$!."\n";

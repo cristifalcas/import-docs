@@ -467,6 +467,7 @@ sub get_correct_customer{
     return "" if $name =~ m/^\s*$/;
 
     return "AFRIPA" if $name eq "Afripa Telecom";
+    return "SIW" if $name =~ m/^SI$/i;
     return "VDC" if $name eq "VTI";
     return "TELEFONICA PERU" if $name eq "Telefonica Del Peru" || $name eq "Telefonica - Peru";
     return "Budget Tel" if $name eq "Budgettel";
