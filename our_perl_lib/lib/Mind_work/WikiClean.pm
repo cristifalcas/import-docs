@@ -743,7 +743,7 @@ sub fix_small_issues {
     $wiki =~s/([a-z])\n([a-z])/$1 $2/mgi;
     ## more new lines for menus and tables
     $wiki =~ s/^([ \t]*=+[ \t]*)(.*?)([ \t]*=+[ \t]*)$/\n\n$1$2$3\n/gm;
-    $wiki =~ s/^\{\|(.*)$/\n\{\|$1 {{prettytable}} /mg;
+    $wiki =~ s/^\{\|(.*)$/\n\{\|$1 class="wikitable" /mg;
     $wiki =~ s/\|}\s*{\|/\|}\n\n\n{\|/mg;
     $wiki =~ s/^[:\s]*$//gm;
     return $wiki;

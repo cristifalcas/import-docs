@@ -65,7 +65,7 @@ sub write_customer {
     my $sup_mng = "";
     $sup_mng = $hash->{'Support Team Manager'} if defined $hash->{'Support Team Manager'};
 
-    $txt .= "{| {{prettytable}}
+    $txt .= "{| class=\"wikitable\"
 ! Account Manager
 ! Project Manager
 ! Support Team Manager

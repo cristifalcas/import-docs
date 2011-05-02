@@ -529,7 +529,7 @@ sub write_intro {
     $wiki .=  "\'\'\'Incharge\'\'\': $hash->{'incharge'}->{'first_name'} $hash->{'incharge'}->{'last_name'} ([mailto:$hash->{'incharge'}->{'email'} $hash->{'incharge'}->{'email'}])\n" if (keys %{$hash->{'incharge'}});
     my $type = $hash->{'type'} || '';
     $wiki .="
-{| {{prettytable}}
+{| class=\"wikitable\"
 | \'\'\'Type\'\'\'
 | \'\'\'Category\'\'\'
 | \'\'\'Customer category\'\'\'

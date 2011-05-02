@@ -729,7 +729,7 @@ if ($path_type eq "mind_svn") {
 	    $crt_name =~ s/(CRM.*)?:(.*)/$2/i;
 	    print "\tmake redirect from CRM:$crt_name to $url.\n";
 	    $our_wiki->wiki_delete_page("$url") if $our_wiki->wiki_exists_page("$url");
-	    next if defined $wrong_hash->{$url};
+# 	    next if defined $wrong_hash->{$url};
 	    $our_wiki->wiki_move_page("CRM:$crt_name", "$url");
 
 	    my $text = "md5 = ".$pages_toimp_hash->{$url}[$md5_pos]."\n";
