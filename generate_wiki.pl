@@ -223,6 +223,8 @@ sub get_existing_pages {
 	    $crt_nr++;
 	    print "\tDone $crt_nr from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($crt_nr%100 == 0);
 	    if ( -f "$dir/$wiki_files_info" && -s "$dir/$wiki_files_info") {
+		my ($name,$dir_dir,$suffix) = fileparse($dir, qr/\.[^.]*/);
+# 		next if ("$name$suffix" !~ m/B31964$/);
 		open(FILE, "$dir/$wiki_files_info");
 		my @info_text = <FILE>;
 		close FILE;
@@ -246,7 +248,6 @@ sub get_existing_pages {
 		$svn_url =~ s/(^\s+|\s+$)//g;
 		$url_type =~ s/(^\s+|\s+$)//g;
 		die "\tWe already have this url. But this is insane...\t". (WikiCommons::get_time_diff) ."\n" if (exists $pages_toimp_hash->{$dir});
-		my ($name,$dir,$suffix) = fileparse($dir, qr/\.[^.]*/);
 		$pages_local_hash->{"$name$suffix"} = [$md5, $rel_path, $svn_url, $url_type, []];
 		++$count_files;
 	    } else {
@@ -781,7 +782,7 @@ if ($path_type eq "mind_svn") {
     my $wrong_hash = {};
     foreach my $url (sort keys %$pages_toimp_hash) {
 	$crt_nr++;
-# next if "$url" !~ "B608142";
+next if "$url" !~ "B31964";
 	WikiCommons::reset_time();
 	print "\n************************* $crt_nr of $total_nr\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 

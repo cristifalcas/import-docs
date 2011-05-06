@@ -64,6 +64,9 @@ my $svn_update = "yes";
 my $force_db_update = "no";
 my $bulk_svn_update = "no";
 
+my $ppt_local_files_prefix="/mnt/wiki_files/wiki_files/ppt_as_flash/";
+my $ppt_apache_files_prefix="10.0.0.99/presentations/";
+
 die "Templare file missing.\n" if ! -e $general_template_file;
 
 our $time = time();
@@ -219,7 +222,7 @@ sub general_info {
     $general =~ s/%parent_id%/SC:@$info[$index->{'parent_change_id'}]\|@$info[$index->{'parent_change_id'}]/;
     my $related_tasks = "";
     my @related = split ',', @$info[$index->{'relatedtasks'}];
-    for (my $i=0;$i<@related;$i++){
+    for (my $i=0; $i<@related; $i++){
 	my $task = $related[$i];
 	$task =~ s/(^\s*)|(\s*$)//g;
 
@@ -244,10 +247,12 @@ sub general_info {
 	$tmp = @$info[$index->{'fixesdescription'}];
 	$tmp =~ s/\r?\n/ <br\/>\n/g;
 	$tmp =~ s/^(\*|\#|\;|\:|\=|\!|\||----|\{\|)/<nowiki>$1<\/nowiki>/gm;
+	$tmp =~ s/([a-z][0-9]{4,})/[[SC:$1|$1]]/gmi;
 	$general =~ s/%fix_description%/\'\'\'Fix descrption\'\'\':\n\n$tmp/;
     } else {
 	$general =~ s/%fix_description%//;
     }
+    $general =~ s/\n{3,}/\n\n\n/gm;
 
     return ($general, \@categories);
 }
@@ -759,21 +764,36 @@ sub write_control_file {
     write_file("$dir/$files_info", "$text");
 }
 
-# sub move_dir {
-#     my ($src, $trg) = @_;
-#     die "\tTarget $trg is a file.\n" if (-f $trg);
-#     WikiCommons::makedir("$trg", 1) if (! -e $trg);
-# # 	move("$src", "$trg") or die "Move dir $src to $trg failed: $!\n";
-# #     } else {
-#     opendir(DIR, "$src") || die("Cannot open directory $src.\n");
-#     my @files = grep { (!/^\.\.?$/) } readdir(DIR);
-#     closedir(DIR);
-#     foreach my $file (@files){
-# 	move("$src/$file", "$trg/") or die "Move file $src/$file to $trg failed: $!\n";
-#     }
-#     remove_tree("$src");
-# #     }
-# }
+sub search_for_presentations {
+    my ($ftp_ip, $ftp_def, $ftp_market, $ftp_test, $change_id) = @_;
+    my $local_path = "$ppt_local_files_prefix/$ftp_ip";
+    my $apache_path = "$ppt_apache_files_prefix/$ftp_ip";
+    my $i = 0;
+    my $control = "";
+    my $text = ();
+    foreach my $dir ($ftp_def, $ftp_market, $ftp_test) {
+      my $q = "$local_path/$dir/$change_id/";
+      my $w = "$apache_path/$dir/$change_id/";
+      foreach my $file (sort <$q/*>){
+	$i++;
+	next if $file !~m/\.swf$/i;
+	my ($name, $dir, $suffix) = fileparse($file, qr/\.[^.]*/);
+	my $apache_file = "$w$name$suffix";
+	$apache_file =~ s/\/+/\//g;
+# 	print "$file\n";
+	$apache_file = uri_escape( $apache_file,"^A-Za-z\/:0-9\-\._~%" );
+# 	push @$links, "http://$apache_file";
+	$text .= "
+\n<big><toggledisplay status=\"hide\" showtext=\"$name\" hidetext=\"Close presentation\">
+<small>To open the presentation in a new tab, click [http://$apache_file here].</small>
+<swf width=\"800\" height=\"500\" >http://$apache_file</swf>
+</toggledisplay></big>\n";
+# 	print "http://$apache_file\n";
+	$control .= "$name";
+      }
+    }
+    return ($text, $control);
+}
 
 sub clean_existing_dir {
     my ($change_id, $svn_docs) = @_;
@@ -846,7 +866,7 @@ if ($bulk_svn_update eq "yes"){
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
 #     next if $change_id ne "B099953";
-# next if $change_id ne "H600021";
+# next if $change_id ne "B31964";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -893,11 +913,15 @@ foreach my $change_id (sort keys %$crt_hash){
 	}
     }
 
+    my ($presentations, $control) = search_for_presentations(@$info_comm[$index_comm->{'FTP_IP'}], @$info_comm[$index_comm->{'FTP_def_attach'}], @$info_comm[$index_comm->{'FTP_market_attach'}], @$info_comm[$index_comm->{'FTP_test_attach'}], $change_id);
     ## db update
     my $arr = $crt_hash->{$change_id};
     $crt_info->{'SC_info'}->{'name'} = @$arr[0];
-    $crt_info->{'SC_info'}->{'size'} = @$arr[1];
+#     $crt_info->{'SC_info'}->{'size'} = @$arr[1];
+    $crt_info->{'SC_info'}->{'size'} = @$arr[1].$control."v1.4";
     $crt_info->{'SC_info'}->{'revision'} = @$arr[2];
+
+# print Dumper($index_comm);print Dumper($info_comm);
     my $cat = ();
     if ( ! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) || $update_control_file || $force_db_update eq "yes" ) {
  	print "\tUpdate SC info.\n";
@@ -924,7 +948,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	    $link =~ s/\s/%20/g;
 	    $txt .= "\nMissing \'\'\'$key\'\'\' from [$link this] svn address, but database says it should exist.\n";
 	}
-
+	$txt .= "\n'''Presentations'''\n\nThe following presentations were found for this ".lc(@$info_ret[$index->{'changetype'}])." (either made by Q&A or attached to it):".$presentations if $presentations ne "";
 	write_file ("$work_dir/General_info.wiki" ,$txt);
 	write_rtf ("$work_dir/1 Market_SC.rtf", @$info_ret[$index->{'Market_SC'}]);
 	write_rtf ("$work_dir/2 Description_SC.rtf", @$info_ret[$index->{'Description_SC'}]);

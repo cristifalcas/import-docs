@@ -61,6 +61,9 @@ case "$1" in
 "maintenance")
     $CMD "$SCRIPT_PATH"/maintenance.pl 0 &> "$LOG_PATH"maintenance &
   ;;
+"update_ppt")
+    $CMD "$SCRIPT_PATH"/update_PPT.pl "$WIKI_DIR_PATH/ftp_mirror/" "$WIKI_DIR_PATH/ppt_as_flash/"  &> "$LOG_PATH"update_ppt &
+  ;;
 *)
     echo "Incorrect parameter"
     exit 1

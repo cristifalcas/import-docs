@@ -30,11 +30,16 @@ use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."./our_perl_lib/lib";
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 use File::Path qw(remove_tree);
-use Mind_work::WikiWork;
-use Mind_work::WikiCommons;
+use DBI;
 use HTML::TreeBuilder::XPath;
 use Encode;
+use POSIX;
+use Date::Calc qw(:all);
 
+use Mind_work::WikiWork;
+use Mind_work::WikiCommons;
+
+my $dbh;
 my $workdir = "/media/share/Documentation/cfalcas/q/import_docs/work/";
 my $our_wiki;
 $our_wiki = new WikiWork();
@@ -85,6 +90,245 @@ sub get_results {
   }
   $tree->delete;
   return \@res;
+}
+
+sub sql_connect {
+    my ($ip, $sid, $user, $pass) = @_;
+    $dbh=DBI->connect("dbi:Oracle:host=$ip;sid=$sid", "$user", "$pass")|| die( $DBI::errstr . "\n" );
+    $dbh->{AutoCommit}    = 0;
+    $dbh->{RaiseError}    = 1;
+    $dbh->{ora_check_sql} = 0;
+    $dbh->{RowCacheSize}  = 16;
+    $dbh->{LongReadLen}   = 52428800;
+    $dbh->{LongTruncOk}   = 0;
+}
+
+sub sql_get_crm_info_for_user {
+  my $name = shift;
+#   print "$name\n";
+  my @names = split (/\./, $name);
+  die "numele nu stiu ce sa fac cu el: $name.\n" if @names != 2;
+
+  my $SEL_MODULES = "
+select t.rscmainrecsubject,
+       t.rscmainrecscno,
+       a.rcustcompanycode,
+       a.rcustiddisplay,
+       t.rscmainreclasteventdate,
+       rscmainrecservicestatus
+  from tblscmainrecord      t,
+       tblcustomers         a,
+       tblsuppdept          b,
+       tbldeptsforcustomers c,
+       tblsupportstaff      q
+ where rscmainrecservicestatus not in ('AAC', 'CCC', 'cld')
+   and t.rscmainreccustcode = a.rcustcompanycode
+   and a.rcustcompanycode = c.rdeptcustcompanycode
+   and b.rsuppdeptcode = c.rdeptcustdeptcode
+   and c.rcuststatus = 'A'
+   and a.rcuststatus = 'A'
+   and b.rsuppdeptstatus = 'A'
+   and c.ractivitydate = (select max(ractivitydate)
+                            from tbldeptsforcustomers
+                           where rdeptcustcompanycode = a.rcustcompanycode
+                             and rcuststatus = 'A')
+   and lower(q.rsuppstafflastname) = '".lc($names[1])."'
+   and lower(rsuppstafffirstname) = '".lc($names[0])."'
+   and rscmainrecenggincharge = q.rsuppstaffenggcode
+ order by 1";
+  my $sth = $dbh->prepare($SEL_MODULES);
+  $sth->execute();
+  my $info = {};
+  my $i = 0;
+  while ( my @row=$sth->fetchrow_array() ) {
+      die "too many rows for table.\n" if @row != 6;
+      $info->{$i}->{'subj'} = $row[0];
+      $info->{$i}->{'sc_no'} = $row[1];
+      $info->{$i}->{'comp_code'} = $row[2];
+      $info->{$i}->{'cust_disp'} = $row[3];
+      $info->{$i}->{'last_event'} = $row[4];
+      $info->{$i}->{'status'} = $row[5];
+      $i++;
+  }
+
+  foreach my $j (keys %$info) {
+      $SEL_MODULES = "
+select rscrefnum1, rscrefnum2
+  from tblscrefnum w
+ where w.rscrefcust = ".$info->{$j}->{'comp_code'}."
+   and w.rscrefscno = ".$info->{$j}->{'sc_no'}."
+   and (REGEXP_LIKE(w.rscrefnum1, '[a-zA-Z][0-9]{1,}') or
+       REGEXP_LIKE(w.rscrefnum2, '[a-zA-Z][0-9]{1,}'))";
+      my $sth = $dbh->prepare($SEL_MODULES);
+      $sth->execute();
+      while ( my @row=$sth->fetchrow_array() ) {
+	  die "too many rows for table.\n" if @row != 2;
+	  $info->{$j}->{'bug1'} = $row[0] if $row[0] !~ m/^\s*$/;
+	  $info->{$j}->{'bug2'} = $row[1] if $row[1] !~ m/^\s*$/;
+      }
+  }
+  return $info;
+}
+
+sub sql_get_sc_info_for_user {
+  my $name = shift;
+  my $id = "";
+
+  my $SEL_MODULES = "select id from scwork where lower(workername)='".lc($name)."'";
+  my $sth = $dbh->prepare($SEL_MODULES);
+  $sth->execute();
+  while ( my @row=$sth->fetchrow_array() ) {
+      die "too many rows for table.\n" if @row > 1;
+      $id = $row[0];
+      last;
+  }
+
+  $SEL_MODULES =
+'select column_name
+  from all_tab_columns
+ where table_name = upper(\'scchange\')
+   and (column_name like upper(\'%incharge\') or
+       column_name like upper(\'%leader\') or
+       column_name = upper(\'initiator\'))';
+  $sth = $dbh->prepare($SEL_MODULES);
+  $sth->execute();
+  my @rows = ();
+  while ( my @row = $sth->fetchrow_array() ) {
+      die "too many rows for table.\n" if @row > 1;
+      push @rows, $row[0]."='$id'";
+  }
+
+  $SEL_MODULES =
+"select changeid, title, status
+  from scchange s
+ where lower(status) not in ('prod', 'cancel', 'inform-cancel')
+   and (".(join ' or ', @rows).")
+ order by 1";
+  $sth = $dbh->prepare($SEL_MODULES);
+  $sth->execute();
+  my $info = {};
+  my $i = 0;
+  while ( my @row = $sth->fetchrow_array() ) {
+      die "too many rows for select.\n" if @row > 3;
+      $info->{$i}->{'id'} = $row[0];
+      $info->{$i}->{'title'} = $row[1];
+      $info->{$i}->{'status'} = $row[2];
+      $i++;
+  }
+  return $info;
+}
+
+sub make_sc_table {
+    my $info_sc = shift;
+    my $open_srs = {};
+    my $table_sc = {};
+    my $table = '{| class="sortable wikitable"
+|- style="background: #DDFFDD;"
+! SC id
+| Description
+| Status';
+    my $table_rows = {};
+    foreach my $sc (keys %$info_sc) {
+	### opened bugs
+	$open_srs->{$info_sc->{$sc}->{'id'}} = 1;
+	$table_rows->{$info_sc->{$sc}->{'id'}} = "\n|-
+| [[SC:".$info_sc->{$sc}->{'id'}."|".$info_sc->{$sc}->{'id'}."]]
+| ".$info_sc->{$sc}->{'title'}."
+| ".$info_sc->{$sc}->{'status'};
+    }
+    my $tmp = "";
+    $tmp .= $table_rows->{$_} foreach (sort keys %$table_rows);
+    $table_sc = $table.$tmp."\n|}\n" if $tmp ne "";
+    return ("\n==Bugs opened==\n\n".$table_sc, $open_srs);
+}
+
+sub make_crm_table {
+    my ($info_crm, $open_srs) = @_;
+    my $url_sep = WikiCommons::get_urlsep;
+    my $too_old = {};
+    my $bug_closed = {};
+    my $normal = {};
+    my $table = '{| class="sortable wikitable"
+|- style="background: #DDFFDD;"
+! Age
+| Description
+| Status
+| Customer';
+    foreach my $crm (keys %$info_crm) {
+# 	  my $two_weeks_ago = `date -d "14 days ago" +%Y%m%d`;
+	my $event_date = $info_crm->{$crm}->{'last_event'};
+	my @timeData = localtime(time);
+	my ($event_year, $event_month, $event_day) = ((substr $event_date, 0, 4), (substr $event_date, 4, 2), (substr $event_date, 6, 2));
+	my ($crt_year, $crt_month, $crt_day) = ($timeData[5]+1900, $timeData[4]+1, $timeData[3]);
+	my $diff = Delta_Days($event_year, $event_month, $event_day,$crt_year, $crt_month, $crt_day);
+	my $diff_txt = $diff." days";
+	if ($diff>30) {
+	    $diff_txt = sprintf "%.0f weeks",($diff / 7);
+	}
+	## we will ignore bug2
+	my $table_row = "\n|-
+| $diff_txt
+| [[CRM:".$info_crm->{$crm}->{'cust_disp'}."$url_sep".$info_crm->{$crm}->{'sc_no'}."|".$info_crm->{$crm}->{'subj'}."]]
+| ".$info_crm->{$crm}->{'status'}."
+| ".$info_crm->{$crm}->{'cust_disp'};
+	if (defined $info_crm->{$crm}->{'bug1'} && ! defined $open_srs->{$info_crm->{$crm}->{'bug1'}}) {
+	    $bug_closed->{$info_crm->{$crm}->{'subj'}} = $table_row;
+	} elsif ($diff > 14 && $info_crm->{$crm}->{'status'} eq "WFI") {
+	    $too_old->{$info_crm->{$crm}->{'subj'}} = $table_row;
+	} else {
+	    $normal->{$info_crm->{$crm}->{'subj'}} = $table_row;
+	}
+    }
+
+    my $new_txt = "";
+
+    my $tmp = "";
+    $tmp .= $normal->{$_} foreach (sort keys %$normal);
+    $new_txt .= "\n==SRs==\n\n".$table.$tmp."\n|}\n" if $tmp ne "";
+
+    $tmp = "";
+    $tmp .= $too_old->{$_} foreach (sort keys %$too_old);
+    $new_txt .= "\n==SRs too old==\n\n".$table.$tmp."\n|}\n" if $tmp ne "";
+
+    $tmp = "";
+    $tmp .= $bug_closed->{$_} foreach (sort keys %$bug_closed);
+    $new_txt .= "\n==SRs with closed bugs==\n\n".$table.$tmp."\n|}\n" if $tmp ne "";
+
+    return $new_txt;
+}
+
+sub update_user_pages {
+  my $users_ns = shift;
+  my $section_name = "=Open tasks=";
+  my $pages = $our_wiki->wiki_get_all_pages($users_ns);
+  foreach my $user_page (@$pages) {
+      my $name = $user_page;
+      $name =~ s/User://gi;
+      my $txt = $our_wiki->wiki_get_page($user_page)->{'*'};
+      my $new_txt = $txt;
+      $new_txt =~ s/\n$section_name\s*\n.*//gsi;
+      next if $new_txt eq $txt;
+
+      sql_connect('10.0.0.103', 'SCROM', 'scview', 'scview');
+      my $info_sc = sql_get_sc_info_for_user($name);
+      $dbh->disconnect if defined($dbh);
+
+      sql_connect('10.0.10.92', 'BILL', 'service25', 'service25');
+      my $info_crm = sql_get_crm_info_for_user($name);
+      $dbh->disconnect if defined($dbh);
+
+      my ($table_sc, $open_srs) = make_sc_table($info_sc);
+      my $table_crm = make_crm_table($info_crm, $open_srs);
+
+
+
+      $new_txt .= "\n$section_name\n\n";
+      $new_txt .= $table_crm if $table_crm ne "";
+      $new_txt .= $table_sc if $table_sc ne "";
+
+#       print "Writing page $user_page.\n";
+      $our_wiki->wiki_edit_page($user_page, $new_txt);
+  }
 }
 
 sub fix_wiki_sc_type {
@@ -386,6 +630,7 @@ if ( -f "new 1.txt" ) {
 
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
+update_user_pages($namespaces->{'private'}->{'User'});
 
 # # print Dumper($namespaces);
 print "##### Fix wiki sc type:\n";
