@@ -359,7 +359,7 @@ sub sql_generate_select_changeinfo {
     my $hash_fields = {
 	'fixesdescription'	=> 'nvl(a.fixesdescription,\' \')',
 	'writtendatetime'	=> 'to_char(a.writtendatetime,\'yyyy-mm-dd hh:mi:ss\')',
-	'modification_time'	=> 'to_char(a.modification_time,\'yyyy-mm-dd hh:mi:ss\')',
+	'modification_time'	=> 'to_char((select max(log_time) from sc_log where change_id=:CHANGEID),\'yyyy-mm-dd hh:mi:ss\')',
 	'changeid'		=> 'a.changeid',
 	'modules'		=> 'nvl(a.modules,\' \')',
 	'moduleslist'		=> 'nvl(a.moduleslist,\' \')',
