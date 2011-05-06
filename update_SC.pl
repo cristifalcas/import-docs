@@ -866,7 +866,7 @@ if ($bulk_svn_update eq "yes"){
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
 #     next if $change_id ne "B099953";
-# next if $change_id ne "B31964";
+# next if $change_id ne "I605672";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -948,7 +948,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	    $link =~ s/\s/%20/g;
 	    $txt .= "\nMissing \'\'\'$key\'\'\' from [$link this] svn address, but database says it should exist.\n";
 	}
-	$txt .= "\n'''Presentations'''\n\nThe following presentations were found for this ".lc(@$info_ret[$index->{'changetype'}])." (either made by Q&A or attached to it):".$presentations if $presentations ne "";
+	$txt .= "\n'''Presentations'''\n\nThe following presentations were found for this ".lc(@$info_ret[$index->{'changetype'}])." (either made by Q&A or attached to it):".$presentations if defined $presentations && $presentations ne "";
 	write_file ("$work_dir/General_info.wiki" ,$txt);
 	write_rtf ("$work_dir/1 Market_SC.rtf", @$info_ret[$index->{'Market_SC'}]);
 	write_rtf ("$work_dir/2 Description_SC.rtf", @$info_ret[$index->{'Description_SC'}]);

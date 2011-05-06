@@ -224,7 +224,7 @@ sub get_existing_pages {
 	    print "\tDone $crt_nr from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($crt_nr%100 == 0);
 	    if ( -f "$dir/$wiki_files_info" && -s "$dir/$wiki_files_info") {
 		my ($name,$dir_dir,$suffix) = fileparse($dir, qr/\.[^.]*/);
-# 		next if ("$name$suffix" !~ m/B31964$/);
+# 		next if ("$name$suffix" !~ m/I605672$/);
 		open(FILE, "$dir/$wiki_files_info");
 		my @info_text = <FILE>;
 		close FILE;

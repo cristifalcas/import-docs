@@ -36,8 +36,8 @@ print "Connected.\n";
 my $sql_query="select rc_timestamp, rc_user_text, rc_title
   from recentchanges rc, page p
  where rc_title not in
-       ('Test', 'Common.js', 'RecentlyModified', 'Main_Page', 
-        'Test', 'Test1', 'Test2', 'SIP', 'Maintenance_on_wiki', 
+       ('Common.js', 'RecentlyModified', 'Main_Page',
+        'Test', 'Test1', 'Test2', 'Maintenance_on_wiki',
     	'Automatically_import_documents_to_wiki', 'Wiki_extensions')
    and rc_namespace = 0
    and rc.rc_title = p.page_title
@@ -46,6 +46,7 @@ my $sql_query="select rc_timestamp, rc_user_text, rc_title
                         where rc_namespace = 0
                           and rcs.rc_title = rc.rc_title
                           and abs(rcs.rc_new_len - rcs.rc_old_len) > 100
+			  and rc_user_text <> 'Wiki auto import'
                           /*and ((rc_new<>1 and rc_user_text <> 'Cristian.falcas'
                           and rc_user_text <> '10.0.6.78'
                           and rc_user_text <> '10.0.4.128') or rc_new=1)*/)
