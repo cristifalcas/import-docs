@@ -630,9 +630,10 @@ if ( -f "new 1.txt" ) {
 
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
-update_user_pages($namespaces->{'private'}->{'User'});
 
 # # print Dumper($namespaces);
+print "##### Update users:\n";
+update_user_pages($namespaces->{'private'}->{'User'});
 print "##### Fix wiki sc type:\n";
 fix_wiki_sc_type($namespaces);
 print "##### Fix broken redirects:\n";
