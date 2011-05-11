@@ -306,7 +306,7 @@ sub tree_clean_span {
 		my $res = undef;
 		foreach my $att (@attr) {
 		    if ($att =~ m/^\s*background: (#[0-9a-fA-F]{6}|transparent)\s*$/i
-			|| $att =~ m/^\s*(font-(weight|style): (normal|normal))\s*$/i
+			|| $att =~ m/^\s*(font-(weight|style): (normal|italic))\s*$/i
 			|| $att =~ m/^\s*(width|height): [0-9.]{1,}(px|in)\s*$/i ) {
 			$res .= $att.";";
 			$imgs = $1 if ($att =~ m/^\s*width: ([0-9.]{1,}(px|in))\s*$/i);

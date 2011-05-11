@@ -359,7 +359,7 @@ sub sql_generate_select_changeinfo {
     my $hash_fields = {
 	'fixesdescription'	=> 'nvl(a.fixesdescription,\' \')',
 	'writtendatetime'	=> 'to_char(a.writtendatetime,\'yyyy-mm-dd hh:mi:ss\')',
-	'modification_time'	=> 'to_char((select max(log_time) from sc_log where change_id=:CHANGEID),\'yyyy-mm-dd hh:mi:ss\')',
+	'modification_time'	=> 'nvl(to_char((select max(log_time) from sc_log where change_id=:CHANGEID),\'yyyy-mm-dd hh:mi:ss\'), \' \')',
 	'changeid'		=> 'a.changeid',
 	'modules'		=> 'nvl(a.modules,\' \')',
 	'moduleslist'		=> 'nvl(a.moduleslist,\' \')',
@@ -441,8 +441,8 @@ sub sql_get_changeinfo {
     my $nr=0;
     while ( my @row=$sth->fetchrow_array() ) {
 	die "too many rows\n" if $nr++;
+	chomp @row;
 	@info = @row;
-	chomp @info;
     }
 
     return \@info;
@@ -792,6 +792,7 @@ sub search_for_presentations {
 	$control .= "$name";
       }
     }
+    $control .= "v1.5" if $control ne "";
     return ($text, $control);
 }
 
@@ -918,7 +919,7 @@ foreach my $change_id (sort keys %$crt_hash){
     my $arr = $crt_hash->{$change_id};
     $crt_info->{'SC_info'}->{'name'} = @$arr[0];
 #     $crt_info->{'SC_info'}->{'size'} = @$arr[1];
-    $crt_info->{'SC_info'}->{'size'} = @$arr[1].$control."v1.4";
+    $crt_info->{'SC_info'}->{'size'} = @$arr[1].$control;
     $crt_info->{'SC_info'}->{'revision'} = @$arr[2];
 
 # print Dumper($index_comm);print Dumper($info_comm);

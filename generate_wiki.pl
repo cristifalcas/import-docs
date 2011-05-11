@@ -652,7 +652,7 @@ sub work_begin {
 
 # print "$_\n" foreach sort keys %$pages_toimp_hash; exit 1;
     if (WikiCommons::is_remote ne "yes") {
-        die "Too many to delete.\n" if (keys %$to_delete) > 1000;
+        die Dumper(sort keys %$to_delete)."\nToo many to delete.\n" if (keys %$to_delete) > 1000;
 	foreach my $url (sort keys %$to_delete) {
 	    print "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";
 	    $our_wiki->wiki_delete_page("$wiki_dir/$url/$wiki_files_uploaded");
@@ -833,6 +833,7 @@ if ($path_type eq "mind_svn") {
 	$wiki->{'0'} = $wiki_txt;
 
 	opendir(DIR, "$path_files/$rel_path") || die("Cannot open directory $path_files/$rel_path: $!.\n");
+
 	my @files = grep { (!/^\.\.?$/) && -f "$path_files/$rel_path/$_" && /(\.rtf)|(\.doc)/i } readdir(DIR);
 	closedir(DIR);
 	my $wrong = "";
@@ -923,7 +924,7 @@ if ($path_type eq "mind_svn") {
 	    WikiCommons::add_to_remove("$wiki_dir/$url/$wiki_result", "dir");
 	    WikiCommons::copy_dir ("$wiki_dir/$url/$url $name/$wiki_result", "$wiki_dir/$url/$wiki_result") if ($suffix eq ".doc");
 	}
-	if ($wrong eq "yes" ){
+	if ($wrong eq "yes"){
 	    my $name_bad = "$bad_dir/$url".time();
 	    WikiCommons::move_dir("$path_files/$rel_path", "$name_bad");
 	    $wrong_hash->{$url} = 1;

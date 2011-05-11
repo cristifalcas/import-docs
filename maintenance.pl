@@ -575,7 +575,7 @@ sub syncronize_local_wiki {
 	my @arr2 = (sort keys %$hash2);
 	my ($only_in1, $only_in2, $common) = WikiCommons::array_diff( \@arr1, \@arr2 );
 	print "$tmp only in local: ".Dumper($only_in1); print "$tmp only in wiki: ".Dumper($only_in2);
-	die "Too many to delete.\n" if scalar @$only_in1 > 200 || scalar @$only_in2 > 200;
+	die "Too many to delete: in local = ".(scalar @$only_in1)." in wiki = ".(scalar @$only_in2).".\n" if scalar @$only_in1 > 200 || scalar @$only_in2 > 200;
 	foreach my $local (@$only_in1) {
 	    print "rm dir $workdir/$local_pages->{$tmp}->{$local}\n";
 	    if ( ! $view_only ) {
