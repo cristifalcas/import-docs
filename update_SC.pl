@@ -771,28 +771,27 @@ sub search_for_presentations {
     my $i = 0;
     my $control = "";
     my $text = ();
-    foreach my $dir ($ftp_def, $ftp_market, $ftp_test) {
-      my $q = "$local_path/$dir/$change_id/";
-      my $w = "$apache_path/$dir/$change_id/";
+    foreach my $ftp_dir ($ftp_def, $ftp_market, $ftp_test) {
+      my $q = "$local_path/$ftp_dir/$change_id/";
+      my $w = "$apache_path/$ftp_dir/$change_id/";
       foreach my $file (sort <$q/*>){
 	$i++;
 	next if $file !~m/\.swf$/i;
 	my ($name, $dir, $suffix) = fileparse($file, qr/\.[^.]*/);
 	my $apache_file = "$w$name$suffix";
 	$apache_file =~ s/\/+/\//g;
-# 	print "$file\n";
 	$apache_file = uri_escape( $apache_file,"^A-Za-z\/:0-9\-\._~%" );
-# 	push @$links, "http://$apache_file";
+	my $ftp_file = "$ftp_ip/$ftp_dir/$change_id/$name.ppt";
+	$ftp_file = uri_escape( $ftp_file,"^A-Za-z\/:0-9\-\._~%" );
 	$text .= "
-\n<big><toggledisplay status=\"hide\" showtext=\"$name\" hidetext=\"Close presentation\">
-<small>To open the presentation in a new tab, click [http://$apache_file here].</small>
+\n<toggledisplay status=\"hide\" showtext=\"$name\" hidetext=\"Close presentation\">
+To open the presentation in a new tab, click [http://$apache_file here]. The original document can be found [ftp://$ftp_file here].
 <swf width=\"800\" height=\"500\" >http://$apache_file</swf>
-</toggledisplay></big>\n";
-# 	print "http://$apache_file\n";
+</toggledisplay>\n";
 	$control .= "$name";
       }
     }
-    $control .= "v1.5" if $control ne "";
+#     $control .= "v1.5" if $control ne "";
     return ($text, $control);
 }
 
@@ -867,7 +866,7 @@ if ($bulk_svn_update eq "yes"){
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
 #     next if $change_id ne "B099953";
-# next if $change_id ne "I605672";
+# next if $change_id ne "B601117";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
