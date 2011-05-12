@@ -47,12 +47,12 @@ sub add_document_local {
     my $doc_file = shift;
     $doc_file = abs_path($doc_file);
     my ($name, $dir, $suffix) = fileparse($doc_file, qr/\.[^.]*/);
-    if ( ! -s "$doc_file" || ! -f "$dir/$name.txt" ) {
+    if ( ! -s "$doc_file" || ! -f "$dir/$name.log" ) {
       print "\tEmpty file $doc_file.\n";
       unlink("$doc_file")|| die "can't delete file.\n";
       return;
     }
-    open FILE, "$dir/$name.txt" or die $!;
+    open FILE, "$dir/$name.log" or die $!;
     my @info = <FILE>;
     close FILE;
     die "cocot" if @info > 1;
@@ -60,7 +60,7 @@ sub add_document_local {
     if (! (defined $hash_new->{$q[0]} && $hash_new->{$q[0]} eq $q[1])) {
       print "\tFile should not exist: $doc_file.\n";
       unlink("$doc_file");
-      unlink "$dir/$name.txt";
+      unlink "$dir/$name.log";
       return ;
     }
     $hash_prev->{$q[0]} = "$doc_file";
@@ -73,9 +73,26 @@ sub add_document_ftp {
     $hash_new->{WikiCommons::get_file_md5( $doc_file )} = "$doc_file";
 }
 
-system("wget", "-N", "-r", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt", "-o", "/var/log/mind/ftp_mirrot.log");
-system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
-system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
+sub transform_to {
+  my ($file,$type) = @_;
+  eval {
+      local $SIG{ALRM} = sub { die "alarm\n" };
+      alarm 46800; # 13 hours
+      my $result = `python $path_prefix/unoconv -f $type "$file"`;
+      alarm 0;
+  };
+  if ($@) {
+      print "Error: Timed out.\n";
+      return "error";
+  } else {
+      print "\tFinished.\n";
+      return "ok";
+  }
+}
+
+# system("wget", "-N", "-r", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt", "-o", "/var/log/mind/ftp_mirrot.log");
+# system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
+# system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
 
 find ({ wanted => sub { add_document_ftp ($File::Find::name) if -f && (/(\.ppt|\.pptx)$/i) },}, "$from_path" ) if  (-d "$from_path");
 
@@ -96,19 +113,18 @@ foreach (@$only_new){
     print "$to_path/$append\n";
     WikiCommons::makedir ("$to_path/$append");
     copy($doc_file, "$to_path/$append/$name$suffix") or die "copy failed: $doc_file to $to_path/$append/$name$suffix $!";
-    print "\t-Generating swf file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
-    eval {
-	local $SIG{ALRM} = sub { die "alarm\n" };
-	alarm 46800; # 13 hours
-	my $result = `python $path_prefix/unoconv -f swf "$to_path/$append/$name$suffix"`;
-	alarm 0;
-    };
-    if ($@) {
-	print "Error: Timed out.\n";
-    } else {
-	print "\tFinished.\n";
+    print "\tGenerating swf file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
+    transform_to("$to_path/$append/$name$suffix", 'swf');
+    print "\tGenerating pdf file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
+    if (transform_to("$to_path/$append/$name$suffix", 'pdf') =~ m/^ok$/i) {
+      `pdftotext "$to_path/$append/$name.pdf"`;
+      die "Could not create txt file from pdf $to_path/$append/$name.pdf: $?.\n" if ($?) || ! -f "$to_path/$append/$name.txt";
+      unlink "$to_path/$append/$name.pdf" || die "Could not unlink $to_path/$append/$name.pdf: $!";
     }
-    unlink "$to_path/$append/$name$suffix" || die "Could not unlink $to_path/$append/$name$suffix: $!";
-    WikiCommons::write_file( "$to_path/$append/$name.txt", "$_\t$doc_file");
-    print "\t+Generating swf file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
+
+#     unlink "$to_path/$append/$name$suffix" || die "Could not unlink $to_path/$append/$name$suffix: $!";
+    WikiCommons::write_file( "$to_path/$append/$name.log", "$_\t$doc_file");
+    ## we should check we have now only ppt, swf, log and txt files here
+    ## ....
+    print "\tDone for $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
 }
