@@ -29,17 +29,20 @@ use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."our_perl_lib/lib";
 use File::Find;
 use Digest::MD5 qw(md5 md5_hex md5_base64);
 use File::Copy;
+use Encode;
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 use Mind_work::WikiCommons;
 
 our $from_path = shift;
 our $to_path = shift;
+WikiCommons::makedir ("$to_path") if ! -d "$to_path";
+WikiCommons::makedir ("$from_path") if ! -d "$from_path";
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 
-die "We need the source and destination paths. We got :$from_path and $to_path.\n" if ( ! defined $to_path || ! defined $from_path || ! -d $from_path);
-WikiCommons::makedir ("$to_path");
+die "We need the source and destination paths. We got :$from_path and $to_path.\n" if ( ! defined $to_path || ! defined $from_path);
 $to_path = abs_path("$to_path");
+$from_path = abs_path("$from_path");
 my $hash_new = {};
 my $hash_prev = {};
 
@@ -78,7 +81,7 @@ sub transform_to {
   eval {
       local $SIG{ALRM} = sub { die "alarm\n" };
       alarm 46800; # 13 hours
-      my $result = `python $path_prefix/unoconv -f $type "$file"`;
+      system("python", "$path_prefix/unoconv", "-f", "$type", "$file") == 0 or die "unoconv failed: $?";
       alarm 0;
   };
   if ($@) {
@@ -90,18 +93,41 @@ sub transform_to {
   }
 }
 
-# system("wget", "-N", "-r", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt", "-o", "/var/log/mind/ftp_mirrot.log");
-# system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
-# system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
+sub clean_ftp_dir {
+  my $list = shift;
+  my ($name,$dir,$suffix) = fileparse($list, qr/\.[^.]*/);
+
+  opendir(DIR, "$dir") || die("Cannot open directory $dir.\n");
+  my @files_in_dir = grep { (!/^\.\.?$/) } readdir(DIR);
+  closedir(DIR); 
+  open FILE, "$list" or die $!;
+  my @files_in_listing = <FILE>;
+  close FILE;
+
+  foreach my $file (@files_in_dir){
+    my $exists = 0;
+    foreach my $file_list (@files_in_listing) {
+       $exists = 1, last if $file_list =~ m/$file\r?\n?$/gms;
+    }
+    unlink $file if ! $exists;
+  }
+}
+# "--restrict-file-names=nocontrol", 
+system("wget", "-N", "-r", "-l", "inf", "--no-remove-listing", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt", "-o", "/var/log/mind/ftp_mirrot.log");
+system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
+system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
 
 find ({ wanted => sub { add_document_ftp ($File::Find::name) if -f && (/(\.ppt|\.pptx)$/i) },}, "$from_path" ) if  (-d "$from_path");
 
 find ({ wanted => sub { add_document_local ($File::Find::name) if -f && (/(\.swf)$/i) },}, "$to_path" ) if  (-d "$to_path");
 
+find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, "$from_path" ) if  (-d "$from_path");
+
 my @new = (keys %$hash_new);
 my @prev = (keys %$hash_prev);
 my ($only_new, $only_prev, $common) = WikiCommons::array_diff(\@new, \@prev);
 die "ciudat\n" if scalar @$only_prev;
+# print Dumper($hash_new, $hash_prev);
 # print Dumper($only_new, $only_prev, $common);
 
 foreach (@$only_new){
@@ -113,6 +139,16 @@ foreach (@$only_new){
     print "$to_path/$append\n";
     WikiCommons::makedir ("$to_path/$append");
     copy($doc_file, "$to_path/$append/$name$suffix") or die "copy failed: $doc_file to $to_path/$append/$name$suffix $!";
+
+    my $res = `ls "$to_path/$append/" | iconv -f UTF-8 -t UTF-8 2> /dev/null`;
+    if ($res ne "$name$suffix") {
+      # not utf8, presume is hebrew
+      $res = `ls "$to_path/$append/" | iconv -f cp1250 -t UTF-8`;
+      $res =~ s/\n//gms;
+      $res = WikiCommons::normalize_text($res);
+      rename("$to_path/$append/$name$suffix", "$to_path/$append/$res");
+      ($name,$dir,$suffix) = fileparse("$to_path/$append/$res", qr/\.[^.]*/);
+    }
     print "\tGenerating swf file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
     transform_to("$to_path/$append/$name$suffix", 'swf');
     print "\tGenerating pdf file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";

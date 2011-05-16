@@ -11,6 +11,7 @@ use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 use XML::Simple;
 use LWP::UserAgent;
+use Encode;
 
 our $start_time = 0;
 our $clean_up = {};
@@ -406,19 +407,22 @@ sub check_vers {
 sub generate_html_file {
     my $doc_file = shift;
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
-    my $result;
+#     my $result;
     print "\t-Generating html file from $name$suffix.\t". (get_time_diff) ."\n";
     eval {
 	local $SIG{ALRM} = sub { die "alarm\n" };
 	alarm 46800; # 13 hours
-	$result = `python $real_path/unoconv -f html "$doc_file"`;
+# 	$result = `python $real_path/unoconv -f html "$doc_file"`;
+	system("python", "$real_path/unoconv", "-f", "html", "$doc_file") == 0 or die "unoconv failed: $?";
 # 	$result = `sleep 300`;
 	alarm 0;
     };
     if ($@) {
 	print "Error: Timed out.\n";
+	return 1;
     } else {
 	print "\tFinished.\n";
+	return 0;
     }
 
 #    my $result = `/usr/bin/ooffice "$doc_file" -headless -invisible "macro:///Standard.Module1.runall()"`;
