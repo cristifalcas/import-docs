@@ -4,7 +4,8 @@ SCRIPT_PATH="$( cd "$( dirname "$0" )" && pwd )"
 WIKI_DIR_PATH="/mnt/wiki_files/wiki_files"
 LOG_PATH="/var/log/mind/wiki_logs/wiki_"
 export LC_ALL=en_US.UTF-8
-CMD="nice -n 10 perl"
+CMD="nice -n 20 perl"
+CMD="perl"
 
 case "$1" in
 "update_svn")

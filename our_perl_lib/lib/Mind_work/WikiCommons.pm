@@ -417,16 +417,18 @@ sub generate_html_file {
 # 	$result = `sleep 300`;
 	alarm 0;
     };
-    if ($@) {
-	print "Error: Timed out.\n";
-	return 1;
+    my $status = $@;
+    if ($status) {
+	print "Error: Timed out: $status.\n";
+# 	return 1;
     } else {
-	print "\tFinished.\n";
-	return 0;
+	print "\tFinished: $status.\n";
+# 	return 0;
     }
 
 #    my $result = `/usr/bin/ooffice "$doc_file" -headless -invisible "macro:///Standard.Module1.runall()"`;
     print "\t+Generating html file from $name$suffix.\t". (get_time_diff) ."\n";
+    return $status;
 }
 
 sub reset_time {

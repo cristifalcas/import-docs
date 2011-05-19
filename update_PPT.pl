@@ -45,6 +45,7 @@ $to_path = abs_path("$to_path");
 $from_path = abs_path("$from_path");
 my $hash_new = {};
 my $hash_prev = {};
+my @failed = ();
 
 sub add_document_local {
     my $doc_file = shift;
@@ -66,7 +67,8 @@ sub add_document_local {
       unlink "$dir/$name.log";
       return ;
     }
-    $hash_prev->{$q[0]} = "$doc_file";
+#     print $q[1]."\n$doc_file\n" if $doc_file ne $q[1];
+    $hash_prev->{$q[0]} = $q[1];
 }
 
 sub add_document_ftp {
@@ -78,18 +80,22 @@ sub add_document_ftp {
 
 sub transform_to {
   my ($file,$type) = @_;
+  my $output = "";
   eval {
       local $SIG{ALRM} = sub { die "alarm\n" };
       alarm 46800; # 13 hours
-      system("python", "$path_prefix/unoconv", "-f", "$type", "$file") == 0 or die "unoconv failed: $?";
+#       system("python", "$path_prefix/unoconv", "-f", "$type", "$file") == 0 or die "unoconv failed: $?";
+      $output = `python "$path_prefix/unoconv" -f $type "$file"; echo $?`;
+      chomp $output; $output =~ s/^.*\n(.*?)$//gms;
       alarm 0;
   };
-  if ($@) {
-      print "Error: Timed out.\n";
-      return "error";
+  
+  if ($output) {
+      print "Error: $output.\n";
+      return 0;
   } else {
-      print "\tFinished.\n";
-      return "ok";
+      print "\tFinished: $output.\n";
+      return 1;
   }
 }
 
@@ -113,15 +119,14 @@ sub clean_ftp_dir {
   }
 }
 # "--restrict-file-names=nocontrol", 
-system("wget", "-N", "-r", "-l", "inf", "--no-remove-listing", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt", "-o", "/var/log/mind/ftp_mirrot.log");
-system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
-system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
+# system("wget", "-N", "-r", "-l", "inf", "--no-remove-listing", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt", "-o", "/var/log/mind/ftp_mirrot.log");
+# find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, "$from_path" ) if  (-d "$from_path");
+# system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
+# system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
 
 find ({ wanted => sub { add_document_ftp ($File::Find::name) if -f && (/(\.ppt|\.pptx)$/i) },}, "$from_path" ) if  (-d "$from_path");
 
 find ({ wanted => sub { add_document_local ($File::Find::name) if -f && (/(\.swf)$/i) },}, "$to_path" ) if  (-d "$to_path");
-
-find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, "$from_path" ) if  (-d "$from_path");
 
 my @new = (keys %$hash_new);
 my @prev = (keys %$hash_prev);
@@ -129,30 +134,36 @@ my ($only_new, $only_prev, $common) = WikiCommons::array_diff(\@new, \@prev);
 die "ciudat\n" if scalar @$only_prev;
 # print Dumper($hash_new, $hash_prev);
 # print Dumper($only_new, $only_prev, $common);
-
+print "New files to convert:".(scalar @$only_new).".\n";
 foreach (@$only_new){
     my $doc_file = $hash_new->{$_};
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
     my $append = $dir;
     my $q = quotemeta $from_path;
     $append =~ s/^$q//;
-    print "$to_path/$append\n";
     WikiCommons::makedir ("$to_path/$append");
+    unlink "$to_path/$append/$name$suffix" if -f "$to_path/$append/$name$suffix";
     copy($doc_file, "$to_path/$append/$name$suffix") or die "copy failed: $doc_file to $to_path/$append/$name$suffix $!";
 
-    my $res = `ls "$to_path/$append/" | iconv -f UTF-8 -t UTF-8 2> /dev/null`;
+    my $res = `cd "$to_path/$append/" && ls "$name$suffix" | iconv -f UTF-8 -t UTF-8 2> /dev/null`;
+    $res =~ s/\n//gms;
     if ($res ne "$name$suffix") {
-      # not utf8, presume is hebrew
+# print Dumper($res, "$name$suffix");exit 1;
+      # not utf8, presume is hebrew. Code should be cp1255, but we can't work with that.
       $res = `ls "$to_path/$append/" | iconv -f cp1250 -t UTF-8`;
       $res =~ s/\n//gms;
       $res = WikiCommons::normalize_text($res);
-      rename("$to_path/$append/$name$suffix", "$to_path/$append/$res");
+      unlink "$to_path/$append/$res" if -f "$to_path/$append/$res";
+      copy("$to_path/$append/$name$suffix", "$to_path/$append/$res");
       ($name,$dir,$suffix) = fileparse("$to_path/$append/$res", qr/\.[^.]*/);
     }
     print "\tGenerating swf file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
-    transform_to("$to_path/$append/$name$suffix", 'swf');
+    if (! transform_to("$to_path/$append/$name$suffix", 'swf')) {
+      push @failed, "$to_path/$append/$name$suffix";
+      next;
+    }
     print "\tGenerating pdf file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
-    if (transform_to("$to_path/$append/$name$suffix", 'pdf') =~ m/^ok$/i) {
+    if (transform_to("$to_path/$append/$name$suffix", 'pdf')) {
       `pdftotext "$to_path/$append/$name.pdf"`;
       die "Could not create txt file from pdf $to_path/$append/$name.pdf: $?.\n" if ($?) || ! -f "$to_path/$append/$name.txt";
       unlink "$to_path/$append/$name.pdf" || die "Could not unlink $to_path/$append/$name.pdf: $!";
@@ -164,3 +175,5 @@ foreach (@$only_new){
     ## ....
     print "\tDone for $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
 }
+
+print "Failed files:\n".Dumper(@failed);
