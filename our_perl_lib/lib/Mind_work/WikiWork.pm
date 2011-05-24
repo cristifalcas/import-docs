@@ -195,7 +195,6 @@ sub wiki_import_files {
 sub wiki_upload_file {
     my ($self, $files) = @_;
     $mw->{config}->{upload_url} = "$wiki_url/index.php/Special:Upload";
-# print Dumper($mw);
     my @images = ();
 
     if (ref($files) eq "ARRAY") {
@@ -214,7 +213,6 @@ sub wiki_upload_file {
 	    $data .= $buffer;
 	}
 	close(FILE);
-# print Dumper($data);
 	my ($name,$dir,$suffix) = fileparse($img, qr/\.[^.]*/);
 	$mw->upload( { title => "$name$suffix",
 		    summary => 'This is the summary to go on the Image:file.jpg page',
@@ -287,7 +285,6 @@ sub wiki_get_unused_images {
 	$nr_all++;
         my $pages = wiki_get_pages_using($self, $image, 1);
         if (! defined $pages || scalar(@$pages) == 0) {
-# 	    print "$image\n";
 	    push @$unused_img, $image;
 	    $nr_ok++;
         }
@@ -342,7 +339,6 @@ sub wiki_add_url {
 
     foreach (@$ref) {
 	my $info;
-# print Dumper($_);
 	if ( (scalar keys %$_) && defined $_->{'*'}) {
 	    $info = $_->{'*'};
 	} elsif ((scalar keys %$_) && defined $_->{'name'}) {
@@ -352,9 +348,7 @@ sub wiki_add_url {
 	}
 	chomp $info;
 	push @$array, $info;
-# 	$nr_pages++;
     }
-#     print "\tRetrieved $nr_pages pages.\n" if ($nr_pages%1000 == 0);
 }
 
 sub wiki_add_url2 {
@@ -362,11 +356,7 @@ sub wiki_add_url2 {
     my $q = ();
 
     foreach (@$ref) {
-# 	my $w = $_->{'revisions'}->{'timestamp'};
-# 	$w =~ s/[TZ:-]//g;
 	push @$q, $_->{'title'};
-# 	push @$q, "$w!$_->{'title'}";
-# 	push @$q, $_->{'revisions'}->{'revid'};
 	push @$q, $_->{'revisions'};
 	$hash->{$_->{'ns'}} = $q;
     }

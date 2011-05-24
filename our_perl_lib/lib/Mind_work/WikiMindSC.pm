@@ -41,7 +41,7 @@ sub get_documents {
     foreach my $node (sort @all) {
 	$count++;
 	print "\tDone $count from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($count%1000 == 0);
-# next if $node ne 'I605672';
+# next if $node ne 'B103075';
 	if (! -e "$path_files/$node/$files_info_file" || ! -e "$path_files/$node/$general_wiki_file") {
 	    die "Can't find files_info or General wiki: $path_files/$node.\n";
 	    next;
@@ -120,10 +120,13 @@ die "no namespace here 1: $node.\n".Dumper(@data);
 		next;
 	    }
 	    $md5 .= "$tmp[2]" if defined $tmp[2];
-	    die "Wrong number of fields for line $line in $node/$files_info_file.\n" if @tmp<4;
+	    ## like this in order to not update everything after we added the date to docs
+	    die "Wrong number of fields for line $line in $node/$files_info_file.\n" if @tmp < 4 || @tmp > 5;
 	    $info_crt_h->{$tmp[0]}->{'name'} = "$tmp[1]";
 	    $info_crt_h->{$tmp[0]}->{'size'} = "$tmp[2]";
 	    $info_crt_h->{$tmp[0]}->{'revision'} = "$tmp[3]";
+	    ## like this in order to not update everything after we added the date to docs
+	    $info_crt_h->{$tmp[0]}->{'date'} = "$tmp[4]" if defined $tmp[4];
 	}
 
 die "no namespace here 2: $node.\n".Dumper(@data) if $url_namespace eq "";

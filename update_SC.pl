@@ -630,6 +630,8 @@ sub get_previous {
 	$info_hash->{$all[0]}->{'name'} = $all[1];
 	$info_hash->{$all[0]}->{'size'} = $all[2];
 	$info_hash->{$all[0]}->{'revision'} = $all[3];
+	## like this in order to not update everything after we added the date to docs
+	$info_hash->{$all[0]}->{'date'} = $all[4] if defined  $all[4];
     }
     return $info_hash;
 }
@@ -756,10 +758,11 @@ sub write_control_file {
 	my $size = '';
 	$size = $hash->{$doc_types[$i]}->{'size'} if ( defined $hash->{$doc_types[$i]}->{'size'} );
 	my $rev = $hash->{$doc_types[$i]}->{'revision'} || '';
-	$text .= (1000 + $i) ." $doc_types[$i];$name;$size;$rev\n";
+	my $date = $hash->{$doc_types[$i]}->{'date'} || '';
+	$text .= (1000 + $i) ." $doc_types[$i];$name;$size;$rev;$date\n";
     }
 
-    $text .= "SC_info;$hash->{'SC_info'}->{'name'};$hash->{'SC_info'}->{'size'};$hash->{'SC_info'}->{'revision'}\n";
+    $text .= "SC_info;$hash->{'SC_info'}->{'name'};$hash->{'SC_info'}->{'size'};$hash->{'SC_info'}->{'revision'};$hash->{'SC_info'}->{'date'}\n";
     $text .= "Categories;". (join ';',@$categories). "\n" if defined $categories && scalar @$categories;
     write_file("$dir/$files_info", "$text");
 }
@@ -866,7 +869,7 @@ if ($bulk_svn_update eq "yes"){
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
 #     next if $change_id ne "B099953";
-# next if $change_id ne "B601117";
+# next if $change_id ne "B103075";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -908,6 +911,8 @@ foreach my $change_id (sort keys %$crt_hash){
 		print "\tUpdate svn http for $key.\n";
 		my $file_res = WikiCommons::http_get("$dir/$file", "$work_dir", "$svn_user", "$svn_pass");
 		move("$file_res", "$work_dir/$key.doc") || die "can't move file $file_res to $work_dir/$key.doc: $!.\n";
+		## like this in order to not update everything after we added the date to docs
+		$crt_info->{$key}->{'date'} =  $res->{'commit'}->{'date'};
 		$update_control_file++;
 	    }
 	}
@@ -916,15 +921,17 @@ foreach my $change_id (sort keys %$crt_hash){
     my ($presentations, $control) = search_for_presentations(@$info_comm[$index_comm->{'FTP_IP'}], @$info_comm[$index_comm->{'FTP_def_attach'}], @$info_comm[$index_comm->{'FTP_market_attach'}], @$info_comm[$index_comm->{'FTP_test_attach'}], $change_id);
     ## db update
     my $arr = $crt_hash->{$change_id};
+
     $crt_info->{'SC_info'}->{'name'} = @$arr[0];
-#     $crt_info->{'SC_info'}->{'size'} = @$arr[1];
     $crt_info->{'SC_info'}->{'size'} = @$arr[1].$control;
     $crt_info->{'SC_info'}->{'revision'} = @$arr[2];
-
-# print Dumper($index_comm);print Dumper($info_comm);
+# @$info[$index->{'modification_time'}]
+# print Dumper($crt_info->{'SC_info'}, $prev_info->{'SC_info'});
     my $cat = ();
     if ( ! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) || $update_control_file || $force_db_update eq "yes" ) {
  	print "\tUpdate SC info.\n";
+	## like this in order to not update everything after we added the date to docs
+	$crt_info->{'SC_info'}->{'date'} = "sc_date is not used";
 
 	my $prev = 'NULL';
 	$prev = $prev_info->{'SC_info'}->{'size'} if defined $prev_info->{'SC_info'}->{'size'};

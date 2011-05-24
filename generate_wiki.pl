@@ -782,7 +782,7 @@ if ($path_type eq "mind_svn") {
     my $wrong_hash = {};
     foreach my $url (sort keys %$pages_toimp_hash) {
 	$crt_nr++;
-# next if "$url" !~ "B31964";
+# next if "$url" !~ "B103075";
 	WikiCommons::reset_time();
 	print "\n************************* $crt_nr of $total_nr\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 
@@ -847,8 +847,11 @@ if ($path_type eq "mind_svn") {
 		    if ($key =~ m/^([0-9]{1,}) $name$/) {
 			$node = $1;
 			$title = $name;
+			my $date = $info_crt_h->{$key}->{'date'};
+			$date =~ s/T/\t/;
+			$date =~ s/.[0-9]{1,}Z$//i;
 			$header = "<center>\'\'\'This file was automatically imported from the following document: [[File:$url $name.zip]]\'\'\'\n\n";
-			$header .= "The original document can be found at [$info_h->{$name}/$info_crt_h->{$key}->{'name'} this address]\n";
+			$header .= "The original document can be found at [$info_h->{$name}/$info_crt_h->{$key}->{'name'} this address]\n\nThe last update on this document was performed at $date.\n";
 			$header .= "</center>\n----\n\n";
 			last;
 		    }
