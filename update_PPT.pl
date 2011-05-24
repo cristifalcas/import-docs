@@ -84,9 +84,9 @@ sub transform_to {
   eval {
       local $SIG{ALRM} = sub { die "alarm\n" };
       alarm 46800; # 13 hours
-#       system("python", "$path_prefix/unoconv", "-f", "$type", "$file") == 0 or die "unoconv failed: $?";
-      $output = `python "$path_prefix/unoconv" -f $type "$file"; echo $?`;
-      chomp $output; $output =~ s/^.*\n(.*?)$//gms;
+      $output = system("python", "$path_prefix/unoconv", "-f", "$type", "$file");# == 0 or die "unoconv failed: $?";
+#       $output = `python "$path_prefix/unoconv" -f $type "$file"; echo $?`;
+#       chomp $output; $output =~ s/^.*\n(.*?)$//gms;
       alarm 0;
   };
   
@@ -119,10 +119,10 @@ sub clean_ftp_dir {
   }
 }
 # "--restrict-file-names=nocontrol", 
-# system("wget", "-N", "-r", "-l", "inf", "--no-remove-listing", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt", "-o", "/var/log/mind/ftp_mirrot.log");
-# find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, "$from_path" ) if  (-d "$from_path");
-# system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
-# system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
+system("wget", "-N", "-r", "-l", "inf", "--no-remove-listing", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt", "-o", "/var/log/mind/ftp_mirrot.log");
+find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, "$from_path" ) if  (-d "$from_path");
+system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
+system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
 
 find ({ wanted => sub { add_document_ftp ($File::Find::name) if -f && (/(\.ppt|\.pptx)$/i) },}, "$from_path" ) if  (-d "$from_path");
 

@@ -115,11 +115,16 @@ select t.rscmainrecsubject,
        a.rcustcompanycode,
        a.rcustiddisplay,
        t.rscmainreclasteventdate,
-       rscmainrecservicestatus
+       rscmainrecservicestatus,
+       s.rsctypesdesc
   from tblscmainrecord      t,
        tblcustomers         a,
        tblsuppdept          b,
        tbldeptsforcustomers c,
+       (select w.rsctypescode, w.rsctypesdesc
+          from tblsctypes w
+        union
+        select 0, ' ' from dual)           s,
        tblsupportstaff      q
  where rscmainrecservicestatus not in ('AAC', 'CCC', 'cld')
    and t.rscmainreccustcode = a.rcustcompanycode
@@ -132,22 +137,25 @@ select t.rscmainrecsubject,
                             from tbldeptsforcustomers
                            where rdeptcustcompanycode = a.rcustcompanycode
                              and rcuststatus = 'A')
+   and rscmainrecenggincharge = q.rsuppstaffenggcode
+   and s.rsctypescode = t.rscmainrecsctype
    and lower(q.rsuppstafflastname) = '".lc($names[1])."'
    and lower(rsuppstafffirstname) = '".lc($names[0])."'
-   and rscmainrecenggincharge = q.rsuppstaffenggcode
  order by 1";
   my $sth = $dbh->prepare($SEL_MODULES);
   $sth->execute();
   my $info = {};
   my $i = 0;
   while ( my @row=$sth->fetchrow_array() ) {
-      die "too many rows for table.\n" if @row != 6;
+      die "too many rows for table.\n" if @row != 7;
       $info->{$i}->{'subj'} = $row[0];
       $info->{$i}->{'sc_no'} = $row[1];
       $info->{$i}->{'comp_code'} = $row[2];
       $info->{$i}->{'cust_disp'} = $row[3];
       $info->{$i}->{'last_event'} = $row[4];
       $info->{$i}->{'status'} = $row[5];
+      $info->{$i}->{'type'} = $row[6];
+#       $info->{$i}->{'type'} = "q";
       $i++;
   }
 
@@ -163,10 +171,14 @@ select rscrefnum1, rscrefnum2
       $sth->execute();
       while ( my @row=$sth->fetchrow_array() ) {
 	  die "too many rows for table.\n" if @row != 2;
-	  $info->{$j}->{'bug1'} = $row[0] if $row[0] !~ m/^\s*$/;
-	  $info->{$j}->{'bug2'} = $row[1] if $row[1] !~ m/^\s*$/;
+# 	  $info->{$j}->{'bug1'} = $row[0] if $row[0] !~ m/^\s*$/;
+# 	  $info->{$j}->{'bug2'} = $row[1] if $row[1] !~ m/^\s*$/;
+# print Dumper( $j, $row[0],  $row[1]);
+	  $info->{$j}->{'bug'}->{$row[0]} = 1 if $row[0] =~ m/^\s*[a-z][0-9]{1,}\s*$/i;
+	  $info->{$j}->{'bug'}->{$row[1]} = 1 if $row[1] =~ m/^\s*[a-z][0-9]{1,}\s*$/i;
       }
   }
+# print Dumper($info);
   return $info;
 }
 
@@ -201,7 +213,7 @@ sub sql_get_sc_info_for_user {
   $SEL_MODULES =
 "select changeid, title, status
   from scchange s
- where lower(status) not in ('prod', 'cancel', 'inform-cancel')
+ where lower(status) not in ('prod', 'cancel', 'inform-cancel', 'suspended', 'develop-close', 'not released', 'documentation')
    and (".(join ' or ', @rows).")
  order by 1";
   $sth = $dbh->prepare($SEL_MODULES);
@@ -220,7 +232,7 @@ sub sql_get_sc_info_for_user {
 
 sub make_sc_table {
     my $info_sc = shift;
-    my $open_srs = {};
+    my $open_bugs = {};
     my $table_sc = {};
     my $table = '{| class="sortable wikitable"
 |- style="background: #DDFFDD;"
@@ -230,7 +242,7 @@ sub make_sc_table {
     my $table_rows = {};
     foreach my $sc (keys %$info_sc) {
 	### opened bugs
-	$open_srs->{$info_sc->{$sc}->{'id'}} = 1;
+	$open_bugs->{$info_sc->{$sc}->{'id'}} = 1;
 	$table_rows->{$info_sc->{$sc}->{'id'}} = "\n|-
 | [[SC:".$info_sc->{$sc}->{'id'}."|".$info_sc->{$sc}->{'id'}."]]
 | ".$info_sc->{$sc}->{'title'}."
@@ -239,11 +251,11 @@ sub make_sc_table {
     my $tmp = "";
     $tmp .= $table_rows->{$_} foreach (sort keys %$table_rows);
     $table_sc = $table.$tmp."\n|}\n" if $tmp ne "";
-    return ("\n==Bugs opened==\n\n".$table_sc, $open_srs);
+    return ("\n==Bugs opened==\n\n".$table_sc, $open_bugs);
 }
 
 sub make_crm_table {
-    my ($info_crm, $open_srs) = @_;
+    my ($info_crm, $open_bugs) = @_;
     my $url_sep = WikiCommons::get_urlsep;
     my $too_old = {};
     my $bug_closed = {};
@@ -253,6 +265,7 @@ sub make_crm_table {
 ! Age
 | Description
 | Status
+| Type
 | Customer';
     foreach my $crm (keys %$info_crm) {
 # 	  my $two_weeks_ago = `date -d "14 days ago" +%Y%m%d`;
@@ -270,8 +283,17 @@ sub make_crm_table {
 | $diff_txt
 | [[CRM:".$info_crm->{$crm}->{'cust_disp'}."$url_sep".$info_crm->{$crm}->{'sc_no'}."|".$info_crm->{$crm}->{'subj'}."]]
 | ".$info_crm->{$crm}->{'status'}."
+| ".$info_crm->{$crm}->{'type'}."
 | ".$info_crm->{$crm}->{'cust_disp'};
-	if (defined $info_crm->{$crm}->{'bug1'} && ! defined $open_srs->{$info_crm->{$crm}->{'bug1'}}) {
+
+	my $closed_bug = 0;
+	foreach (keys %{$info_crm->{$crm}->{'bug'}}) {
+	  if (! defined $open_bugs->{$_}) {
+	    $closed_bug++;
+	    last;
+	  }
+	}
+	if ($closed_bug) {
 	    $bug_closed->{$info_crm->{$crm}->{'subj'}} = $table_row;
 	} elsif ($diff > 14 && $info_crm->{$crm}->{'status'} eq "WFI") {
 	    $too_old->{$info_crm->{$crm}->{'subj'}} = $table_row;
@@ -301,12 +323,13 @@ sub update_user_pages {
   my $users_ns = shift;
   my $section_name = "=Open tasks=";
   my $pages = $our_wiki->wiki_get_all_pages($users_ns);
+
   foreach my $user_page (@$pages) {
       my $name = $user_page;
       $name =~ s/User://gi;
       my $txt = $our_wiki->wiki_get_page($user_page)->{'*'};
       my $new_txt = $txt;
-      $new_txt =~ s/\n$section_name\s*\n.*//gsi;
+      $new_txt =~ s/(\n|^)$section_name\s*(\n.*|$)//gsi;
       next if $new_txt eq $txt;
 
       sql_connect('10.0.0.103', 'SCROM', 'scview', 'scview');
@@ -317,10 +340,8 @@ sub update_user_pages {
       my $info_crm = sql_get_crm_info_for_user($name);
       $dbh->disconnect if defined($dbh);
 
-      my ($table_sc, $open_srs) = make_sc_table($info_sc);
-      my $table_crm = make_crm_table($info_crm, $open_srs);
-
-
+      my ($table_sc, $open_bugs) = make_sc_table($info_sc);
+      my $table_crm = make_crm_table($info_crm, $open_bugs);
 
       $new_txt .= "\n$section_name\n\n";
       $new_txt .= $table_crm if $table_crm ne "";

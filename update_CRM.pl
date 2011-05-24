@@ -241,7 +241,7 @@ sub get_customers {
    and c.rcuststatus = 'A'
    and a.rcuststatus = 'A'
    and b.rsuppdeptstatus = 'A'
-   and a.rcustlastscno > 10
+   and a.rcustlastscno > 0
    and c.ractivitydate = (select max(ractivitydate)
                             from tbldeptsforcustomers
                            where rdeptcustcompanycode = a.rcustcompanycode
