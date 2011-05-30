@@ -94,7 +94,7 @@ if ($options->{'r'}){
 
 my $all_real = "no";
 my $delete_everything = "no";
-# my $delete_categories = "yes";
+my $delete_categories = "yes";
 my $make_categories = "yes";
 my $big_dump_mode = "no";
 my $pid_old = "100000";
@@ -771,7 +771,7 @@ if ($path_type eq "mind_svn") {
 
     $coco = new WikiMindSC("$path_files", WikiCommons::get_urlsep);
     my $to_keep = work_begin;
-#     make_categories;
+    make_categories;
     my $tmp = {};
     foreach (keys %$pages_toimp_hash) {$tmp->{$_} = 1 if ($pages_toimp_hash->{$_}[$link_type_pos] eq "link")};
     die "There are no links.\n" if scalar keys %$tmp;
@@ -847,7 +847,8 @@ if ($path_type eq "mind_svn") {
 		    if ($key =~ m/^([0-9]{1,}) $name$/) {
 			$node = $1;
 			$title = $name;
-			my $date = $info_crt_h->{$key}->{'date'};
+			my $date = "";
+			$date = $info_crt_h->{$key}->{'date'} if defined $info_crt_h->{$key}->{'date'};
 			$date =~ s/T/\t/;
 			$date =~ s/.[0-9]{1,}Z$//i;
 			$header = "<center>\'\'\'This file was automatically imported from the following document: [[File:$url $name.zip]]\'\'\'\n\n";

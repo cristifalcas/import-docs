@@ -46,6 +46,7 @@ $our_wiki = new WikiWork();
 my ($local_pages, $wiki_pages);
 my $view_only = shift;
 $view_only = 1 if ! defined $view_only;
+my $max_elements = 2000;
 
 sub fixnamespaces {
   my $namespaces = shift;
@@ -75,6 +76,8 @@ sub get_results {
   my $regexp = "";
   if ($type eq "list" ){
     $regexp = q{/html/body/div[@id="content"]/div[@id="bodyContent"]/div[@class="mw-spcontent"]/ol/li/a/@title};
+  } elsif ($type eq "ul" ){
+    $regexp = q{/html/body/div[@id="content"]/div[@id="bodyContent"]/div[@class="mw-spcontent"]/ul[@class="gallery"]/li/div/div/div/a/img/@alt};
   } elsif ($type eq "table" ){
     $regexp = q{/html/body/div[@id="content"]/div[@id="bodyContent"]/div[@class="mw-spcontent"]/table[@class="gallery"]/tr/td/div[@class="gallerybox"]/div[@class="gallerytext"]/a/@title};
   } else {
@@ -126,7 +129,7 @@ select t.rscmainrecsubject,
         union
         select 0, ' ' from dual)           s,
        tblsupportstaff      q
- where rscmainrecservicestatus not in ('AAC', 'CCC', 'cld')
+ where rscmainrecservicestatus not in ('CCC', 'cld')
    and t.rscmainreccustcode = a.rcustcompanycode
    and a.rcustcompanycode = c.rdeptcustcompanycode
    and b.rsuppdeptcode = c.rdeptcustdeptcode
@@ -257,9 +260,8 @@ sub make_sc_table {
 sub make_crm_table {
     my ($info_crm, $open_bugs) = @_;
     my $url_sep = WikiCommons::get_urlsep;
-    my $too_old = {};
-    my $bug_closed = {};
-    my $normal = {};
+    my ($too_old, $bug_closed, $normal, $too_aac) = {};
+
     my $table = '{| class="sortable wikitable"
 |- style="background: #DDFFDD;"
 ! Age
@@ -284,8 +286,8 @@ sub make_crm_table {
 | [[CRM:".$info_crm->{$crm}->{'cust_disp'}."$url_sep".$info_crm->{$crm}->{'sc_no'}."|".$info_crm->{$crm}->{'subj'}."]]
 | ".$info_crm->{$crm}->{'status'}."
 | ".$info_crm->{$crm}->{'type'}."
-| ".$info_crm->{$crm}->{'cust_disp'};
-
+| [[:Category:$info_crm->{$crm}->{'cust_disp'}|$info_crm->{$crm}->{'cust_disp'}]] / $info_crm->{$crm}->{'sc_no'}";
+# print Dumper($info_crm);exit 1;
 	my $closed_bug = 0;
 	foreach (keys %{$info_crm->{$crm}->{'bug'}}) {
 	  if (! defined $open_bugs->{$_}) {
@@ -293,7 +295,11 @@ sub make_crm_table {
 	    last;
 	  }
 	}
-	if ($closed_bug) {
+	if ($diff > 30 && $info_crm->{$crm}->{'status'} eq "AAC") {
+	    $too_aac->{$info_crm->{$crm}->{'subj'}} = $table_row;
+	} elsif ($info_crm->{$crm}->{'status'} eq "AAC") {
+	    ### skip all other AAC
+	} elsif ($closed_bug) {
 	    $bug_closed->{$info_crm->{$crm}->{'subj'}} = $table_row;
 	} elsif ($diff > 14 && $info_crm->{$crm}->{'status'} eq "WFI") {
 	    $too_old->{$info_crm->{$crm}->{'subj'}} = $table_row;
@@ -311,6 +317,10 @@ sub make_crm_table {
     $tmp = "";
     $tmp .= $too_old->{$_} foreach (sort keys %$too_old);
     $new_txt .= "\n==SRs too old==\n\n".$table.$tmp."\n|}\n" if $tmp ne "";
+
+    $tmp = "";
+    $tmp .= $too_aac->{$_} foreach (sort keys %$too_aac);
+    $new_txt .= "\n==SRs closed too old==\n\n".$table.$tmp."\n|}\n" if $tmp ne "";
 
     $tmp = "";
     $tmp .= $bug_closed->{$_} foreach (sort keys %$bug_closed);
@@ -391,7 +401,7 @@ sub unused_categories {
 }
 
 sub wanted_categories {
-  my $link = "http://localhost/wiki/index.php?title=Special:WantedCategories&limit=2000&offset=0";
+  my $link = "http://localhost/wiki/index.php?title=Special:WantedCategories&limit=$max_elements&offset=0";
   my $res = get_results($link);
   my $result = ();
   foreach my $elem (@$res){
@@ -405,7 +415,7 @@ sub wanted_categories {
 }
 
 sub broken_redirects {
-  my $link = "http://localhost/wiki/index.php?title=Special:BrokenRedirects&limit=2000&offset=0";
+  my $link = "http://localhost/wiki/index.php?title=Special:BrokenRedirects&limit=$max_elements&offset=0";
   my $res = get_results($link);
   my $seen = {};
   foreach my $elem (@$res){
@@ -418,7 +428,7 @@ sub broken_redirects {
 }
 
 sub scdoubleredirects {
-  my $link = "http://localhost/wiki/index.php?title=Special:DoubleRedirects&limit=2000&offset=0";
+  my $link = "http://localhost/wiki/index.php?title=Special:DoubleRedirects&limit=$max_elements&offset=0";
   my $res = get_results($link);
   my $seen = {};
   foreach my $elem (@$res){
@@ -430,8 +440,8 @@ sub scdoubleredirects {
 }
 
 sub unused_images_dirty {
-  my $link = "http://localhost/wiki/index.php?title=Special:UnusedFiles&limit=2000&offset=0";
-  my $res = get_results($link, "table");
+  my $link = "http://localhost/wiki/index.php?title=Special:UnusedFiles&limit=$max_elements&offset=0";
+  my $res = get_results($link, "ul");
   foreach my $elem (@$res){
       $elem =~ s/%27/'/g;
       $elem =~ s/%26/&/g;
@@ -440,12 +450,12 @@ sub unused_images_dirty {
 # 	print "add page \n\t$elem.\n";
 # 	$our_wiki->wiki_edit_page("$elem", "----") if ( ! $view_only);
 #       }
-      $our_wiki->wiki_delete_page("$elem") if ( ! $view_only);
+      $our_wiki->wiki_delete_page("File:$elem") if ! $view_only;
   }
 }
 
 sub fix_wanted_pages {
-  my $link = "http://localhost/wiki/index.php?title=Special:WantedPages&limit=3000&offset=0";
+  my $link = "http://localhost/wiki/index.php?title=Special:WantedPages&limit=$max_elements&offset=0";
   my $res = get_results($link);
   my ($cat, $sc, $crm, $other) = ();
   foreach my $elem (@$res){
@@ -468,7 +478,7 @@ sub fix_wanted_pages {
 
 sub fix_missing_files {
     ## this will delete pages if the user forgot to add an image
-  my $link = "http://localhost/wiki/index.php?title=Special:WantedFiles&limit=2000&offset=0";
+  my $link = "http://localhost/wiki/index.php?title=Special:WantedFiles&limit=$max_elements&offset=0";
   my $res = get_results($link);
   my $missing = {};
   foreach my $elem (@$res){

@@ -232,8 +232,9 @@ sub add_document {
 	my @categories = ();
 	$main = "$main$url_sep"."SVN_SC", push @categories, $main if $main ne "";
 	$big_ver = "$big_ver$url_sep"."SVN_SC", push @categories, $big_ver if $big_ver ne "";
+	## $ver, $main, $big_ver, $customer, $dir_type, $name
 	generate_categories("", $main, $big_ver, "", "SVN SC Documents", "");
-# 	push @categories, $customer;
+#  	push @categories, $customer;
 # 	print "We already have page $page_url.\n\t$rel_path\n".Dumper($pages_toimp_hash->{$page_url}) if defined $pages_toimp_hash->{$page_url};
 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
 	return 0;
@@ -256,7 +257,7 @@ sub add_document {
 	my @categories = ();
 	push @categories, $main;
 	push @categories, $big_ver;
-	generate_categories("", $main, $big_ver, "", $dir_type, "");
+	generate_categories("", $main, $big_ver, "", "SVN RN Documents", "");
 	die "RN $page_url already exists:\n\t$rel_path\n".Dumper($pages_toimp_hash->{$page_url}) if defined $pages_toimp_hash->{$page_url};
 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
 	return 0;

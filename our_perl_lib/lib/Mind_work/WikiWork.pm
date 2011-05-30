@@ -145,10 +145,8 @@ sub wiki_delete_page {
 
     foreach my $url (@img) {
       chomp $url;
-
       my $page = $mw->get_page( { title => $url } );
       unless ( defined $page->{missing} ) {
-# next if $url =~ m/^File:/;
 	print "\tDelete page $url.\n";
 	$mw->edit( { action => 'delete', title => $url, reason => 'no longer needed' } )
 	|| die "Could not delete url $url: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
