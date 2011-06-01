@@ -869,7 +869,7 @@ if ($bulk_svn_update eq "yes"){
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
 #     next if $change_id ne "B099953";
-# next if $change_id ne "B103075";
+# next if $change_id ne "B17982";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488

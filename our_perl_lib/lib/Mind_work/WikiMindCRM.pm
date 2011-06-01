@@ -60,6 +60,9 @@ sub add_document{
     die "No page for $doc_file.\n" if ($page_url eq "" );
 
     my @categories = ($values[0], 'CRM');
+    my $customer = (split ":",$values[0])[1];
+print Dumper($values[0], $customer);
+#     $general_categories_hash->{($values[0]}->{$customer} = 1 if $ver ne $main;
 
     ++$count_files;
     print "\tNumber of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n" if ($count_files%1000 == 0);

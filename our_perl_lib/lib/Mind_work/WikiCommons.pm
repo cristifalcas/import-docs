@@ -407,26 +407,37 @@ sub check_vers {
 sub generate_html_file {
     my $doc_file = shift;
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
-#     my $result;
     print "\t-Generating html file from $name$suffix.\t". (get_time_diff) ."\n";
     eval {
 	local $SIG{ALRM} = sub { die "alarm\n" };
 	alarm 46800; # 13 hours
-# 	$result = `python $real_path/unoconv -f html "$doc_file"`;
+	system("python $real_path/unoconv -l -p 8100 2>&1 /dev/null &") == 0 or die "unoconv failed: $?";
+	sleep 2;
 	system("python", "$real_path/unoconv", "-f", "html", "$doc_file") == 0 or die "unoconv failed: $?";
-# 	$result = `sleep 300`;
 	alarm 0;
     };
     my $status = $@;
     if ($status) {
 	print "Error: Timed out: $status.\n";
-# 	return 1;
+	eval {
+	    local $SIG{ALRM} = sub { die "alarm\n" };
+	    alarm 46800; # 13 hours
+	    system("python $real_path/unoconv -l -p 8100 2>&1 /dev/null &") == 0 or die "unoconv failed: $?";
+	    sleep 2;
+	    system("/opt/jre1.6.0/bin/java", "-jar", "$real_path/jodconverter-2.2.2/lib/jodconverter-cli-2.2.2.jar", "-f", "html", "$doc_file") == 0 or die "jodconverter failed: $?";
+	    alarm 0;
+	};
+	$status = $@;
+	if ($status) {
+	    print "Error: Timed out: $status.\n";
+	} else {
+	    print "\tFinished: $status.\n";
+	}
     } else {
 	print "\tFinished: $status.\n";
-# 	return 0;
     }
 
-#    my $result = `/usr/bin/ooffice "$doc_file" -headless -invisible "macro:///Standard.Module1.runall()"`;
+
     print "\t+Generating html file from $name$suffix.\t". (get_time_diff) ."\n";
     return $status;
 }

@@ -339,7 +339,7 @@ class Options:
         self.listener = False
         self.output = None
         self.pipe = None
-        self.port = '2002'
+        self.port = '8100'
         self.server = 'localhost'
         self.showlist = False
         self.stdout = False

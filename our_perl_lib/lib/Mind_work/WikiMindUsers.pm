@@ -37,7 +37,6 @@ sub generate_categories {
 sub add_document {
     my $doc_file = abs_path(shift);
     my $path_files = shift;
-
     my $rel_path = "$doc_file";
     $rel_path =~ s/^$path_files\///;
     my ($name,$dir,$suffix) = fileparse("$doc_file", qr/\.[^.]*/);
@@ -47,10 +46,13 @@ sub add_document {
     my $main = ""; my $ver = ""; my $ver_fixed = ""; my $big_ver = ""; my $ver_sp = ""; my $ver_id = "";
 
     if (-f "$dir/$name.txt") {
+	local( $/, *FILEHANDLE ) ;
 	open (FILEHANDLE, "$dir/$name.txt") or die $!."\t". (WikiCommons::get_time_diff) ."\n";
-	my @text = <FILEHANDLE>;
+# 	my @text = <FILEHANDLE>;
+	my $text1 = <FILEHANDLE>;
 	close (FILEHANDLE);
-
+	$text1 =~ s/\n+/\n/gsm;
+	my @text = split "\n", $text1;
 	chomp(@text);
 	my $q = (split ('=', $text[2]))[1];
 	@categories = split ',', $q if defined $q && $q !~ m/^\s*$/;
@@ -81,8 +83,6 @@ sub add_document {
 # 	    WikiCommons::generate_categories($ver_fixed, $main, $big_ver, $customer, "Users documents");
 	    my $fixed_name = $name;
 	    $fixed_name = WikiCommons::fix_name ($name, $customer, $big_ver, $main, $ver, $ver_sp, $ver_id) if ($version ne "" );
-# 	    generate_categories($ver_fixed, $main, $big_ver, $customer, "Users documents");
-# 	    $page_url = "$fixed_name$url_sep$main$url_sep$ver_fixed$url_sep$customer";
 	    $page_url = "$fixed_name$url_sep$ver_fixed$url_sep$customer";
 	    $page_url =~ s/($url_sep){2,}/$url_sep/g;
 	    $page_url =~ s/(^$url_sep)|($url_sep$)//;
