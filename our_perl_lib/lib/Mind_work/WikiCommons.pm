@@ -411,8 +411,6 @@ sub generate_html_file {
     eval {
 	local $SIG{ALRM} = sub { die "alarm\n" };
 	alarm 46800; # 13 hours
-# 	system("python $real_path/convertors/unoconv -l -p 8100 2>&1 /dev/null &") == 0 or die "unoconv failed: $?";
-# 	sleep 2;
 	system("python", "$real_path/convertors/unoconv", "-f", "html", "$doc_file") == 0 or die "unoconv failed: $?";
 	alarm 0;
     };
