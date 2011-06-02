@@ -544,6 +544,7 @@ sub tree_clean_tables {
 		    my $attr_value = $b_tag->attr($attr_name);
 		    if ( $attr_name eq "valign"){
 			$a_tag->attr("$attr_name", undef);
+		    } elsif ( $attr_name eq "bgcolor") {
 		    } else {
 			die "Unknown attr in tr: $attr_name = $attr_value.\n";
 			return undef;

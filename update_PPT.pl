@@ -84,7 +84,7 @@ sub transform_to {
   eval {
       local $SIG{ALRM} = sub { die "alarm\n" };
       alarm 46800; # 13 hours
-      $output = system("python", "$path_prefix/unoconv", "-f", "$type", "$file");# == 0 or die "unoconv failed: $?";
+      $output = system("python", "$path_prefix/convertors/unoconv", "-f", "$type", "$file");# == 0 or die "unoconv failed: $?";
 #       $output = `python "$path_prefix/unoconv" -f $type "$file"; echo $?`;
 #       chomp $output; $output =~ s/^.*\n(.*?)$//gms;
       alarm 0;
@@ -92,9 +92,9 @@ sub transform_to {
   
   if ($output) {
       print "Error: $output.\n";
-      $output = system("python $path_prefix/unoconv -l -p 8100 2>&1 /dev/null &");
+      $output = system("python $path_prefix/convertors/unoconv -l -p 8100 2>&1 /dev/null &");
       sleep 2;
-      $output = system("/opt/jre1.6.0/bin/java", "-jar", "$path_prefix/jodconverter-2.2.2/lib/jodconverter-cli-2.2.2.jar", "-f", "$type", "$file");
+      $output = system("/opt/jre1.6.0/bin/java", "-jar", "$path_prefix/convertors/jodconverter-2.2.2/lib/jodconverter-cli-2.2.2.jar", "-f", "$type", "$file");
       alarm 0;
       if ($output) {
 	  return 0;
@@ -127,8 +127,8 @@ sub clean_ftp_dir {
   }
 }
 # "--restrict-file-names=nocontrol", 
-# system("wget", "-N", "-r", "-l", "inf", "--no-remove-listing", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT", "-o", "/var/log/mind/ftp_mirrot.log");
-# find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, "$from_path" ) if  (-d "$from_path");
+system("wget", "-N", "-r", "-l", "inf", "--no-remove-listing", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT", "-o", "/var/log/mind/ftp_mirrot.log");
+find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, "$from_path" ) if  (-d "$from_path");
 system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
 system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
 

@@ -411,9 +411,9 @@ sub generate_html_file {
     eval {
 	local $SIG{ALRM} = sub { die "alarm\n" };
 	alarm 46800; # 13 hours
-	system("python $real_path/unoconv -l -p 8100 2>&1 /dev/null &") == 0 or die "unoconv failed: $?";
+	system("python $real_path/convertors/unoconv -l -p 8100 2>&1 /dev/null &") == 0 or die "unoconv failed: $?";
 	sleep 2;
-	system("python", "$real_path/unoconv", "-f", "html", "$doc_file") == 0 or die "unoconv failed: $?";
+	system("python", "$real_path/convertors/unoconv", "-f", "html", "$doc_file") == 0 or die "unoconv failed: $?";
 	alarm 0;
     };
     my $status = $@;
@@ -422,9 +422,9 @@ sub generate_html_file {
 	eval {
 	    local $SIG{ALRM} = sub { die "alarm\n" };
 	    alarm 46800; # 13 hours
-	    system("python $real_path/unoconv -l -p 8100 2>&1 /dev/null &") == 0 or die "unoconv failed: $?";
+	    system("python $real_path/convertors/unoconv -l -p 8100 2>&1 /dev/null &") == 0 or die "unoconv failed: $?";
 	    sleep 2;
-	    system("/opt/jre1.6.0/bin/java", "-jar", "$real_path/jodconverter-2.2.2/lib/jodconverter-cli-2.2.2.jar", "-f", "html", "$doc_file") == 0 or die "jodconverter failed: $?";
+	    system("/opt/jre1.6.0/bin/java", "-jar", "$real_path/convertors/jodconverter-2.2.2/lib/jodconverter-cli-2.2.2.jar", "-f", "html", "$doc_file") == 0 or die "jodconverter failed: $?";
 	    alarm 0;
 	};
 	$status = $@;

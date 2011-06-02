@@ -1,0 +1,90 @@
+' Based on code from http://www.oooforum.org/forum/viewtopic.phtml?t=3772
+
+' Save document as an Acrobat PDF file.
+Sub SaveAsPDF( cFile )
+   cURL = ConvertToURL( cFile )
+   ' Open the document. Just blindly assume that the document
+   ' is of a type that OOo will correctly recognize and open
+   ' without specifying an import filter.
+   oDoc = StarDesktop.loadComponentFromURL( cURL, "_blank", 0, _
+            Array(MakePropertyValue( "Hidden", True ),))
+
+   GlobalScope.BasicLibraries.LoadLibrary("Tools")
+   cFile = GetFileNameWithoutExtension(oDoc.url) + ".pdf"
+   cURL = ConvertToURL( cFile )
+
+   ' Save the document using a filter.
+   oDoc.storeToURL( cURL, Array(_
+            MakePropertyValue( "FilterName", "writer_pdf_Export" ),)
+
+   oDoc.close( True )
+End Sub
+
+' Save document as a Microsoft Word file.
+Sub SaveAsDoc( cFile )
+   ' mostly a copy of SaveAsPDF
+   cURL = ConvertToURL( cFile )
+   oDoc = StarDesktop.loadComponentFromURL( cURL, "_blank", 0, (_
+            Array(MakePropertyValue( "Hidden", True ),))
+
+
+   GlobalScope.BasicLibraries.LoadLibrary("Tools")
+   cFile = GetFileNameWithoutExtension(oDoc.url) + ".doc"
+   cURL = ConvertToURL( cFile )
+
+   oDoc.storeToURL( cURL, Array(_
+            MakePropertyValue( "FilterName", "MS WinWord 6.0" ),)
+   oDoc.close( True )
+
+End Sub
+
+
+' Save document as HTML.
+Sub SaveAsHTML( cFile )
+   ' mostly a copy of SaveAsPDF
+   cURL = ConvertToURL( cFile )
+   oDoc = StarDesktop.loadComponentFromURL( cURL, "_blank", 0, (_
+            Array(MakePropertyValue( "Hidden", True ),))
+
+   GlobalScope.BasicLibraries.LoadLibrary("Tools")
+   cFile = GetFileNameWithoutExtension(oDoc.url) + ".html"
+'   cFile = Left( cFile, Len( cFile ) - 4 ) + ".html"
+   cURL = ConvertToURL( cFile )
+
+   oDoc.storeToURL( cURL, Array(_
+            MakePropertyValue( "FilterName", "HTML" ),)
+'Document (OpenOffice.org Writer)
+   oDoc.close( True )
+
+End Sub
+
+' Save document as swf.
+Sub SaveAsSWF( cFile )
+   ' mostly a copy of SaveAsPDF
+   cURL = ConvertToURL( cFile )
+   oDoc = StarDesktop.loadComponentFromURL( cURL, "_blank", 0, (_
+            Array(MakePropertyValue( "Hidden", True ),))
+
+   GlobalScope.BasicLibraries.LoadLibrary("Tools")
+   cFile = GetFileNameWithoutExtension(oDoc.url) + ".swf"
+'   cFile = Left( cFile, Len( cFile ) - 4 ) + ".html"
+   cURL = ConvertToURL( cFile )
+
+   oDoc.storeToURL( cURL, Array(_
+            MakePropertyValue( "FilterName", "impress_flash_Export" ),)
+'Document (OpenOffice.org Writer)
+   oDoc.close( True )
+
+End Sub
+
+Function MakePropertyValue( Optional cName As String, Optional uValue ) _
+   As com.sun.star.beans.PropertyValue
+   Dim oPropertyValue As New com.sun.star.beans.PropertyValue
+   If Not IsMissing( cName ) Then
+      oPropertyValue.Name = cName
+   EndIf
+   If Not IsMissing( uValue ) Then
+      oPropertyValue.Value = uValue
+   EndIf
+   MakePropertyValue() = oPropertyValue
+End Function
