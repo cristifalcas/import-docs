@@ -111,7 +111,7 @@ if (defined $options->{'c'}) {
 	$make_categories = "no";
     }
 }
-
+ 
 my $our_wiki;
 my $path_files = abs_path($options->{'d'});
 my $path_type = $options->{'n'};
