@@ -61,7 +61,7 @@ sub add_document{
 
     my @categories = ($values[0], 'CRM');
     my $customer = (split ":",$values[0])[1];
-print Dumper($values[0], $customer);
+# print Dumper($values[0], $customer);
 #     $general_categories_hash->{($values[0]}->{$customer} = 1 if $ver ne $main;
 
     ++$count_files;

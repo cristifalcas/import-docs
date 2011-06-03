@@ -80,27 +80,39 @@ sub add_document_ftp {
 
 sub transform_to {
   my ($file,$type) = @_;
+  my ($name,$dir,$suffix) = fileparse($file, qr/\.[^.]*/);
   my $output = "";
   eval {
       local $SIG{ALRM} = sub { die "alarm\n" };
       alarm 46800; # 13 hours
-      $output = system("python", "$path_prefix/convertors/unoconv", "-f", "$type", "$file");# == 0 or die "unoconv failed: $?";
-#       $output = `python "$path_prefix/unoconv" -f $type "$file"; echo $?`;
-#       chomp $output; $output =~ s/^.*\n(.*?)$//gms;
+      $output = system("python", "$path_prefix/convertors/unoconv", "-f", "$type", "$file") == 0 or die "unoconv failed: $?";
       alarm 0;
   };
+  my $status = $@;
   
-  if ($output) {
-      print "Error: $output.\n";
-      $output = system("python $path_prefix/convertors/unoconv -l -p 8100 2>&1 /dev/null &");
-      sleep 2;
-      $output = system("/opt/jre1.6.0/bin/java", "-jar", "$path_prefix/convertors/jodconverter-2.2.2/lib/jodconverter-cli-2.2.2.jar", "-f", "$type", "$file");
-      alarm 0;
-      if ($output) {
-	  return 0;
-      } else {
-	  return 1;
-      }
+  if ($status) {
+	print "Error: Timed out: $status.\n";
+	eval {
+	    local $SIG{ALRM} = sub { die "alarm\n" };
+	    alarm 46800; # 13 hours
+	    my $convert_string = "";
+	    if ($type eq "pdf") {
+		$convert_string = "pdf:impress_pdf_Export";
+	    } elsif ($type eq "swf") {
+		$convert_string = "swf:impress_flash_Export";
+	    } else {
+		die "Unknow type: $type.\n";
+	    }
+	    system("Xvfb :10235 -screen 0 1024x768x16 &> /dev/null &");
+	    system("libreoffice", "-display", ":10235", "-unnaccept=all", "-invisible", "-nocrashreport", "-nodefault", "-nologo", "-nofirststartwizard", "-norestore", "-convert-to", "$convert_string", "-outdir", "$dir", "$file") == 0 or die "libreoffice failed: $?";
+	    alarm 0;
+	};
+	$status = $@;
+	if ($status) {
+	    print "Error: Timed out: $status.\n";
+	} else {
+	    print "\tFinished: $status.\n";
+	} 
   } else {
       print "\tFinished: $output.\n";
       return 1;
@@ -127,10 +139,10 @@ sub clean_ftp_dir {
   }
 }
 # "--restrict-file-names=nocontrol", 
-system("wget", "-N", "-r", "-l", "inf", "--no-remove-listing", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT", "-o", "/var/log/mind/ftp_mirrot.log");
-find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, "$from_path" ) if  (-d "$from_path");
-system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
-system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
+# system("wget", "-N", "-r", "-l", "inf", "--no-remove-listing", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT", "-o", "/var/log/mind/ftp_mirrot.log");
+# find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, "$from_path" ) if  (-d "$from_path");
+# system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
+# system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
 
 find ({ wanted => sub { add_document_ftp ($File::Find::name) if -f && (/(\.ppt|\.pptx)$/i) },}, "$from_path" ) if  (-d "$from_path");
 

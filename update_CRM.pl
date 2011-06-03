@@ -679,7 +679,7 @@ sub write_sr {
 	    $wiki .= "----\n";
 	}
     }
-    $wiki .= "\n\n[[Category:CRM]]\n[[Category:$info->{0}->{'customer'} -- CRM]]\n\n";
+    $wiki .= "\n\n[[Category:$info->{0}->{'customer'}]]\n[[Category:$info->{0}->{'customer'} -- CRM]]\n\n";
 
     $wiki =~ s/\x{ef}\x{bf}\x{bd}/?/gsi;
 #     $wiki =~ s/\x{c2}\x{91}/"/gsi;
