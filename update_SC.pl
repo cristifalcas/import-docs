@@ -368,6 +368,7 @@ sub sql_generate_select_changeinfo {
 	'version'		=> 'nvl(a.version,\' \')',
 	'status' 		=> 'nvl(a.status,\' \')',
 	'fullstatus'		=> 'nvl(a.fullstatus,\' \')',
+	'clone' 		=> 'nvl(g.clone,\' \')',
 	'projectname'		=> 'f.projectname',
 	'productname'		=> 'c.productname',
 	'changetype' 		=> 'nvl(a.changetype,\' \')',

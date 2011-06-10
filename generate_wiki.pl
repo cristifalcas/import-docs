@@ -1,7 +1,31 @@
 #!/usr/bin/perl -w
-print "Start.\n";
+my @crt_timeData = localtime(time);
+foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
+print "Start: ". ($crt_timeData[5]+1900) ."-$crt_timeData[4]-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
 use warnings;
 use strict;
+
+# my $q = "";
+# my $txt = "
+# ==Deployment consideration==
+# 
+# 
+# ";
+# if ($txt =~ m/^\s*=+Deployment consideration=+\n+<font color="#0000ff">Add all assumptions, settings, actions, etc that are relevant for the correct deployment and use of the system.<\/font>\n+TBD\s*$/gmsi
+# 	      || $txt =~ m/^\s*=+Deployment consideration=+\s*$/gmsi
+# 	      || $txt =~ m/^\s*=+Deployment configuration &amp; consideration=+\n+(NR|N\/A)\s*$/gmsi) {
+# } else {
+# $q.=$txt;
+# }
+# 	  $deployment_txt .= "$txt\nLink to [[$url#$doc_type|$doc_type]].\n";
+# my @deployment = ();
+# foreach ($wiki_txt =~ /\n((=+)[^\n]*?deployment.*?\2\n.*?\n)=+?/ims) {
+# my $found_string = $&;
+# # print "\n";
+# 
+# 		push @deployment, $1;
+# 	    }
+# print Dumper($q);exit 1;
 
 $SIG{__WARN__} = sub { die @_ };
 
@@ -837,6 +861,7 @@ if ($path_type eq "mind_svn") {
 	my @files = grep { (!/^\.\.?$/) && -f "$path_files/$rel_path/$_" && /(\.rtf)|(\.doc)/i } readdir(DIR);
 	closedir(DIR);
 	my $wrong = "";
+	my $deployment = {};
 	foreach my $file (@files) {
 	    my $file = "$path_files/$rel_path/$file";
 	    my ($name,$dir,$suffix) = fileparse($file, qr/\.[^.]*/);
@@ -871,7 +896,6 @@ if ($path_type eq "mind_svn") {
 		$wrong = "yes";
 		last;
 	    }
-
 	    print "\tWork for $file.\n";
 	    my $wiki_txt = create_wiki("$url/$url $name", "$file", "$url $name");
 	    if (! defined $wiki_txt ){
@@ -884,16 +908,17 @@ if ($path_type eq "mind_svn") {
 	    WikiCommons::add_to_remove("$wiki_dir/$url/$url $name", "dir");
 	    $wiki_txt =~ s/\n(=+)(.*?)(=+)\n/\n=$1$2$3=\n/g;
 
+# 	    $deployment->{$title} = $1 if $wiki_txt =~ /\n((=+)[^\n]*?deployment.*?\2\n.*?\n)\2[^=]*?\2\n/ims;
+	    $deployment->{$title} = $1 if $wiki_txt =~ /\n((=+)[^\n]*?deployment.*?\2\n.*?\n)=+?/ims;
+
 	    my $count = 0;
 	    if ($name !~ m/(review document)|(review docuemnt)/) {
 		my $newwiki = $wiki_txt;
-
 		my $q ="";
 		my $menu_h = {};
 		while ($wiki_txt =~ m/\n(==+)(.*?)(==+)\n/g ) {
 		    my $found_string = $&;
 		    my $length1 = length($1); my $length2 = length($3); my $menu_name = $2;
-
 		    foreach my $key (keys %$menu_h) {
 			delete $menu_h->{$key} if ( $key >= $length1+1 );
 		    }
@@ -928,6 +953,7 @@ if ($path_type eq "mind_svn") {
 	    WikiCommons::add_to_remove("$wiki_dir/$url/$wiki_result", "dir");
 	    WikiCommons::copy_dir ("$wiki_dir/$url/$url $name/$wiki_result", "$wiki_dir/$url/$wiki_result") if ($suffix eq ".doc");
 	}
+
 	if ($wrong eq "yes"){
 	    my $name_bad = "$bad_dir/$url".time();
 	    WikiCommons::move_dir("$path_files/$rel_path", "$name_bad");
@@ -952,7 +978,33 @@ if ($path_type eq "mind_svn") {
 	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
 	}
 
+	my $is_canceled = 0;
+	$is_canceled++ if $pages_toimp_hash->{$url}[$svn_url_pos]->{'SC_info'}->{'revision'} =~ m/^Cancel$/i;
 	insertdata($url, $full_wiki);
+
+	my $url_deployment = $url;
+	$url_deployment =~ s/^SC:/SC_Deployment:/;
+	$our_wiki->wiki_delete_page ($url_deployment) if ( $our_wiki->wiki_exists_page($url_deployment) );
+	remove_tree("$wiki_dir/$url_deployment/") if -d "$wiki_dir/$url_deployment/";
+	my $deployment_txt;
+	foreach my $doc_type (keys %$deployment) {
+	  my $txt = $deployment->{$doc_type};
+	  next if $txt =~ m/^\s*=+Deployment consideration=+\n+<font color="#0000ff">Add all assumptions, settings, actions, etc that are relevant for the correct deployment and use of the system.<\/font>\n+TBD\s*$/gmsi
+	      || $txt =~ m/^\s*=+Deployment consideration=+\s*$/gmsi
+	      || $txt =~ m/^\s*=+Deployment configuration &amp; consideration=+\n+(NR|N\/A)\s*$/gmsi;
+	  $txt =~ s/\n*(=+)(.*?)(=+)\n/\n<b>$2 - [[$url#$doc_type|$doc_type]]<\/b>\n/gms;
+# 	  $deployment_txt .= "$txt\n:Link to [[$url#$doc_type|$doc_type]].\n";
+	  $deployment_txt .= "$txt";
+	}
+	next if ! defined $deployment_txt || $is_canceled;
+	my $title = $full_wiki;
+	$title =~ s/^<center><font size="[0-9]{1,}">'''(.*?)'''<\/font><\/center>.*$/$1/gsi;
+	$url =~ s/^SC:(.*)/$1/;
+	$deployment_txt = "=<small>[[SC:$url|$url: $title]]</small>=\n".$deployment_txt;
+# 	$url = "Deployment:$url";
+	print "\tImporting url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n";
+	$our_wiki->wiki_edit_page($url_deployment, $deployment_txt);
+	die "Could not import url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url_deployment) );
     }
 }
 
@@ -1003,5 +1055,7 @@ sub quick_and_dirty_html_to_wiki {
 # quick_and_dirty_html_to_wiki
 @tmp = (sort keys %$failed);
 print "Failed:\n".Dumper(@tmp) if @tmp;
-print "End.\n";
+@crt_timeData = localtime(time);
+foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
+print "End ". ($crt_timeData[5]+1900) ."-$crt_timeData[4]-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
 unlink("$pid_file") or die "Could not delete the file $pid_file: ".$!."\n";

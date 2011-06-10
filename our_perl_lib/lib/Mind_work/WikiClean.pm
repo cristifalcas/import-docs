@@ -825,6 +825,9 @@ sub fix_wiki_chars {
 
     $wiki =~ s/\x{ef}\x{80}\x{b2}/2/gsi;
     $wiki =~ s/\x{ef}\x{80}\x{b0}/0/gsi;
+    ## strangem, no apperant use
+    $wiki =~ s/\x{4}//gsi;
+    $wiki =~ s/\x{5}//gsi;
 
     return $wiki;
 }

@@ -124,6 +124,12 @@ sub wiki_get_page {
   return $page;
 }
 
+sub wiki_get_page_section {
+  my ($self, $title, $section) = @_;
+  my $page = $mw->get_page( { title => "$title#$section" } );
+  return $page;
+}
+
 sub wiki_delete_page {
   my ($self, $title) = @_;
 

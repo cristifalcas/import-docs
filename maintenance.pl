@@ -55,8 +55,11 @@ sub fixnamespaces {
     if ($ns_nr >= 100) {
 	my $name = $namespaces->{$ns_nr};
 	$name =~ s/ /_/g;
-	if ($name =~ m/^(SC_|CRM_)/) {
+	if ($name =~ m/^SC_Deployment$/i) {
+	    $res->{'deploy'}->{$name} = $ns_nr;
+	} elsif ($name =~ m/^(SC_|CRM_)/i) {
 	    $res->{'real'}->{$name} = $ns_nr;
+	    $res->{'cancel'}->{$name} = $ns_nr if $name =~ m/^SC_Cancel$/i;
 	} elsif ($name =~ m/^(SC|CRM)$/) {
 	    $res->{'redir'}->{$name} = $ns_nr;
 	} else {
@@ -661,6 +664,7 @@ if ( -f "new 1.txt" ) {
 
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
+# print Dumper($res->{'deploy'});exit 1;
 
 # # print Dumper($namespaces);
 print "##### Update users:\n";
@@ -687,7 +691,6 @@ print "##### Syncronize:\n";
 $local_pages = getlocalpages($namespaces);
 $wiki_pages = getwikipages($namespaces);
 syncronize_local_wiki;
-
 # compressOld.php
 
 ## all files deleted deleteArchivedFiles.php
