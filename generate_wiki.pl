@@ -989,9 +989,10 @@ if ($path_type eq "mind_svn") {
 	my $deployment_txt;
 	foreach my $doc_type (keys %$deployment) {
 	  my $txt = $deployment->{$doc_type};
-	  next if $txt =~ m/^\s*=+Deployment consideration=+\n+<font color="#0000ff">Add all assumptions, settings, actions, etc that are relevant for the correct deployment and use of the system.<\/font>\n+TBD\s*$/gmsi
+	  next if $txt =~ m/^\s*=+Deployment consideration=+\n+<font color="#0000ff">(Add all assumptions, settings, actions, etc that are relevant for the correct deployment and use of the system.|Specify all configuration, and consideration that are relevant for correct deployment of the system.)<\/font>\n+TBD\s*$/gmsi
 	      || $txt =~ m/^\s*=+Deployment consideration=+\s*$/gmsi
-	      || $txt =~ m/^\s*=+Deployment configuration &amp; consideration=+\n+(NR|N\/A)\s*$/gmsi;
+	      || $txt =~ m/^\s*=+Deployment configuration &amp; consideration=+\n+(NR|N\/A)\s*\.?\s*$/gmsi
+	      || $txt =~ m/^\s*=+Deployment configuration &amp; consideration=+\n+Specify all configuration, and consideration that are relevant for correct deployment of the system.\n+TBD\s*\.?\s*$/gmsi;
 	  $txt =~ s/\n*(=+)(.*?)(=+)\n/\n<b>$2 - [[$url#$doc_type|$doc_type]]<\/b>\n/gms;
 # 	  $deployment_txt .= "$txt\n:Link to [[$url#$doc_type|$doc_type]].\n";
 	  $deployment_txt .= "$txt";

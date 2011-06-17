@@ -20,6 +20,8 @@ our $wiki_url_path = "/wiki";
 # our $wiki_url = "http://localhost:1900/wiki";
 our $wiki_user = 'wiki_auto_import';
 our $wiki_pass = '!0wiki_auto_import@9';
+our $robot_user = 'robotuser';
+our $robot_pass = '!0robotuser@9';
 our $mw;
 our $bmw;
 our $edit_token;
@@ -39,15 +41,15 @@ sub wiki_on_error {
 
 sub new {
     my $class = shift;
-    my $self = {};
+    my $self = { user_type => shift};
     if (WikiCommons::is_remote ne "yes" ) {
-
+	my ($user, $pass) = ($wiki_user, $wiki_pass);
+	($user, $pass) = ($robot_user, $robot_pass) if defined $self->{'user_type'} && $self->{'user_type'} eq "robot";
 	$mw = MediaWiki::API->new({ api_url => "$wiki_url/api.php" }, retries  => 3) or die "coco";
 	$mw->{config}->{on_error} = \&wiki_on_error;
-	$mw->login( {lgname => $wiki_user, lgpassword => $wiki_pass } )
+	$mw->login( {lgname => $user, lgpassword => $pass } )
 	    || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     }
-
     bless($self, $class);
     return $self;
 }

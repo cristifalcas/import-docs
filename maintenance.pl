@@ -69,7 +69,6 @@ sub fixnamespaces {
 	$res->{'private'}->{$namespaces->{$ns_nr}} = $ns_nr;
     }
   }
-
   return $res;
 }
 
@@ -610,15 +609,19 @@ sub syncronize_local_wiki {
 	my ($only_in1, $only_in2, $common) = WikiCommons::array_diff( \@arr1, \@arr2 );
 	print "$tmp only in local: ".Dumper($only_in1); print "$tmp only in wiki: ".Dumper($only_in2);
 	die "Too many to delete: in local = ".(scalar @$only_in1)." in wiki = ".(scalar @$only_in2).".\n" if scalar @$only_in1 > 200 || scalar @$only_in2 > 200;
+	my ($count, $total) = (0, (scalar @$only_in1));
 	foreach my $local (@$only_in1) {
-	    print "rm dir $workdir/$local_pages->{$tmp}->{$local}\n";
+	    $count++;
+	    print "rm dir $workdir/$local_pages->{$tmp}->{$local}: \t$count out of $total\n";
 	    if ( ! $view_only ) {
 		remove_tree("$workdir/$local_pages->{$tmp}->{$local}") || die "Can't remove dir $workdir/$local_pages->{$tmp}->{$local}: $?.\n";
 	    }
 	    delete $local_pages->{$tmp}->{$local};
 	}
+	($count, $total) = (0, (scalar @$only_in2));
 	foreach my $wiki (@$only_in2) {
-	    print "rm page $wiki\n";
+	    $count++;
+	    print "rm page $wiki: \t$count out of $total\n";
 	    $our_wiki->wiki_delete_page($wiki) if ( $our_wiki->wiki_exists_page("$wiki") && ! $view_only);
 	    delete $wiki_pages->{$tmp}->{$wiki};
 	}
@@ -661,11 +664,9 @@ if ( -f "new 1.txt" ) {
 	}
     }
 }
-
+while (1){unused_images_dirty()};exit 1;
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
-# print Dumper($res->{'deploy'});exit 1;
-
 # # print Dumper($namespaces);
 print "##### Update users:\n";
 update_user_pages($namespaces->{'private'}->{'User'});
