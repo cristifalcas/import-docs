@@ -67,8 +67,7 @@ select a.id,
   from SC_BUILD_MANAGER a, scprods b, SCPROJECTS c
  where actual_build_date >= '1jan2008'
    and b.productid = a.product
-   and a.projectcode = c.projectcode
- order by projectname, productname, version desc, service_pack desc";
+   and a.projectcode = c.projectcode";
     my $info;
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
@@ -215,19 +214,21 @@ foreach (@$projs) {
 print "Get all service packs.\n";
 my $sps = getSPs;
 foreach my $sp (sort keys %$sps) {
-# next if "$sp" !~ m/iPhonEX -- iPhonEX -- 6.01/i;
+next if "$sp" !~ m/iPhonEX -- iPhonEX -- 5.30.017 gn/i;
 # next if "$sp" !~ m/iPhonEX -- iPhonEX -- 7.00.001/i;
     my $sp_ids = $sps->{$sp};
     my $full_deployment->{'page'} = "$deployment_ns:Deployment$urlsep$sp$urlsep"."full";
 #     my $category = "\n[[Category:".$sps->{$sp}->{'XXX_Cat'}."]]";
     my $end = "[[Category:".$sps->{$sp}->{'XXX_Cat'}."]]";
     my $txt = "[[".$full_deployment->{'page'}."| Full deployment consideration]].\n\n\n";
+    my $txt_all = {};
     delete $sps->{$sp}->{'XXX_Cat'};
-    foreach my $id (reverse sort keys %$sp_ids) {
+    foreach my $id (keys %$sp_ids) {
 	my $sp_txt;
 	my $sp_deployment->{'page'} = "$deployment_ns:Deployment$urlsep$sp$urlsep".$sp_ids->{$id}->{'sp'};
 	my $sp_bugs->{'page'} = "$deployment_ns:Bugs$urlsep$sp$urlsep".$sp_ids->{$id}->{'sp'};
-	$txt .= "\n\n{{:".$sp_bugs->{'page'}."}}";
+# 	$txt .= "\n\n{{:".$sp_bugs->{'page'}."}}";
+	$txt_all->{$sp_ids->{$id}->{'sp'}} = "\n\n{{:".$sp_bugs->{'page'}."}}";
 	$sp_txt .= "\n----\n".$sp_ids->{$id}->{'build_type'}." ".$sp_ids->{$id}->{'version'}." ".$sp_ids->{$id}->{'sp'}.". Description: ".$sp_ids->{$id}->{'description'}.". Build date: ".$sp_ids->{$id}->{'build_date'}."\n\n[[".$sp_deployment->{'page'}."|Deployment consideration]].\n\n";
 	$sp_txt .=
 '{| class="wikitable" style="background: #f5fffa"
@@ -242,7 +243,7 @@ foreach my $sp (sort keys %$sps) {
 ! style="background: #cef2e0;" | Worker Name
 ';
 	my $tasks = getTasks_inSP($id);
-	foreach my $sc (keys %$tasks) {
+	foreach my $sc (sort keys %$tasks) {
 	    WikiCommons::set_real_path((fileparse(abs_path($0), qr/\.[^.]*/))[1]."");
 	    my $cust = WikiCommons::get_correct_customer($tasks->{$sc}->{'CUSTOMER'});
 	    if (defined $cust && $cust !~ m/^\s*$/) {
@@ -252,17 +253,17 @@ foreach my $sp (sort keys %$sps) {
 	    }
 	    $sp_txt .= "|-
 | [[SC:$sc|$sc]] || ".$tasks->{$sc}->{'ChangeType'}." || ".$tasks->{$sc}->{'TITLE'}." || $cust || ".$tasks->{$sc}->{'STATUS'}." || ".$tasks->{$sc}->{'COMMENTS'}." || ".$tasks->{$sc}->{'PRIORITY'}." || ".$tasks->{$sc}->{'WorkerName'}."\n";
-# print Dumper($tasks);exit 1;
 	    $full_deployment->{$sc} = getClones($sc);
 	    $sp_deployment->{$sc} = getClones($sc);
 	}
 	$sp_txt .= "|}\n\n";
 	$our_wiki->wiki_edit_page($sp_bugs->{'page'}, "$sp_txt");
+# 	$our_wiki->wiki_delete_page($sp_bugs->{'page'});
 	makeDeploymentPage($sp_deployment);
     }
-    $txt .= "$end\n\n";
     makeDeploymentPage($full_deployment);
-# print Dumper("$deployment_ns:$sp", "$txt");
+    $txt .= $txt_all->{$_} foreach (reverse sort keys %$txt_all);
+    $txt .= "$end\n\n";
     $our_wiki->wiki_edit_page("$deployment_ns:$sp", "$txt");
 #     $our_wiki->wiki_delete_page("$deployment_ns:$sp");
 #     print Dumper("$deployment_ns:$sp", "$txt");

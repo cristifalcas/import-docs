@@ -44,6 +44,7 @@ sub add_document {
     my $page_url = "";
     my @categories = ();
     my $main = ""; my $ver = ""; my $ver_fixed = ""; my $big_ver = ""; my $ver_sp = ""; my $ver_id = "";
+    $name =~ s/(^\s+)|(\s+$)//;
 
     if (-f "$dir/$name.txt") {
 	local( $/, *FILEHANDLE ) ;
