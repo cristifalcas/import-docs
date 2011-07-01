@@ -4,28 +4,9 @@ foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
 print "Start: ". ($crt_timeData[5]+1900) ."-$crt_timeData[4]-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
 use warnings;
 use strict;
+$| = 1;
 
-# my $q = "";
-# my $txt = "
-# ==Deployment consideration==
-# 
-# 
-# ";
-# if ($txt =~ m/^\s*=+Deployment consideration=+\n+<font color="#0000ff">Add all assumptions, settings, actions, etc that are relevant for the correct deployment and use of the system.<\/font>\n+TBD\s*$/gmsi
-# 	      || $txt =~ m/^\s*=+Deployment consideration=+\s*$/gmsi
-# 	      || $txt =~ m/^\s*=+Deployment configuration &amp; consideration=+\n+(NR|N\/A)\s*$/gmsi) {
-# } else {
-# $q.=$txt;
-# }
-# 	  $deployment_txt .= "$txt\nLink to [[$url#$doc_type|$doc_type]].\n";
-# my @deployment = ();
-# foreach ($wiki_txt =~ /\n((=+)[^\n]*?deployment.*?\2\n.*?\n)=+?/ims) {
-# my $found_string = $&;
-# # print "\n";
-# 
-# 		push @deployment, $1;
-# 	    }
-# print Dumper($q);exit 1;
+# perl -e 'print sprintf("\\x{%x}", $_) foreach (unpack("C*", "Ó"));print"\n"' 
 
 $SIG{__WARN__} = sub { die @_ };
 
@@ -120,8 +101,9 @@ my $all_real = "no";
 my $delete_everything = "no";
 my $delete_categories = "yes";
 my $make_categories = "yes";
-my $big_dump_mode = "yes";
+my $big_dump_mode = "no";
 my $pid_old = "100000";
+my $max_to_delete = 1000;
 my $type_old = "";
 my $failed = {};
 
@@ -166,7 +148,9 @@ my $count_files;
 our $coco;
 WikiCommons::is_remote("$remote_work");
 WikiCommons::set_real_path($path_prefix);
-
+# my $q=`cat q`;
+# my $w=WikiClean::get_deployment_conf( $q );
+# print Dumper($w);exit 1;
 sub create_wiki {
     my ($page_url, $doc_file, $zip_name) = @_;
     die "Page url is empty.\n" if $page_url eq '';
@@ -455,13 +439,14 @@ sub delete_categories {
 
     print "-Delete categories.\t". (WikiCommons::get_time_diff) ."\n";
     foreach my $category (@$files) {
-	if ( -d "$categories_dir/$category" ) {
+	my $dir_cat = "$categories_dir/Category:$category";
+	if ( -d $dir_cat ) {
 	    print "\tDelete category $category.\t". (WikiCommons::get_time_diff) ."\n";
-	    my ($name,$dir,$suffix) = fileparse("$categories_dir/$category", qr/\.[^.]*/);
+	    my ($name,$dir,$suffix) = fileparse("$dir_cat", qr/\.[^.]*/);
 	    $our_wiki->wiki_delete_page("$name$suffix") if ( $our_wiki->wiki_exists_page("$name$suffix") );
 	    remove_tree("$dir$name$suffix") || die "Can't remove dir $dir$name$suffix: $?.\n";
 	} else {
-	    print "Extra file in $categories_dir: $categories_dir/$category.\n";
+	    print "Extra file in $categories_dir: $dir_cat.\n" if -f $dir_cat;
 	}
     }
     print "+Delete categories.\t". (WikiCommons::get_time_diff) ."\n";
@@ -476,25 +461,19 @@ sub make_categories {
 	opendir(DIR, "$categories_dir") || die("Cannot open directory $categories_dir.\n");
 	@files = grep { (!/^\.\.?$/) && -d "$categories_dir/$_" } readdir(DIR);
 	closedir(DIR);
-# 	s/^Category:// for (@files);
     }
-
     my $general_categories_hash = $coco->get_categories;
-    my @crt_categories = (sort keys %$general_categories_hash);
-    s/^/Category:/ for (@crt_categories);
-    my ($only_in1, $only_in2, $intersection) = WikiCommons::array_diff( \@files, \@crt_categories );
+    my @to_delete = (keys %$general_categories_hash);
+    delete_categories(\@to_delete, $categories_dir);
 
-    delete_categories($only_in1,$categories_dir);
     return if ($delete_everything eq "yes");
     print "-Making categories.\t". (WikiCommons::get_time_diff) ."\n";
-#     foreach my $key (sort keys %$general_categories_hash) {
-    foreach my $key (@$only_in2) {
+    foreach my $key (sort keys %$general_categories_hash) {
 	my $text = "----\n\n";
-	$url = "$key";
+	$url = "Category:$key";
 	if (ref $general_categories_hash->{$key}) {
 	    foreach my $sec_key (sort keys %{$general_categories_hash->{$key}} ) {
 		$text .= "\[\[Category:$sec_key\]\]\n" if exists $general_categories_hash->{$key}->{$sec_key} ;
-#	 	if MIND_Customers add customer info
 	    }
 	} else {
 # 	    $text .= "\[\[Category:$key\]\]\n";
@@ -512,8 +491,6 @@ sub make_categories {
 	WikiCommons::makedir("$work_dir");
 	WikiCommons::write_file ("$work_dir/$wiki_files_info", "md5 = 0\nrel_path = 0\nsvn_url = 0\nlink_type = category\n");
 	WikiCommons::write_file("$work_dir/$url", $text);
-
-	print "Done $url.\t". (WikiCommons::get_time_diff) ."\n";
     }
     print "+Making categories.\t". (WikiCommons::get_time_diff) ."\n";
 }
@@ -676,7 +653,7 @@ sub work_begin {
 
 # print "$_\n" foreach sort keys %$pages_toimp_hash; exit 1;
     if (WikiCommons::is_remote ne "yes") {
-        die Dumper(sort keys %$to_delete)."\nToo many to delete.\n" if (keys %$to_delete) > 1000;
+        die Dumper(sort keys %$to_delete)."\nToo many to delete.\n" if (keys %$to_delete) > $max_to_delete;
 	foreach my $url (sort keys %$to_delete) {
 	    print "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";
 	    $our_wiki->wiki_delete_page("$wiki_dir/$url/$wiki_files_uploaded");
@@ -804,6 +781,7 @@ if ($path_type eq "mind_svn") {
     my $total_nr = scalar keys %$pages_toimp_hash;
     my $crt_nr = 0;
     my $wrong_hash = {};
+#     foreach (keys %$pages_toimp_hash) {$crt_nr++ if $_ =~ m/^SC:(.*)/i}
     foreach my $url (sort keys %$pages_toimp_hash) {
 	$crt_nr++;
 # next if "$url" !~ "B17982";
@@ -862,7 +840,7 @@ if ($path_type eq "mind_svn") {
 	closedir(DIR);
 	my $wrong = "";
 	my $deployment = {};
-	foreach my $file (@files) {
+	foreach my $file (sort @files) {
 	    my $file = "$path_files/$rel_path/$file";
 	    my ($name,$dir,$suffix) = fileparse($file, qr/\.[^.]*/);
 	    my ($node, $title, $header) = "";
@@ -909,7 +887,8 @@ if ($path_type eq "mind_svn") {
 	    $wiki_txt =~ s/\n(=+)(.*?)(=+)\n/\n=$1$2$3=\n/g;
 
 # 	    $deployment->{$title} = $1 if $wiki_txt =~ /\n((=+)[^\n]*?deployment.*?\2\n.*?\n)\2[^=]*?\2\n/ims;
-	    $deployment->{$title} = $1 if $wiki_txt =~ /\n((=+)[^\n]*?deployment.*?\2\n.*?\n)=+?/ims;
+# 	    $deployment->{$title} = $1 if $wiki_txt =~ /\n((=+)[^\n]*?deployment.*?\2\n.*?\n)=+?/ims && $title ne "STP document";
+	    $deployment->{$title} = WikiClean::get_deployment_conf($wiki_txt) if $title ne "STP document";
 
 	    my $count = 0;
 	    if ($name !~ m/(review document)|(review docuemnt)/) {
@@ -977,7 +956,7 @@ if ($path_type eq "mind_svn") {
 	} else {
 	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
 	}
-
+# print Dumper($deployment);exit 1;
 	my $is_canceled = 0;
 	$is_canceled++ if $pages_toimp_hash->{$url}[$svn_url_pos]->{'SC_info'}->{'revision'} =~ m/^Cancel$/i;
 	insertdata($url, $full_wiki);
@@ -985,24 +964,27 @@ if ($path_type eq "mind_svn") {
 	my $url_deployment = $url;
 	$url_deployment =~ s/^SC:/SC_Deployment:/;
 	$our_wiki->wiki_delete_page ($url_deployment) if ( $our_wiki->wiki_exists_page($url_deployment) );
-	remove_tree("$wiki_dir/$url_deployment/") if -d "$wiki_dir/$url_deployment/";
+# 	remove_tree("$wiki_dir/$url_deployment/") if -d "$wiki_dir/$url_deployment/";
 	my $deployment_txt;
-	foreach my $doc_type (keys %$deployment) {
+	foreach my $doc_type (sort keys %$deployment) {
 	  my $txt = $deployment->{$doc_type};
-	  next if $txt =~ m/^\s*=+Deployment consideration=+\n+<font color="#0000ff">(Add all assumptions, settings, actions, etc that are relevant for the correct deployment and use of the system.|Specify all configuration, and consideration that are relevant for correct deployment of the system.)<\/font>\n+TBD\s*$/gmsi
-	      || $txt =~ m/^\s*=+Deployment consideration=+\s*$/gmsi
-	      || $txt =~ m/^\s*=+Deployment configuration &amp; consideration=+\n+(NR|N\/A)\s*\.?\s*$/gmsi
-	      || $txt =~ m/^\s*=+Deployment configuration &amp; consideration=+\n+Specify all configuration, and consideration that are relevant for correct deployment of the system.\n+TBD\s*\.?\s*$/gmsi;
-	  $txt =~ s/\n*(=+)(.*?)(=+)\n/\n<b>$2 - [[$url#$doc_type|$doc_type]]<\/b>\n/gms;
-# 	  $deployment_txt .= "$txt\n:Link to [[$url#$doc_type|$doc_type]].\n";
-	  $deployment_txt .= "$txt";
+	  next if ! defined $txt;
+# 	  next if $txt =~ m/^\n*=+(Deployment consideration|Deployment configuration &amp; consideration)=+\n+<font color="#0000ff">(Add all assumptions, settings, actions, etc that are relevant for the correct deployment and use of the system.|Specify all configuration, and consideration that are relevant for correct deployment of the system.)<\/font>\n+(TBD\s*\.)?\s*$/gmsi
+# 	      || $txt =~ m/^\n*=+Deployment consideration=+\s*$/gmsi
+# 	      || $txt =~ m/^\n*=+Deployment configuration &amp; consideration=+\n+(<font color="#0000ff">)?(NR|N\/A|NA)(<\/font>)?\s*\.?\s*$/gmsi;
+# 	  $txt =~ s/(\n+|^)(=+)(.*?)(=+)\n/\n<b>$3 - [[$url#$doc_type|$doc_type]]<\/b>\n/gms;
+	  $txt =~ s/(\n+|^)(=+)(.*?)(=+)\n/\n<b>$3 - [[$url#$doc_type|$doc_type]]<\/b>\n/ms;
+	  $txt =~ s/\n(=+)(.*?)(=+)\n/\n<b>$2<\/b>\n/gms;
+	  $deployment_txt .= "$txt\n\n";
 	}
 	next if ! defined $deployment_txt || $is_canceled;
 	my $title = $full_wiki;
 	$title =~ s/^<center><font size="[0-9]{1,}">'''(.*?)'''<\/font><\/center>.*$/$1/gsi;
 	$url =~ s/^SC:(.*)/$1/;
 	$deployment_txt = "=<small>[[SC:$url|$url: $title]]</small>=\n".$deployment_txt;
-# 	$url = "Deployment:$url";
+# 	my $deployment_dir = "$wiki_dir/$url_deployment";
+# 	WikiCommons::makedir "$deployment_dir";
+# 	WikiCommons::write_file("$deployment_dir/$wiki_files_info", $deployment_txt);
 	print "\tImporting url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n";
 	$our_wiki->wiki_edit_page($url_deployment, $deployment_txt);
 	die "Could not import url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url_deployment) );

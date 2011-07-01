@@ -47,6 +47,7 @@ my ($local_pages, $wiki_pages);
 my $view_only = shift;
 $view_only = 1 if ! defined $view_only;
 my $max_elements = 2000;
+my $max_to_delete = 3000;
 
 sub fixnamespaces {
   my $namespaces = shift;
@@ -386,7 +387,34 @@ sub fix_wiki_sc_type {
       $our_wiki->wiki_delete_page($url) if ( ! $view_only && $our_wiki->wiki_exists_page("$url") );
     }
   }
-
+  ## syncronize redir and real
+  my $hash_redir = ();
+  $hash = $namespaces->{'redir'};
+  foreach my $ns (keys %$hash){
+    foreach (@{$our_wiki->wiki_get_redirects("$hash->{$ns}")}) {
+      my $tmp = $_;
+      $tmp =~ s/^(SC|CRM)(.*?)://i;
+      $hash_redir->{$tmp} = $_;
+    }
+  }
+  my $hash_real = ();
+  $hash = $namespaces->{'real'};
+  foreach my $ns (keys %$hash){
+    foreach (@{$our_wiki->wiki_get_nonredirects("$hash->{$ns}")}) {
+      my $tmp = $_;
+      $tmp =~ s/^(SC|CRM)(.*?)://i;
+      $hash_real->{$tmp} = $_;
+    }
+  }
+  my @a1 = keys %$hash_redir;
+  my @a2 = keys %$hash_real;
+  my ($only_in1, $only_in2) = WikiCommons::array_diff( \@a1, \@a2 );
+  foreach (@$only_in1){
+    $our_wiki->wiki_delete_page($hash_redir->{$_}) if ! $view_only;
+  }
+  foreach (@$only_in2){
+     $our_wiki->wiki_delete_page($hash_real->{$_}) if ! $view_only;
+  }
 }
 
 sub unused_categories {
@@ -608,7 +636,7 @@ sub syncronize_local_wiki {
 	my @arr2 = (sort keys %$hash2);
 	my ($only_in1, $only_in2, $common) = WikiCommons::array_diff( \@arr1, \@arr2 );
 	print "$tmp only in local: ".Dumper($only_in1); print "$tmp only in wiki: ".Dumper($only_in2);
-	die "Too many to delete: in local = ".(scalar @$only_in1)." in wiki = ".(scalar @$only_in2).".\n" if scalar @$only_in1 > 200 || scalar @$only_in2 > 200;
+	die "Too many to delete: in local = ".(scalar @$only_in1)." in wiki = ".(scalar @$only_in2).".\n" if scalar @$only_in1 > $max_to_delete || scalar @$only_in2 > $max_to_delete;
 	my ($count, $total) = (0, (scalar @$only_in1));
 	foreach my $local (@$only_in1) {
 	    $count++;
@@ -664,9 +692,11 @@ if ( -f "new 1.txt" ) {
 	}
     }
 }
-while (1){unused_images_dirty()};exit 1;
+
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
+# print Dumper($namespaces);exit 1;
+
 # # print Dumper($namespaces);
 print "##### Update users:\n";
 update_user_pages($namespaces->{'private'}->{'User'});

@@ -134,7 +134,7 @@ WikiCommons::write_file("$dir/".++$i.". original.$name.html", tree_to_html($tree
 WikiCommons::write_file("$dir/".++$i.". tree_remove_TOC.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
 #     $tree = tree_remove_strike($tree);
 # WikiCommons::write_file("$dir/".++$i.". tree_remove_strike.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
-    $tree = heading_new_line($tree) if $debug eq "yes";
+    $tree = heading_new_line($tree);
 
 #     $tree->no_space_compacting(1);
     my $text1 = tree_to_text($tree);
@@ -208,7 +208,7 @@ WikiCommons::write_file("$dir/".++$i.". tree_fix_numbers_in_headings.$name.html"
     my $html_res = tree_to_html($tree);
     print "\t+Fix html file $name.html.\t". (WikiCommons::get_time_diff) ."\n";
     $tree = $tree->delete;
-    WikiCommons::write_file("$dir/$name.fixed.html", $html_res, 1) if $debug eq "yes";
+WikiCommons::write_file("$dir/$name.fixed.html", $html_res, 1) if $debug eq "yes";
     return Encode::encode('utf8', $html_res);
 }
 
@@ -659,12 +659,14 @@ sub make_wiki_from_html {
     my $wc = new HTML::WikiConverter(
 	dialect => 'MediaWiki_Mind',
 	strip_tags => $strip_tags,
+	preserve_bold => 1,
+	preserve_italic => 1,
     );
     my $wiki = $wc->html2wiki($html);
-    WikiCommons::write_file("$dir/original.$name.wiki", $wiki, 1) if $debug eq "yes";
+WikiCommons::write_file("$dir/original.$name.wiki", $wiki, 1) if $debug eq "yes";
 
     my $parsed_html = $wc->parsed_html;
-    WikiCommons::write_file("$dir/parsed.$name.html", $parsed_html, 1) if $debug eq "yes";
+WikiCommons::write_file("$dir/parsed.$name.html", $parsed_html, 1) if $debug eq "yes";
 
     print "\t+Generating wiki file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
     $wiki =~ s/mind_tag/div/gm;
@@ -736,7 +738,7 @@ sub fix_small_issues {
     ## remove empty headings
     $wiki =~ s/\n=+\n/\n/gm;;
     ## remove consecutive blank lines
-    $wiki =~ s/(\n){4,}/\n\n/gs;
+    $wiki =~ s/(\n){4,}/\n\n\n/gs;
     $wiki =~ s/^[ \t]+//mg;
     ## collapse spaces
     $wiki =~ s/[ \t]{2,}/ /mg;
@@ -813,7 +815,8 @@ sub fix_wiki_chars {
     ## CHECK MARK
     $wiki =~ s/\x{EF}\x{81}\x{90}/\x{e2}\x{9c}\x{94}/gsi;
     $wiki =~ s/\x{EF}\x{192}\x{BC}/\x{e2}\x{9c}\x{94}/gsi;
-    $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{bc}/\x{e2}\x{9c}\x{94}/gsi;
+    $wiki =~ s/\x{ef}\x{83}\x{bc}/\x{e2}\x{9c}\x{94}/gsi;
+
     ## BALLOT X
     $wiki =~ s/\x{EF}\x{81}\x{8F}/\x{e2}\x{9c}\x{98}/gsi;
     $wiki =~ s/\x{EF}\x{192}\x{BB}/\x{e2}\x{9c}\x{98}/gsi;
@@ -933,5 +936,22 @@ sub fix_wiki_link_to_sc {
     return $wiki;
 }
 
+sub get_deployment_conf {
+    my $wiki_txt = shift;
+    my $result = "";
+#     if ($wiki_txt =~ /(^|\n)(=+)(([^\n]*?deployment.*?)\2\n(.*?)\n)\2[^=]/ims){
+    if ($wiki_txt =~ /(^|\n)(=+)([^\n]*?deployment.*?\2\n)(.*)/ims){
+	my $heading = "$2$3";
+	my $heading_length = length($2);
+	my $found_string = $&;
+	my $txt = "$4";
+	$txt =~ s/\n={1,$heading_length}[^=].*//ms;
+	$txt = "$heading$txt";
+	return if $txt =~ m/^\n*=+(Deployment consideration|Deployment configuration &amp; consideration)=+\n+(<font color="#0000ff">)?(Add all assumptions, settings, actions, etc that are relevant for the correct deployment and use of the system.|Specify all configuration, and consideration that are relevant for correct deployment of the system.)?(<\/font>)?\n*(TBD\.?|N\/?R|N\/?A)?\s*\n*$/gsi;
+	print "\t Found some deployment stuff.\n";
+	return $txt;
+    }
+    return;
+}
 
 return 1;

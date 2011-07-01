@@ -8,6 +8,9 @@ CMD="nice -n 20 perl"
 CMD="perl"
 
 case "$1" in
+"update_sp")
+    $CMD "$SCRIPT_PATH"/update_service_packs.pl  &> "$LOG_PATH"update_service_packs &
+  ;;
 "update_svn")
     $CMD "$SCRIPT_PATH"/update_SVN.pl "$WIKI_DIR_PATH"/Documentation/svn/ &> "$LOG_PATH"update_svn &
   ;;
