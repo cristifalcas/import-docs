@@ -130,6 +130,7 @@ sub write_customer {
     delete $hash->{'customer_id'};
 
     die "Leftovers:".Dumper($hash) if scalar (keys %$hash) && $name ne "VStar";
+    $our_wiki->wiki_delete_page("Category:$name") if ( $our_wiki->wiki_exists_page("Category:$name") );
     $our_wiki->wiki_edit_page("Category:$name", $txt);
 }
 
@@ -198,7 +199,8 @@ $dbh->{LongTruncOk}   = 0;
    and c.rcuststatus = 'A'
    and a.rcuststatus = 'A'
    and b.rsuppdeptstatus = 'A'
-   and a.rcustlastscno > 10";
+   and a.rcustlastscno > 10
+   order by a.rcustiddisplay";
 
 my $sth = $dbh->prepare($SEL_INFO);
 $sth->execute();

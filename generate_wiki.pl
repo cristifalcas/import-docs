@@ -101,7 +101,7 @@ my $all_real = "no";
 my $delete_everything = "no";
 my $delete_categories = "yes";
 my $make_categories = "yes";
-my $big_dump_mode = "no";
+my $big_dump_mode = "yes";
 my $pid_old = "100000";
 my $max_to_delete = 1000;
 my $type_old = "";
@@ -686,7 +686,7 @@ if (-f "$pid_file") {
     if ( $exists ) {
 	my $proc_name = `ps -p $pid_old -o cmd`;
 	print "$proc_name\n";
-	die "Process is already running.\n" if $proc_name =~ m/(.+?)generate_wiki\.pl -d (.+?) -n $path_type(.*)/;
+# 	die "Process is already running.\n" if $proc_name =~ m/(.+?)generate_wiki\.pl -d (.+?) -n $path_type(.*)/;
     }
 }
 WikiCommons::write_file($pid_file,"$$\n");
