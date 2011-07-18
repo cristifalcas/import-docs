@@ -102,6 +102,7 @@ my $delete_everything = "no";
 my $delete_categories = "yes";
 my $make_categories = "yes";
 my $big_dump_mode = "yes";
+my $delete_previous_page = "no";
 my $pid_old = "100000";
 my $max_to_delete = 1000;
 my $type_old = "";
@@ -503,7 +504,7 @@ sub insertdata {
     if (WikiCommons::is_remote ne "yes"){
 	$our_wiki->wiki_import_files ("$work_dir/$wiki_result", "$url");
 	print "\tDeleting url $url just to be sure.\t". (WikiCommons::get_time_diff) ."\n";
-	$our_wiki->wiki_delete_page ($url) if ( $our_wiki->wiki_exists_page($url) );
+	$our_wiki->wiki_delete_page ($url) if ( $our_wiki->wiki_exists_page($url) && $delete_previous_page ne "no");
 	print "\tImporting url $url.\t". (WikiCommons::get_time_diff) ."\n";
 	$our_wiki->wiki_edit_page($url, $wiki);
 	die "Could not import url $url.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url) );
@@ -651,7 +652,6 @@ sub work_begin {
 	($to_delete, $to_keep) = generate_pages_to_delete_to_import;
     }
 
-# print "$_\n" foreach sort keys %$pages_toimp_hash; exit 1;
     if (WikiCommons::is_remote ne "yes") {
         die Dumper(sort keys %$to_delete)."\nToo many to delete.\n" if (keys %$to_delete) > $max_to_delete;
 	foreach my $url (sort keys %$to_delete) {
@@ -686,7 +686,7 @@ if (-f "$pid_file") {
     if ( $exists ) {
 	my $proc_name = `ps -p $pid_old -o cmd`;
 	print "$proc_name\n";
-# 	die "Process is already running.\n" if $proc_name =~ m/(.+?)generate_wiki\.pl -d (.+?) -n $path_type(.*)/;
+	die "Process is already running.\n" if $proc_name =~ m/(.+?)generate_wiki\.pl -d (.+?) -n $path_type(.*)/;
     }
 }
 WikiCommons::write_file($pid_file,"$$\n");
@@ -706,15 +706,13 @@ if ($path_type eq "mind_svn") {
     $coco = new WikiMindCRM("$path_files", "$1");
 
     my $to_keep = work_begin;
-# print Dumper($pages_toimp_hash);die;
-
+    make_categories;
     my $total_nr = scalar keys %$pages_toimp_hash;
     my $crt_nr = 0;
     foreach my $url (sort keys %$pages_toimp_hash) {
 	$crt_nr++;
 	WikiCommons::reset_time();
 	print "\n************************* $crt_nr of $total_nr\nMaking crm url for $url.\t". (WikiCommons::get_time_diff) ."\n";
-
 	WikiCommons::makedir "$wiki_dir/$url/";
 	my $rel_path = "$pages_toimp_hash->{$url}[$rel_path_pos]";
 
@@ -730,8 +728,7 @@ if ($path_type eq "mind_svn") {
 	    my $crt_name = $url;
 	    $crt_name =~ s/(CRM.*)?:(.*)/$2/i;
 	    print "\tmake redirect from CRM:$crt_name to $url.\n";
-	    $our_wiki->wiki_delete_page("$url") if $our_wiki->wiki_exists_page("$url");
-# 	    next if defined $wrong_hash->{$url};
+	    $our_wiki->wiki_delete_page("$url") if $our_wiki->wiki_exists_page("$url") && $delete_previous_page ne "no";
 	    $our_wiki->wiki_move_page("CRM:$crt_name", "$url");
 
 	    my $text = "md5 = ".$pages_toimp_hash->{$url}[$md5_pos]."\n";
@@ -799,7 +796,7 @@ if ($path_type eq "mind_svn") {
 		next;
 	    }
 	    print "\tmake redirect from SC:$crt_name to $url.\n";
-	    $our_wiki->wiki_delete_page("$url") if $our_wiki->wiki_exists_page("$url");
+	    $our_wiki->wiki_delete_page("$url") if $our_wiki->wiki_exists_page("$url") && $delete_previous_page ne "no";
 	    $our_wiki->wiki_move_page("SC:$crt_name", "$url");
 
 	    my $text = "md5 = ".$pages_toimp_hash->{$url}[$md5_pos]."\n";
@@ -937,8 +934,6 @@ if ($path_type eq "mind_svn") {
 	    my $name_bad = "$bad_dir/$url".time();
 	    WikiCommons::move_dir("$path_files/$rel_path", "$name_bad");
 	    $wrong_hash->{$url} = 1;
-# 	    WikiCommons::copy_dir ("$path_files/$rel_path", "$name_bad");
-# 	    remove_tree("$path_files/$rel_path") || die "Can't remove dir $path_files/$rel_path: $?.\n";
 	    next ;
 	}
 	my $full_wiki = "";
@@ -956,23 +951,17 @@ if ($path_type eq "mind_svn") {
 	} else {
 	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
 	}
-# print Dumper($deployment);exit 1;
 	my $is_canceled = 0;
 	$is_canceled++ if $pages_toimp_hash->{$url}[$svn_url_pos]->{'SC_info'}->{'revision'} =~ m/^Cancel$/i;
 	insertdata($url, $full_wiki);
 
 	my $url_deployment = $url;
 	$url_deployment =~ s/^SC:/SC_Deployment:/;
-	$our_wiki->wiki_delete_page ($url_deployment) if ( $our_wiki->wiki_exists_page($url_deployment) );
-# 	remove_tree("$wiki_dir/$url_deployment/") if -d "$wiki_dir/$url_deployment/";
+	$our_wiki->wiki_delete_page ($url_deployment) if ( $our_wiki->wiki_exists_page($url_deployment) && $delete_previous_page ne "no");
 	my $deployment_txt;
 	foreach my $doc_type (sort keys %$deployment) {
 	  my $txt = $deployment->{$doc_type};
 	  next if ! defined $txt;
-# 	  next if $txt =~ m/^\n*=+(Deployment consideration|Deployment configuration &amp; consideration)=+\n+<font color="#0000ff">(Add all assumptions, settings, actions, etc that are relevant for the correct deployment and use of the system.|Specify all configuration, and consideration that are relevant for correct deployment of the system.)<\/font>\n+(TBD\s*\.)?\s*$/gmsi
-# 	      || $txt =~ m/^\n*=+Deployment consideration=+\s*$/gmsi
-# 	      || $txt =~ m/^\n*=+Deployment configuration &amp; consideration=+\n+(<font color="#0000ff">)?(NR|N\/A|NA)(<\/font>)?\s*\.?\s*$/gmsi;
-# 	  $txt =~ s/(\n+|^)(=+)(.*?)(=+)\n/\n<b>$3 - [[$url#$doc_type|$doc_type]]<\/b>\n/gms;
 	  $txt =~ s/(\n+|^)(=+)(.*?)(=+)\n/\n<b>$3 - [[$url#$doc_type|$doc_type]]<\/b>\n/ms;
 	  $txt =~ s/\n(=+)(.*?)(=+)\n/\n<b>$2<\/b>\n/gms;
 	  $deployment_txt .= "$txt\n\n";
@@ -982,9 +971,6 @@ if ($path_type eq "mind_svn") {
 	$title =~ s/^<center><font size="[0-9]{1,}">'''(.*?)'''<\/font><\/center>.*$/$1/gsi;
 	$url =~ s/^SC:(.*)/$1/;
 	$deployment_txt = "=<small>[[SC:$url|$url: $title]]</small>=\n".$deployment_txt;
-# 	my $deployment_dir = "$wiki_dir/$url_deployment";
-# 	WikiCommons::makedir "$deployment_dir";
-# 	WikiCommons::write_file("$deployment_dir/$wiki_files_info", $deployment_txt);
 	print "\tImporting url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n";
 	$our_wiki->wiki_edit_page($url_deployment, $deployment_txt);
 	die "Could not import url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url_deployment) );

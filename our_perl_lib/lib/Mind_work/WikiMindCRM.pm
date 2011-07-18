@@ -59,17 +59,18 @@ sub add_document{
     chomp $page_url;
     die "No page for $doc_file.\n" if ($page_url eq "" );
 
-    my @categories = ($values[0], 'CRM');
-    my $customer = (split ":",$values[0])[1];
+#     my @categories = ($values[0], 'CRM');
+#     my $customer = (split ":",$values[0])[1];
 # print Dumper($values[0], $customer);
-#     $general_categories_hash->{($values[0]}->{$customer} = 1 if $ver ne $main;
+    $general_categories_hash->{"$values[0]$url_sep"."CRM"}->{"CRM"} = 1;
+    $general_categories_hash->{"$values[0]$url_sep"."CRM"}->{"$values[0]"} = 1;
 
     ++$count_files;
     print "\tNumber of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n" if ($count_files%1000 == 0);
 
     die "Page already exists.: $ns$page_url\n" if exists $pages_toimp_hash->{"$ns:$page_url"};
-    $pages_toimp_hash->{"$ns:$page_url"} = [$md5." redirect", $rel_path, "", "real", \@categories];
-    $pages_toimp_hash->{"CRM:$page_url"} = [$md5, $rel_path, "", "real", \@categories];
+    $pages_toimp_hash->{"$ns:$page_url"} = [$md5." redirect", $rel_path, "", "real"];
+    $pages_toimp_hash->{"CRM:$page_url"} = [$md5, $rel_path, "", "real"];
 }
 
 sub get_documents {

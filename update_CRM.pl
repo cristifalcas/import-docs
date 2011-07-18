@@ -679,7 +679,8 @@ sub write_sr {
 	    $wiki .= "----\n";
 	}
     }
-    $wiki .= "\n\n[[Category:$info->{0}->{'customer'}]]\n[[Category:$info->{0}->{'customer'} -- CRM]]\n\n";
+#     $wiki .= "\n\n[[Category:$info->{0}->{'customer'}]]\n[[Category:$info->{0}->{'customer'} -- CRM]]\n\n";
+    $wiki .= "\n\n[[Category:$info->{0}->{'customer'} -- CRM]]\n\n";
 
     $wiki =~ s/\x{ef}\x{bf}\x{bd}/?/gsi;
 #     $wiki =~ s/\x{c2}\x{91}/"/gsi;
@@ -741,7 +742,7 @@ my @new_cust_arr = ();
 foreach my $cust (sort keys %$customers){
     print "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
 # print "$customers->{$cust}->{'displayname'}\n";next;
-# next if $customers->{$cust}->{'displayname'} ne "Airbites";
+# next if $customers->{$cust}->{'displayname'} ne "Strata8";
 #     next if (! defined $customers->{$cust}->{'ver'} || $customers->{$cust}->{'ver'} lt "5.00")
 # 	    && $customers->{$cust}->{'displayname'} ne "Billing";
 # 	    && $customers->{$cust}->{'displayname'} !~ m/mtpcs/i;
