@@ -15,7 +15,8 @@ use MediaWiki::Bot;
 # http://www.mediawiki.org/wiki/API:Lists/es
 
 our $wiki_site_path = "/var/www/html/wiki/";
-our $wiki_url = "http://10.0.0.99/wiki";
+# our $wiki_url = "http://10.0.0.99/wiki";
+our $wiki_url = "http://10.0.0.99:8000/wiki";
 our $wiki_url_path = "/wiki";
 # our $wiki_url = "http://localhost:1900/wiki";
 our $wiki_user = 'wiki_auto_import';
