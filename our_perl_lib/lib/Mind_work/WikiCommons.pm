@@ -410,7 +410,8 @@ sub generate_html_file {
     print "\t-Generating html file from $name$suffix.\t". (get_time_diff) ."\n";
     eval {
 	local $SIG{ALRM} = sub { die "alarm\n" };
-	alarm 46800; # 13 hours
+# 	alarm 46800; # 13 hours
+	alarm 1800; # .5 hours
 	system("python", "$real_path/convertors/unoconv", "-f", "html", "$doc_file") == 0 or die "unoconv failed: $?";
 	alarm 0;
     };
@@ -419,10 +420,8 @@ sub generate_html_file {
 	print "Error: Timed out: $status.\n";
 	eval {
 	    local $SIG{ALRM} = sub { die "alarm\n" };
-	    alarm 46800; # 13 hours
-# 	    system("python $real_path/convertors/unoconv -l -p 8100 2>&1 /dev/null &") == 0 or die "unoconv failed: $?";
-# 	    sleep 2;
-# 	    system("/opt/jre1.6.0/bin/java", "-jar", "$real_path/convertors/jodconverter-2.2.2/lib/jodconverter-cli-2.2.2.jar", "-f", "html", "$doc_file") == 0 or die "jodconverter failed: $?";
+# 	    alarm 46800; # 13 hours
+	    alarm 1800; # .5 hours
 	    system("Xvfb :10235 -screen 0 1024x768x16 &> /dev/null &");
 	    system("libreoffice", "-display", ":10235", "-unnaccept=all", "-invisible", "-nocrashreport", "-nodefault", "-nologo", "-nofirststartwizard", "-norestore", "-convert-to", "html:HTML (StarWriter)", "-outdir", "$dir", "$doc_file") == 0 or die "libreoffice failed: $?";
 	    alarm 0;

@@ -46,8 +46,8 @@ $our_wiki = new WikiWork();
 my ($local_pages, $wiki_pages);
 my $view_only = shift;
 $view_only = 1 if ! defined $view_only;
-my $max_elements = 2000;
-my $max_to_delete = 3000;
+my $max_elements = 1000;
+my $max_to_delete = 2000;
 
 sub fixnamespaces {
   my $namespaces = shift;
