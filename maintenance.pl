@@ -722,7 +722,7 @@ print "##### Syncronize:\n";
 $local_pages = getlocalpages($namespaces);
 $wiki_pages = getwikipages($namespaces);
 syncronize_local_wiki;
-# compressOld.php
+
 
 ## all files deleted deleteArchivedFiles.php
 # rm -rf /media/share/wiki_images/deleted/*
@@ -737,6 +737,3 @@ syncronize_local_wiki;
 # text
 ## holds metadata for every edit done to a page
 # revision
-
-# my $q = $our_wiki->wiki_get_all_categories(14);
-# print Dumper($q);
