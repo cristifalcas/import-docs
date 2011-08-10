@@ -418,6 +418,7 @@ sub generate_html_file {
     my $status = $@;
     if ($status) {
 	print "Error: Timed out: $status.\n";
+	`kill \$(ps -ef | grep soffice | grep -v grep | gawk '{print \$2}')`;
 	eval {
 	    local $SIG{ALRM} = sub { die "alarm\n" };
 # 	    alarm 46800; # 13 hours

@@ -973,3 +973,5 @@ foreach my $change_id (sort keys %$crt_hash){
 }
 
 $dbh->disconnect if defined($dbh);
+
+print "Done.\n";

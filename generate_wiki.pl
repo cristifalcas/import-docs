@@ -529,7 +529,7 @@ sub insertdata {
     opendir(DIR, $work_dir);
     my @files = grep { (!/^\.\.?$/) } readdir(DIR);
     closedir(DIR);
-    if (scalar @files > 3 ) {
+    if (scalar @files > 3 && ($work_dir !~ m/CMS:Why Partner With MIND^/)) {
 	print "Dir $work_dir doesn't have the correct number of files.\n";
 	$fail = 1;
     }
