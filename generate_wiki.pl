@@ -529,12 +529,13 @@ sub insertdata {
     opendir(DIR, $work_dir);
     my @files = grep { (!/^\.\.?$/) } readdir(DIR);
     closedir(DIR);
-    if (scalar @files > 3 && ($work_dir !~ m/CMS:Why Partner With MIND^/)) {
+    if (scalar @files > 3 && ($work_dir !~ m/CMS:Why Partner With MIND$/)) {
 	print "Dir $work_dir doesn't have the correct number of files.\n";
 	$fail = 1;
     }
     foreach my $file (@files){
-	if ($file ne $wiki_files_uploaded && $file ne $wiki_files_info && $file !~ m/\.wiki$/ ) {
+	if ($file ne $wiki_files_uploaded && $file ne $wiki_files_info && $file !~ m/\.wiki$/ &&
+	      !($work_dir =~ m/CMS:Why Partner With MIND$/ && $file eq "CMS:Why Partner With MIND_html_m3f074c53.png")) {
 	    print "File $file from $work_dir should not exist.\n".Dumper(@files);
 	    $fail = 1;
 	    last ;
@@ -651,7 +652,7 @@ sub work_begin {
 
 	($to_delete, $to_keep) = generate_pages_to_delete_to_import;
     }
-
+# print Dumper(sort keys %$pages_toimp_hash);exit 1;
     if (WikiCommons::is_remote ne "yes") {
         die Dumper(sort keys %$to_delete)."\nToo many to delete.\n" if (keys %$to_delete) > $max_to_delete;
 	foreach my $url (sort keys %$to_delete) {

@@ -171,20 +171,38 @@ sub docs_phonex {
     get_documentation($url, $local_path, 1);
 }
 
-sub docs_sipserver {
-    my $url = shift;
-    my $local_path = "$to_path/Docs_SIPServer";
-    get_documentation($url, $local_path, 1);
-}
-
 sub docs_cms {
     my $url = shift;
     my $local_path = "$to_path/Docs_CMS";
     get_documentation($url, $local_path, 1);
 }
 
+sub docs_sipserver {
+    my $url = shift;
+    my $local_path = "$to_path/Docs_SIPServer";
+    get_documentation($url, $local_path, 1);
+}
+
+sub projects_pmg {
+    my $url = shift;
+    my $local_path = "$to_path/Docs_PaymentManager";
+    get_documentation($url, $local_path, 1);
+}
+
+sub projects_pmg_deployment {
+    my $url = shift;
+    my $local_path = "$to_path/Docs_PaymentManager_Deployment";
+    get_documentation($url, $local_path, 1);
+}
+
 my $original_to_path = $to_path;
 $to_path = "$original_to_path/svn_mind_docs";
+$svn_url = 'http://10.10.4.4:8080/svn/repos/trunk/Projects/PaymentManager/1.00/V1.00/Documents/';
+projects_pmg ("$svn_url");
+$svn_url = 'http://10.10.4.4:8080/svn/repos/trunk/Projects/PaymentManager/Deployment/';
+projects_pmg_deployment ("$svn_url");
+$svn_url = 'http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation/iPhonEX%20Documents';
+docs_sipserver("$svn_url/SIPServer/");
 $svn_url = 'http://10.10.4.4:8080/svn/repos/trunk/Projects/iPhonEX';
 print "Start working for projects.\n";
 projects ($svn_url);
@@ -214,7 +232,7 @@ print "Start working for docs_sentori.\n";
 docs_sentori("$svn_url/Sentori/");
 print "Start working for docs_phonex.\n";
 docs_phonex("$svn_url".'/PhonEX%20Documents/');
-$svn_url = 'http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation/iPhonEX%20Documents';
+# $svn_url = 'http://10.10.4.4:8080/svn/docs/repos/trunk/Documentation/iPhonEX%20Documents';
 print "Start working for docs_cms.\n";
-docs_cms ("$svn_url/CMS/");
+docs_cms ("$svn_url".'/iPhonEX%20Documents/CMS/');
 print "DONE.\n";

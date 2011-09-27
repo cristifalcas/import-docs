@@ -36,6 +36,7 @@ use Mind_work::WikiCommons;
 
 our $from_path = shift;
 our $to_path = shift;
+our $work_type = shift;
 WikiCommons::makedir ("$to_path") if ! -d "$to_path";
 WikiCommons::makedir ("$from_path") if ! -d "$from_path";
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
@@ -138,18 +139,23 @@ sub clean_ftp_dir {
     unlink $file if ! $exists;
   }
 }
-# "--restrict-file-names=nocontrol",
-print "Updating ftp dir (wget).\n";
- system("wget", "-N", "-r", "-l", "inf", "--no-remove-listing", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT", "-o", "/var/log/mind/wiki_logs/ftp_mirrot.log");
-find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, "$from_path" ) if  (-d "$from_path");
-print "Cleaning $from_path dir ...\n";
-system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
-print "Cleaning $to_path dir ...\n";
-system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
-print "Done cleaning.\n";
 
+if ($work_type eq "u") {
+  # "--restrict-file-names=nocontrol",
+  print "Updating ftp dir (wget).\n";
+  system("wget", "-N", "-r", "-l", "inf", "--no-remove-listing", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT", "-o", "/var/log/mind/wiki_logs/ftp_mirrot.log");
+  find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, "$from_path" ) if  (-d "$from_path");
+  print "Cleaning $from_path dir ...\n";
+  system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
+  print "Cleaning $to_path dir ...\n";
+  system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
+  print "Done cleaning.\n";
+  return;
+}
+
+print "Get all ppt files.\n";
 find ({ wanted => sub { add_document_ftp ($File::Find::name) if -f && (/(\.ppt|\.pptx)$/i) },}, "$from_path" ) if  (-d "$from_path");
-
+print "Get all swf files.\n";
 find ({ wanted => sub { add_document_local ($File::Find::name) if -f && (/(\.swf)$/i) },}, "$to_path" ) if  (-d "$to_path");
 
 my @new = (keys %$hash_new);

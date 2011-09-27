@@ -2,7 +2,9 @@
 
 SCRIPT_PATH="$( cd "$( dirname "$0" )" && pwd )"
 WIKI_DIR_PATH="/mnt/wiki_files/wiki_files"
+mkdir -p "$WIKI_DIR_PATH"
 LOG_PATH="/var/log/mind/wiki_logs/wiki_"
+mkdir -p "/var/log/mind/wiki_logs/"
 export LC_ALL=en_US.UTF-8
 CMD="nice -n 20 perl"
 CMD="perl"
@@ -66,7 +68,10 @@ case "$1" in
     $CMD "$SCRIPT_PATH"/maintenance.pl 0 &> "$LOG_PATH"maintenance &
   ;;
 "update_ppt")
-    $CMD "$SCRIPT_PATH"/update_PPT.pl "$WIKI_DIR_PATH/ftp_mirror/" "$WIKI_DIR_PATH/ppt_as_flash/"  &> "$LOG_PATH"update_ppt &
+    $CMD "$SCRIPT_PATH"/update_PPT.pl "$WIKI_DIR_PATH/ftp_mirror/" "$WIKI_DIR_PATH/ppt_as_flash/" u  &> "$LOG_PATH"update_ppt &
+  ;;
+"import_ppt")
+    $CMD "$SCRIPT_PATH"/update_PPT.pl "$WIKI_DIR_PATH/ftp_mirror/" "$WIKI_DIR_PATH/ppt_as_flash/" i  &> "$LOG_PATH"import_ppt &
   ;;
 *)
     echo "Incorrect parameter"
