@@ -212,7 +212,14 @@ sub add_document {
 	$fixed_name =~ s/$ver//g;
 	$fixed_name =~ s/^\s?pos[-_ \t]?//i;
 	$fixed_name = "POS $fixed_name";
+    } elsif ($dir_type eq "Docs_SIPServer" && $name !~ m/^B[[:digit:]]{4,}\s+/) {
+	$fixed_name =~ s/$ver//g;
+	$fixed_name =~ s/^\s?sip[-_ \t]?//i;
+	$fixed_name = "SIP $fixed_name";
+    } elsif ($dir_type eq "Docs_PaymentManager_Deployment" || $dir_type eq "Docs_PaymentManager") {
+	$fixed_name = "PMG $fixed_name";
     }
+
     $fixed_name = fix_naming($fixed_name, $customer) if ($dir !~ /\/(.*? )?Release Notes\//i);
     $fixed_name = WikiCommons::normalize_text( $fixed_name );
     $fixed_name = WikiCommons::capitalize_string( $fixed_name, 'first' );
@@ -239,38 +246,52 @@ sub add_document {
     }
     ### Release Notes
     if ($dir =~ /\/(.*? )?Release Notes\//i) {
-	return 1 if $ver_fixed lt "5.00" && ($dir_type ne "Docs_SIPServer");
+return;
+	return 1 if $ver_fixed lt "5.00" && ($dir_type ne "Docs_SIPServer" && $dir_type ne "Docs_PaymentManager_Deployment" && $dir_type ne "Docs_PaymentManager");
 	$page_url = $fixed_name;
 	my $nodot_ver = $ver;
 	$nodot_ver =~ s/\.//g;
 	$page_url =~ s/RN$nodot_ver\s*//;
 	$page_url =~ s/(General|All)? Release Notes|PDF//gi;
 	$page_url = "$page_url $ver_id" if $page_url !~ m/$ver_id/gi;
-	$page_url = "RN:$ver $page_url$url_sep$rest";
+	$page_url = "$ver $page_url$url_sep$rest";
 	$page_url =~ s/\s+/ /g;
-	$page_url .= "$url_sep"."POS" if $dir_type eq "Docs_POS";
-	$page_url .= "$url_sep"."SIP" if $dir_type eq "Docs_SIPServer";
 
 	$main = $main.$url_sep."RN" if $main ne "";
 	$big_ver = $big_ver.$url_sep."RN" if $big_ver ne "";
+	if ($dir_type eq "Docs_PaymentManager_Deployment" || $dir_type eq "Docs_PaymentManager") {
+	    $page_url = "PMG $page_url";
+	    $main = "$main$url_sep"."PMG RN" if $main ne "";
+	    $big_ver = "$big_ver$url_sep"."PMG RN" if $big_ver ne "";
+	} elsif ($dir_type eq "Docs_SIPServer") {
+	    $page_url = "SIP $page_url";
+	    $main = "$main$url_sep"."SIP RN" if $main ne "";
+	    $big_ver = "$big_ver$url_sep"."SIP RN" if $big_ver ne "";
+	} elsif ($dir_type eq "Docs_POS") {
+	    $page_url = "POS $page_url";
+	    $main = "$main$url_sep"."POS RN" if $main ne "";
+	    $big_ver = "$big_ver$url_sep"."POS RN" if $big_ver ne "";
+	} else {
+	    $page_url = "Mind $page_url";
+	    $main = "$main$url_sep"."RN" if $main ne "";
+	    $big_ver = "$big_ver$url_sep"."RN" if $big_ver ne "";
+	}
+	$page_url = "RN:$page_url";
 	my @categories = ();
 	push @categories, $main;
 	push @categories, $big_ver;
+
 	generate_categories("", $main, $big_ver, "", "SVN RN Documents", "");
 	die "RN $page_url already exists:\n\t$rel_path\n".Dumper($pages_toimp_hash->{$page_url}) if defined $pages_toimp_hash->{$page_url};
 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
 	return 0;
     }
 
-    if ($dir_type eq "Docs_PaymentManager_Deployment") {
-	$page_url = "SVN:PMG $page_url";
-    } else {
-	$page_url = "SVN:$page_url";
-    }
+    $page_url = "SVN:$page_url";
 
     my $full_ver = "$ver $ver_id $ver_sp";
 # print "2. $page_url\n";
-    return 1 if $ver_fixed lt "5.00" && $ver_fixed ne "" && ($dir_type ne "Docs_SIPServer" && $dir_type ne "Docs_PaymentManager_Deployment");
+    return 1 if $ver_fixed lt "5.00" && $ver_fixed ne "" && ($dir_type ne "Docs_SIPServer" && $dir_type ne "Docs_PaymentManager_Deployment"&& $dir_type ne "Docs_PaymentManager");
     if (defined $pages_ver->{$page_url}->{'ver'} ){
 	if ($pages_ver->{$page_url}->{'ver'} gt "$full_ver"){
 # print "skip $full_ver because we have $pages_ver->{$page_url}->{'ver'}\n";
@@ -323,14 +344,17 @@ sub add_document {
 	push @categories, $main;
 	push @categories, $big_ver;
 	push @categories, $customer;
+	my $correct_category;
 	if ($dir_type eq "Docs_PaymentManager_Deployment" || $dir_type eq "Docs_PaymentManager") {
-	    push @categories, "Payment Manager";
+	    $correct_category = "Payment Manager";
 	} elsif ($dir_type eq "Docs_SIPServer") {
-	    push @categories, "SIP Server";
+	    $correct_category = "SIP Server";
 	} else {
-	    push @categories, $fixed_name;
+	    $correct_category = get_correct_category($fixed_name);
 	}
-	generate_categories($ver_fixed, $main, $big_ver, $customer, $dir_type, $fixed_name);
+# print "XXX\t$page_url\n" if $fixed_name ne $correct_category;
+	push @categories, $correct_category;
+	generate_categories($ver_fixed, $main, $big_ver, $customer, $dir_type, $correct_category);
     }
 
     $pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
@@ -338,6 +362,35 @@ sub add_document {
 # print "2. $page_url\n";
 
 #     push(@{$pages_ver->{"$fixed_name$url->{'ver'}_sep$ver_without_sp"}}, $ver_sp);
+}
+
+sub get_correct_category {
+    my $name = shift;
+    ## prefer crystal reports before boe
+    return "Crystal Reports" if $name =~ m/^Crystal Reports\b/i;
+    return "BOE" if $name =~ m/BOE XI/i;
+    return "CDR Drivers" if $name =~ m/^CDR Drivers/i;
+#     return "DocRepository" if $name =~ m/^DocRepository\b/i;
+    return "EDI" if $name =~ m/^EDI\b/i;
+    return "ETL" if $name =~ m/\betl\b/i;
+    return "Flexible Engine" if $name eq "Flexible Engine Manual";
+    return "General Ledger" if $name =~ m/^General Ledger\b/i;
+    return "IPE" if $name =~ m/^IPE\b/i;
+    return "JBoss" if $name =~ m/\bJBoss\b/i;
+    return "JBPM" if $name =~ m/\bJBPM\b/i;
+    return "LEA" if $name =~ m/\bLEA\b/i;
+#     return "OMS" if $name =~ m/^OMS\b/i;
+    return "Payment Processor" if $name =~ m/^Payment Processor\b/i;
+    return "POS" if $name =~ m/^POS\b/i;
+    return "Processor" if $name =~ m/^Processor\b/i;
+    return "Provisioning Clients" if $name =~ m/^Provisioning Client\b/i;
+    return "SES" if $name =~ m/^SES\b/i;
+    return "User Activity" if $name =~ m/^User Activity\b/i;
+    return "Vertex" if $name =~ m/^Vertex\b/i;
+    return "Web Services SDK" if $name =~ m/^Web Services SDK\b/i;
+    return "Workflow" if $name =~ m/^Workflow\b/i;
+
+    return $name;
 }
 
 sub get_documents {
@@ -400,6 +453,7 @@ sub fix_naming {
     $fixed_name =~ s/ASCLogFiles/ASC Log Files/;
     $fixed_name =~ s/FinanceLogFiles/Finance Log Files/;
     $fixed_name =~ s/RTSLogsFiles/RTS Logs Files/;
+    $fixed_name =~ s/GenericCleanup/Generic Cleanup/;
 
     $fixed_name = "IPE Monitor$1" if ($fixed_name =~ m/^IPEMonitor(.*)$/i);
     $fixed_name = "Radius Paramaters$1" if ($fixed_name =~ m/^RadiusParamaters(.*)$/i);
@@ -550,6 +604,8 @@ sub fix_naming {
     return "Resource Management" if ($fixed_name eq "GN Resource Management Manuel d'Utilisation");
     return "User Activity Tracker" if ($fixed_name eq "GN User Activity Tracker Manuel d'Utilisation");
     return "Product Description" if ($fixed_name eq "GN Description du Produit");
+    return "Near Real Time Roaming Data Exchange Manager" if ($fixed_name eq '4.10.103 Near Real Time Roaming Data Exchange Manager (NRTRDEM)');
+    return "Global Roaming Manager" if ($fixed_name eq '4.10.103 Global Roaming Manager (GRM)');
 
     $fixed_name =~ s/^\s*|\s*$//g;
 # print "1c. $fixed_name\n";

@@ -197,7 +197,7 @@ sub general_info {
     $general =~ s/%status%/@$info[$index->{'status'}]/;
     if (@$info[$index->{'cancel_remark'}] !~ m/^\s*$/) {
       $tmp = @$info[$index->{'cancel_remark'}];
-      $tmp =~ s/([a-z][0-9]+)/[[SC:$1|$1]]/gi;
+      $tmp =~ s/([a-z][0-9]{4,})/[[SC:$1|$1]]/gi;
       $general =~ s/%cancel_reason%/Cancel remark: $tmp/;
     } else {
       $general =~ s/%cancel_reason%\n//;

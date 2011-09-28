@@ -424,8 +424,8 @@ sub unused_categories {
 	my $res = $our_wiki->wiki_get_pages_in_category($cat, 1);
 	next if defined $res;
 	push @$result, $cat;
-# 	print "rm page $cat\n";
-# 	$our_wiki->wiki_delete_page($cat) if ( $our_wiki->wiki_exists_page("$cat") && ! $view_only);
+	print "rm page $cat\n";
+	$our_wiki->wiki_delete_page($cat) if ( $our_wiki->wiki_exists_page("$cat") && ! $view_only);
     }
     return $result;
 }
@@ -678,28 +678,37 @@ sub fix_images {
   print Dumper($only_in_fs);
 }
 
-if ( -f "new 1.txt" ) {
-    open(DAT, "new 1.txt") || die("Could not open file!");
-    my @raw_data=<DAT>;
-    chomp @raw_data;
-    close(DAT);
-    foreach my $w (@raw_data) {
-	my $q = $our_wiki->wiki_get_pages_linking_to("$w");
-	print "$w\n";
-# 	print Dumper($q);next;
-	foreach my $e (@$q){
-	    $our_wiki->wiki_delete_page($e);
-	}
-    }
-}
+# if ( -f "new 2.txt" ) {
+#     open(DAT, "new 2.txt") || die("Could not open file!");
+#     my @raw_data=<DAT>;
+#     chomp @raw_data;
+#     close(DAT);
+#     foreach my $w (@raw_data) {
+# 	my $q = $our_wiki->wiki_get_pages_linking_to("$w");
+# 	print "$w\n";
+# # 	print Dumper($q);next;
+# 	foreach my $e (@$q){
+# 	    $our_wiki->wiki_delete_page($e);
+# 	}
+#     }
+# }
+
+# my $q = $our_wiki->wiki_get_pages_in_category("Category:All_SVN_Documents");
+# my $q = $our_wiki->wiki_get_pages_in_category("Category:Release Notes");
+# my $q = $our_wiki->wiki_get_pages_in_category("Category:SVN_RN_Documents");
+# my $q = $our_wiki->wiki_get_pages_linking_to("SC:V7");
+# my $q = $our_wiki->wiki_get_pages_linking_to("SC:V6");
+# my $q = $our_wiki->wiki_get_pages_linking_to("SC:V5");
+# my $q = $our_wiki->wiki_get_pages_linking_to("Category:SI");
+# print Dumper($q);
+# $our_wiki->wiki_delete_page($_) foreach ($q);
+# exit 1;
 
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
 # print Dumper($namespaces);exit 1;
 
 # # print Dumper($namespaces);
-print "##### Update users:\n";
-update_user_pages($namespaces->{'private'}->{'User'});
 print "##### Fix wiki sc type:\n";
 fix_wiki_sc_type($namespaces);
 print "##### Fix broken redirects:\n";
@@ -712,8 +721,8 @@ print "##### Remove unused images:\n";
 unused_images_dirty;
 # print "##### Wanted pages:\n";
 # my ($cat, $sc, $crm, $other) = fix_wanted_pages();
-# print "##### Get unused categories:\n";
-# my $unused = unused_categories();
+print "##### Get unused categories:\n";
+my $unused = unused_categories();
 # print "##### Get missing categories:\n";
 # my $wanted = wanted_categories();
 print "##### Syncronize wiki files with fs files.\n";
@@ -722,6 +731,8 @@ print "##### Syncronize:\n";
 $local_pages = getlocalpages($namespaces);
 $wiki_pages = getwikipages($namespaces);
 syncronize_local_wiki;
+print "##### Update users:\n";
+update_user_pages($namespaces->{'private'}->{'User'});
 
 
 ## all files deleted deleteArchivedFiles.php

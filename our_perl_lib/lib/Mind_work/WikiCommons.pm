@@ -537,6 +537,7 @@ sub get_correct_customer{
     return "US-ESCALATION" if $name eq "US Escallation";
     return "Billing" if $name eq "SRG + Billing";
     return "SMART" if $name eq "SmartPCS";
+    return "Pelephone" if $name eq "Pelephone";
 
     if ( ! scalar keys %$customers ){
 	$customers = WikiCommons::xmlfile_to_hash ("$real_path/customers.xml");

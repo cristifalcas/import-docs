@@ -104,7 +104,7 @@ my $make_categories = "yes";
 my $big_dump_mode = "no";
 my $delete_previous_page = "yes";
 my $pid_old = "100000";
-my $max_to_delete = 1000;
+my $max_to_delete = 10000;
 my $type_old = "";
 my $failed = {};
 
@@ -149,9 +149,7 @@ my $count_files;
 our $coco;
 WikiCommons::is_remote("$remote_work");
 WikiCommons::set_real_path($path_prefix);
-# my $q=`cat q`;
-# my $w=WikiClean::get_deployment_conf( $q );
-# print Dumper($w);exit 1;
+
 sub create_wiki {
     my ($page_url, $doc_file, $zip_name) = @_;
     die "Page url is empty.\n" if $page_url eq '';
