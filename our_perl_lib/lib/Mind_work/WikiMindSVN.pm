@@ -246,7 +246,6 @@ sub add_document {
     }
     ### Release Notes
     if ($dir =~ /\/(.*? )?Release Notes\//i) {
-return;
 	return 1 if $ver_fixed lt "5.00" && ($dir_type ne "Docs_SIPServer" && $dir_type ne "Docs_PaymentManager_Deployment" && $dir_type ne "Docs_PaymentManager");
 	$page_url = $fixed_name;
 	my $nodot_ver = $ver;
@@ -257,7 +256,7 @@ return;
 	$page_url = "$ver $page_url$url_sep$rest";
 	$page_url =~ s/\s+/ /g;
 
-	$main = $main.$url_sep."RN" if $main ne "";
+# 	$main = $main.$url_sep."RN" if $main ne "";
 	$big_ver = $big_ver.$url_sep."RN" if $big_ver ne "";
 	if ($dir_type eq "Docs_PaymentManager_Deployment" || $dir_type eq "Docs_PaymentManager") {
 	    $page_url = "PMG $page_url";

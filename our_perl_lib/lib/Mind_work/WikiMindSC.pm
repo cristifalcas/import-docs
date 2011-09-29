@@ -89,6 +89,14 @@ sub get_documents {
 			$url_namespace = "SC_PhonexONE_$sc_type";
 		    } elsif ($node =~ m/^T/i) {
 			$url_namespace = "SC_Nagios_$sc_type";
+		    } elsif ($node =~ m/^Z/i) {
+			$url_namespace = "SC_Other_$sc_type";
+		    } elsif ($node =~ m/^K/i) {
+			$url_namespace = "SC_Abacus_$sc_type";
+		    } elsif ($node =~ m/^A/i) {
+			$url_namespace = "SC_PhonEX_$sc_type";
+		    } elsif ($node =~ m/^P/i) {
+			$url_namespace = "SC_Plugins_$sc_type";
 		    } else {
 			$url_namespace = "SC_iPhonex_$sc_type";
 die "no namespace here 1: $node.\n".Dumper(@data);

@@ -922,7 +922,7 @@ sub fix_wiki_link_to_sc {
 #     print "\tFix links to SC.\t". (WikiCommons::get_time_diff) ."\n";
     my $newwiki = $wiki;
     my $count = 0;
-    while ($wiki =~ m/(\[\[Image:[[:print:]]*?(B|I|F|H|R|D|T)[[:digit:]]{4,}[[:print:]]*?\]\])|(\b(B|I|F|H|R|D|T)[[:digit:]]{4,}\b)/g ) {
+    while ($wiki =~ m/(\[\[Image:[[:print:]]*?(B|I|F|H|R|D|T|Z|K|A|P)[[:digit:]]{4,}[[:print:]]*?\]\])|(\b(B|I|F|H|R|D|T|Z|K|A|P)[[:digit:]]{4,}\b)/g ) {
 	my $found_string = $&;
 	my $found_string_end_pos = pos($wiki);
 

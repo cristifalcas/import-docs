@@ -39,10 +39,10 @@ use URI::Escape;
 use Data::Compare;
 use Mind_work::WikiCommons;
 
-die "We need the temp path, the destination path and sc type:b1-5, f, i, h, r, d, t, cancel.\n" if ( $#ARGV != 2 );
+die "We need the temp path, the destination path and sc type:b1-5, f, i, h, r, d, t, k, z, a, p, cancel.\n" if ( $#ARGV != 2 );
 our ($tmp_path, $to_path, $sc_type) = @ARGV;
 
-die "sc type should be:b1-5, f, i, h, r, d, t, cancel.\n" if $sc_type !~ m/(^[fihrdt]$)|(^b[1-5]$)|(^cancel$)/i;
+die "sc type should be:b1-5, f, i, h, r, d, t, k, z, a, p, cancel.\n" if $sc_type !~ m/(^[fihrdtkzap]$)|(^b[1-5]$)|(^cancel$)/i;
 $sc_type = uc $sc_type;
 
 remove_tree("$tmp_path");
@@ -197,7 +197,7 @@ sub general_info {
     $general =~ s/%status%/@$info[$index->{'status'}]/;
     if (@$info[$index->{'cancel_remark'}] !~ m/^\s*$/) {
       $tmp = @$info[$index->{'cancel_remark'}];
-      $tmp =~ s/([a-z][0-9]{4,})/[[SC:$1|$1]]/gi;
+      $tmp =~ s/\b([a-z][0-9]{4,})/[[SC:$1|$1]]/gi;
       $general =~ s/%cancel_reason%/Cancel remark: $tmp/;
     } else {
       $general =~ s/%cancel_reason%\n//;
@@ -247,7 +247,7 @@ sub general_info {
 	$tmp = @$info[$index->{'fixesdescription'}];
 	$tmp =~ s/\r?\n/ <br\/>\n/g;
 	$tmp =~ s/^(\*|\#|\;|\:|\=|\!|\||----|\{\|)/<nowiki>$1<\/nowiki>/gm;
-	$tmp =~ s/([a-z][0-9]{4,})/[[SC:$1|$1]]/gmi;
+	$tmp =~ s/\b([a-z][0-9]{4,})/[[SC:$1|$1]]/gmi;
 	$general =~ s/%fix_description%/\'\'\'Fix descrption\'\'\':\n\n$tmp/;
     } else {
 	$general =~ s/%fix_description%//;
@@ -514,6 +514,14 @@ sub sql_get_all_changes {
 	$cond  = "projectcode = 'R'";
     } elsif ($sc_type eq 'T') {
 	$cond  = "projectcode = 'T'";
+    } elsif ($sc_type eq 'K') {
+	$cond  = "projectcode = 'K'";
+    } elsif ($sc_type eq 'Z') {
+	$cond  = "projectcode = 'Z'";
+    } elsif ($sc_type eq 'A') {
+	$cond  = "projectcode = 'A'";
+    } elsif ($sc_type eq 'P') {
+	$cond  = "projectcode = 'P'";
     } elsif ($sc_type eq 'D') {
 	$cond  = "projectcode = 'D' and (nvl(version,100) >= '2.30' or nvl(fixversion,100) >= '2.30')";
     } elsif ($sc_type eq 'CANCEL') {

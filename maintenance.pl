@@ -678,9 +678,10 @@ sub fix_images {
   print Dumper($only_in_fs);
 }
 
-# if ( -f "new 2.txt" ) {
-#     open(DAT, "new 2.txt") || die("Could not open file!");
+# if ( -f "new  2.txt" ) {
+#     open(DAT, "new  2.txt") || die("Could not open file!");
 #     my @raw_data=<DAT>;
+# # print "adf";
 #     chomp @raw_data;
 #     close(DAT);
 #     foreach my $w (@raw_data) {
@@ -695,14 +696,16 @@ sub fix_images {
 
 # my $q = $our_wiki->wiki_get_pages_in_category("Category:All_SVN_Documents");
 # my $q = $our_wiki->wiki_get_pages_in_category("Category:Release Notes");
-# my $q = $our_wiki->wiki_get_pages_in_category("Category:SVN_RN_Documents");
-# my $q = $our_wiki->wiki_get_pages_linking_to("SC:V7");
-# my $q = $our_wiki->wiki_get_pages_linking_to("SC:V6");
-# my $q = $our_wiki->wiki_get_pages_linking_to("SC:V5");
-# my $q = $our_wiki->wiki_get_pages_linking_to("Category:SI");
+my $q = $our_wiki->wiki_get_pages_linking_to("SC:P73");
+# SC:P81
+# SC:J2
+# SC:P1
+# SC:P47
+# SC:T7
+# SC:T8
 # print Dumper($q);
-# $our_wiki->wiki_delete_page($_) foreach ($q);
-# exit 1;
+$our_wiki->wiki_delete_page($_) foreach ($q);
+exit 1;
 
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);

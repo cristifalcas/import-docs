@@ -104,7 +104,7 @@ my $make_categories = "yes";
 my $big_dump_mode = "no";
 my $delete_previous_page = "yes";
 my $pid_old = "100000";
-my $max_to_delete = 10000;
+my $max_to_delete = 1000;
 my $type_old = "";
 my $failed = {};
 
