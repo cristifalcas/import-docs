@@ -37,11 +37,20 @@ my $our_wiki = WikiWork->new('robot', '1');
 my $deployment_ns = "SC_Deployment";
 my $canceled_ns = "SC_Canceled";
 my $deployment_wiki = getWikiPages($deployment_ns);
+clean_existing_deployment($deployment_wiki);
 my $cancel_wiki = getWikiPages($canceled_ns);
 my @arr1 = (keys %$deployment_wiki);
 my @arr2 = (keys %$cancel_wiki);
 my ($only_in_arr1, $only_in_arr2, $intersection) = WikiCommons::array_diff(\@arr1, \@arr2);
 delete $deployment_wiki->{$_} foreach (@$intersection);
+
+sub clean_existing_deployment {
+    my $pages = shift;
+    foreach my $page (sort keys %$pages){
+	next if $page =~m/^[a-z][0-9]+$/i;
+	$our_wiki->wiki_delete_page("$deployment_ns:$page");
+    }
+}
 
 sub sql_connect {
     my ($ip, $sid, $user, $pass) = @_;
@@ -230,14 +239,13 @@ my $projs = getProjects;
 foreach (@$projs) {
     my @tmp = @$_;
     $our_wiki->wiki_edit_page("Category:$tmp[0]$urlsep$tmp[1]", "----\n[[Category:$projects_title]]");
-#     $our_wiki->wiki_delete_page("Category:$tmp[0]$urlsep$tmp[1]");
 }
 
 print "Get all service packs.\n";
 my $sps = getSPs;
 foreach my $sp (sort keys %$sps) {
 # next if "$sp" !~ m/iPhonEX -- iPhonEX -- 5.30.017 gn/i;
-# next if "$sp" !~ m/iPhonEX -- iPhonEX -- 7.00.001/i;
+# next if "$sp" !~ m/Sentori -- Main/i;
     my $sp_ids = $sps->{$sp};
     my $full_deployment->{'page'} = "$deployment_ns:Deployment$urlsep$sp$urlsep"."full";
 #     my $category = "\n[[Category:".$sps->{$sp}->{'XXX_Cat'}."]]";
@@ -249,9 +257,9 @@ foreach my $sp (sort keys %$sps) {
 	my $sp_txt;
 	my $sp_deployment->{'page'} = "$deployment_ns:Deployment$urlsep$sp$urlsep".$sp_ids->{$id}->{'sp'};
 	my $sp_bugs->{'page'} = "$deployment_ns:Bugs$urlsep$sp$urlsep".$sp_ids->{$id}->{'sp'};
-# 	$txt .= "\n\n{{:".$sp_bugs->{'page'}."}}";
 	$txt_all->{$sp_ids->{$id}->{'sp'}} = "\n\n{{:".$sp_bugs->{'page'}."}}";
-	$sp_txt .= "\n----\n".$sp_ids->{$id}->{'build_type'}." ".$sp_ids->{$id}->{'version'}." ".$sp_ids->{$id}->{'sp'}.". Description: ".$sp_ids->{$id}->{'description'}.". Build date: ".$sp_ids->{$id}->{'build_date'}."\n\n[[".$sp_deployment->{'page'}."|Deployment consideration]].\n\n";
+	$sp_txt .= "\n----\n".$sp_ids->{$id}->{'build_type'}." ".$sp_ids->{$id}->{'version'}." ".$sp_ids->{$id}->{'sp'}.". Description: ".$sp_ids->{$id}->{'description'}.". Build date: ".$sp_ids->{$id}->{'build_date'}."\n\n";
+	$sp_txt .= "[[".$sp_deployment->{'page'}."|Deployment consideration]].\n\n" if $our_wiki->wiki_exists_page($sp_deployment->{'page'});
 	$sp_txt .=
 '{| class="wikitable" style="background: #f5fffa"
 |- style="background: #DDFFDD;"

@@ -939,7 +939,6 @@ sub fix_wiki_link_to_sc {
 sub get_deployment_conf {
     my $wiki_txt = shift;
     my $result = "";
-#     if ($wiki_txt =~ /(^|\n)(=+)(([^\n]*?deployment.*?)\2\n(.*?)\n)\2[^=]/ims){
     if ($wiki_txt =~ /(^|\n)(=+)([^\n]*?deployment.*?\2\n)(.*)/ims){
 	my $heading = "$2$3";
 	my $heading_length = length($2);
@@ -947,7 +946,7 @@ sub get_deployment_conf {
 	my $txt = "$4";
 	$txt =~ s/\n={1,$heading_length}[^=].*//ms;
 	$txt = "$heading$txt";
-	return if $txt =~ m/^\n*=+(Deployment consideration|Deployment configuration &amp; consideration)=+\n+(<font color="#0000ff">)?(Add all assumptions, settings, actions, etc that are relevant for the correct deployment and use of the system.|Specify all configuration, and consideration that are relevant for correct deployment of the system.)?(<\/font>)?\n*(TBD\.?|N\/?R|N\/?A)?\s*\n*$/gsi;
+	return if $txt =~ m/^\n*=+(Deployment consideration( \(mandatory for Payment Manager\))?\.?|Deployment configuration &amp; consideration\.?)=+\n+(<font color="#0000ff">)?(Add all assumptions, settings, actions, etc that are relevant for the correct deployment and use of the system\.?|Specify all configuration, and consideration that are relevant for correct deployment of the system\.?)?(TBD|NR|NA|N\/?R|N\/?A)?\.?\s*(<\/font>)?\n*(TBD|NR|NA|N\/?R|N\/?A)?\.?\s*\n*$/gsi;
 	print "\t Found some deployment stuff.\n";
 	return $txt;
     }

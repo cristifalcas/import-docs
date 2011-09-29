@@ -555,6 +555,7 @@ sub get_correct_customer{
 	my $crt_name = $customers->{$nr}->{'displayname'};
 	my $alt_name = $name;
 	$alt_name =~ s/( |_|-)//g;
+
 	if ($crt_name =~ m/^$name$/i){
 	    $crm_name = $crt_name;
 	    $is_ok = 1;

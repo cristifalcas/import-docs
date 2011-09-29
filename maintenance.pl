@@ -400,6 +400,7 @@ sub fix_wiki_sc_type {
   my $hash_real = ();
   $hash = $namespaces->{'real'};
   foreach my $ns (keys %$hash){
+    next if ! defined $our_wiki->wiki_get_nonredirects("$hash->{$ns}");
     foreach (@{$our_wiki->wiki_get_nonredirects("$hash->{$ns}")}) {
       my $tmp = $_;
       $tmp =~ s/^(SC|CRM)(.*?)://i;
@@ -696,16 +697,10 @@ sub fix_images {
 
 # my $q = $our_wiki->wiki_get_pages_in_category("Category:All_SVN_Documents");
 # my $q = $our_wiki->wiki_get_pages_in_category("Category:Release Notes");
-my $q = $our_wiki->wiki_get_pages_linking_to("SC:P73");
-# SC:P81
-# SC:J2
-# SC:P1
-# SC:P47
-# SC:T7
-# SC:T8
-# print Dumper($q);
-$our_wiki->wiki_delete_page($_) foreach ($q);
-exit 1;
+# my $q = $our_wiki->wiki_get_pages_linking_to("SC:T8");
+# # print Dumper($q);
+# $our_wiki->wiki_delete_page($_) foreach ($q);
+# exit 1;
 
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);

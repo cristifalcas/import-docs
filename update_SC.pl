@@ -125,7 +125,7 @@ sub general_info {
     }
     $general =~ s/%tester%/$tmp/g;
     $tmp = @$info[$index->{'customer'}];
-    my @all_custs = split /,|;|\./, @$info[$index->{'customer'}];
+    my @all_custs = split /,|;|\.|\\/, @$info[$index->{'customer'}];
 
     my $final_cust = "";
     foreach my $cust (@all_custs) {
@@ -878,7 +878,7 @@ if ($bulk_svn_update eq "yes"){
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
 #     next if $change_id ne "B099953";
-# next if $change_id ne "B605954";
+# next if $change_id ne "A03450";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488

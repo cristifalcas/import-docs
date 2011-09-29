@@ -60,9 +60,9 @@ sub generate_categories {
 
     ## Release Notes categories
     my $url_sep = WikiCommons::get_urlsep;
-    $general_categories_hash->{$main}->{'Release Notes'} = 1 if $main =~ /($url_sep)RN$/;
-    $general_categories_hash->{$customer}->{'Release Notes'} = 1 if $customer =~ /($url_sep)RN$/;
-    $general_categories_hash->{$big_ver}->{'Release Notes'} = 1 if $big_ver =~ /($url_sep)RN$/;
+    $general_categories_hash->{$main}->{'Release Notes'} = 1 if $main =~ / RN$/;
+    $general_categories_hash->{$customer}->{'Release Notes'} = 1 if $customer =~ / RN$/;
+    $general_categories_hash->{$big_ver}->{'Release Notes'} = 1 if $big_ver =~ / RN$/;
 }
 
 sub fix_rest_dirs {
@@ -257,7 +257,7 @@ sub add_document {
 	$page_url =~ s/\s+/ /g;
 
 # 	$main = $main.$url_sep."RN" if $main ne "";
-	$big_ver = $big_ver.$url_sep."RN" if $big_ver ne "";
+# 	$big_ver = $big_ver.$url_sep."RN" if $big_ver ne "";
 	if ($dir_type eq "Docs_PaymentManager_Deployment" || $dir_type eq "Docs_PaymentManager") {
 	    $page_url = "PMG $page_url";
 	    $main = "$main$url_sep"."PMG RN" if $main ne "";
@@ -351,7 +351,6 @@ sub add_document {
 	} else {
 	    $correct_category = get_correct_category($fixed_name);
 	}
-# print "XXX\t$page_url\n" if $fixed_name ne $correct_category;
 	push @categories, $correct_category;
 	generate_categories($ver_fixed, $main, $big_ver, $customer, $dir_type, $correct_category);
     }

@@ -41,7 +41,7 @@ sub get_documents {
     foreach my $node (sort @all) {
 	$count++;
 	print "\tDone $count from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($count%1000 == 0);
-# next if $node ne 'B17982';
+# next if $node ne 'I004437';
 	if (! -e "$path_files/$node/$files_info_file" || ! -e "$path_files/$node/$general_wiki_file") {
 	    die "Can't find files_info or General wiki: $path_files/$node.\n";
 	    next;
