@@ -304,3 +304,4 @@ foreach my $sp (sort keys %$sps) {
 #     print Dumper("$deployment_ns:$sp", "$txt");
 }
 $dbh->disconnect if defined($dbh);
+print "Done.\n";

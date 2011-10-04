@@ -495,7 +495,7 @@ sub sql_get_all_changes {
 	$ver = "version >= \'6.5\' and version < \'7.0\'";
     } elsif ($sc_type eq 'B5') {
 	$ver = "(version >= \'7.0\' or
-	(nvl(version, 1) < \'5.0\' and fixversion > \'5.0\'))";
+	(nvl(version, 1) < \'5.0\' and nvl(fixversion, 6) > \'5.0\'))";
     }
 
     my $no_cancel = "and status <> 'Cancel'
@@ -507,7 +507,7 @@ sub sql_get_all_changes {
     } elsif ($sc_type eq 'F') {
 	$cond = "projectcode = 'F'";
     } elsif ($sc_type eq 'I') {
-	$cond  = "projectcode = 'I' and (nvl(version,100) >= '4.00' or nvl(fixversion,100) >= '4.00')";
+	$cond  = "projectcode = 'I' and (nvl(version,5) >= '4.00' or nvl(fixversion,5) >= '4.00')";
     } elsif ($sc_type eq 'H') {
 	$cond  = "projectcode = 'H' and writtendatetime > '1Jan2008'";
     } elsif ($sc_type eq 'R') {
@@ -523,16 +523,16 @@ sub sql_get_all_changes {
     } elsif ($sc_type eq 'P') {
 	$cond  = "projectcode = 'P'";
     } elsif ($sc_type eq 'D') {
-	$cond  = "projectcode = 'D' and (nvl(version,100) >= '2.30' or nvl(fixversion,100) >= '2.30')";
+	$cond  = "projectcode = 'D' and (nvl(version,3) >= '2.30' or nvl(fixversion,3) >= '2.30')";
     } elsif ($sc_type eq 'CANCEL') {
 	$cond = "";
-	$no_cancel = "((projectcode = 'B' and (version >= '5.0' or (nvl(version, 1) < '5.0' and fixversion > '5.0'))) or
+	$no_cancel = "((projectcode = 'B' and (version >= '5.0' or (nvl(version, 1) < '5.0' and nvl(fixversion,6) > '5.0'))) or
        (projectcode = 'F') or
-       (projectcode = 'I' and (nvl(version, 100) >= '4.00' or nvl(fixversion, 100) >= '4.00')) or
+       (projectcode = 'I' and (nvl(version, 5) >= '4.00' or nvl(fixversion,5) >= '4.00')) or
        (projectcode = 'H' and writtendatetime > '1Jan2008') or
        (projectcode = 'R') or
        (projectcode = 'T') or
-       (projectcode = 'D' and (nvl(version, 100) >= '2.30' or nvl(fixversion, 100) >= '2.30')))
+       (projectcode = 'D' and (nvl(version, 3) >= '2.30' or nvl(fixversion, 3) >= '2.30')))
    and (status = 'Cancel' or status = 'Inform-Cancel' or
        status = 'Market-Cancel')";
     } else {
@@ -878,7 +878,7 @@ if ($bulk_svn_update eq "yes"){
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
 #     next if $change_id ne "B099953";
-# next if $change_id ne "A03450";
+# next if $change_id ne "B23635";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488

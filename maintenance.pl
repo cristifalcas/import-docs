@@ -695,11 +695,19 @@ sub fix_images {
 #     }
 # }
 
-# my $q = $our_wiki->wiki_get_pages_in_category("Category:All_SVN_Documents");
+# my $q = $our_wiki->wiki_get_all_pages(0);
+# print Dumper($q);exit 1;
 # my $q = $our_wiki->wiki_get_pages_in_category("Category:Release Notes");
-# my $q = $our_wiki->wiki_get_pages_linking_to("SC:T8");
-# # print Dumper($q);
-# $our_wiki->wiki_delete_page($_) foreach ($q);
+# my @a=("SC:A1", "SC:B2", "SC:E6", "SC:G4", "SC:J2", "SC:L2", "SC:P00", "SC:P01", "SC:P35", "SC:P47", "SC:P60", "SC:P70", "SC:P75", "SC:P77", "SC:P87", "SC:P8082", "SC:R7", "SC:T1001", "SC:T3", "SC:T2", "SC:V120", "SC:V2", "SC:V3", "SC:V5", "SC:V6", "SC:V7", "SC:V700", "SC:X0000", "SC:V700", "SC:V5", "SC:V6", "SC:V7");
+# foreach my $link (@a){
+#   my $q = $our_wiki->wiki_get_pages_linking_to("$link");
+# #   next is ! defined $q;
+#   foreach my $page (@$q){
+#     if (defined $our_wiki->wiki_exists_page($page)){
+#       $our_wiki->wiki_delete_page($page);
+#     }
+#   }
+# }
 # exit 1;
 
 my $namespaces = $our_wiki->wiki_get_namespaces;
