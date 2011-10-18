@@ -150,7 +150,7 @@ if ($work_type eq "u") {
   print "Cleaning $to_path dir ...\n";
   system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
   print "Done cleaning.\n";
-  return;
+  exit 0;
 }
 
 print "Get all ppt files.\n";

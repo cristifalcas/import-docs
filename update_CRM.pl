@@ -607,6 +607,7 @@ sub get_color {
 	print "\tNo customer and no mind engineer. Maybe a customer message.\n";
     }
     $name = parse_text($name, undef);
+    $name =~ s/(<nowiki>)(\[mailto:)(<\/nowiki>)/$2/gm;  ### fix parse_text
     return ($name, $color, $event_from_mind);
 }
 

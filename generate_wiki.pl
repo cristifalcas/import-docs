@@ -527,10 +527,10 @@ sub insertdata {
     opendir(DIR, $work_dir);
     my @files = grep { (!/^\.\.?$/) } readdir(DIR);
     closedir(DIR);
-    if (scalar @files > 3 && ($work_dir !~ m/CMS:Why Partner With MIND$/ ||
+    if (scalar @files > 3 && ($work_dir !~ m/CMS:Why Partner With MIND$/ &&
 	    $work_dir !~ m/SVN:SES VF Greece QS System Description -- 5.02$/)) {
 	print "Dir $work_dir doesn't have the correct number of files.\n";
-	$fail = 1;
+# 	$fail = 1;
     }
     foreach my $file (@files){
 	if ($file ne $wiki_files_uploaded && $file ne $wiki_files_info && $file !~ m/\.wiki$/ &&
@@ -538,7 +538,7 @@ sub insertdata {
 		($work_dir =~ m/SVN:SES VF Greece QS System Description -- 5.02$/ && $file eq "SVN:SES VF Greece QS System Description -- 5.02_html_m302d1070.gif"))
 	  ) {
 	    print "File $file from $work_dir should not exist.\n".Dumper(@files);
-	    $fail = 1;
+# 	    $fail = 1;
 	    last ;
 	}
     }
@@ -783,7 +783,7 @@ if ($path_type eq "mind_svn") {
 #     foreach (keys %$pages_toimp_hash) {$crt_nr++ if $_ =~ m/^SC:(.*)/i}
     foreach my $url (sort keys %$pages_toimp_hash) {
 	$crt_nr++;
-# next if "$url" !~ "I004437";
+# next if "$url" !~ "B105430";
 	WikiCommons::reset_time();
 	print "\n************************* $crt_nr of $total_nr\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 

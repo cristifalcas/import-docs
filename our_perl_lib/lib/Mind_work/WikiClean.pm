@@ -772,6 +772,7 @@ sub fix_wiki_chars {
     # copyright
     $wiki =~ s/\x{EF}\x{192}\x{A3}/\x{C2}\x{A9}/gsi;
     $wiki =~ s/\x{EF}\x{192}\x{201C}/\x{C2}\x{A9}/gsi;
+    $wiki =~ s/\x{EF}\x{81}\x{97}/\x{e2}\x{a6}\x{b8}/gsi;
     $wiki =~ s/\x{C3}\x{AF}\x{C6}\x{92}\x{E2}\x{80}\x{9C}/\x{C2}\x{A9}/gsi;
     $wiki =~ s/\x{c3}\x{af}\x{c6}\x{92}\x{c2}\x{a3}/\x{C2}\x{A9}/gsi;
     $wiki =~ s/\x{ef}\x{83}\x{93}/\x{C2}\x{A9}/gsi;
