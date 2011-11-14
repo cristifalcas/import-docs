@@ -46,7 +46,6 @@ my $sql_query="select rc_timestamp, rc_user_text, rc_title
                         where rc_namespace = 0
                           and rcs.rc_title = rc.rc_title
                           and abs(rcs.rc_new_len - rcs.rc_old_len) > 100
---			  and rc_user_text <> 'Wiki auto import'
                           /*and ((rc_new<>1 and rc_user_text <> 'Cristian.falcas'
                           and rc_user_text <> '10.0.6.78'
                           and rc_user_text <> '10.0.4.128') or rc_new=1)*/)

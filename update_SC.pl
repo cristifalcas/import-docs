@@ -344,7 +344,6 @@ sub sql_get_common_info {
     $SEL_INFO = "select $select" . $SEL_INFO . " where prj.projectcode = \'$type\'";
     my @info = ();
     my $sth = $dbh->prepare($SEL_INFO);
-
     $sth->execute();
     my $nr=0;
     while ( my @row=$sth->fetchrow_array() ) {
@@ -357,19 +356,19 @@ sub sql_get_common_info {
 
 sub sql_generate_select_changeinfo {
     my $hash_fields = {
-	'fixesdescription'	=> 'nvl(a.fixesdescription,\' \')',
+	'fixesdescription'	=> 'nvl(fd.fixesdescription,\' \')',
 	'writtendatetime'	=> 'to_char(a.writtendatetime,\'yyyy-mm-dd hh:mi:ss\')',
 	'modification_time'	=> 'nvl(to_char((select max(log_time) from sc_log where change_id=:CHANGEID),\'yyyy-mm-dd hh:mi:ss\'), \' \')',
 	'changeid'		=> 'a.changeid',
 	'modules'		=> 'nvl(a.modules,\' \')',
-	'moduleslist'		=> 'nvl(a.moduleslist,\' \')',
+	'moduleslist'		=> 'nvl(ml.modules_list,\' \')',
 	'buildversion'		=> 'nvl(a.buildversion,\' \')',
 	'prodversion'		=> 'nvl(a.prodversion,\' \')',
 	'version'		=> 'nvl(a.version,\' \')',
 	'status' 		=> 'nvl(a.status,\' \')',
 	'fullstatus'		=> 'nvl(a.fullstatus,\' \')',
 	'clone' 		=> 'nvl(g.clone,\' \')',
-	'projectname'		=> 'f.projectname',
+	'projectname'		=> 'p.projectname',
 	'productname'		=> 'c.productname',
 	'changetype' 		=> 'nvl(a.changetype,\' \')',
 	'title'			=> 'nvl(a.title,\' \')',
@@ -380,11 +379,11 @@ sub sql_generate_select_changeinfo {
 	'fixversion'		=> 'nvl(a.fixversion,\' \')',
 	'parent_change_id'	=> 'nvl(a.parent_change_id,\' \')',
 	'relatedtasks'		=> 'nvl(a.relatedtasks,\' \')',
-	'Market_SC'		=> 'nvl(a.marketinfo,\' \')',
-	'Description_SC'	=> 'nvl(a.function,\' \')',
-	'HLD_SC'		=> 'nvl(a.hld_memo,\' \')',
-	'Messages_SC'		=> 'nvl(a.messages,\' \')',
-	'Architecture_SC'	=> 'nvl(a.architecture_memo,\' \')',
+	'Market_SC'		=> 'nvl(mi.marketinfo,\' \')',
+	'Description_SC'	=> 'nvl(f.function,\' \')',
+	'HLD_SC'		=> 'nvl(hm.hld_memo,\' \')',
+	'Messages_SC'		=> 'nvl(m.messages,\' \')',
+	'Architecture_SC'	=> 'nvl(am.architecture_memo,\' \')',
 	'initiator'		=> 'a.initiator',
 	'tester'		=> 'nvl(a.testincharge,-1)',
 	'dealer'		=> 'nvl(a.dealer,-1)',
@@ -418,15 +417,29 @@ sub sql_generate_select_changeinfo {
 # and a.changeid = b5.changeid
     my $SEL_INFO = "
     select $select
-    from scchange a,
-	scprods c,
-	scprojects f,
-	sc_categories g
+    from SCCHANGE           a,
+       SCPRODS              c,
+       SCPROJECTS           p,
+       SC_CATEGORIES        g,
+       SC_MODULES_LIST      ml,
+       SC_FIXES_DESCRIPTION fd,
+       SC_MESSAGES          m,
+       SC_MARKETINFO        mi,
+       SC_HLD_MEMO          hm,
+       SC_FUNCTION          f,
+       SC_ARCHITECTURE_MEMO am
     where a.changeid = :CHANGEID
-    and a.projectcode = c.projectcode
-    and c.productid = a.product
-    and f.projectcode = a.projectcode
-    and g.id = a.category_id";
+      and a.projectcode = c.projectcode
+      and c.productid = a.product
+      and p.projectcode = a.projectcode
+      and g.id = a.category_id
+      and ml.changeid = a.changeid
+      and fd.changeid = a.changeid
+      and m.changeid = a.changeid
+      and mi.changeid = a.changeid
+      and hm.changeid = a.changeid
+      and f.changeid = a.changeid
+      and am.changeid = a.changeid";
 
     return \%index, $SEL_INFO;
 }
@@ -436,7 +449,6 @@ sub sql_get_changeinfo {
     my ($change_id, $SEL_INFO) = @_;
     my @info = ();
     my $sth = $dbh->prepare($SEL_INFO);
-
     $sth->bind_param( ":CHANGEID", $change_id );
     $sth->execute();
     my $nr=0;
@@ -878,7 +890,7 @@ if ($bulk_svn_update eq "yes"){
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
 #     next if $change_id ne "B099953";
-# next if $change_id ne "B23635";
+# next if $change_id ne "B617009";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488

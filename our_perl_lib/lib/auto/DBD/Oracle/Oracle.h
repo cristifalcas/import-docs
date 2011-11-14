@@ -45,8 +45,6 @@
 
 #define NEED_DBIXS_VERSION 93
 
-#define PERL_POLLUTE
-
 #define PERL_NO_GET_CONTEXT  /*for Threaded Perl */
 
 #include <DBIXS.h>		/* installed by the DBI module	*/
@@ -94,7 +92,7 @@ int	 dbd_describe _((SV *sth, imp_sth_t *imp_sth));
 ub4	 ora_blob_read_piece _((SV *sth, imp_sth_t *imp_sth, imp_fbh_t *fbh, SV *dest_sv,
                    long offset, UV len, long destoffset));
 ub4	 ora_blob_read_mb_piece _((SV *sth, imp_sth_t *imp_sth, imp_fbh_t *fbh, SV *dest_sv,
-		   long offset, UV len, long destoffset));
+		   long offset, ub4 len, long destoffset));
 
 /* Oracle types */
 #define ORA_VARCHAR2		1

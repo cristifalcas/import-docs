@@ -8,14 +8,19 @@
 
 /* ====== define data types ====== */
 
+typedef struct taf_callback_st taf_callback_t;
+
+struct taf_callback_st {
+	char *function; /*User supplied TAF functiomn*/
+	int  sleep;
+};
+
 typedef struct imp_fbh_st imp_fbh_t;
 
 
 struct imp_drh_st {
 	dbih_drc_t com;		/* MUST be first element in structure	*/
 	OCIEnv *envhp;
-	int proc_handles;		   /* If true, the envhp handle is owned by ProC
-								   and must not be freed. */
 	SV *ora_long;
 	SV *ora_trunc;
 	SV *ora_cache;
@@ -38,9 +43,33 @@ struct imp_dbh_st {
 	OCIError 	*errhp;
 	OCIServer 	*srvhp;
 	OCISvcCtx 	*svchp;
-	OCISession	*authp;
-	int proc_handles;		   /* If true, srvhp, svchp, and authp handles
-								   are owned by ProC and must not be freed. */
+	OCISession	*seshp;
+#ifdef ORA_OCI_112
+	OCIAuthInfo *authp;
+	OCISPool    *poolhp;
+	text        *pool_name;
+	ub4			pool_namel;
+	bool		using_drcp;
+	text		*pool_class;
+	ub4			pool_classl;
+	ub4			pool_min;
+	ub4			pool_max;
+	ub4			pool_incr;
+	char		*driver_name;/*driver name user defined*/
+	ub4			driver_namel;
+#endif
+	taf_callback_t  *taf_callback;
+    bool		using_taf; /*TAF stuff*/
+    char		*taf_function; /*User supplied TAF functiomn*/
+    int			taf_sleep;
+    char		*client_info;  /*user defined*/
+    ub4			client_infol;
+	char		*module_name; /*module user defined */
+	ub4			module_namel;
+	char		*client_identifier;  /*user defined*/
+    ub4			client_identifierl;
+    char		*action;  /*user defined*/
+    ub4			actionl;
 	int RowCacheSize; /* both of these are defined by DBI spec*/
 	int RowsInCache;	/* this vaue is RO and cannot be set*/
 	int ph_type;		/* default oratype for placeholders */
@@ -48,11 +77,12 @@ struct imp_dbh_st {
 	int parse_error_offset;	/* position in statement of last error */
 	int max_nested_cursors;	 /* limit on cached nested cursors per stmt */
 	int array_chunk_size;  /* the max size for an array bind */
-
+    ub4 server_version; /* version of Oracle server */
 };
 
 #define DBH_DUP_OFF sizeof(dbih_dbc_t)
 #define DBH_DUP_LEN (sizeof(struct imp_dbh_st) - sizeof(dbih_dbc_t))
+
 
 
 typedef struct lob_refetch_st lob_refetch_t; /* Define sth implementor data structure */
@@ -158,7 +188,7 @@ struct fbh_obj_st {  /* embedded object or table will work recursively*/
 	OCIType			*obj_type;		 	/*if an embeded object this is the  OCIType returned by a OCIObjectPin*/
 	ub1				is_final_type;		/*object's OCI_ATTR_IS_FINAL_TYPE*/
 	fbh_obj_t		*fields;			/*one object for each field/property*/
-	int				field_count;		/*The number of fields Not really needed but nice to have*/
+	ub2				field_count;		/*The number of fields Not really needed but nice to have*/
 	fbh_obj_t		*next_subtype;		/*There is strored information about subtypes for inteherited objects*/
 	AV				*value;				/*The value to send back to Perl This way there are no memory leaks*/
 	SV				*full_type_name;	/*Perl value of full type name = schema_name "." type_name*/
@@ -265,7 +295,6 @@ extern int dbd_verbose;
 extern int oci_warn;
 extern int ora_objects;
 extern int ora_ncs_buff_mtpl;
-
 extern ub2 charsetid;
 extern ub2 ncharsetid;
 extern ub2 us7ascii_csid;
@@ -320,14 +349,18 @@ char *oci_define_options _((ub4 options));
 char *oci_hdtype_name _((ub4 hdtype));
 char *oci_attr_name _((ub4 attr));
 char *oci_exe_mode _((ub4 mode));
+char *dbd_yes_no _((int yes_no));
 char *oci_col_return_codes _((int rc));
 char *oci_csform_name _((ub4 attr));
+char *oci_sql_function_code_name _((int sqlfncode));
+char *oci_ptype_name _((int ptype));
+
 int dbd_rebind_ph_lob _((SV *sth, imp_sth_t *imp_sth, phs_t *phs));
 
 int dbd_rebind_ph_nty _((SV *sth, imp_sth_t *imp_sth, phs_t *phs));
 
 int ora_st_execute_array _((SV *sth, imp_sth_t *imp_sth, SV *tuples,
-							SV *tuples_status, SV *columns, ub4 exe_count));
+							SV *tuples_status, SV *columns, ub4 exe_count, SV *err_count));
 
 
 SV * ora_create_xml _((SV *dbh, char *source));
@@ -359,7 +392,8 @@ void * oci_st_handle(imp_sth_t *imp_sth, int handle_type, int flags);
 void fb_ary_free(fb_ary_t *fb_ary);
 void rs_array_init(imp_sth_t *imp_sth);
 
-
+ub4 ora_db_version _((SV *dbh, imp_dbh_t *imp_dbh));
+sb4 reg_taf_callback _((imp_dbh_t *imp_dbh));
 
 /* These defines avoid name clashes for multiple statically linked DBD's	*/
 

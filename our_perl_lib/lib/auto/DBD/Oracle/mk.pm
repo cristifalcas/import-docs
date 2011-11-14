@@ -1,12 +1,34 @@
 $dbd_oracle_mm_opts = {
                         'NAME' => 'DBD::Oracle',
-                        'INC' => '-I/media/share/Documentation/cfalcas/q/import_docs/instantclient_11_2/sdk/include -I/usr/lib/perl5/auto/DBI',
+                        'META_MERGE' => {
+                                          'resources' => {
+                                                           'repository' => {
+                                                                             'web' => 'http://github.com/yanick/DBD-Oracle/tree',
+                                                                             'url' => 'git://github.com/yanick/DBD-Oracle.git',
+                                                                             'type' => 'git'
+                                                                           },
+                                                           'homepage' => 'http://search.cpan.org/dist/DBD-Oracle',
+                                                           'bugtracker' => {
+                                                                             'web' => 'http://rt.cpan.org/Public/Dist/Display.html?Name=DBD-Oracle',
+                                                                             'mailto' => 'bug-dbd-oracle at rt.cpan.org'
+                                                                           }
+                                                         },
+                                          'build_requires' => {
+                                                                'ExtUtils::MakeMaker' => 0,
+                                                                'Test::Simple' => '0.90',
+                                                                'DBI' => '1.51'
+                                                              },
+                                          'configure_requires' => {
+                                                                    'DBI' => '1.51'
+                                                                  }
+                                        },
+                        'INC' => '-I/media/share/Documentation/cfalcas/q/import_docs/instantclient_11_2/sdk/include -I/usr/lib/perl5/vendor_perl/auto/DBI',
                         'LIBS' => [
                                     '-L/media/share/Documentation/cfalcas/q/import_docs/instantclient_11_2 -lclntsh'
                                   ],
                         'AUTHOR' => 'Tim Bunce (dbi-users@perl.org)',
                         'DIR' => [],
-                        'DEFINE' => ' -Wall -Wno-comment -DUTF8_SUPPORT -DNEW_OCI_INIT -DORA_OCI_VERSION=\\"11.2.0.1\\"',
+                        'DEFINE' => ' -Wall -Wno-comment -DUTF8_SUPPORT -DORA_OCI_VERSION=\\"11.2.0.3\\" -DORA_OCI_102 -DORA_OCI_112',
                         'dynamic_lib' => {
                                            'OTHERLDFLAGS' => ''
                                          },
@@ -18,13 +40,11 @@ $dbd_oracle_mm_opts = {
                                   },
                         'OBJECT' => '$(O_FILES)',
                         'clean' => {
-                                     'FILES' => 'xstmp.c Oracle.xsi dll.base dll.exp sqlnet.log libOracle.def ora_explain mk.pm DBD_ORA_OBJ.*'
+                                     'FILES' => 'xstmp.c Oracle.xsi dll.base dll.exp sqlnet.log libOracle.def mk.pm DBD_ORA_OBJ.*'
                                    },
-                        'EXE_FILES' => [
-                                         'ora_explain'
-                                       ],
                         'ABSTRACT_FROM' => 'Oracle.pm',
                         'VERSION_FROM' => 'Oracle.pm',
+                        'LICENSE' => 'perl',
                         'PREREQ_PM' => {
                                          'DBI' => '1.51'
                                        }
@@ -34,13 +54,13 @@ $dbd_oracle_mm_self = bless( {
                                'ECHO_N' => 'echo -n',
                                'BOOTDEP' => '',
                                'INSTALLSITESCRIPT' => '/usr/local/bin',
-                               'CCDLFLAGS' => '-Wl,-E -Wl,-rpath,/usr/lib/perl5/CORE',
+                               'CCDLFLAGS' => '-Wl,--enable-new-dtags -Wl,-rpath,/usr/lib/perl5/CORE',
                                'LDDLFLAGS' => '-shared -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector --param=ssp-buffer-size=4 -m32 -march=i686 -mtune=atom -fasynchronous-unwind-tables -L/usr/local/lib',
                                'DESTINSTALLVENDORMAN3DIR' => '$(DESTDIR)$(INSTALLVENDORMAN3DIR)',
                                'LDLOADLIBS' => '-L/media/share/Documentation/cfalcas/q/import_docs/instantclient_11_2 -lclntsh',
                                'PREOP' => '$(NOECHO) $(NOOP)',
                                'MACROSTART' => '',
-                               'XS_VERSION' => '1.24',
+                               'XS_VERSION' => '1.34',
                                'PERL_MALLOC_DEF' => '-DPERL_EXTMALLOC_DEF -Dmalloc=Perl_malloc -Dfree=Perl_mfree -Drealloc=Perl_realloc -Dcalloc=Perl_calloc',
                                'MAKEMAKER' => '/usr/share/perl5/ExtUtils/MakeMaker.pm',
                                'USEMAKEFILE' => '-f',
@@ -86,11 +106,8 @@ $dbd_oracle_mm_self = bless( {
                                              'vendorlibexp'
                                            ],
                                'DESTDIR' => '',
-                               'MAN1PODS' => {
-                                               'ora_explain' => '$(INST_MAN1DIR)/ora_explain.$(MAN1EXT)'
-                                             },
                                'INSTALLSITEBIN' => '/usr/local/bin',
-                               'MM_Unix_VERSION' => '6.55_02',
+                               'MM_Unix_VERSION' => '6.57_05',
                                'CHMOD' => 'chmod',
                                'DESTINSTALLVENDORLIB' => '$(DESTDIR)$(INSTALLVENDORLIB)',
                                'OBJ_EXT' => '.o',
@@ -99,24 +116,21 @@ $dbd_oracle_mm_self = bless( {
                                         'dbdimp.c',
                                         'oci8.c'
                                       ],
-                               'EXE_FILES' => $dbd_oracle_mm_opts->{'EXE_FILES'},
                                'TARFLAGS' => 'cvf',
                                'PERL_INC' => '/usr/lib/perl5/CORE',
                                'HAS_LINK_CODE' => 1,
                                'INSTALLPRIVLIB' => '/usr/share/perl5',
                                'SITELIBEXP' => '/usr/local/share/perl5',
                                'DESTINSTALLPRIVLIB' => '$(DESTDIR)$(INSTALLPRIVLIB)',
-                               'VENDORLIBEXP' => '/usr/share/perl5',
-                               'DEFINE' => ' -Wall -Wno-comment -DUTF8_SUPPORT -DNEW_OCI_INIT -DORA_OCI_VERSION=\\"11.2.0.1\\"',
+                               'VENDORLIBEXP' => '/usr/share/perl5/vendor_perl',
+                               'DEFINE' => ' -Wall -Wno-comment -DUTF8_SUPPORT -DORA_OCI_VERSION=\\"11.2.0.3\\" -DORA_OCI_102 -DORA_OCI_112',
                                'FULLEXT' => 'DBD/Oracle',
                                'dynamic_lib' => $dbd_oracle_mm_opts->{'dynamic_lib'},
                                'MAKEFILE' => 'Makefile',
-                               'PL_FILES' => {
-                                               'ora_explain.PL' => 'ora_explain'
-                                             },
+                               'PL_FILES' => {},
                                'SHELL' => '/bin/sh',
-                               'VENDORARCHEXP' => '/usr/lib/perl5',
-                               'MM_VERSION' => '6.55_02',
+                               'VENDORARCHEXP' => '/usr/lib/perl5/vendor_perl',
+                               'MM_VERSION' => '6.57_05',
                                'INSTALLSCRIPT' => '/usr/bin',
                                'CC' => 'gcc',
                                'LIBS' => $dbd_oracle_mm_opts->{'LIBS'},
@@ -129,7 +143,7 @@ $dbd_oracle_mm_self = bless( {
                                'FALSE' => 'false',
                                'DESTINSTALLARCHLIB' => '$(DESTDIR)$(INSTALLARCHLIB)',
                                'INST_STATIC' => '$(INST_ARCHAUTODIR)/$(BASEEXT)$(LIB_EXT)',
-                               'DISTVNAME' => 'DBD-Oracle-1.24',
+                               'DISTVNAME' => 'DBD-Oracle-1.34',
                                'ABSTRACT_FROM' => 'Oracle.pm',
                                'DESTINSTALLSCRIPT' => '$(DESTDIR)$(INSTALLSCRIPT)',
                                'INST_AUTODIR' => '$(INST_LIB)/auto/$(FULLEXT)',
@@ -137,7 +151,7 @@ $dbd_oracle_mm_self = bless( {
                                              '# This Makefile is for the DBD::Oracle extension to perl.
 #
 # It was generated automatically by MakeMaker version
-# 6.55_02 (Revision: 65502) from the contents of
+# 6.57_05 (Revision: 65705) from the contents of
 # Makefile.PL. Don\'t edit this file, edit Makefile.PL instead.
 #
 #       ANY CHANGES MADE HERE WILL BE LOST!
@@ -148,18 +162,19 @@ $dbd_oracle_mm_self = bless( {
                                              '#   MakeMaker Parameters:
 ',
                                              '#     ABSTRACT_FROM => q[Oracle.pm]',
-                                             '#     AUTHOR => q[Tim Bunce (dbi-users@perl.org)]',
+                                             '#     AUTHOR => [q[Tim Bunce (dbi-users@perl.org)]]',
                                              '#     BUILD_REQUIRES => {  }',
-                                             '#     DEFINE => q[ -Wall -Wno-comment -DUTF8_SUPPORT -DNEW_OCI_INIT -DORA_OCI_VERSION=\\"11.2.0.1\\"]',
+                                             '#     DEFINE => q[ -Wall -Wno-comment -DUTF8_SUPPORT -DORA_OCI_VERSION=\\"11.2.0.3\\" -DORA_OCI_102 -DORA_OCI_112]',
                                              '#     DIR => []',
-                                             '#     EXE_FILES => [q[ora_explain]]',
-                                             '#     INC => q[-I/media/share/Documentation/cfalcas/q/import_docs/instantclient_11_2/sdk/include -I/usr/lib/perl5/auto/DBI]',
+                                             '#     INC => q[-I/media/share/Documentation/cfalcas/q/import_docs/instantclient_11_2/sdk/include -I/usr/lib/perl5/vendor_perl/auto/DBI]',
                                              '#     LIBS => [q[-L/media/share/Documentation/cfalcas/q/import_docs/instantclient_11_2 -lclntsh]]',
+                                             '#     LICENSE => q[perl]',
+                                             '#     META_MERGE => { resources=>{ repository=>{ web=>q[http://github.com/yanick/DBD-Oracle/tree], url=>q[git://github.com/yanick/DBD-Oracle.git], type=>q[git] }, homepage=>q[http://search.cpan.org/dist/DBD-Oracle], bugtracker=>{ web=>q[http://rt.cpan.org/Public/Dist/Display.html?Name=DBD-Oracle], mailto=>q[bug-dbd-oracle at rt.cpan.org] } }, build_requires=>{ ExtUtils::MakeMaker=>q[0], Test::Simple=>q[0.90], DBI=>q[1.51] }, configure_requires=>{ DBI=>q[1.51] } }',
                                              '#     NAME => q[DBD::Oracle]',
                                              '#     OBJECT => q[$(O_FILES)]',
                                              '#     PREREQ_PM => { DBI=>q[1.51] }',
                                              '#     VERSION_FROM => q[Oracle.pm]',
-                                             '#     clean => { FILES=>q[xstmp.c Oracle.xsi dll.base dll.exp sqlnet.log libOracle.def ora_explain mk.pm DBD_ORA_OBJ.*] }',
+                                             '#     clean => { FILES=>q[xstmp.c Oracle.xsi dll.base dll.exp sqlnet.log libOracle.def mk.pm DBD_ORA_OBJ.*] }',
                                              '#     dist => { DIST_DEFAULT=>q[clean distcheck disttest tardist], COMPRESS=>q[gzip -v9], PREOP=>q[$(MAKE) -f Makefile.old distdir], SUFFIX=>q[gz] }',
                                              '#     dynamic_lib => { OTHERLDFLAGS=>q[] }',
                                              '
@@ -169,8 +184,10 @@ $dbd_oracle_mm_self = bless( {
                                'MAP_TARGET' => 'perl',
                                'INSTALLMAN3DIR' => '/usr/share/man/man3',
                                'PERLPREFIX' => '/usr',
-                               'AUTHOR' => 'Tim Bunce (dbi-users@perl.org)',
-                               'INC' => '-I/media/share/Documentation/cfalcas/q/import_docs/instantclient_11_2/sdk/include -I/usr/lib/perl5/auto/DBI',
+                               'AUTHOR' => [
+                                             'Tim Bunce (dbi-users@perl.org)'
+                                           ],
+                               'INC' => '-I/media/share/Documentation/cfalcas/q/import_docs/instantclient_11_2/sdk/include -I/usr/lib/perl5/vendor_perl/auto/DBI',
                                'LDFLAGS' => ' -fstack-protector -L/usr/local/lib',
                                'dist' => $dbd_oracle_mm_opts->{'dist'},
                                'INSTALLVENDORMAN1DIR' => '/usr/share/man/man1',
@@ -201,7 +218,7 @@ $dbd_oracle_mm_self = bless( {
                                'EXPORT_LIST' => '',
                                'INST_BOOT' => '$(INST_ARCHAUTODIR)/$(BASEEXT).bs',
                                'MV' => 'mv',
-                               'OSVERS' => '2.6.32-44.el6.x86_64',
+                               'OSVERS' => '2.6.32-131.2.1.el6.x86_64',
                                'LD_RUN_PATH' => '/media/share/Documentation/cfalcas/q/import_docs/instantclient_11_2',
                                'MKPATH' => '$(ABSPERLRUN) -MExtUtils::Command -e \'mkpath\' --',
                                'DESTINSTALLMAN1DIR' => '$(DESTDIR)$(INSTALLMAN1DIR)',
@@ -217,16 +234,16 @@ $dbd_oracle_mm_self = bless( {
                                'SKIPHASH' => {},
                                'NOOP' => '$(TRUE)',
                                'PERL_ARCHLIB' => '/usr/lib/perl5',
-                               'VERSION_SYM' => '1_24',
+                               'VERSION_SYM' => '1_34',
                                'VERSION_MACRO' => 'VERSION',
                                'WARN_IF_OLD_PACKLIST' => '$(ABSPERLRUN) -MExtUtils::Command::MM -e \'warn_if_old_packlist\' --',
-                               'MM_REVISION' => 65502,
+                               'MM_REVISION' => 65705,
                                'RM_F' => 'rm -f',
-                               'LIBC' => '/lib/libc-2.12.so',
+                               'LIBC' => '/lib/libc-2.14.90.so',
                                'UNINST' => 0,
                                'PERLRUN' => '$(PERL)',
                                'LINKTYPE' => 'dynamic',
-                               'INSTALLVENDORLIB' => '/usr/share/perl5',
+                               'INSTALLVENDORLIB' => '/usr/share/perl5/vendor_perl',
                                'DEV_NULL' => '> /dev/null 2>&1',
                                'DLSRC' => 'dl_dlopen.xs',
                                'INST_ARCHAUTODIR' => '$(INST_ARCHLIB)/auto/$(FULLEXT)',
@@ -234,18 +251,19 @@ $dbd_oracle_mm_self = bless( {
                                'MACROEND' => '',
                                'ARGS' => {
                                            'NAME' => 'DBD::Oracle',
-                                           'INC' => '-I/media/share/Documentation/cfalcas/q/import_docs/instantclient_11_2/sdk/include -I/usr/lib/perl5/auto/DBI',
+                                           'META_MERGE' => $dbd_oracle_mm_opts->{'META_MERGE'},
+                                           'INC' => '-I/media/share/Documentation/cfalcas/q/import_docs/instantclient_11_2/sdk/include -I/usr/lib/perl5/vendor_perl/auto/DBI',
                                            'LIBS' => $dbd_oracle_mm_opts->{'LIBS'},
-                                           'AUTHOR' => 'Tim Bunce (dbi-users@perl.org)',
+                                           'AUTHOR' => $dbd_oracle_mm_self->{'AUTHOR'},
                                            'DIR' => $dbd_oracle_mm_opts->{'DIR'},
-                                           'DEFINE' => ' -Wall -Wno-comment -DUTF8_SUPPORT -DNEW_OCI_INIT -DORA_OCI_VERSION=\\"11.2.0.1\\"',
+                                           'DEFINE' => ' -Wall -Wno-comment -DUTF8_SUPPORT -DORA_OCI_VERSION=\\"11.2.0.3\\" -DORA_OCI_102 -DORA_OCI_112',
                                            'dynamic_lib' => $dbd_oracle_mm_opts->{'dynamic_lib'},
                                            'dist' => $dbd_oracle_mm_opts->{'dist'},
                                            'OBJECT' => '$(O_FILES)',
                                            'clean' => $dbd_oracle_mm_opts->{'clean'},
-                                           'EXE_FILES' => $dbd_oracle_mm_opts->{'EXE_FILES'},
                                            'ABSTRACT_FROM' => 'Oracle.pm',
                                            'VERSION_FROM' => 'Oracle.pm',
+                                           'LICENSE' => 'perl',
                                            'PREREQ_PM' => $dbd_oracle_mm_opts->{'PREREQ_PM'}
                                          },
                                'CP' => 'cp',
@@ -255,6 +273,7 @@ $dbd_oracle_mm_self = bless( {
                                'INST_LIB' => 'blib/lib',
                                'INST_DYNAMIC' => '$(INST_ARCHAUTODIR)/$(DLBASE).$(DLEXT)',
                                'FULLPERLRUN' => '$(FULLPERL)',
+                               'META_MERGE' => $dbd_oracle_mm_opts->{'META_MERGE'},
                                'INSTALLSITEMAN1DIR' => '/usr/local/share/man/man1',
                                'DESTINSTALLSITEMAN3DIR' => '$(DESTDIR)$(INSTALLSITEMAN3DIR)',
                                'MOD_INSTALL' => '$(ABSPERLRUN) -MExtUtils::Install -e \'install([ from_to => {@ARGV}, verbose => \'\\\'\'$(VERBINST)\'\\\'\', uninstall_shadows => \'\\\'\'$(UNINST)\'\\\'\', dir_mode => \'\\\'\'$(PERM_DIR)\'\\\'\' ]);\' --',
@@ -276,6 +295,7 @@ $dbd_oracle_mm_self = bless( {
                                'MAKE_APERL_FILE' => 'Makefile.aperl',
                                'ZIP' => 'zip',
                                'VERSION_FROM' => 'Oracle.pm',
+                               'LICENSE' => 'perl',
                                'SITEPREFIX' => '/usr/local',
                                'INSTALLVENDORSCRIPT' => '/usr/bin',
                                'TO_UNIX' => '$(NOECHO) $(NOOP)',
@@ -302,7 +322,7 @@ $dbd_oracle_mm_self = bless( {
                                'INSTALLDIRS' => 'site',
                                'INST_ARCHLIB' => 'blib/arch',
                                'PERL_ARCHIVE' => '',
-                               'INSTALLVENDORARCH' => '/usr/lib/perl5',
+                               'INSTALLVENDORARCH' => '/usr/lib/perl5/vendor_perl',
                                'INSTALLBIN' => '/usr/bin',
                                'DESTINSTALLSITEMAN1DIR' => '$(DESTDIR)$(INSTALLSITEMAN1DIR)',
                                'INSTALLSITEMAN3DIR' => '/usr/local/share/man/man3',
@@ -336,7 +356,7 @@ $dbd_oracle_mm_self = bless( {
                                'PERL_CORE' => 0,
                                'INSTALLMAN1DIR' => '/usr/share/man/man1',
                                'SO' => 'so',
-                               'VERSION' => '1.24',
+                               'VERSION' => '1.34',
                                'DIST_CP' => 'best',
                                'INST_SCRIPT' => 'blib/script',
                                'UNINSTALL' => '$(ABSPERLRUN) -MExtUtils::Command::MM -e \'uninstall\' --'
