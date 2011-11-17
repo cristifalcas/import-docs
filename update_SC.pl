@@ -433,13 +433,13 @@ sub sql_generate_select_changeinfo {
       and c.productid = a.product
       and p.projectcode = a.projectcode
       and g.id = a.category_id
-      and ml.changeid = a.changeid
-      and fd.changeid = a.changeid
-      and m.changeid = a.changeid
-      and mi.changeid = a.changeid
-      and hm.changeid = a.changeid
-      and f.changeid = a.changeid
-      and am.changeid = a.changeid";
+      and ml.changeid(+) = a.changeid
+      and fd.changeid(+) = a.changeid
+      and m.changeid(+) = a.changeid
+      and mi.changeid(+) = a.changeid
+      and hm.changeid(+) = a.changeid
+      and f.changeid(+) = a.changeid
+      and am.changeid(+) = a.changeid";
 
     return \%index, $SEL_INFO;
 }
@@ -890,7 +890,7 @@ if ($bulk_svn_update eq "yes"){
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
 #     next if $change_id ne "B099953";
-# next if $change_id ne "B617009";
+# next if $change_id ne "B26116";
 # B099626, B03761
 ## special chars: B06390
 ## docs B71488
@@ -949,10 +949,10 @@ foreach my $change_id (sort keys %$crt_hash){
 # @$info[$index->{'modification_time'}]
 # print Dumper($crt_info->{'SC_info'}, $prev_info->{'SC_info'});
     my $cat = ();
+    ## like this in order to not update everything after we added the date to docs
+    $crt_info->{'SC_info'}->{'date'} = "sc_date is not used";
     if ( ! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) || $update_control_file || $force_db_update eq "yes" ) {
  	print "\tUpdate SC info.\n";
-	## like this in order to not update everything after we added the date to docs
-	$crt_info->{'SC_info'}->{'date'} = "sc_date is not used";
 
 	my $prev = 'NULL';
 	$prev = $prev_info->{'SC_info'}->{'size'} if defined $prev_info->{'SC_info'}->{'size'};

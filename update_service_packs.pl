@@ -32,12 +32,13 @@ use Mind_work::WikiCommons;
 use Mind_work::WikiWork;
 
 our $dbh;
+our $work_type = shift;
 my $urlsep = WikiCommons::get_urlsep;
 my $our_wiki = WikiWork->new('robot', '1');
 my $deployment_ns = "SC_Deployment";
 my $canceled_ns = "SC_Canceled";
 my $deployment_wiki = getWikiPages($deployment_ns);
-clean_existing_deployment($deployment_wiki);
+clean_existing_deployment($deployment_wiki) if defined $work_type && $work_type eq "d";
 my $cancel_wiki = getWikiPages($canceled_ns);
 my @arr1 = (keys %$deployment_wiki);
 my @arr2 = (keys %$cancel_wiki);
@@ -228,8 +229,6 @@ sub makeDeploymentPage {
     }
     $txt .= "\n\n\n\n----\n----\n\nThe following clones where found for this SP:$clones" if defined $clones;
     $our_wiki->wiki_edit_page("$title", "$txt") if defined $uniq_ids;
-#     $our_wiki->wiki_delete_page("$title");
-#     print Dumper($title, $txt) if defined $uniq_ids;
 }
 
 $ENV{NLS_LANG} = 'AMERICAN_AMERICA.AL32UTF8';
@@ -248,7 +247,6 @@ foreach my $sp (sort keys %$sps) {
 # next if "$sp" !~ m/Sentori -- Main/i;
     my $sp_ids = $sps->{$sp};
     my $full_deployment->{'page'} = "$deployment_ns:Deployment$urlsep$sp$urlsep"."full";
-#     my $category = "\n[[Category:".$sps->{$sp}->{'XXX_Cat'}."]]";
     my $end = "[[Category:".$sps->{$sp}->{'XXX_Cat'}."]]";
     my $txt = "[[".$full_deployment->{'page'}."| Full deployment consideration]].\n\n\n";
     my $txt_all = {};
@@ -285,7 +283,7 @@ foreach my $sp (sort keys %$sps) {
 	    my @module_ids = split ",",$tasks->{$sc}->{'modules'};
 	    my $modules = sql_get_modules(@module_ids);
 	    my $modules_str = join "\' <br/> \'", @$modules;
-# print Dumper(@module_ids, $modules, $modules_str);exit 1;
+
 	    $sp_txt .= "|-
 | [[SC:$sc|$sc]] || ".$tasks->{$sc}->{'ChangeType'}." || ".$tasks->{$sc}->{'TITLE'}." || \'$modules_str\' "." || $cust || ".$tasks->{$sc}->{'STATUS'}." || ".$tasks->{$sc}->{'COMMENTS'}." || ".$tasks->{$sc}->{'PRIORITY'}." || ".$tasks->{$sc}->{'WorkerName'}."\n";
 	    $full_deployment->{$sc} = getClones($sc);
@@ -293,15 +291,13 @@ foreach my $sp (sort keys %$sps) {
 	}
 	$sp_txt .= "|}\n\n";
 	$our_wiki->wiki_edit_page($sp_bugs->{'page'}, "$sp_txt");
-# 	$our_wiki->wiki_delete_page($sp_bugs->{'page'});
 	makeDeploymentPage($sp_deployment);
     }
     makeDeploymentPage($full_deployment);
     $txt .= $txt_all->{$_} foreach (reverse sort keys %$txt_all);
     $txt .= "$end\n\n";
     $our_wiki->wiki_edit_page("$deployment_ns:$sp", "$txt");
-#     $our_wiki->wiki_delete_page("$deployment_ns:$sp");
-#     print Dumper("$deployment_ns:$sp", "$txt");
+
 }
 $dbh->disconnect if defined($dbh);
 print "Done.\n";

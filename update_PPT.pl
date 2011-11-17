@@ -4,7 +4,7 @@ use warnings;
 use strict;
 
 $SIG{__WARN__} = sub { die @_ };
-
+$| = 1;
 use Cwd 'abs_path','chdir';
 use File::Basename;
 
@@ -76,7 +76,9 @@ sub add_document_ftp {
     my $doc_file = shift;
     $doc_file = abs_path($doc_file);
     return if ! -s "$doc_file";
-    $hash_new->{WikiCommons::get_file_md5( $doc_file )} = "$doc_file";
+    my $md5sum = WikiCommons::get_file_md5($doc_file);
+    $md5sum.=$md5sum while (defined $hash_new->{$md5sum}); ## same file in different paths and too much too change in code
+    $hash_new->{$md5sum} = "$doc_file";
 }
 
 sub transform_to {
@@ -85,7 +87,7 @@ sub transform_to {
   my $output = "";
   eval {
       local $SIG{ALRM} = sub { die "alarm\n" };
-      alarm 46800; # 13 hours
+      alarm 1800; # 30 minutes
       $output = system("python", "$path_prefix/convertors/unoconv", "-f", "$type", "$file") == 0 or die "unoconv failed: $?";
       alarm 0;
   };
@@ -93,9 +95,10 @@ sub transform_to {
   
   if ($status) {
 	print "Error: Timed out: $status.\n";
+	`kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | gawk '{print \$2}')`;
 	eval {
 	    local $SIG{ALRM} = sub { die "alarm\n" };
-	    alarm 46800; # 13 hours
+	    alarm 3600; # 1 hour
 	    my $convert_string = "";
 	    if ($type eq "pdf") {
 		$convert_string = "pdf:impress_pdf_Export";
@@ -105,7 +108,7 @@ sub transform_to {
 		die "Unknow type: $type.\n";
 	    }
 	    system("Xvfb :10235 -screen 0 1024x768x16 &> /dev/null &");
-	    system("libreoffice", "-display", ":10235", "-unnaccept=all", "-invisible", "-nocrashreport", "-nodefault", "-nologo", "-nofirststartwizard", "-norestore", "-convert-to", "$convert_string", "-outdir", "$dir", "$file") == 0 or die "libreoffice failed: $?";
+	    system("libreoffice", "--display", ":10235", "--unnaccept=all", "--invisible", "--nocrashreport", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", "$convert_string", "--outdir", "$dir", "$file") == 0 or die "libreoffice failed: $?";
 	    alarm 0;
 	};
 	$status = $@;
@@ -143,7 +146,7 @@ sub clean_ftp_dir {
 if ($work_type eq "u") {
   # "--restrict-file-names=nocontrol",
   print "Updating ftp dir (wget).\n";
-  system("wget", "-N", "-r", "-l", "inf", "--no-remove-listing", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT", "-o", "/var/log/mind/wiki_logs/ftp_mirrot.log");
+  system("wget", "-N", "-r", "-l", "inf", "--no-remove-listing", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT", "-o", "/var/log/mind/wiki_logs/wiki_ftp_mirror.log");
   find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, "$from_path" ) if  (-d "$from_path");
   print "Cleaning $from_path dir ...\n";
   system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
@@ -168,6 +171,7 @@ print "New files to convert:".(scalar @$only_new).".\n";
 foreach (@$only_new){
     my $doc_file = $hash_new->{$_};
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
+    print "### Start working for $name ($dir).\n";
     my $append = $dir;
     my $q = quotemeta $from_path;
     $append =~ s/^$q//;
