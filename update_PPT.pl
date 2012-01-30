@@ -114,9 +114,11 @@ sub transform_to {
 	$status = $@;
 	if ($status) {
 	    print "Error: Timed out: $status.\n";
+	    `kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | gawk '{print \$2}')`;
 	} else {
 	    print "\tFinished: $status.\n";
-	} 
+	    return 1;
+	}
   } else {
       print "\tFinished: $output.\n";
       return 1;
@@ -197,7 +199,9 @@ foreach (@$only_new){
       next;
     }
     print "\tGenerating pdf file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
-    if (transform_to("$to_path/$append/$name$suffix", 'pdf')) {
+    if (! transform_to("$to_path/$append/$name$suffix", 'pdf')) {
+      next;
+    } else {
       `pdftotext "$to_path/$append/$name.pdf"`;
       die "Could not create txt file from pdf $to_path/$append/$name.pdf: $?.\n" if ($?) || ! -f "$to_path/$append/$name.txt";
       unlink "$to_path/$append/$name.pdf" || die "Could not unlink $to_path/$append/$name.pdf: $!";

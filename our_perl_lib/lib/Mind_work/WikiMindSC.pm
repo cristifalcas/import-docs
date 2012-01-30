@@ -73,7 +73,6 @@ sub get_documents {
 			$sc_type = "Bug";
 		    }
 		    if ( $path_files =~ m/canceled/i ) {
-# print "$path_files\n";exit 1;
 			$url_namespace = "SC_Canceled";
 		    } elsif ($node =~ m/^B/i) {
 			$url_namespace = "SC_iPhonex_$sc_type";
@@ -136,7 +135,6 @@ die "no namespace here 1: $node.\n".Dumper(@data);
 	    ## like this in order to not update everything after we added the date to docs
 	    $info_crt_h->{$tmp[0]}->{'date'} = "$tmp[4]" if defined $tmp[4];
 	}
-
 die "no namespace here 2: $node.\n".Dumper(@data) if $url_namespace eq "";
 	$pages_toimp_hash->{"$url_namespace:$node"} = [$md5." redirect", "$node", $info_crt_h, "real", \@categories];
 	$pages_toimp_hash->{"SC:$node"} = [$md5, "$node", $info_crt_h, "real", \@categories];

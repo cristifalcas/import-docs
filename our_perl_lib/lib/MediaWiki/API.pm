@@ -184,7 +184,7 @@ sub new {
   $ua->agent(__PACKAGE__ . "/$VERSION");
   $ua->default_header("Accept-Encoding" => "gzip, deflate");
   $ua->env_proxy() unless ($config->{no_proxy});
-  $ua->timeout( 1800 );
+  $ua->timeout( 7200 );
 
   $self->{ua} = $ua;
 

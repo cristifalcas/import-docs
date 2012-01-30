@@ -100,11 +100,11 @@ if ($options->{'r'}){
 my $all_real = "no";
 my $delete_everything = "no";
 my $delete_categories = "yes";
-my $make_categories = "yes";
+my $make_categories = "no";
 my $big_dump_mode = "no";
 my $delete_previous_page = "yes";
 my $pid_old = "100000";
-my $max_to_delete = 1000;
+my $max_to_delete = 1000000000;
 my $type_old = "";
 my $failed = {};
 
@@ -138,6 +138,7 @@ my $wiki_files_info = "wiki_files_info.txt";
 
 my $pages_toimp_hash = {};
 my $pages_local_hash = {};
+my $redirect_toimp_hash = {};
 
 my $md5_pos = 0;
 my $rel_path_pos = 1;
@@ -653,7 +654,6 @@ sub work_begin {
 
 	($to_delete, $to_keep) = generate_pages_to_delete_to_import;
     }
-# print Dumper(sort keys %$pages_toimp_hash);exit 1;
     if (WikiCommons::is_remote ne "yes") {
         die Dumper(sort keys %$to_delete)."\nToo many to delete.\n" if (keys %$to_delete) > $max_to_delete;
 	foreach my $url (sort keys %$to_delete) {
@@ -666,7 +666,6 @@ sub work_begin {
     use Storable qw(dclone);
 
     $failed = dclone($pages_toimp_hash);
-#    return ($to_delete, $to_keep);
     return $to_keep;
 }
 
@@ -693,6 +692,47 @@ if (-f "$pid_file") {
 }
 WikiCommons::write_file($pid_file,"$$\n");
 
+sub split_redirects {
+  print "\tExtracting redirects.\n";
+  foreach my $url (sort keys %$pages_toimp_hash) {
+    if ($url !~ m/^(SC|CRM):(.*)$/i) {
+      my ($type_full, $type, $crt_name) = ($url =~ m/((SC|CRM)[ _].+)?:(.*)/i);
+      $redirect_toimp_hash->{"$type:$crt_name"}->{'url'} = $url;
+      $redirect_toimp_hash->{"$type:$crt_name"}->{'info'} = $pages_toimp_hash->{"$type_full:$crt_name"};
+      delete($pages_toimp_hash->{"$type_full:$crt_name"});
+    }
+  }
+# print Dumper($redirect_toimp_hash, $pages_toimp_hash);exit 1;
+}
+
+sub make_redirect {
+  my ($crt_name, $wrong_hash) = @_;   ## short url
+  my $url = $redirect_toimp_hash->{$crt_name}->{'url'}; ## full url
+# print Dumper($crt_name, $redirect_toimp_hash, $pages_toimp_hash);exit 1;
+  WikiCommons::makedir "$wiki_dir/$url/";
+  if ($crt_name =~ m/^SC:/i && (! $our_wiki->wiki_exists_page("$crt_name") || defined $wrong_hash->{$url})) {
+      remove_tree("$wiki_dir/$url/") if -d "$wiki_dir/$url/";
+      remove_tree("$wiki_dir/$crt_name/") if -d "$wiki_dir/$crt_name/";
+      next;
+  }
+
+  print "\tmake redirect from $crt_name to $url.\n";
+  $our_wiki->wiki_delete_page("$url") if $our_wiki->wiki_exists_page("$url") && $delete_previous_page ne "no";
+  $our_wiki->wiki_move_page("$crt_name", "$url");
+
+  my $text = "md5 = ".$redirect_toimp_hash->{$crt_name}->{'info'}[$md5_pos]."\n";
+  $text .= "rel_path = ".$redirect_toimp_hash->{$crt_name}->{'info'}[$rel_path_pos]."\n";
+  $text .= "svn_url = ".$redirect_toimp_hash->{$crt_name}->{'info'}[$svn_url_pos]."\n";
+  $text .= "link_type = ".$redirect_toimp_hash->{$crt_name}->{'info'}[$link_type_pos]."\n";
+  my $redirect_text = "#redirect [[$url]]";
+  WikiCommons::write_file("$wiki_dir/$url/$crt_name.wiki", "$redirect_text");
+  WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
+  WikiCommons::write_file("$wiki_dir/$url/$wiki_files_info", $text);
+#   delete($pages_toimp_hash->{$url});
+  delete($redirect_toimp_hash->{$crt_name});
+  delete $failed->{$url};
+}
+
 $our_wiki = new WikiWork();
 if ($path_type eq "mind_svn") {
     $coco = new WikiMindSVN("$path_files");
@@ -709,6 +749,7 @@ if ($path_type eq "mind_svn") {
 
     my $to_keep = work_begin;
     make_categories;
+    split_redirects();
     my $total_nr = scalar keys %$pages_toimp_hash;
     my $crt_nr = 0;
     foreach my $url (sort keys %$pages_toimp_hash) {
@@ -725,31 +766,31 @@ if ($path_type eq "mind_svn") {
 	close (FH);
 
 	WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
-
-	if ($url !~ m/^CRM:(.*)/i) {
-	    my $crt_name = $url;
-	    $crt_name =~ s/(CRM.*)?:(.*)/$2/i;
-	    print "\tmake redirect from CRM:$crt_name to $url.\n";
-	    $our_wiki->wiki_delete_page("$url") if $our_wiki->wiki_exists_page("$url") && $delete_previous_page ne "no";
-	    $our_wiki->wiki_move_page("CRM:$crt_name", "$url");
-
-	    my $text = "md5 = ".$pages_toimp_hash->{$url}[$md5_pos]."\n";
-	    $text .= "rel_path = ".$pages_toimp_hash->{$url}[$rel_path_pos]."\n";
-	    $text .= "svn_url = ".$pages_toimp_hash->{$url}[$svn_url_pos]."\n";
-	    $text .= "link_type = ".$pages_toimp_hash->{$url}[$link_type_pos]."\n";
-	    my $redirect_text = "#REDIRECT [[CRM:$crt_name]]";
-	    WikiCommons::write_file("$wiki_dir/$url/$url.wiki", "$redirect_text");
-	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
-	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_info", $text);
-	    delete($pages_toimp_hash->{$url});
-	    delete $failed->{$url};
-	    next;
-	}
+# 	if ($url !~ m/^CRM:(.*)/i) {
+# 	    my $crt_name = $url;
+# 	    $crt_name =~ s/(CRM.*)?:(.*)/$2/i;
+# 	    print "\tmake redirect from CRM:$crt_name to $url.\n";
+# 	    $our_wiki->wiki_delete_page("$url") if $our_wiki->wiki_exists_page("$url") && $delete_previous_page ne "no";
+# 	    $our_wiki->wiki_move_page("CRM:$crt_name", "$url");
+# 
+# 	    my $text = "md5 = ".$pages_toimp_hash->{$url}[$md5_pos]."\n";
+# 	    $text .= "rel_path = ".$pages_toimp_hash->{$url}[$rel_path_pos]."\n";
+# 	    $text .= "svn_url = ".$pages_toimp_hash->{$url}[$svn_url_pos]."\n";
+# 	    $text .= "link_type = ".$pages_toimp_hash->{$url}[$link_type_pos]."\n";
+# 	    my $redirect_text = "#REDIRECT [[CRM:$crt_name]]";
+# 	    WikiCommons::write_file("$wiki_dir/$url/$url.wiki", "$redirect_text");
+# 	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
+# 	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_info", $text);
+# 	    delete($pages_toimp_hash->{$url});
+# 	    delete $failed->{$url};
+# 	    next;
+# 	}
 
 	WikiCommons::add_to_remove("$wiki_dir/$url/$wiki_result", "dir");
 	my $work_dir = "$wiki_dir/$url";
 	WikiCommons::write_file("$work_dir/$url.wiki", $wiki_txt);
 	insertdata ($url, $wiki_txt);
+	make_redirect($url);
     }
 } elsif ($path_type eq "sc_docs") {
     $all_real = "yes";
@@ -777,43 +818,16 @@ if ($path_type eq "mind_svn") {
     die "There are no links.\n" if scalar keys %$tmp;
 
     my $general_wiki_file = "General_info.wiki";
+    split_redirects();
     my $total_nr = scalar keys %$pages_toimp_hash;
     my $crt_nr = 0;
     my $wrong_hash = {};
-#     foreach (keys %$pages_toimp_hash) {$crt_nr++ if $_ =~ m/^SC:(.*)/i}
     foreach my $url (sort keys %$pages_toimp_hash) {
 	$crt_nr++;
 # next if "$url" !~ "B105430";
 	WikiCommons::reset_time();
 	print "\n************************* $crt_nr of $total_nr\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
-
 	WikiCommons::makedir "$wiki_dir/$url/";
-
-	if ($url !~ m/^SC:(.*)/i) {
-	    my $crt_name = $url;
-	    $crt_name =~ s/(SC.*)?:(.*)/$2/i;
-	    if (! $our_wiki->wiki_exists_page("SC:$crt_name") || defined $wrong_hash->{$url}) {
-		remove_tree("$wiki_dir/$url/") if -d "$wiki_dir/$url/";
-		remove_tree("$wiki_dir/SC:$crt_name/") if -d "$wiki_dir/SC:$crt_name/";
-		next;
-	    }
-	    print "\tmake redirect from SC:$crt_name to $url.\n";
-	    $our_wiki->wiki_delete_page("$url") if $our_wiki->wiki_exists_page("$url") && $delete_previous_page ne "no";
-	    $our_wiki->wiki_move_page("SC:$crt_name", "$url");
-
-	    my $text = "md5 = ".$pages_toimp_hash->{$url}[$md5_pos]."\n";
-	    $text .= "rel_path = ".$pages_toimp_hash->{$url}[$rel_path_pos]."\n";
-	    $text .= "svn_url = ".$pages_toimp_hash->{$url}[$svn_url_pos]."\n";
-	    $text .= "link_type = ".$pages_toimp_hash->{$url}[$link_type_pos]."\n";
-	    my $redirect_text = "#REDIRECT [[SC:$crt_name]]";
-	    WikiCommons::write_file("$wiki_dir/$url/$url.wiki", "$redirect_text");
-	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
-	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_info", $text);
-	    delete($pages_toimp_hash->{$url});
-	    delete $failed->{$url};
-	    next;
-	}
-
 	WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
 	WikiCommons::add_to_remove ("$wiki_dir/$url/$wiki_result", "dir");
 	my $rel_path = "$pages_toimp_hash->{$url}[$rel_path_pos]";
@@ -825,16 +839,13 @@ if ($path_type eq "mind_svn") {
 	my $wiki_txt = <FH>;
 	close (FH);
 	$wiki_txt =~ s/^[\f ]+|[\f ]+$//mg;
-
 	$wiki_txt .= "\n\n'''FTP links:'''\n\n";
 	foreach my $key (keys %$ftp_links) {
 	    $wiki_txt .= "[$ftp_links->{$key}/$rel_path $key]\n\n";
 	}
-
 	$wiki->{'0'} = $wiki_txt;
 
 	opendir(DIR, "$path_files/$rel_path") || die("Cannot open directory $path_files/$rel_path: $!.\n");
-
 	my @files = grep { (!/^\.\.?$/) && -f "$path_files/$rel_path/$_" && /(\.rtf)|(\.doc)/i } readdir(DIR);
 	closedir(DIR);
 	my $wrong = "";
@@ -884,9 +895,6 @@ if ($path_type eq "mind_svn") {
 	    }
 	    WikiCommons::add_to_remove("$wiki_dir/$url/$url $name", "dir");
 	    $wiki_txt =~ s/\n(=+)(.*?)(=+)\n/\n=$1$2$3=\n/g;
-
-# 	    $deployment->{$title} = $1 if $wiki_txt =~ /\n((=+)[^\n]*?deployment.*?\2\n.*?\n)\2[^=]*?\2\n/ims;
-# 	    $deployment->{$title} = $1 if $wiki_txt =~ /\n((=+)[^\n]*?deployment.*?\2\n.*?\n)=+?/ims && $title ne "STP document";
 	    $deployment->{$title} = WikiClean::get_deployment_conf($wiki_txt) if $title ne "STP document";
 
 	    my $count = 0;
@@ -956,6 +964,7 @@ if ($path_type eq "mind_svn") {
 	my $is_canceled = 0;
 	$is_canceled++ if $pages_toimp_hash->{$url}[$svn_url_pos]->{'SC_info'}->{'revision'} =~ m/^Cancel$/i;
 	insertdata($url, $full_wiki);
+	make_redirect($url, $wrong_hash);
 
 	my $url_deployment = $url;
 	$url_deployment =~ s/^SC:/SC_Deployment:/;

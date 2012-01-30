@@ -53,6 +53,7 @@ $to_path = abs_path("$to_path");
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 WikiCommons::set_real_path($path_prefix);
 
+my $sc_table = "mind_sc_ids_versions";
 our $svn_pass = 'svncheckout';
 our $svn_user = 'svncheckout';
 our $files_info = "files_info.txt";
@@ -61,19 +62,19 @@ my $svn_type = "remote";
 # my $svn_type = "local";
 # my $svn_local_path = "/mnt/SC/";
 my $svn_update = "yes";
-my $force_db_update = "no";
+my $force_db_update = "yes";
 my $bulk_svn_update = "no";
 
 my $ppt_local_files_prefix="/mnt/wiki_files/wiki_files/ppt_as_flash/";
 my $ppt_apache_files_prefix="10.0.0.99/presentations/";
 
-die "Templare file missing.\n" if ! -e $general_template_file;
+die "Template file missing.\n" if ! -e $general_template_file;
 
 our $time = time();
 my $svn_info_all = {};
 my $url_sep = WikiCommons::get_urlsep;
 
-our $dbh;
+our ($dbh, $dbh_mysql);
 
 our @doc_types = (
 'Market document', 'Market review document',
@@ -847,16 +848,49 @@ sub remove_old_dirs {
     }
 }
 
+sub add_versions_to_wiki_db {
+    my ($change_id, $info, $index) = @_;
+    my $sth_mysql = $dbh_mysql->prepare("REPLACE INTO $sc_table VALUES ('$change_id', '@$info[$index->{'fixversion'}]', '@$info[$index->{'buildversion'}]', ' @$info[$index->{'version'}]', '@$info[$index->{'prodversion'}]')");
+
+#     $sth_mysql->bind_param( ":SC_ID", $change_id );
+#     $sth_mysql->bind_param( ":FIXVERSION", @$info[$index->{'fixversion'}] );
+#     $sth_mysql->bind_param( ":BUILDVERSION", @$info[$index->{'buildversion'}] );
+#     $sth_mysql->bind_param( ":VERSION", @$info[$index->{'version'}] );
+#     $sth_mysql->bind_param( ":PRODVERSION", @$info[$index->{'prodversion'}] );
+
+    $sth_mysql->execute();
+    $sth_mysql->finish();
+}
+
 # 10.0.0.232 service25, service25
-#     select * from tblscmainrecord t where rscmainreccustcode=477 and rscmainrecscno=124;
-#     select * from tblscevents t where rsceventscompanycode=477 and rsceventsscno=124;
-#     select * from tblsceventdoc t where rsceventdoccompanycode=477 and rsceventdocscno=124;
-#     t.rsceventdoctype='B' - attachement
-#     select * from tblcustomers t where rcustiddisplay='MSTelcom'
-#select * from tblcustomercontacts t
-#select * from tblcustomeraddresses t
+
 # $ftp_uri = "ftp:\\\\@$info_comm[$index_comm->{'FTP_USER'}]:@$info_comm[$index_comm->{'FTP_PASS'}]\@@$info_comm[$index_comm->{'FTP_IP'}]";
 
+
+### connect to mysql to use the wikidb
+my ($wikidb_server, $wikidb_name, $wikidb_user, $wikidb_pass) = ();
+open(FH, "/var/www/html/wiki/LocalSettings.php") or die "Can't open file for read: $!.\n";
+while (<FH>) {
+  $wikidb_server = $2 if $_ =~ m/^(\s*\$wgDBserver\s*=\s*\")(.+)(\"\s*;\s*)$/;
+  $wikidb_name = $2 if $_ =~ m/^(\s*\$wgDBname\s*=\s*\")(.+)(\"\s*;\s*)$/;
+  $wikidb_user = $2 if $_ =~ m/^(\s*\$wgDBuser\s*=\s*\")(.+)(\"\s*;\s*)$/;
+  $wikidb_pass = $2 if $_ =~ m/^(\s*\$wgDBpassword\s*=\s*\")(.+)(\"\s*;\s*)$/;
+}
+close(FH);
+# my $dsn_mysql = ;
+$dbh_mysql = DBI->connect("DBI:mysql:database=$wikidb_name;host=$wikidb_server", "$wikidb_user", "$wikidb_pass");
+print "$sc_table";
+my $sth_mysql = $dbh_mysql->prepare("CREATE TABLE IF NOT EXISTS $sc_table (
+SC_ID VARCHAR( 255 ) NOT NULL ,
+FIXVERSION VARCHAR( 255 ) ,
+BUILDVERSION VARCHAR( 255 ) ,
+VERSION VARCHAR( 255 ) ,
+PRODVERSION VARCHAR( 255 ) ,
+PRIMARY KEY ( SC_ID ))");
+$sth_mysql->execute();
+$sth_mysql->finish();
+
+### connect to oracle
 $ENV{NLS_LANG} = 'AMERICAN_AMERICA.AL32UTF8';
 sql_connect('10.0.0.103', 'SCROM', 'scview', 'scview');
 my $db_relpath = sql_get_relpath();
@@ -873,9 +907,7 @@ if ($bulk_svn_update eq "yes"){
     foreach my $key (sort keys %$index_comm) {
 	my $retries = 0;
 	my $tmp = @$info_comm[$index_comm->{$key}];
-	# print "$key = @$info_comm[$index_comm->{$key}]\n";
 	next if ($tmp !~ "^http://" || defined $svn_info_all->{$tmp});
-# 	$tmp =~ s/$db_relpath/$svn_local_path/ if ($svn_type eq "local");
 	while ( ! defined $svn_info_all->{$tmp} && $retries < 3){
 	    print "\tRetrieve svn list for $key.\t". (time() - $time) ."\n";
 	    my $res = svn_list($tmp);
@@ -889,9 +921,7 @@ if ($bulk_svn_update eq "yes"){
 ## problem: after the first run we can have missing documents, but the general_info will not be updated
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
-#     next if $change_id ne "B099953";
-# next if $change_id ne "B26116";
-# B099626, B03761
+# next if $change_id ne "B100011";
 ## special chars: B06390
 ## docs B71488
     $count++;
@@ -965,6 +995,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
 	## some SR's are completly empty, so ignore them
 	next if (scalar @$info_ret == 0);
+	add_versions_to_wiki_db($change_id, $info_ret, $index);
 	my $modules = sql_get_modules( split ',', @$info_ret[$index->{'modules'}] ) if defined @$info_ret[$index->{'modules'}];
 	my $tester = sql_get_workers_names( split ',', @$info_ret[$index->{'tester'}] ) if defined @$info_ret[$index->{'tester'}];
 	my $initiator = sql_get_workers_names( split ',', @$info_ret[$index->{'initiator'}] );
@@ -993,5 +1024,6 @@ foreach my $change_id (sort keys %$crt_hash){
 }
 
 $dbh->disconnect if defined($dbh);
+$dbh_mysql->disconnect() if defined($dbh_mysql);
 
 print "Done.\n";

@@ -108,7 +108,7 @@ $to_path = abs_path("$to_path");
 #1, 3, 4, 9, 13 0-3 mind, 4,9 phonex, 13 sentori';
 
 my $update_all = "no";
-my $ftp_addr = 'http://62.219.96.62/SupportFTP/';
+my $ftp_addr = 'https://mindeservice.com/SupportFTP/';
 my $dbh;
 my $event_codes = {};
 my $staff = {};
