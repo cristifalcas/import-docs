@@ -273,7 +273,6 @@ sub get_file_md5 {
     binmode(FILE);
     my $doc_md5 = Digest::MD5->new->addfile(*FILE)->hexdigest;
     close(FILE);
-#     my $doc_md5 = "123";
     return $doc_md5;
 }
 
@@ -492,13 +491,12 @@ sub get_correct_customer{
     return "Budget Tel" if $name eq "Budgettel";
     return "Telecom-Colombia" if $name eq "colombia" || $name eq "Telecom Kolumbia" || $name eq "Telecom - Colombia";
     return "MSTelcom" if $name eq "MSTelecom";
-    return "Mobee" if $name eq "MobeeTel" ||$name =~ m/mobi/i;
+    return "Mobee" if $name eq "MobeeTel" || $name =~ m/^mobi\s*/i;
     return "CWP" if $name eq "CWPanama" || $name eq "Cable & Wireless" || $name eq "Bell South Panama" || $name eq "BellSouth Panama"
 	    || $name eq "Bell South";
     return "alcatel" if $name eq "Vendors: Alcatel" || $name eq "Alcatel / NerDring";
     return "3KInt" if $name eq "3K intl" || $name eq "MIND-3KInt"; #$name eq "MIND-SR 3KInt" ||
-    return "H3G Italy" if $name eq "H3G" || $name eq "h3g" || $name eq "H3G - IBM" || $name eq "H3g" || $name eq "H3G Omnitel"
-	    || $name eq "H3G Omnitel" || $name eq "H3G Italiano" || $name eq "Italy and HK" || $name eq "H3G-Italy" || $name eq "h3g iatly"
+    return "H3G Italy" if $name eq "H3G" || $name eq "h3g" || $name eq "H3G - IBM" || $name eq "H3g" || $name eq "H3G Omnitel" || $name eq "H3G Omnitel" || $name eq "H3G Italiano" || $name eq "Italy and HK" || $name eq "H3G-Italy" || $name eq "h3g iatly"
 	    || $name eq "H3G through IBM" || $name eq "H3G Itayl" || $name eq "Italy" || $name eq "H3G - Italy"
 	    || $name eq "H3G Italy TB" || $name eq "Service Call H3G Italy";
     return "H3G-UK" if $name eq "H3G UK" || $name eq "H3G UK and H3G HK" || $name eq "H3G UK and HK";
@@ -539,7 +537,8 @@ sub get_correct_customer{
     return "US-ESCALATION" if $name eq "US Escallation";
     return "Billing" if $name eq "SRG + Billing";
     return "SMART" if $name eq "SmartPCS";
-    return "Pelephone" if $name eq "Pelephone";
+    return "Pelephone" if $name =~ m/^Pelephone$/i;
+    return "Alon Cellular" if $name =~ m/^(alon|AlonCellular)/i;
 
     if ( ! scalar keys %$customers ){
 	$customers = WikiCommons::xmlfile_to_hash ("$real_path/customers.xml");

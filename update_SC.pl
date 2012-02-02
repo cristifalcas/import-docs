@@ -64,6 +64,7 @@ my $svn_type = "remote";
 my $svn_update = "yes";
 my $force_db_update = "yes";
 my $bulk_svn_update = "no";
+my $update_only_wiki_db = "no";
 
 my $ppt_local_files_prefix="/mnt/wiki_files/wiki_files/ppt_as_flash/";
 my $ppt_apache_files_prefix="10.0.0.99/presentations/";
@@ -936,7 +937,7 @@ foreach my $change_id (sort keys %$crt_hash){
 
     ### svn updates (first svn, because we need missing documents)
     my $update_control_file = 0;
-    if ($svn_update ne "no") {
+    if ($svn_update ne "no" && $update_only_wiki_db ne "yes") {
 	my $svn_docs = sql_get_svn_docs($change_id);
 	clean_existing_dir($change_id, $svn_docs);
 
@@ -976,12 +977,10 @@ foreach my $change_id (sort keys %$crt_hash){
     $crt_info->{'SC_info'}->{'name'} = @$arr[0];
     $crt_info->{'SC_info'}->{'size'} = @$arr[1].$control;
     $crt_info->{'SC_info'}->{'revision'} = @$arr[2];
-# @$info[$index->{'modification_time'}]
-# print Dumper($crt_info->{'SC_info'}, $prev_info->{'SC_info'});
     my $cat = ();
     ## like this in order to not update everything after we added the date to docs
     $crt_info->{'SC_info'}->{'date'} = "sc_date is not used";
-    if ( ! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) || $update_control_file || $force_db_update eq "yes" ) {
+    if ( ! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) || $update_control_file || $force_db_update eq "yes" || $update_only_wiki_db eq "yes") {
  	print "\tUpdate SC info.\n";
 
 	my $prev = 'NULL';
@@ -996,6 +995,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	## some SR's are completly empty, so ignore them
 	next if (scalar @$info_ret == 0);
 	add_versions_to_wiki_db($change_id, $info_ret, $index);
+	next if $update_only_wiki_db eq "yes";
 	my $modules = sql_get_modules( split ',', @$info_ret[$index->{'modules'}] ) if defined @$info_ret[$index->{'modules'}];
 	my $tester = sql_get_workers_names( split ',', @$info_ret[$index->{'tester'}] ) if defined @$info_ret[$index->{'tester'}];
 	my $initiator = sql_get_workers_names( split ',', @$info_ret[$index->{'initiator'}] );

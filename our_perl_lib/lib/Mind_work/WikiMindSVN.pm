@@ -151,6 +151,7 @@ sub add_document {
         $customer = $values[0];
 	my $q = $values[1];
 	$q =~ s/\s+$customer//;
+	$customer = WikiCommons::get_correct_customer('pelephone') if defined $values[5] && $values[5] =~ m/pelephone/i;
         ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $q, $values[2]);
         $str =~ s/^$customer\///;
 	my $customer_good = WikiCommons::get_correct_customer($customer);
@@ -240,10 +241,10 @@ sub add_document {
 	## $ver, $main, $big_ver, $customer, $dir_type, $name
 	generate_categories("", $main, $big_ver, "", "SVN SC Documents", "");
 #  	push @categories, $customer;
-# 	print "We already have page $page_url.\n\t$rel_path\n".Dumper($pages_toimp_hash->{$page_url}) if defined $pages_toimp_hash->{$page_url};
 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
 	return 0;
     }
+
     ### Release Notes
     if ($dir =~ /\/(.*? )?Release Notes\//i) {
 	return 1 if $ver_fixed lt "5.00" && ($dir_type ne "Docs_SIPServer" && $dir_type ne "Docs_PaymentManager_Deployment" && $dir_type ne "Docs_PaymentManager");
@@ -365,7 +366,7 @@ sub add_document {
 sub get_correct_category {
     my $name = shift;
     ## prefer crystal reports before boe
-    return "Crystal Reports" if $name =~ m/^Crystal Reports\b/i;
+    return "Crystal Reports" if $name =~ m/^Crystal[ -_]Reports\b/i;
     return "BOE" if $name =~ m/BOE XI/i;
     return "CDR Drivers" if $name =~ m/^CDR Drivers/i;
 #     return "DocRepository" if $name =~ m/^DocRepository\b/i;
@@ -452,6 +453,8 @@ sub fix_naming {
     $fixed_name =~ s/FinanceLogFiles/Finance Log Files/;
     $fixed_name =~ s/RTSLogsFiles/RTS Logs Files/;
     $fixed_name =~ s/GenericCleanup/Generic Cleanup/;
+    $fixed_name =~ s/CyprusTelekom/Cyprus Telecom/;
+    $fixed_name =~ s/^(Alon|AlonCellular)//;
 
     $fixed_name = "IPE Monitor$1" if ($fixed_name =~ m/^IPEMonitor(.*)$/i);
     $fixed_name = "Radius Paramaters$1" if ($fixed_name =~ m/^RadiusParamaters(.*)$/i);
