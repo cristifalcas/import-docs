@@ -366,8 +366,8 @@ sub add_document {
 sub get_correct_category {
     my $name = shift;
     ## prefer crystal reports before boe
-    return "Crystal Reports" if $name =~ m/^Crystal[ -_]Reports\b/i;
-    return "BOE" if $name =~ m/BOE XI/i;
+    return "Crystal Reports" if $name =~ m/^Crystal[ -_]Reports([ -_](list|Parameters))?\b/i || $name =~ m/BOE XI/i;
+#     return "BOE" if $name =~ m/BOE XI/i;
     return "CDR Drivers" if $name =~ m/^CDR Drivers/i;
 #     return "DocRepository" if $name =~ m/^DocRepository\b/i;
     return "EDI" if $name =~ m/^EDI\b/i;
@@ -388,7 +388,8 @@ sub get_correct_category {
     return "Vertex" if $name =~ m/^Vertex\b/i;
     return "Web Services SDK" if $name =~ m/^Web Services SDK\b/i;
     return "Workflow" if $name =~ m/^Workflow\b/i;
-
+    return "Database Documentation" if $name =~ m/(DB Documentation|Data Dictionary Tables)$/i;
+    return "SIP Server" if $name =~ m/^SIP Server\b/i;
     return $name;
 }
 
@@ -453,8 +454,9 @@ sub fix_naming {
     $fixed_name =~ s/FinanceLogFiles/Finance Log Files/;
     $fixed_name =~ s/RTSLogsFiles/RTS Logs Files/;
     $fixed_name =~ s/GenericCleanup/Generic Cleanup/;
-    $fixed_name =~ s/CyprusTelekom/Cyprus Telecom/;
-    $fixed_name =~ s/^(Alon|AlonCellular)//;
+    $fixed_name =~ s/^(Cyprus ?Telekom|Cyprus )([ _-]mind[ _-])?//i;
+    $fixed_name =~ s/^Alon( )?Cellular([ _-]mind[ _-])?//i;
+    $fixed_name =~ s/^Alon\s+([ _-]mind[ _-])?//i;
 
     $fixed_name = "IPE Monitor$1" if ($fixed_name =~ m/^IPEMonitor(.*)$/i);
     $fixed_name = "Radius Paramaters$1" if ($fixed_name =~ m/^RadiusParamaters(.*)$/i);
@@ -471,12 +473,10 @@ sub fix_naming {
     $fixed_name =~ s/^Resource Mng/Resource Management/;
     $fixed_name =~ s/^Partner Mng/Partner Management/;
     $fixed_name = "$2 - DB Documentation" if ($fixed_name =~ m/^(6.00)?\s*DB Documentation\s*-?\s*([a-z0-9]{1,})$/i && defined $2 && $2 !~ m/^\s*$/);
-# print "1b. $fixed_name\n";
 
     #Billing Crystal Reports invoice jbpm mediation rating reports Resource Management system
 #     return "POS - $2" if ($fixed_name =~ m/^POS\s+(-\s+)?(.*)$/i && defined $2 && $2 !~ m/^\s*$/);
-    return "General Configuration Parameters" if ($fixed_name eq "Configuration Parameters");
-    return "General Configuration Parameters" if ($fixed_name eq "General Config Parameters");
+    return "General Configuration Parameters" if ($fixed_name eq "Configuration Parameters" || $fixed_name eq "General Config Parameters" || $fixed_name eq "ConfigurationParameters");
     return "Modules Deployment" if ($fixed_name =~ m/Modules Deployment (6.01|6.50|6.60|7.00)/i);
     return "Administrator" if ($fixed_name eq "Administrator User Manual 5.3");
     return "Auxiliary Module Applications" if ($fixed_name eq "Auxiliary Applications 5.3");
@@ -491,7 +491,6 @@ sub fix_naming {
     return "Cisco SSG Configuration" if ($fixed_name eq "Cisco SSG Configuration UserManuall5.0");
     return "Collector" if ($fixed_name eq "Collector 5.3");
     return "Correlation" if ($fixed_name eq "Correlation rev10");
-    return "Configuration Parameters" if ($fixed_name eq "ConfigurationParameters");
     return "Dashboard" if ($fixed_name eq "Dashboard5.30");
     return "DB Documentation" if ($fixed_name eq "5.31 DB Documentation");
     return "EDI For Payment" if ($fixed_name eq "EDI for Payment 5.21");

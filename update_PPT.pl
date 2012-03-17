@@ -108,7 +108,7 @@ sub transform_to {
 		die "Unknow type: $type.\n";
 	    }
 	    system("Xvfb :10235 -screen 0 1024x768x16 &> /dev/null &");
-	    system("libreoffice", "--display", ":10235", "--unnaccept=all", "--invisible", "--nocrashreport", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", "$convert_string", "--outdir", "$dir", "$file") == 0 or die "libreoffice failed: $?";
+	    system("libreoffice", "--display", ":10235", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", "$convert_string", "--outdir", "$dir", "$file") == 0 or die "libreoffice failed: $?";
 	    alarm 0;
 	};
 	$status = $@;

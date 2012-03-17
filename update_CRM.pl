@@ -516,8 +516,7 @@ MIND CTI eService, Israel Center)\n+[a-zA-Z0-9 ,]{0,}\n+$tmp\n+Service Call Data
     $text =~ s/^(\*|\#|\;|\:|\=|\!|\||----|\{\|)/<nowiki>$1<\/nowiki>/gm;
     $text =~ s/(\[mailto:)/<nowiki>$1<\/nowiki>/gm;
     $text =~ s/(\[https?:)/<nowiki>$1<\/nowiki>/gm;
-
-    $text =~ s/<!---/<nowiki><!---<\/nowiki>/gm;
+    $text =~ s/<!--/<nowiki><!--<\/nowiki>/gm;
 
     return $text;
 }
@@ -743,7 +742,7 @@ my @new_cust_arr = ();
 foreach my $cust (sort keys %$customers){
     print "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
 # print "$customers->{$cust}->{'displayname'}\n";next;
-# next if $customers->{$cust}->{'displayname'} ne "Strata8";
+# next if $customers->{$cust}->{'displayname'} ne "IRISTEL";
 #     next if (! defined $customers->{$cust}->{'ver'} || $customers->{$cust}->{'ver'} lt "5.00")
 # 	    && $customers->{$cust}->{'displayname'} ne "Billing";
 # 	    && $customers->{$cust}->{'displayname'} !~ m/mtpcs/i;

@@ -407,6 +407,7 @@ sub generate_html_file {
     my $doc_file = shift;
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
     print "\t-Generating html file from $name$suffix.\t". (get_time_diff) ."\n";
+    `kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | gawk '{print \$2}')`;
     eval {
 	local $SIG{ALRM} = sub { die "alarm\n" };
 # 	alarm 46800; # 13 hours
@@ -424,7 +425,7 @@ sub generate_html_file {
 	    alarm 3600; # .5 hours
 	    ## --headless dies, so we replace it with --display :10235
 	    system("Xvfb :10235 -screen 0 1024x768x16 &> /dev/null &");
-	    system("libreoffice", "--display", ":10235", "--unnaccept=all", "--invisible", "--nocrashreport", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", "html:HTML (StarWriter)", "--outdir", "$dir", "$doc_file") == 0 or die "libreoffice failed: $?";
+	    system("libreoffice", "--display", ":10235", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", "html:HTML (StarWriter)", "--outdir", "$dir", "$doc_file") == 0 or die "libreoffice failed: $?";
 	    alarm 0;
 	};
 	$status = $@;
@@ -437,7 +438,6 @@ sub generate_html_file {
     } else {
 	print "\tFinished: $status.\n";
     }
-
 
     print "\t+Generating html file from $name$suffix.\t". (get_time_diff) ."\n";
     return $status;

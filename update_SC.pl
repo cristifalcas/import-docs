@@ -62,7 +62,7 @@ my $svn_type = "remote";
 # my $svn_type = "local";
 # my $svn_local_path = "/mnt/SC/";
 my $svn_update = "yes";
-my $force_db_update = "yes";
+my $force_db_update = "no";
 my $bulk_svn_update = "no";
 my $update_only_wiki_db = "no";
 
@@ -922,7 +922,7 @@ if ($bulk_svn_update eq "yes"){
 ## problem: after the first run we can have missing documents, but the general_info will not be updated
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
-# next if $change_id ne "B100011";
+# next if $change_id ne "B109461";
 ## special chars: B06390
 ## docs B71488
     $count++;
