@@ -167,7 +167,7 @@ my @new = (keys %$hash_new);
 my @prev = (keys %$hash_prev);
 my ($only_new, $only_prev, $common) = WikiCommons::array_diff(\@new, \@prev);
 die "ciudat\n" if scalar @$only_prev;
-# print Dumper($hash_new, $hash_prev);
+print Dumper($only_prev);
 # print Dumper($only_new, $only_prev, $common);
 print "New files to convert:".(scalar @$only_new).".\n";
 foreach (@$only_new){
@@ -200,18 +200,22 @@ foreach (@$only_new){
     }
     print "\tGenerating pdf file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
     if (! transform_to("$to_path/$append/$name$suffix", 'pdf')) {
+      push @failed, "$to_path/$append/$name$suffix";
       next;
     } else {
       `pdftotext "$to_path/$append/$name.pdf"`;
       die "Could not create txt file from pdf $to_path/$append/$name.pdf: $?.\n" if ($?) || ! -f "$to_path/$append/$name.txt";
-      unlink "$to_path/$append/$name.pdf" || die "Could not unlink $to_path/$append/$name.pdf: $!";
+#       unlink "$to_path/$append/$name.pdf" || die "Could not unlink $to_path/$append/$name.pdf: $!";
     }
 
-#     unlink "$to_path/$append/$name$suffix" || die "Could not unlink $to_path/$append/$name$suffix: $!";
     WikiCommons::write_file( "$to_path/$append/$name.log", "$_\t$doc_file");
-    ## we should check we have now only ppt, swf, log and txt files here
+    ## we should check we have now only ppt, swf, pdf, log and txt files here
     ## ....
     print "\tDone for $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
 }
+
+## unintended consequences: this seems to clean all unfinished jobs: there is no .log file (created only on full success) and we remove this shit
+find ({ wanted => sub { add_document_local ($File::Find::name) if -f },}, "$to_path" ) if  (-d "$to_path");
+finddepth(sub { rmdir $_ if -d }, $to_path);
 
 print "Failed files:\n".Dumper(@failed);

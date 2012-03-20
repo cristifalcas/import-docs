@@ -922,7 +922,7 @@ if ($bulk_svn_update eq "yes"){
 ## problem: after the first run we can have missing documents, but the general_info will not be updated
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
-# next if $change_id ne "B109461";
+# next if $change_id ne "B87308";
 ## special chars: B06390
 ## docs B71488
     $count++;
