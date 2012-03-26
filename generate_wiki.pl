@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 my @crt_timeData = localtime(time);
 foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
-print "Start: ". ($crt_timeData[5]+1900) ."-$crt_timeData[4]-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
+print "Start: ". ($crt_timeData[5]+1900) ."-".($crt_timeData[4]+1)."-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
 use warnings;
 use strict;
 $| = 1;

@@ -1,9 +1,11 @@
 #!/usr/bin/perl
-#LD_LIBRARY_PATH=./instantclient_11_2/ perl ./oracle.pl
 use warnings;
 use strict;
 
 $SIG{__WARN__} = sub { die @_ };
+my @crt_timeData = localtime(time);
+foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
+print "Start: ". ($crt_timeData[5]+1900) ."-".($crt_timeData[4]+1)."-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
 
 use Cwd 'abs_path','chdir';
 use File::Basename;

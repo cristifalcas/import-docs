@@ -5,6 +5,11 @@ use strict;
 
 $SIG{__WARN__} = sub { die @_ };
 $| = 1;
+
+my @crt_timeData = localtime(time);
+foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
+print "Start: ". ($crt_timeData[5]+1900) ."-".($crt_timeData[4]+1)."-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
+
 use Cwd 'abs_path','chdir';
 use File::Basename;
 
@@ -141,20 +146,27 @@ sub clean_ftp_dir {
     foreach my $file_list (@files_in_listing) {
        $exists = 1, last if $file_list =~ m/$file\r?\n?$/gms;
     }
-    unlink $file if ! $exists;
+    if (! $exists){
+	print "Removing file $file.\n";
+	unlink $file;
+    }
   }
 }
 
 if ($work_type eq "u") {
   # "--restrict-file-names=nocontrol",
-  print "Updating ftp dir (wget).\n";
-  system("wget", "-N", "-r", "-l", "inf", "--no-remove-listing", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT", "-o", "/var/log/mind/wiki_logs/wiki_ftp_mirror.log");
-  find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, "$from_path" ) if  (-d "$from_path");
-  print "Cleaning $from_path dir ...\n";
-  system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
-  print "Cleaning $to_path dir ...\n";
-  system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
-  print "Done cleaning.\n";
+#   print "Updating ftp dir (wget).\n";
+#   system("wget", "-N", "-r", "-l", "inf", "--no-remove-listing", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT", "-o", "/var/log/mind/wiki_logs/wiki_ftp_mirror.log");
+#   find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, "$from_path" ) if  (-d "$from_path");
+#   print "Cleaning $from_path dir ...\n";
+#   system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
+#   print "Cleaning $to_path dir ...\n";
+#   system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
+#   print "Done cleaning.\n";
+### cron:
+# 0 8 * * * wget -N -r -l inf --no-remove-listing -P /mnt/wiki_files/wiki_files/ftp_mirror/ ftp://10.10.1.10/SC/TestAttach -A.ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT -o /var/log/mind/wiki_logs/wiki_ftp_mirror.log &
+# 0 8 * * * wget -N -r -l inf --no-remove-listing -P /mnt/wiki_files/wiki_files/ftp_mirror/ ftp://10.10.1.10/SC/DefAttach -A.ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT -o /var/log/mind/wiki_logs/wiki_ftp_mirror.log &
+# 0 8 * * * wget -N -r -l inf --no-remove-listing -P /mnt/wiki_files/wiki_files/ftp_mirror/ ftp://10.10.1.10/SC/MarketAttach -A.ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT -o /var/log/mind/wiki_logs/wiki_ftp_mirror.log &
   exit 0;
 }
 
@@ -178,7 +190,8 @@ foreach (@$only_new){
     my $q = quotemeta $from_path;
     $append =~ s/^$q//;
     WikiCommons::makedir ("$to_path/$append");
-    unlink "$to_path/$append/$name$suffix" if -f "$to_path/$append/$name$suffix";
+    unlink "$to_path/$append/$name.log" or die "can't delete $to_path/$append/$name.log: $!.\n" if -f "$to_path/$append/$name.log";
+    unlink "$to_path/$append/$name$suffix" or die "can't delete $to_path/$append/$name$suffix: $!.\n" if -f "$to_path/$append/$name$suffix";
     copy($doc_file, "$to_path/$append/$name$suffix") or die "copy failed: $doc_file to $to_path/$append/$name$suffix $!";
 
     my $res = `cd "$to_path/$append/" && ls "$name$suffix" | iconv -f UTF-8 -t UTF-8 2> /dev/null`;
@@ -217,5 +230,6 @@ foreach (@$only_new){
 ## unintended consequences: this seems to clean all unfinished jobs: there is no .log file (created only on full success) and we remove this shit
 find ({ wanted => sub { add_document_local ($File::Find::name) if -f },}, "$to_path" ) if  (-d "$to_path");
 finddepth(sub { rmdir $_ if -d }, $to_path);
+finddepth(sub { rmdir $_ if -d }, $from_path);
 
 print "Failed files:\n".Dumper(@failed);
