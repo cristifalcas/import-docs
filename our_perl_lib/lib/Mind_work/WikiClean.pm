@@ -339,15 +339,18 @@ sub tree_clean_span {
 			$p->push_content($imge);
 			$a_tag->postinsert($p);
 		    } else {
-			next if $att =~ m/^\s*float: (top|left|right)\s*$/i
+			if ($att =~ m/^\s*float: (top|left|right)\s*$/i
 				    || $att =~ m/^\s*text-decoration:/i
 				    || $att =~ m/^\s*letter-spacing:/i
-				    || $att =~ m/^\s*font-variant: normal\s*$/i
 				    || $att =~ m/^\s*position: absolute\s*$/i
 				    || $att =~ m/^\s*(margin-)?(top|left|right): -?[0-9]{1,}(\.[0-9]{1,})?in\s*$/i
-				    || $att =~ m/^\s*(border|padding)/i;
-die "Attr name for span_style = $att.\n";
-			$res .= $att.";";
+				    || $att =~ m/^\s*(border|padding)/i) {
+			    next;
+			} elsif ($att =~ m/^\s*font-variant: (small-caps|normal)\s*$/i) {
+			    $res .= $att.";";
+			} else {
+			    die "Attr name for span_style = $att.\n";
+			}
 		    }
 		}
 		$a_tag->attr("$attr_name", $res);

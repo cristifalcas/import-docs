@@ -127,9 +127,11 @@ sub rules {
     hr     => { replace => "\n----\n" },
     br     => { preserve => 1, empty => 1, attributes => [ qw/id class title style clear/ ] },
     p      => { block => 1, trim => 'trailing', line_format => 'single' },
-    em     => { start => "''", end => "''", line_format => 'single' },
-    strong => { start => "'''", end => "'''", line_format => 'single' },
+#     em     => { start => "''", end => "''", line_format => 'single' },
+#     strong => { start => "'''", end => "'''", line_format => 'single' },
 
+    em     => { start => "<i>", end => "</i>", line_format => 'single' },
+    strong => { start => "<b>", end => "</b>", line_format => 'single' },
     i      => { alias => 'em' },
     b      => { alias => 'strong' },
 

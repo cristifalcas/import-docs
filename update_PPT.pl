@@ -69,8 +69,8 @@ sub add_document_local {
     my @q = split(/\s+/, $info[0], 2);
     if (! (defined $hash_new->{$q[0]} && $hash_new->{$q[0]} eq $q[1])) {
       print "\tFile should not exist: $doc_file.\n";
-      unlink("$doc_file");
-      unlink "$dir/$name.log";
+      unlink("$doc_file")|| die "can't delete file.\n";
+      unlink "$dir/$name.log"|| die "can't delete file.\n";
       return ;
     }
 #     print $q[1]."\n$doc_file\n" if $doc_file ne $q[1];
@@ -148,7 +148,7 @@ sub clean_ftp_dir {
     }
     if (! $exists){
 	print "Removing file $file.\n";
-	unlink $file;
+	unlink $file|| die "can't delete file.\n";
     }
   }
 }
