@@ -3,6 +3,7 @@ package WikiMindSC;
 use warnings;
 use strict;
 
+use File::Slurp;
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 
@@ -42,16 +43,21 @@ sub get_documents {
 	$count++;
 	print "\tDone $count from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($count%1000 == 0);
 # next if $node ne 'I004437';
-	if (! -e "$path_files/$node/$files_info_file" || ! -e "$path_files/$node/$general_wiki_file") {
-	    die "Can't find files_info or General wiki: $path_files/$node.\n";
-	    next;
-	}
-
+# 	if (! -e "$path_files/$node/$files_info_file" || ! -e "$path_files/$node/$general_wiki_file") {
+# 	    die "Can't find files_info or General wiki: $path_files/$node.\n";
+# 	    next;
+# 	}
+	die "Can't find files_info or General wiki: $path_files/$node.\n" if (! -e "$path_files/$node/$files_info_file" || ! -e "$path_files/$node/$general_wiki_file");
 	my $md5 = "$node";
-	open(FH, "$path_files/$node/$files_info_file") || die("Could not open file!");
-	my @data=<FH>;
-	chomp @data;
-	close(FH);
+# 	open( my $input_fh, "<", "$path_files/$node/$files_info_file" ) || die "Can't open $path_files/$node/$files_info_file: $!";
+# 	my @data=<$input_fh>;
+
+# 	open(FH, "$path_files/$node/$files_info_file") || die("Could not open file!");
+# 	my @data=<FH>;
+# 	chomp @data;
+# 	close(FH);
+	my @data = read_file( "$path_files/$node/$files_info_file"  ) ;
+
 	my @categories = ();
 	my $info_crt_h ;
 # 	my $url_namespace = "SC_iPhonex_Bug";

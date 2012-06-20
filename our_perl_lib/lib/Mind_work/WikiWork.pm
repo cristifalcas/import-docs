@@ -77,13 +77,16 @@ sub delete_archived_image {
     my ($self, $archive) = @_;
     my $summary = 'deleting old version of image';
     my ($timestamp, $file) = split(m/!/, $archive);
+    my $res;
 
-    my $res = $mw->api({
+    if  ( wiki_exists_page("File:$file") ) {
+    $res = $mw->api({
         action   => 'delete',
         title    => "File:$file",
         reason   => $summary,
         oldimage => $archive,
     });
+    }
     return $res;
 }
 

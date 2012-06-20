@@ -83,6 +83,8 @@ sub get_results {
     $regexp = q{/html/body/div[@id="content"]/div[@id="bodyContent"]/div[@class="mw-spcontent"]/ul[@class="gallery"]/li/div/div/div/a/img/@alt};
   } elsif ($type eq "table" ){
     $regexp = q{/html/body/div[@id="content"]/div[@id="bodyContent"]/div[@class="mw-spcontent"]/table[@class="gallery"]/tr/td/div[@class="gallerybox"]/div[@class="gallerytext"]/a/@title};
+  } elsif ($type eq "q" ){
+    $regexp = q{/html/body/div[@id="content"]/div[@id="bodyContent"]/div[@id="mw-content-text"]/div/div[@id="mw-pages"]/div[@class="mw-content-ltr"]/table/tr/td/ul/li/a/@title};
   } else {
     die "Unknown type: $type.\n";
   }
@@ -248,6 +250,7 @@ sub make_sc_table {
     my $table_rows = {};
     foreach my $sc (keys %$info_sc) {
 	### opened bugs
+	next if ! defined $info_sc->{$sc}->{'title'};
 	$open_bugs->{$info_sc->{$sc}->{'id'}} = 1;
 	$table_rows->{$info_sc->{$sc}->{'id'}} = "\n|-
 | [[SC:".$info_sc->{$sc}->{'id'}."|".$info_sc->{$sc}->{'id'}."]]
@@ -461,6 +464,18 @@ sub broken_redirects {
 sub scdoubleredirects {
   my $link = "http://localhost/wiki/index.php?title=Special:DoubleRedirects&limit=$max_elements&offset=0";
   my $res = get_results($link);
+  my $seen = {};
+  foreach my $elem (@$res){
+    next if $seen->{$elem};
+    $seen->{$elem} = 1;
+    print "rm page $elem.\n";
+    $our_wiki->wiki_delete_page($elem) if ( $our_wiki->wiki_exists_page("$elem") && ! $view_only);
+  }
+}
+
+sub missingimages {
+  my $link = "http://localhost/wiki/index.php/Category:Pages_with_broken_file_links";
+  my $res = get_results($link, "q");
   my $seen = {};
   foreach my $elem (@$res){
     next if $seen->{$elem};
@@ -708,6 +723,8 @@ sub get_all_pages_with_invalid_categories {
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
 # print Dumper($namespaces);exit 1;
+
+# missingimages;
 
 # # print Dumper($namespaces);
 print "##### Fix wiki sc type:\n";

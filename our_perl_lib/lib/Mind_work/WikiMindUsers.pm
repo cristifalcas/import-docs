@@ -78,7 +78,9 @@ sub add_document {
 	}
 
 	my $url_sep = WikiCommons::get_urlsep;
-	my $done = (split ('=', $text[3]))[1]; $done =~ s/(^\s+|\s+$)//g;
+	my $done = (split ('=', $text[3]))[1];
+	return if ! defined $done;
+	$done =~ s/(^\s+|\s+$)//g;
 	if ($done ne "") {
 	    ($big_ver, $main, $ver, $ver_fixed, $ver_sp, $ver_id) = WikiCommons::check_vers ( $version, $version) if ($version ne "" );
 # 	    WikiCommons::generate_categories($ver_fixed, $main, $big_ver, $customer, "Users documents");

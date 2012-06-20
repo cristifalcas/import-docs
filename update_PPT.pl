@@ -157,12 +157,12 @@ if ($work_type eq "u") {
   # "--restrict-file-names=nocontrol",
 #   print "Updating ftp dir (wget).\n";
 #   system("wget", "-N", "-r", "-l", "inf", "--no-remove-listing", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT", "-o", "/var/log/mind/wiki_logs/wiki_ftp_mirror.log");
-#   find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, "$from_path" ) if  (-d "$from_path");
-#   print "Cleaning $from_path dir ...\n";
-#   system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
-#   print "Cleaning $to_path dir ...\n";
-#   system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
-#   print "Done cleaning.\n";
+  find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, "$from_path" ) if  (-d "$from_path");
+  print "Cleaning $from_path dir ...\n";
+  system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
+  print "Cleaning $to_path dir ...\n";
+  system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
+  print "Done cleaning.\n";
 ### cron:
 # 0 8 * * * wget -N -r -l inf --no-remove-listing -P /mnt/wiki_files/wiki_files/ftp_mirror/ ftp://10.10.1.10/SC/TestAttach -A.ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT -o /var/log/mind/wiki_logs/wiki_ftp_mirror.log &
 # 0 8 * * * wget -N -r -l inf --no-remove-listing -P /mnt/wiki_files/wiki_files/ftp_mirror/ ftp://10.10.1.10/SC/DefAttach -A.ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT -o /var/log/mind/wiki_logs/wiki_ftp_mirror.log &

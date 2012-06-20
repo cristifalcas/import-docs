@@ -78,6 +78,7 @@ use Text::Balanced;
 # use Encode;
 use URI::Escape;
 use File::Path qw(make_path remove_tree);
+use File::Slurp;
 
 use Mind_work::WikiWork;
 use Mind_work::WikiCommons;
@@ -233,9 +234,10 @@ sub get_existing_pages {
 	    if ( -f "$dir/$wiki_files_info" && -s "$dir/$wiki_files_info") {
 		my ($name,$dir_dir,$suffix) = fileparse($dir, qr/\.[^.]*/);
 # next if ("$name$suffix" !~ m/I004437$/);
-		open(FILE, "$dir/$wiki_files_info");
-		my @info_text = <FILE>;
-		close FILE;
+# 		open(FILE, "$dir/$wiki_files_info");
+# 		my @info_text = <FILE>;
+# 		close FILE;
+		my @info_text = read_file( "$dir/$wiki_files_info" ) ;
 		chomp(@info_text);
 		if ( @info_text != 4 ) {
 		    print "\tFile $dir/$wiki_files_info does not have the correct number of entries.\n";
@@ -556,6 +558,7 @@ sub work_real {
     my $total_nr = scalar keys %$pages_toimp_hash;
     my $crt_nr = 0;
     foreach my $url (sort keys %$pages_toimp_hash) {
+	eval {
 	$crt_nr++;
 	next if ($pages_toimp_hash->{$url}[$link_type_pos] eq "link");
 	WikiCommons::reset_time();
@@ -585,6 +588,8 @@ sub work_real {
 	    my $text_url = "[InternetShortcut]\nURL=". $our_wiki->wiki_geturl ."/index.php/$url";
 	    WikiCommons::write_file ("$dir/$name.url", $text_url);
 	}
+	}; ## eval
+	print "Error generating for $url: $@\n" if $@ && $@ !~ m/^Exiting eval via next at/;
     }
 }
 
@@ -753,6 +758,7 @@ if ($path_type eq "mind_svn") {
     my $total_nr = scalar keys %$pages_toimp_hash;
     my $crt_nr = 0;
     foreach my $url (sort keys %$pages_toimp_hash) {
+	eval{
 	$crt_nr++;
 	WikiCommons::reset_time();
 	print "\n************************* $crt_nr of $total_nr\nMaking crm url for $url.\t". (WikiCommons::get_time_diff) ."\n";
@@ -791,6 +797,8 @@ if ($path_type eq "mind_svn") {
 	WikiCommons::write_file("$work_dir/$url.wiki", $wiki_txt);
 	insertdata ($url, $wiki_txt);
 	make_redirect($url);
+	}; ## eval
+	print "Error generating crm for $url: $@\n" if $@ && $@ !~ m/^Exiting eval via next at/;
     }
 } elsif ($path_type eq "sc_docs") {
     $all_real = "yes";
@@ -823,6 +831,7 @@ if ($path_type eq "mind_svn") {
     my $crt_nr = 0;
     my $wrong_hash = {};
     foreach my $url (sort keys %$pages_toimp_hash) {
+	eval {
 	$crt_nr++;
 # next if "$url" !~ "B105430";
 	WikiCommons::reset_time();
@@ -985,6 +994,8 @@ if ($path_type eq "mind_svn") {
 	print "\tImporting url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n";
 	$our_wiki->wiki_edit_page($url_deployment, $deployment_txt);
 	die "Could not import url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url_deployment) );
+	}; ## eval
+	print "Error generating sc for $url: $@\n" if $@ && $@ !~ m/^Exiting eval via next at/;
     }
 }
 

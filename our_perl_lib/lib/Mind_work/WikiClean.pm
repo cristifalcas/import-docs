@@ -116,6 +116,23 @@ sub heading_new_line {
     return $tree;
 }
 
+sub tree_fix_links_images {
+    my ($tree, $dir) = @_;
+    print "\t Fix links.\n";
+
+    foreach (@{  $tree->extract_links()  }) {
+	my($link, $element, $attr, $tag) = @$_;
+	if ($tag eq "img" || $tag eq "body") {
+	    my $name_img = uri_unescape($link);
+	    $name_img =~ s/^\.\.\///;
+	    my $name_new = WikiCommons::get_file_md5("$dir/$name_img")."_conv.jpg";
+	    system("convert", "$dir/$name_img", "-background", "white", "-flatten", "$dir/$name_new") == 0 or die "error runnig convert: $!.\n";
+	    $element->attr($attr, uri_escape($name_new));
+	}
+    }
+    return $tree;
+}
+
 sub cleanup_html {
     my ($html, $file_name) = @_;
     my ($name,$dir,$suffix) = fileparse($file_name, qr/\.[^.]*/);
@@ -140,7 +157,7 @@ WikiCommons::write_file("$dir/".++$i.". tree_remove_TOC.$name.html", tree_to_htm
     my $text1 = tree_to_text($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_text1.$name.txt", $text1, 1) if $debug eq "yes";
 #     $tree->no_space_compacting(0);
-
+    $tree = tree_fix_links_images($tree, $dir);
     ## after TOC, because in TOC we use div
     $tree = tree_clean_empty_p($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_clean_empty_p.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
@@ -160,6 +177,7 @@ WikiCommons::write_file("$dir/".++$i.". tree_clean_headings.$name.html", tree_to
 
     $tree = tree_clean_lists($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_clean_lists.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
+    $tree = tree_clean_lists_ol_ul($tree);
     $tree = tree_clean_span_to_div($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_clean_span_to_div.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
 ## can't do it
@@ -323,8 +341,10 @@ sub tree_clean_span {
 		    } else {
 			next if $att =~ m/^\s*float: (top|left|right)\s*$/i
 				    || $att =~ m/^\s*text-decoration:/i
+				    || $att =~ m/^\s*letter-spacing:/i
+				    || $att =~ m/^\s*font-variant: normal\s*$/i
 				    || $att =~ m/^\s*position: absolute\s*$/i
-				    || $att =~ m/^\s*(top|left|right): -?[0-9]{1,}(\.[0-9]{1,})?in\s*$/i
+				    || $att =~ m/^\s*(margin-)?(top|left|right): -?[0-9]{1,}(\.[0-9]{1,})?in\s*$/i
 				    || $att =~ m/^\s*(border|padding)/i;
 die "Attr name for span_style = $att.\n";
 			$res .= $att.";";
@@ -592,6 +612,23 @@ sub tree_clean_tables {
 	    } else {
 		die "Unknown tag in table: $tag.\n";
 		return undef;
+	    }
+	}
+    }
+    return $tree;
+}
+
+sub tree_clean_lists_ol_ul {
+    my $tree = shift;
+    foreach my $a_tag ($tree->guts->look_down(_tag => "ol")) {
+	foreach my $attr_name ($a_tag->all_external_attr_names){
+	    my $attr_value = $a_tag->attr($attr_name);
+	    if (($attr_name eq "style" && $attr_value =~ m/^\s*(margin-)?(top|left|right): -?[0-9]{1,}(\.[0-9]{1,})?in\s*$/i)){
+		$a_tag->attr("$attr_name", undef);
+	    } elsif (($attr_name eq "start" && $attr_value =~ m/^[0-9]+$/i) ||
+		    (($attr_name eq "type" && $attr_value =~ m/^[I]$/i))) {
+	    } else {
+die "Unknown attributes for ol/ul:\n".Dumper($attr_name,$attr_value);
 	    }
 	}
     }
