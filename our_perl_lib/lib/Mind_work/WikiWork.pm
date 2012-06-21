@@ -79,7 +79,7 @@ sub delete_archived_image {
     my ($timestamp, $file) = split(m/!/, $archive);
     my $res;
 
-    if  ( wiki_exists_page("File:$file") ) {
+    if  ( wiki_exists_page($self, "File:$file") ) {
     $res = $mw->api({
         action   => 'delete',
         title    => "File:$file",
@@ -158,8 +158,8 @@ sub wiki_delete_page {
     foreach my $url (@img) {
       chomp $url;
       my $page = $mw->get_page( { title => $url } );
-#       unless ( defined $page->{missing} ) {
-      if ( wiki_exists_page($url) ) {
+      unless ( defined $page->{missing} ) {
+#       if ( defined $url && wiki_exists_page($self, $url) && not defined $page->{missing} ) {
 	print "\tDelete page $url.\n";
 	$mw->edit( { action => 'delete', title => $url, reason => 'no longer needed' } )
 	|| die "Could not delete url $url: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";

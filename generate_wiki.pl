@@ -663,7 +663,8 @@ sub work_begin {
         die Dumper(sort keys %$to_delete)."\nToo many to delete.\n" if (keys %$to_delete) > $max_to_delete;
 	foreach my $url (sort keys %$to_delete) {
 	    print "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";
-	    $our_wiki->wiki_delete_page("$wiki_dir/$url/$wiki_files_uploaded");
+	    ## do not delete uploaded files, because same files may be used by other pages. We delete them with the maintenance script
+# 	    $our_wiki->wiki_delete_page("$wiki_dir/$url/$wiki_files_uploaded");
 	    $our_wiki->wiki_delete_page($url) if ( $our_wiki->wiki_exists_page($url) );
 	    remove_tree("$wiki_dir/$url") || die "Can't remove dir $wiki_dir/$url: $?.\n";
 	}

@@ -216,6 +216,7 @@ sub makedir {
 	}
 	die "Can't make dir $dir: $!.\n";
     }
+    die "Dir not created.\n" if ! -d $dir;
 }
 
 sub add_to_remove {
@@ -538,6 +539,7 @@ sub get_correct_customer{
     return "Billing" if $name eq "SRG + Billing";
     return "SMART" if $name eq "SmartPCS";
     return "Pelephone" if $name =~ m/^Pelephone$/i;
+    return "Eastlink" if $name =~ m/^Eastlink$/i;
     return "Alon Cellular" if $name =~ m/^(alon|AlonCellular)/i;
 
     if ( ! scalar keys %$customers ){

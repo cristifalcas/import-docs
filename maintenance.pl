@@ -78,11 +78,11 @@ sub get_results {
   $type = "list" if !defined $type;
   my $regexp = "";
   if ($type eq "list" ){
-    $regexp = q{/html/body/div[@id="content"]/div[@id="bodyContent"]/div[@class="mw-spcontent"]/ol/li/a/@title};
+    $regexp = q{/html/body/div[@id="content"]/div[@id="bodyContent"]/div[@id="mw-content-text"]/div[@class="mw-spcontent"]/ol/li/a/@title};
   } elsif ($type eq "ul" ){
-    $regexp = q{/html/body/div[@id="content"]/div[@id="bodyContent"]/div[@class="mw-spcontent"]/ul[@class="gallery"]/li/div/div/div/a/img/@alt};
+    $regexp = q{/html/body/div[@id="content"]/div[@id="bodyContent"]/div[@id="mw-content-text"]/div[@class="mw-spcontent"]/ul[@class="gallery"]/li/div/div/div/a/img/@alt};
   } elsif ($type eq "table" ){
-    $regexp = q{/html/body/div[@id="content"]/div[@id="bodyContent"]/div[@class="mw-spcontent"]/table[@class="gallery"]/tr/td/div[@class="gallerybox"]/div[@class="gallerytext"]/a/@title};
+    $regexp = q{/html/body/div[@id="content"]/div[@id="bodyContent"]/div[@id="mw-content-text"]/div[@class="mw-spcontent"]/table[@class="gallery"]/tr/td/div[@class="gallerybox"]/div[@class="gallerytext"]/a/@title};
   } elsif ($type eq "q" ){
     $regexp = q{/html/body/div[@id="content"]/div[@id="bodyContent"]/div[@id="mw-content-text"]/div/div[@id="mw-pages"]/div[@class="mw-content-ltr"]/table/tr/td/ul/li/a/@title};
   } else {
@@ -528,7 +528,7 @@ sub fix_missing_files {
   my $res = get_results($link);
   my $missing = {};
   foreach my $elem (@$res){
-    next if $elem eq "Special:WhatLinksHere";
+    next if $elem =~ m/^Special:WhatLinksHere/i;
     $elem =~ s/ \(page does not exist\)//;
     my $arr = $our_wiki->wiki_get_pages_using("$elem");
     foreach my $page (@$arr) {
@@ -720,12 +720,14 @@ sub get_all_pages_with_invalid_categories {
 # get_all_pages_with_invalid_categories();
 # exit 1;
 
+# my $q = $our_wiki->wiki_exists_page("File:7114c0c77dbe813e1dbb9997ace55e39_conv.jpg");
+# print Dumper($q);
+# exit;
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
-# print Dumper($namespaces);exit 1;
+
 
 # missingimages;
-
 # # print Dumper($namespaces);
 print "##### Fix wiki sc type:\n";
 fix_wiki_sc_type($namespaces);

@@ -199,7 +199,7 @@ $dbh->{LongTruncOk}   = 0;
    and c.rcuststatus = 'A'
    and a.rcuststatus = 'A'
    and b.rsuppdeptstatus = 'A'
-   and (a.rcustlastscno > 10 or a.rcustiddisplay='Pelephone')
+   and (a.rcustlastscno > 10 or (a.rcustiddisplay='Pelephone' and a.rcustiddisplay='Eastlink'))
    order by a.rcustiddisplay";
 
 my $sth = $dbh->prepare($SEL_INFO);
