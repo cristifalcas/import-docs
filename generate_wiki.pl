@@ -530,21 +530,21 @@ sub insertdata {
     opendir(DIR, $work_dir);
     my @files = grep { (!/^\.\.?$/) } readdir(DIR);
     closedir(DIR);
-    if (scalar @files > 3 && ($work_dir !~ m/CMS:Why Partner With MIND$/ &&
-	    $work_dir !~ m/SVN:SES VF Greece QS System Description -- 5.02$/)) {
-	print "Dir $work_dir doesn't have the correct number of files.\n";
-# 	$fail = 1;
-    }
-    foreach my $file (@files){
-	if ($file ne $wiki_files_uploaded && $file ne $wiki_files_info && $file !~ m/\.wiki$/ &&
-	      !(($work_dir =~ m/CMS:Why Partner With MIND$/ && $file eq "CMS:Why Partner With MIND_html_m3f074c53.png") ||
-		($work_dir =~ m/SVN:SES VF Greece QS System Description -- 5.02$/ && $file eq "SVN:SES VF Greece QS System Description -- 5.02_html_m302d1070.gif"))
-	  ) {
-	    print "File $file from $work_dir should not exist.\n".Dumper(@files);
-# 	    $fail = 1;
-	    last ;
-	}
-    }
+#     if (scalar @files > 3 && ($work_dir !~ m/CMS:Why Partner With MIND$/ &&
+# 	    $work_dir !~ m/SVN:SES VF Greece QS System Description -- 5.02$/)) {
+# 	print "Dir $work_dir doesn't have the correct number of files.\n";
+# # 	$fail = 1;
+#     }
+#     foreach my $file (@files){
+# 	if ($file ne $wiki_files_uploaded && $file ne $wiki_files_info && $file !~ m/\.wiki$/ &&
+# 	      !(($work_dir =~ m/CMS:Why Partner With MIND$/ && $file eq "CMS:Why Partner With MIND_html_m3f074c53.png") ||
+# 		($work_dir =~ m/SVN:SES VF Greece QS System Description -- 5.02$/ && $file eq "SVN:SES VF Greece QS System Description -- 5.02_html_m302d1070.gif"))
+# 	  ) {
+# 	    print "File $file from $work_dir should not exist.\n".Dumper(@files);
+# # 	    $fail = 1;
+# 	    last ;
+# 	}
+#     }
     if ($fail){
 	my $name_bad = "$bad_dir/$url".time();
 	WikiCommons::makedir("$name_bad");
@@ -611,6 +611,7 @@ sub work_link {
 	WikiCommons::reset_time();
 	print "\n************************* $crt_nr of $total_nr\nMaking link for url $url\n\t\t$path_files/$pages_toimp_hash->{$url}[$rel_path_pos].\t". (WikiCommons::get_time_diff) ."\n";
 	my $link_to = $md5_map->{$pages_toimp_hash->{$url}[$md5_pos]}->{"real"}[0];
+die "Fucked up link\n".Dumper($link_to, $url, $md5_pos, $md5_map, $pages_toimp_hash) if ! defined $link_to;
 	die "We should have a url in to_keep.\n" if (scalar @{$pages_toimp_hash->{$url}} != scalar @{$to_keep->{$link_to}});
 	my ($link_name,$link_dir,$link_suffix) = fileparse($to_keep->{$link_to}[$rel_path_pos], qr/\.[^.]*/);
 	my ($name,$dir,$suffix) = fileparse($pages_toimp_hash->{$url}[$rel_path_pos], qr/\.[^.]*/);

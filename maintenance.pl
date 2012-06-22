@@ -35,12 +35,14 @@ use HTML::TreeBuilder::XPath;
 use Encode;
 use POSIX;
 use Date::Calc qw(:all);
+use Digest::MD5 qw(md5 md5_hex md5_base64);
 
 use Mind_work::WikiWork;
 use Mind_work::WikiCommons;
 
 my $dbh;
 my $workdir = "/media/share/Documentation/cfalcas/q/import_docs/work/";
+my $images_dir = "/var/www/html/wiki/images/";
 my $our_wiki;
 $our_wiki = new WikiWork();
 my ($local_pages, $wiki_pages);
@@ -473,17 +475,17 @@ sub scdoubleredirects {
   }
 }
 
-sub missingimages {
-  my $link = "http://localhost/wiki/index.php/Category:Pages_with_broken_file_links";
-  my $res = get_results($link, "q");
-  my $seen = {};
-  foreach my $elem (@$res){
-    next if $seen->{$elem};
-    $seen->{$elem} = 1;
-    print "rm page $elem.\n";
-    $our_wiki->wiki_delete_page($elem) if ( $our_wiki->wiki_exists_page("$elem") && ! $view_only);
-  }
-}
+# sub missingimages {
+#   my $link = "http://localhost/wiki/index.php/Category:Pages_with_broken_file_links";
+#   my $res = get_results($link, "q");
+#   my $seen = {};
+#   foreach my $elem (@$res){
+#     next if $seen->{$elem};
+#     $seen->{$elem} = 1;
+#     print "rm page $elem.\n";
+#     $our_wiki->wiki_delete_page($elem) if ( $our_wiki->wiki_exists_page("$elem") && ! $view_only);
+#   }
+# }
 
 sub unused_images_dirty {
   my $link = "http://localhost/wiki/index.php?title=Special:UnusedFiles&limit=$max_elements&offset=0";
@@ -492,10 +494,6 @@ sub unused_images_dirty {
       $elem =~ s/%27/'/g;
       $elem =~ s/%26/&/g;
       print "rm file $elem.\n";
-#       if (! $our_wiki->wiki_exists_page("$elem")) {
-# 	print "add page \n\t$elem.\n";
-# 	$our_wiki->wiki_edit_page("$elem", "----") if ( ! $view_only);
-#       }
       $our_wiki->wiki_delete_page("File:$elem") if ! $view_only;
   }
 }
@@ -583,7 +581,6 @@ sub getlocalpages {
 }
 
 sub getlocalimages {
-  our $namespaces = shift;
   use File::Find;
   our $local_pages = {};
   print "Get local images.\n";
@@ -595,7 +592,6 @@ sub getlocalimages {
 #       die if $count >10;
   };
 
-  my $images_dir = "/var/www/html/wiki/images/";
   opendir(DIR, "$images_dir") || die("Cannot open directory $images_dir: $!.\n");
   my @alldirs = grep { (!/^\.\.?$/) && m/^.$/ && -d "$images_dir/$_" } readdir(DIR);
   closedir(DIR);
@@ -608,15 +604,23 @@ sub getlocalimages {
 
 sub getdbimages {
   use DBI;
-  my $files = {};
+  my $files_imagelinks = {};
   my $db = DBI->connect('DBI:mysql:wikidb', 'wikiuser', '!0wikiuser@9') || die "Could not connect to database: $DBI::errstr";
   my $sql_query="select distinct il_to from imagelinks";
   my $query = $db->prepare($sql_query);
   $query->execute();
   while (my ($file) = $query->fetchrow_array ){
-    $files->{"$file"} = 1;
+    $files_imagelinks->{"$file"} = 1;
   }
-  return $files;
+
+  my $files_image = {};
+  $sql_query="select distinct img_name from image";
+  $query = $db->prepare($sql_query);
+  $query->execute();
+  while (my ($file) = $query->fetchrow_array ){
+    $files_image->{"$file"} = 1;
+  }
+  return ($files_imagelinks, $files_image);
 }
 
 sub getwikipages {
@@ -673,25 +677,55 @@ sub syncronize_local_wiki {
 }
 
 sub fix_images {
-  my $namespaces = shift;
+  print "## Get all images from wiki db.\n";
+  my ($db_imagelinks, $db_image) = getdbimages;
+  my @q = keys %$db_imagelinks;
+  my @w = keys %$db_image;
+  my ($only_in_imagelinks, $only_in_image, $common_) = WikiCommons::array_diff( \@q, \@w);
+  ## should be identical
+  die "Check this shit out:\n".Dumper($only_in_imagelinks, $only_in_image) if scalar @{ $only_in_imagelinks } || scalar @{ $only_in_image };
 
-  my $wiki_images = $our_wiki->wiki_get_all_images();
-  my $local_images = getlocalimages($namespaces);
+  print "## Remove from wiki all images that are on disk and not on db also.\n";
+  foreach my $file (keys %$db_imagelinks) {
+      my $md5 = md5_hex($file);
+      my $first_part = substr($md5, 0, 1);
+      my $second_part = substr($md5, 0, 2);
+      my $file_name = "$images_dir/$first_part/$second_part/$file";
+      if (! -f $file_name){
+	  $our_wiki->wiki_delete_page($file) if ( $our_wiki->wiki_exists_page($file) && ! $view_only);
+	  delete $db_imagelinks->{$file};
+      } else {
+	  $db_imagelinks->{$file} = $file_name;
+      }
+  }
+  my @db_imagelinks = keys %$db_imagelinks;
+
+  print "## Get all images from wiki api (slow).\n";
+  my $wiki_images_api = $our_wiki->wiki_get_all_images();
+  my ($only_in_wiki_db, $only_in_wiki_api, $common) = WikiCommons::array_diff( \@db_imagelinks, $wiki_images_api);
+  # should be nothing in $only_in_wiki_db and $only_in_wiki_api:
+  # - $only_in_wiki_api seems that it has files not used and they should have been cleaned by the script
+  # - $only_in_wiki_db seems that they are missing from disk, so we will remove them
+  print Dumper($only_in_wiki_db);
+  print Dumper($only_in_wiki_api);
+  print "## Remove all images from wiki api that are not in db also.\n";
+  foreach my $file (@$only_in_wiki_api){
+       $our_wiki->wiki_delete_page($file) if ( $our_wiki->wiki_exists_page($file) && ! $view_only);
+  }
+
+  print "## Get all images from disk.\n";
+  my $local_images = getlocalimages;
   my @local_images = keys %$local_images;
-#   my $db_images = getdbimages;
-#   my @db_images = keys %$db_images;
-
-#   my ($only_in1, $only_in2, $common) = WikiCommons::array_diff( \@db_images, $wiki_images);
-#   ## Files are not imported for those, but are used (missing files):
-#   print Dumper($only_in1);
-#   ## Nobody links here (unused files):
-#   print Dumper($only_in2);
-
-  my ($only_in_wiki, $only_in_fs, $common_all) = WikiCommons::array_diff( $wiki_images, \@local_images);
-  ## Files are missing from the fs
-  print Dumper($only_in_wiki);
-  ## Files found here are not used
+  my ($only_in_db, $only_in_fs, $common_all) = WikiCommons::array_diff( \@db_imagelinks, \@local_images);
+  # should be nothing in $only_in_db and $only_in_fs:
+  # - $only_in_db: missing images that should have been cleand by the script
+  # - $only_in_fs: unused images that should be removed, so we will delete them
+  print Dumper($only_in_db);
   print Dumper($only_in_fs);
+  print "## Remove all images from disk that are not in db also.\n";
+  foreach my $file (@$only_in_fs){
+    unlink("$local_images->{$file}") or die "Could not delete the file $local_images->{$file}: ".$!."\n";
+  }
 }
 
 sub delete_all_svn_categories {
@@ -719,34 +753,31 @@ sub get_all_pages_with_invalid_categories {
 # delete_all_svn_categories();
 # get_all_pages_with_invalid_categories();
 # exit 1;
-
 # my $q = $our_wiki->wiki_exists_page("File:7114c0c77dbe813e1dbb9997ace55e39_conv.jpg");
 # print Dumper($q);
 # exit;
+
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
 
-
-# missingimages;
-# # print Dumper($namespaces);
 print "##### Fix wiki sc type:\n";
 fix_wiki_sc_type($namespaces);
 print "##### Fix broken redirects:\n";
 broken_redirects;
 print "##### Fix double redirects:\n";
 scdoubleredirects;
+print "##### Syncronize wiki files with fs files.\n";
+fix_images($namespaces);
 print "##### Fix missing files:\n";
 fix_missing_files();
 print "##### Remove unused images:\n";
 unused_images_dirty;
 # print "##### Wanted pages:\n";
 # my ($cat, $sc, $crm, $other) = fix_wanted_pages();
-print "##### Get unused categories:\n";
-my $unused = unused_categories();
 # print "##### Get missing categories:\n";
 # my $wanted = wanted_categories();
-print "##### Syncronize wiki files with fs files.\n";
-# fix_images($namespaces);
+print "##### Get unused categories:\n";
+my $unused = unused_categories();
 print "##### Syncronize:\n";
 $local_pages = getlocalpages($namespaces);
 $wiki_pages = getwikipages($namespaces);
