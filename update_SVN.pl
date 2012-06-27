@@ -59,6 +59,7 @@ sub get_documentation {
 	    my $svn_url = "$svn/$doc_dir";
 	    my $local_url = "$local/$doc_dir";
 	    if ( defined WikiCommons::svn_list($svn_url, $svn_pass, $svn_user) ){
+`svn upgrade "$local_url"` if -d $local_url;
 		print "checkout:\n\t$svn_url\n\t\tto\n\t$local_url\n" ;
 		WikiCommons::makedir ("$local_url", 0);
 		my $text = "SVN_URL = $svn_url\nLOCAL_SVN_PATH = $local_url\n";
@@ -67,6 +68,7 @@ sub get_documentation {
 	    }
 	}
     } else {
+`svn upgrade "$local"` if -d $local;
 	print "checkout:\n\t$svn\n\t\tto\n\t$local\n" ;
 	WikiCommons::makedir ("$local", 0);
 	my $text = "SVN_URL = $svn\nLOCAL_SVN_PATH = $local\n";

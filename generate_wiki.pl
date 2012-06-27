@@ -601,7 +601,7 @@ sub work_link {
     foreach my $md5 (keys %$md5_map) {
 	my $nr_real = 0; $nr_real = scalar @{ $md5_map->{$md5}{"real"} } if (exists $md5_map->{$md5}{"real"});
 	my $nr_link = 0; $nr_link = scalar @{ $md5_map->{$md5}{"link"} } if (exists $md5_map->{$md5}{"link"});
-	die "We should only have ONE real link: real=$nr_real link=$nr_link.\n" if ($nr_real != 1);
+	die "We should only have ONE real link: real=$nr_real link=$nr_link, md5=$md5.\n".Dumper($md5_map->{$md5}) if ($nr_real != 1);
     }
     my $total_nr = scalar keys %$pages_toimp_hash;
     my $crt_nr = 0;
@@ -611,7 +611,8 @@ sub work_link {
 	WikiCommons::reset_time();
 	print "\n************************* $crt_nr of $total_nr\nMaking link for url $url\n\t\t$path_files/$pages_toimp_hash->{$url}[$rel_path_pos].\t". (WikiCommons::get_time_diff) ."\n";
 	my $link_to = $md5_map->{$pages_toimp_hash->{$url}[$md5_pos]}->{"real"}[0];
-die "Fucked up link\n".Dumper($link_to, $url, $md5_pos, $md5_map, $pages_toimp_hash) if ! defined $link_to;
+	next if ! defined $link_to; ## probably the real page failed to import, so we ignore the links also
+# die "Fucked up link\n".Dumper($link_to, $url, $md5_pos,$md5_map->{$pages_toimp_hash->{$url}[$md5_pos]}, $pages_toimp_hash->{$url},$md5_map, $to_keep) if ! defined $link_to;
 	die "We should have a url in to_keep.\n" if (scalar @{$pages_toimp_hash->{$url}} != scalar @{$to_keep->{$link_to}});
 	my ($link_name,$link_dir,$link_suffix) = fileparse($to_keep->{$link_to}[$rel_path_pos], qr/\.[^.]*/);
 	my ($name,$dir,$suffix) = fileparse($pages_toimp_hash->{$url}[$rel_path_pos], qr/\.[^.]*/);

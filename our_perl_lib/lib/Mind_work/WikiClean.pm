@@ -346,7 +346,8 @@ sub tree_clean_span {
 				    || $att =~ m/^\s*(margin-)?(top|left|right): -?[0-9]{1,}(\.[0-9]{1,})?in\s*$/i
 				    || $att =~ m/^\s*(border|padding)/i) {
 			    next;
-			} elsif ($att =~ m/^\s*font-variant: (small-caps|normal)\s*$/i) {
+			} elsif ($att =~ m/^\s*font-variant: (small-caps|normal)\s*$/i
+				    || $att =~ m/^\s*text-transform: uppercase\s*$/i) {
 			    $res .= $att.";";
 			} else {
 			    die "Attr name for span_style = $att.\n";
@@ -629,7 +630,7 @@ sub tree_clean_lists_ol_ul {
 	    if (($attr_name eq "style" && $attr_value =~ m/^\s*(margin-)?(top|left|right): -?[0-9]{1,}(\.[0-9]{1,})?in\s*$/i)){
 		$a_tag->attr("$attr_name", undef);
 	    } elsif (($attr_name eq "start" && $attr_value =~ m/^[0-9]+$/i) ||
-		    (($attr_name eq "type" && $attr_value =~ m/^[I]$/i))) {
+		    (($attr_name eq "type" && $attr_value =~ m/^[Ia]$/i))) {
 	    } else {
 die "Unknown attributes for ol/ul:\n".Dumper($attr_name,$attr_value);
 	    }

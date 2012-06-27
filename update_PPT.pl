@@ -182,10 +182,13 @@ die "ciudat\n" if scalar @$only_prev;
 print Dumper($only_prev);
 # print Dumper($only_new, $only_prev, $common);
 print "New files to convert:".(scalar @$only_new).".\n";
+my $crt = 0;
+my $total = scalar @{$only_new};
 foreach (@$only_new){
+    $crt++;
     my $doc_file = $hash_new->{$_};
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
-    print "### Start working for $name ($dir).\n";
+    print "### Start working for $name ($dir) ($crt out of $total).\n";
     my $append = $dir;
     my $q = quotemeta $from_path;
     $append =~ s/^$q//;

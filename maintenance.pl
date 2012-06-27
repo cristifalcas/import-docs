@@ -379,7 +379,7 @@ sub fix_wiki_sc_type {
     print "Found ". (scalar @$array) . " pages in namespace $ns.\n" if defined $array;
     foreach my $url (@$array) {
       print "rm redir page $url\n";
-      $our_wiki->wiki_delete_page($url) if ( ! $view_only && $our_wiki->wiki_exists_page("$url") );
+      eval{$our_wiki->wiki_delete_page($url)} if ( ! $view_only && $our_wiki->wiki_exists_page("$url") );
     }
   }
 
@@ -389,7 +389,7 @@ sub fix_wiki_sc_type {
     print "Found ". (scalar @$array) . " pages in namespace $ns.\n" if defined $array;
     foreach my $url (@$array) {
       print "rm real page $url\n";
-      $our_wiki->wiki_delete_page($url) if ( ! $view_only && $our_wiki->wiki_exists_page("$url") );
+      eval{$our_wiki->wiki_delete_page($url)} if ( ! $view_only && $our_wiki->wiki_exists_page("$url") );
     }
   }
   ## syncronize redir and real
@@ -416,10 +416,10 @@ sub fix_wiki_sc_type {
   my @a2 = keys %$hash_real;
   my ($only_in1, $only_in2) = WikiCommons::array_diff( \@a1, \@a2 );
   foreach (@$only_in1){
-    $our_wiki->wiki_delete_page($hash_redir->{$_}) if ! $view_only;
+    eval{$our_wiki->wiki_delete_page($hash_redir->{$_})} if ! $view_only;
   }
   foreach (@$only_in2){
-     $our_wiki->wiki_delete_page($hash_real->{$_}) if ! $view_only;
+     eval{$our_wiki->wiki_delete_page($hash_real->{$_})} if ! $view_only;
   }
 }
 
@@ -431,7 +431,7 @@ sub unused_categories {
 	next if defined $res;
 	push @$result, $cat;
 	print "rm page $cat\n";
-	$our_wiki->wiki_delete_page($cat) if ( $our_wiki->wiki_exists_page("$cat") && ! $view_only);
+	eval{$our_wiki->wiki_delete_page($cat)} if ( $our_wiki->wiki_exists_page("$cat") && ! $view_only);
     }
     return $result;
 }
@@ -459,7 +459,7 @@ sub broken_redirects {
     $elem =~ s/ \(page does not exist\)$//;
     $seen->{$elem} = 1;
     print "rm page $elem.\n";
-    $our_wiki->wiki_delete_page($elem) if ( $our_wiki->wiki_exists_page("$elem") && ! $view_only);
+    eval{$our_wiki->wiki_delete_page($elem)} if ( $our_wiki->wiki_exists_page("$elem") && ! $view_only);
   }
 }
 
@@ -471,7 +471,7 @@ sub scdoubleredirects {
     next if $seen->{$elem};
     $seen->{$elem} = 1;
     print "rm page $elem.\n";
-    $our_wiki->wiki_delete_page($elem) if ( $our_wiki->wiki_exists_page("$elem") && ! $view_only);
+    eval{$our_wiki->wiki_delete_page($elem)} if ( $our_wiki->wiki_exists_page("$elem") && ! $view_only);
   }
 }
 
@@ -494,7 +494,7 @@ sub unused_images_dirty {
       $elem =~ s/%27/'/g;
       $elem =~ s/%26/&/g;
       print "rm file $elem.\n";
-      $our_wiki->wiki_delete_page("File:$elem") if ! $view_only;
+      eval{$our_wiki->wiki_delete_page("File:$elem")} if ! $view_only;
   }
 }
 
@@ -537,7 +537,7 @@ sub fix_missing_files {
   foreach my $page (keys %$missing) {
       next if $page eq "CMS:MIND-IPhonEX CMS 80.00.020" && $page !~ m/[a-b _]+:/i;
       print "rm page $page.\n";
-      $our_wiki->wiki_delete_page($page) if ( $our_wiki->wiki_exists_page("$page") && ! $view_only);
+      eval{$our_wiki->wiki_delete_page($page)} if ( $our_wiki->wiki_exists_page("$page") && ! $view_only);
   }
 }
 
@@ -670,7 +670,7 @@ sub syncronize_local_wiki {
 	foreach my $wiki (@$only_in2) {
 	    $count++;
 	    print "rm page $wiki: \t$count out of $total\n";
-	    $our_wiki->wiki_delete_page($wiki) if ( $our_wiki->wiki_exists_page("$wiki") && ! $view_only);
+	    eval{$our_wiki->wiki_delete_page($wiki)} if ( $our_wiki->wiki_exists_page("$wiki") && ! $view_only);
 	    delete $wiki_pages->{$tmp}->{$wiki};
 	}
     }
@@ -692,7 +692,7 @@ sub fix_images {
       my $second_part = substr($md5, 0, 2);
       my $file_name = "$images_dir/$first_part/$second_part/$file";
       if (! -f $file_name){
-	  $our_wiki->wiki_delete_page($file) if ( $our_wiki->wiki_exists_page($file) && ! $view_only);
+	  eval{$our_wiki->wiki_delete_page($file)} if ( $our_wiki->wiki_exists_page($file) && ! $view_only);
 	  delete $db_imagelinks->{$file};
       } else {
 	  $db_imagelinks->{$file} = $file_name;
@@ -710,7 +710,8 @@ sub fix_images {
   print Dumper($only_in_wiki_api);
   print "## Remove all images from wiki api that are not in db also.\n";
   foreach my $file (@$only_in_wiki_api){
-       $our_wiki->wiki_delete_page($file) if ( $our_wiki->wiki_exists_page($file) && ! $view_only);
+      print "delete file $file from api\n";
+      eval{$our_wiki->wiki_delete_page("File:$file")} if ! $view_only;
   }
 
   print "## Get all images from disk.\n";
@@ -724,6 +725,7 @@ sub fix_images {
   print Dumper($only_in_fs);
   print "## Remove all images from disk that are not in db also.\n";
   foreach my $file (@$only_in_fs){
+    print "delete file $file from disk\n";
     unlink("$local_images->{$file}") or die "Could not delete the file $local_images->{$file}: ".$!."\n";
   }
 }
@@ -732,7 +734,7 @@ sub delete_all_svn_categories {
   my $q = $our_wiki->wiki_get_pages_in_category("Category:All_SVN_Documents");
   foreach my $link (@$q){
     print "$link\n";
-    $our_wiki->wiki_delete_page($link);
+    eval{$our_wiki->wiki_delete_page($link)};
   }
 }
 
@@ -766,12 +768,12 @@ print "##### Fix broken redirects:\n";
 broken_redirects;
 print "##### Fix double redirects:\n";
 scdoubleredirects;
-print "##### Syncronize wiki files with fs files.\n";
-fix_images($namespaces);
-print "##### Fix missing files:\n";
-fix_missing_files();
 print "##### Remove unused images:\n";
 unused_images_dirty;
+print "##### Fix missing files:\n";
+fix_missing_files();
+print "##### Syncronize wiki files with fs files.\n";
+fix_images();
 # print "##### Wanted pages:\n";
 # my ($cat, $sc, $crm, $other) = fix_wanted_pages();
 # print "##### Get missing categories:\n";
