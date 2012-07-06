@@ -58,7 +58,7 @@ sub add_document_local {
     $doc_file = abs_path($doc_file);
     my ($name, $dir, $suffix) = fileparse($doc_file, qr/\.[^.]*/);
     if ( ! -s "$doc_file" || ! -f "$dir/$name.log" ) {
-      print "\tEmpty file $doc_file.\n";
+      print "\tEmpty/missing file $doc_file.\n";
       unlink("$doc_file")|| die "can't delete file.\n";
       return;
     }
@@ -188,6 +188,7 @@ foreach (@$only_new){
     $crt++;
     my $doc_file = $hash_new->{$_};
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
+    $name =~ m/(^\s*)|(\s*$)//;
     print "### Start working for $name ($dir) ($crt out of $total).\n";
     my $append = $dir;
     my $q = quotemeta $from_path;
