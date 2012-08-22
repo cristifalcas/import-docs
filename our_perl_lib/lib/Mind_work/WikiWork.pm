@@ -196,10 +196,10 @@ sub wiki_edit_page {
 
 sub wiki_import_files {
     my ($self, $file_path, $url) = @_;
-    print "\t-Uploading files for url $url.\t". (WikiCommons::get_time_diff) ."\n";
-    my @cmd_output = `php "$wiki_site_path/maintenance/importImages.php" --conf "$wiki_site_path/LocalSettings.php" --user="$wiki_user" --overwrite --check-userblock "$file_path"`;
-    die "\tError $? for importImages.php.\n" if ($?);
-    print "@cmd_output\n";
+    print "\t-Uploading files ($file_path) for url $url.\t". (WikiCommons::get_time_diff) ."\n";
+    my $cmd_output = `php "$wiki_site_path/maintenance/importImages.php" --conf "$wiki_site_path/LocalSettings.php" --user="$wiki_user" --overwrite --check-userblock "$file_path"`;
+    die "\tError $? for importImages.php: ".Dumper($cmd_output) if ($?);
+    print "$cmd_output\n";
     print "\t+Uploading files for url $url.\t". (WikiCommons::get_time_diff) ."\n";
 }
 

@@ -216,6 +216,8 @@ while ( my @row=$sth->fetchrow_array() ) {
     $customers->{$id}->{'displayname'} = $row[2];
     $q->{"nr".$id}->{'name'} = $row[1];
     $q->{"nr".$id}->{'displayname'} = $row[2];
+    ## costi needs
+    next if $customers->{$id}->{'name'} eq "Pelephone";
 
     my $cust_info = get_customer_attributes($row[0]);
     write_customer ($cust_info);

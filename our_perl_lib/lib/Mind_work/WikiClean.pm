@@ -127,6 +127,7 @@ sub tree_fix_links_images {
 	    $name_img =~ s/^\.\.\///;
 	    my $name_new = WikiCommons::get_file_md5("$dir/$name_img")."_conv.jpg";
 	    system("convert", "$dir/$name_img", "-background", "white", "-flatten", "$dir/$name_new") == 0 or die "error runnig convert: $!.\n";
+	    system("mogrify", "-strip", "$dir/$name_new"); ## importImages.php Segmentation fault
 	    $element->attr($attr, uri_escape($name_new));
 	}
     }
@@ -696,6 +697,9 @@ sub make_wiki_from_html {
     $html = cleanup_html($html, $html_file) || return undef;
 
     print "\t-Generating wiki file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
+    eval {
+    local $SIG{ALRM} = sub { die "alarm\n" };
+    alarm 1800;
     my $strip_tags = [ '~comment', 'head', 'script', 'style', 'strike'];
     my $wc = new HTML::WikiConverter(
 	dialect => 'MediaWiki_Mind',
@@ -708,6 +712,9 @@ WikiCommons::write_file("$dir/original.$name.wiki", $wiki, 1) if $debug eq "yes"
 
     my $parsed_html = $wc->parsed_html;
 WikiCommons::write_file("$dir/parsed.$name.html", $parsed_html, 1) if $debug eq "yes";
+    alarm 0;
+    };
+    exit 1 if $@;
 
     print "\t+Generating wiki file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
     $wiki =~ s/mind_tag/div/gm;

@@ -188,7 +188,7 @@ foreach (@$only_new){
     $crt++;
     my $doc_file = $hash_new->{$_};
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
-    $name =~ m/(^\s*)|(\s*$)//;
+    $name =~ s/(^\s*)|(\s*$)//;
     print "### Start working for $name ($dir) ($crt out of $total).\n";
     my $append = $dir;
     my $q = quotemeta $from_path;
