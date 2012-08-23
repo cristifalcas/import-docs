@@ -697,6 +697,7 @@ sub make_wiki_from_html {
     $html = cleanup_html($html, $html_file) || return undef;
 
     print "\t-Generating wiki file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
+    my $wiki;
     eval {
     local $SIG{ALRM} = sub { die "alarm\n" };
     alarm 1800;
@@ -707,7 +708,7 @@ sub make_wiki_from_html {
 	preserve_bold => 1,
 	preserve_italic => 1,
     );
-    my $wiki = $wc->html2wiki($html);
+    $wiki = $wc->html2wiki($html);
 WikiCommons::write_file("$dir/original.$name.wiki", $wiki, 1) if $debug eq "yes";
 
     my $parsed_html = $wc->parsed_html;
