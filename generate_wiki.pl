@@ -869,8 +869,8 @@ if ($path_type eq "mind_svn") {
 	my $wrong = "";
 	my $deployment = {};
 
-	$deployment->{'00 General Information'} = "This document has been flaged as having deployment consideration. Search for this also in [[$url#Market_SC|Market_SC]], [[$url#HLS_SC|HLS_SC]], [[$url#Description_SC|Description_SC]], [[$url#HLD_SC|HLD_SC]], [[$url#Messages_SC|Messages_SC]] or [[$url#Architecture_SC|Architecture_SC]].\n\n" if $has_deployment eq "Y";
-# 	$deployment->{'00 General Information'} =~ s/^(\s*<center>.*)\n=/=/igms;
+	$deployment->{'00 General Information'} = "This document has been flaged as having deployment consideration. Search for this also in [[$url#Market_SC|Market_SC]], [[$url#HLS_SC|HLS_SC]], [[$url#Description_SC|Description_SC]], [[$url#HLD_SC|HLD_SC]], [[$url#Messages_SC|Messages_SC]] or [[$url#Architecture_SC|Architecture_SC]].\n" if $has_deployment eq "Y";
+
 	foreach my $file (sort @files) {
 	    my $file = "$path_files/$rel_path/$file";
 	    my ($name,$dir,$suffix) = fileparse($file, qr/\.[^.]*/);

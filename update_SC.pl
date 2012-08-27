@@ -260,6 +260,9 @@ sub general_info {
     } else {
       $general =~ s/%approve_test_remark%\n//;
     }
+    if (@$info[$index->{'needs test_remark'}] =~ m/^\s*$/ && @$info[$index->{'incharge test_remark'}] =~ m/^\s*$/ && @$info[$index->{'approve test_remark'}] =~ m/^\s*$/) {
+      $general =~ s/\'\'\'Test remarks\'\'\':\n//;
+    }
 
     $general =~ s/%fix_version%/@$info[$index->{'fixversion'}]/g;
 #     $tmp = @$info[$index->{'fixversion'}];
