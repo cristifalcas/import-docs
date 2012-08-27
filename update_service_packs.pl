@@ -97,7 +97,7 @@ sub getTasks_inSP {
     my $sp = shift;
     my $SEL_INFO = "
 SELECT T1.CHANGEID,
-       nvl(T1.CUSTOMER,' '),
+       nvl(c.name, ' '),
        T1.PRIORITY,
        T1.ChangeType,
        T1.STATUS,
@@ -105,8 +105,9 @@ SELECT T1.CHANGEID,
        nvl(T1.COMMENTS,' '),
        i.WorkerName,
        t1.modules
-  FROM SCChange T1, SC_PLANS p, SC_BUILD_MANAGER b, SCWork i
+  FROM SCChange T1, SC_PLANS p, SC_BUILD_MANAGER b, SCWork i, sccustomers c
  WHERE  T1.Product IS NOT NULL
+   AND T1.customer_id = c.id(+)
    AND T1.ChangeId = p.CHANGE_ID
    AND b.ID(+) = p.BUILD_ID
    AND to_number(T1.Initiator) = i.ID(+)

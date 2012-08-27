@@ -86,6 +86,7 @@ our @doc_types = (
 'Definition document', 'Definition review document',
 'HLD document', 'HLD review docuemnt',
 'Feature review document',
+'HLS Document',
 'LLD document', 'LLD review document',
 'Architecture document', 'Architecture review document',
 'GUI review document',
@@ -108,6 +109,15 @@ sub write_rtf {
 sub write_file {
     my ($name, $txt) = @_;
     WikiCommons::write_file("$name", Encode::encode('utf8', $txt) );
+}
+
+sub fix_sc_text {
+  my $text = shift;
+  $text =~ s/\r?\n/ <br\/>\n/g;
+  $text =~ s/^(\*|\#|\;|\:|\=|\!|\||----|\{\|)/<nowiki>$1<\/nowiki>/gm;
+  $text =~ s/\$\$\@\@/\'/gs;
+  $text =~ s/\b([a-z][0-9]{4,})/[[SC:$1|$1]]/gmi;
+  return $text;
 }
 
 sub general_info {
@@ -201,12 +211,54 @@ sub general_info {
     $general =~ s/%product%/@$info[$index->{'productname'}]/;
     $general =~ s/%full_status%/@$info[$index->{'fullstatus'}]/;
     $general =~ s/%status%/@$info[$index->{'status'}]/;
+
     if (@$info[$index->{'cancel_remark'}] !~ m/^\s*$/) {
-      $tmp = @$info[$index->{'cancel_remark'}];
-      $tmp =~ s/\b([a-z][0-9]{4,})/[[SC:$1|$1]]/gi;
-      $general =~ s/%cancel_reason%/Cancel remark: $tmp/;
+#       $tmp = @$info[$index->{'cancel_remark'}];
+#       $tmp =~ s/\b([a-z][0-9]{4,})/[[SC:$1|$1]]/gi;
+      $tmp = fix_sc_text(@$info[$index->{'cancel_remark'}]);
+      $general =~ s/%cancel_reason%/\'\'\'Cancel remark\'\'\': $tmp/;
     } else {
       $general =~ s/%cancel_reason%\n//;
+    }
+
+    if (@$info[$index->{'suspend_remark'}] !~ m/^\s*$/) {
+#       $tmp = @$info[$index->{'suspend_remark'}];
+#       $tmp =~ s/\b([a-z][0-9]{4,})/[[SC:$1|$1]]/gi;
+      $tmp = fix_sc_text(@$info[$index->{'suspend_remark'}]);
+      $general =~ s/%suspend_reason%/\'\'\'Suspend remark\'\'\': $tmp/;
+    } else {
+      $general =~ s/%suspend_reason%\n//;
+    }
+
+    if (@$info[$index->{'fixesdescription'}] ne '' && @$info[$index->{'fixesdescription'}] ne ' ') {
+# 	$tmp = @$info[$index->{'fixesdescription'}];
+# 	$tmp =~ s/\r?\n/ <br\/>\n/g;
+# 	$tmp =~ s/^(\*|\#|\;|\:|\=|\!|\||----|\{\|)/<nowiki>$1<\/nowiki>/gm;
+# 	$tmp =~ s/\$\$\@\@/\'/gs;
+# 	$tmp =~ s/\b([a-z][0-9]{4,})/[[SC:$1|$1]]/gmi;
+	$tmp = fix_sc_text(@$info[$index->{'fixesdescription'}]);
+	$general =~ s/%fix_description%/\'\'\'Fix description\'\'\':\n\n$tmp/;
+    } else {
+	$general =~ s/%fix_description%//;
+    }
+
+    if (@$info[$index->{'needs test_remark'}] !~ m/^\s*$/) {
+      $tmp = fix_sc_text(@$info[$index->{'needs test_remark'}]);
+      $general =~ s/%needs_test_remark%/\'\'\'Needs test remark\'\'\':\n\n$tmp/;
+    } else {
+      $general =~ s/%needs_test_remark%\n//;
+    }
+    if (@$info[$index->{'incharge test_remark'}] !~ m/^\s*$/) {
+      $tmp = fix_sc_text(@$info[$index->{'incharge test_remark'}]);
+      $general =~ s/%incharge_test_remark%/\'\'\'Incharge test remark\'\'\':\n\n$tmp/;
+    } else {
+      $general =~ s/%incharge_test_remark%\n//;
+    }
+    if (@$info[$index->{'approve test_remark'}] !~ m/^\s*$/) {
+      $tmp = fix_sc_text(@$info[$index->{'approve test_remark'}]);
+      $general =~ s/%approve_test_remark%/\'\'\'Approve test remark\'\'\':\n\n$tmp/;
+    } else {
+      $general =~ s/%approve_test_remark%\n//;
     }
 
     $general =~ s/%fix_version%/@$info[$index->{'fixversion'}]/g;
@@ -249,17 +301,8 @@ sub general_info {
     $tmp = join " <br/>\n", (split /\r\n/, @$info[$index->{'moduleslist'}]);
     $general =~ s/%modules_list%/$tmp/;
 
-    if (@$info[$index->{'fixesdescription'}] ne '' && @$info[$index->{'fixesdescription'}] ne ' ') {
-	$tmp = @$info[$index->{'fixesdescription'}];
-	$tmp =~ s/\r?\n/ <br\/>\n/g;
-	$tmp =~ s/^(\*|\#|\;|\:|\=|\!|\||----|\{\|)/<nowiki>$1<\/nowiki>/gm;
-	$tmp =~ s/\b([a-z][0-9]{4,})/[[SC:$1|$1]]/gmi;
-	$general =~ s/%fix_description%/\'\'\'Fix descrption\'\'\':\n\n$tmp/;
-    } else {
-	$general =~ s/%fix_description%//;
-    }
     $general =~ s/\n{3,}/\n\n\n/gm;
-
+    push @categories, "has_deployment ". @$info[$index->{'deployment'}] if @$info[$index->{'deployment'}] eq "Y";
     return ($general, \@categories);
 }
 
@@ -348,6 +391,7 @@ sub sql_get_common_info {
     }
 
     $SEL_INFO = "select $select" . $SEL_INFO . " where prj.projectcode = \'$type\'";
+# print Dumper($SEL_INFO);exit 1;
     my @info = ();
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
@@ -362,7 +406,6 @@ sub sql_get_common_info {
 
 sub sql_generate_select_changeinfo {
     my $hash_fields = {
-	'fixesdescription'	=> 'nvl(fd.fixesdescription,\' \')',
 	'writtendatetime'	=> 'to_char(a.writtendatetime,\'yyyy-mm-dd hh:mi:ss\')',
 	'modification_time'	=> 'nvl(to_char((select max(log_time) from sc_log where change_id=:CHANGEID),\'yyyy-mm-dd hh:mi:ss\'), \' \')',
 	'changeid'		=> 'a.changeid',
@@ -379,21 +422,30 @@ sub sql_generate_select_changeinfo {
 	'changetype' 		=> 'nvl(a.changetype,\' \')',
 	'title'			=> 'nvl(a.title,\' \')',
 	'customer_bug'		=> 'nvl(a.is_customer_bug,\' \')',
-	'customer'		=> 'nvl(a.customer,\' \')',
+# 	'customer'		=> 'nvl(a.customer,\' \')',
+	'customer'		=> 'nvl(b.name, \' \')',
 	'crmid'			=> 'nvl(a.requestref,\' \')',
 	'category'		=> 'g.description',
 	'fixversion'		=> 'nvl(a.fixversion,\' \')',
 	'parent_change_id'	=> 'nvl(a.parent_change_id,\' \')',
 	'relatedtasks'		=> 'nvl(a.relatedtasks,\' \')',
-	'Market_SC'		=> 'nvl(mi.marketinfo,\' \')',
-	'Description_SC'	=> 'nvl(f.function,\' \')',
-	'HLD_SC'		=> 'nvl(hm.hld_memo,\' \')',
-	'Messages_SC'		=> 'nvl(m.messages,\' \')',
-	'Architecture_SC'	=> 'nvl(am.architecture_memo,\' \')',
 	'initiator'		=> 'a.initiator',
 	'tester'		=> 'nvl(a.testincharge,-1)',
 	'dealer'		=> 'nvl(a.dealer,-1)',
+	'deployment'		=> 'nvl(a.DEPLOYMENTCONSIDERATION,\'N\')',
+## texts:
+	'Market_SC'		=> 'nvl(mi.marketinfo,\' \')',
+	'HLS_SC'		=> 'nvl(hl.hlsinfo,\' \')',
+	'Description_SC'	=> 'nvl(f.function,\' \')',
 	'cancel_remark'		=> 'nvl(a.cancelinformremark,\' \')',
+	'suspend_remark'	=> 'nvl(a.SUSPENDINFORMREMARK,\' \')',
+	'needs test_remark'	=> 'nvl(a.NEEDS_TEST_REMARK,\' \')',
+	'Architecture_SC'	=> 'nvl(am.architecture_memo,\' \')',
+	'HLD_SC'		=> 'nvl(hm.hld_memo,\' \')',
+	'fixesdescription'	=> 'nvl(fd.fixesdescription,\' \')',
+	'incharge test_remark'	=> 'nvl(a.TESTINCHARGEREMARK,\' \')',
+	'approve test_remark'	=> 'nvl(a.TESTREMARK,\' \')',
+	'Messages_SC'		=> 'nvl(m.messages,\' \')',
 	};
 
     my %index;
@@ -404,26 +456,25 @@ sub sql_generate_select_changeinfo {
     for (my $i=0;$i<=$#arr_fields;$i++) {
 	push @select , $hash_fields->{$arr_fields[$i]};
     }
+
     my $select = join ',', @select;
 
-# 	'Market_SC'		=> 'nvl(b1.marketinfo,\' \')',
-# 	'Description_SC'	=> 'nvl(b2.function,\' \')',
-# 	'HLD_SC'		=> 'nvl(b3.hld_memo,\' \')',
-# 	'Messages_SC'		=> 'nvl(b4.messages,\' \')',
-# 	'Architecture_SC'	=> 'nvl(b5.architecture_memo,\' \')',
-# sc_marketinfo b1,
-# sc_function b2,
-# sc_hld_memo b3,
-# sc_messages b4,
-# sc_architecture_memo b5,
-# and a.changeid = b1.changeid
-# and a.changeid = b2.changeid
-# and a.changeid = b3.changeid
-# and a.changeid = b4.changeid
-# and a.changeid = b5.changeid
+# market:      SC_MARKETINFO rtf
+# hls:         sc_hlsinfo rtf, market ready remark???
+# description: SC_FUNCTION rtf
+# approve  : CANCELINFORMREMARK, SUSPENDINFORMREMARK
+# assign          : NEEDS_TEST_REMARK
+# arhitect:       SC_ARCHITECTURE_MEMO rtf
+# hld:         SC_HLD_MEMO rtf
+# programmers  : definitions remark???
+# affected:    fixexplanation SC_FIXES_DESCRIPTION, features@parameters???, modules sc_modules_list
+# test     : details remark TESTINCHARGEREMARK, test approve remark TESTREMARK
+# messages:  SC_MESSAGES rtf
+
     my $SEL_INFO = "
     select $select
     from SCCHANGE           a,
+       sccustomers          b,
        SCPRODS              c,
        SCPROJECTS           p,
        SC_CATEGORIES        g,
@@ -433,8 +484,10 @@ sub sql_generate_select_changeinfo {
        SC_MARKETINFO        mi,
        SC_HLD_MEMO          hm,
        SC_FUNCTION          f,
-       SC_ARCHITECTURE_MEMO am
+       SC_ARCHITECTURE_MEMO am,
+       sc_hlsinfo	    hl
     where a.changeid = :CHANGEID
+      and a.customer_id = b.id(+)
       and a.projectcode = c.projectcode
       and c.productid = a.product
       and p.projectcode = a.projectcode
@@ -445,6 +498,7 @@ sub sql_generate_select_changeinfo {
       and mi.changeid(+) = a.changeid
       and hm.changeid(+) = a.changeid
       and f.changeid(+) = a.changeid
+      and hl.changeid(+) = a.changeid
       and am.changeid(+) = a.changeid";
 
     return \%index, $SEL_INFO;
@@ -559,7 +613,7 @@ sub sql_get_all_changes {
 
     my $SEL_CHANGES = "select changeid, nvl(crc,0), status, projectcode
 	from scchange
-	where $cond $no_cancel";
+	where product is not null and $cond $no_cancel";
 
     my $sth = $dbh->prepare($SEL_CHANGES);
     $sth->execute();
@@ -926,9 +980,13 @@ if ($bulk_svn_update eq "yes"){
 ## problem: after the first run we can have missing documents, but the general_info will not be updated
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
-# next if $change_id ne "B28258";
+next if $change_id ne "B101516";
 ## special chars: B06390
 ## docs B71488
+# my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
+# print Dumper($info_ret, $SEL_INFO) if ! defined @$info_ret[$index->{'deployment'}];
+# print Dumper($change_id,@$info_ret[$index->{'deployment'}]);next if @$info_ret[$index->{'deployment'}] ne "Y";
+# @$info_ret[$index->{'deployment'}]
     $count++;
     my $dif = time() - $time;
     my $work_dir = "$tmp_path/$change_id";
@@ -962,13 +1020,11 @@ foreach my $change_id (sort keys %$crt_hash){
 	    $crt_info->{$key}->{'name'} = $svn_docs->{$key};
 	    $crt_info->{$key}->{'size'} = $doc_size;
 	    $crt_info->{$key}->{'revision'} = $doc_rev;
-
+	    $crt_info->{$key}->{'date'} =  $res->{'commit'}->{'date'};
 	    if ( ! Compare($crt_info->{$key}, $prev_info->{$key}) ) {
 		print "\tUpdate svn http for $key.\n";
 		my $file_res = WikiCommons::http_get("$dir/$file", "$work_dir", "$svn_user", "$svn_pass");
 		move("$file_res", "$work_dir/$key.doc") || die "can't move file $file_res to $work_dir/$key.doc: $!.\n";
-		## like this in order to not update everything after we added the date to docs
-		$crt_info->{$key}->{'date'} =  $res->{'commit'}->{'date'};
 		$update_control_file++;
 	    }
 	}
@@ -981,10 +1037,9 @@ foreach my $change_id (sort keys %$crt_hash){
     $crt_info->{'SC_info'}->{'name'} = @$arr[0];
     $crt_info->{'SC_info'}->{'size'} = @$arr[1].$control;
     $crt_info->{'SC_info'}->{'revision'} = @$arr[2];
-    my $cat = ();
-    ## like this in order to not update everything after we added the date to docs
     $crt_info->{'SC_info'}->{'date'} = "sc_date is not used";
-    if ( ! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) || $update_control_file || $force_db_update eq "yes" || $update_only_wiki_db eq "yes") {
+    my $cat = ();
+    if ( 1 || ! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) || $update_control_file || $force_db_update eq "yes" || $update_only_wiki_db eq "yes") {
  	print "\tUpdate SC info.\n";
 
 	my $prev = 'NULL';
@@ -996,6 +1051,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	print "\tChanged status: $crt_info->{'SC_info'}->{'revision'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'revision'} && "$crt_info->{'SC_info'}->{'revision'}" ne "$prev");
 
 	my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
+# print Dumper($info_ret);exit 1;
 	## some SR's are completly empty, so ignore them
 	next if (scalar @$info_ret == 0);
 	add_versions_to_wiki_db($change_id, $info_ret, $index);
@@ -1013,14 +1069,15 @@ foreach my $change_id (sort keys %$crt_hash){
 	}
 	$txt .= "\n'''Presentations'''\n\nThe following presentations were found for this ".lc(@$info_ret[$index->{'changetype'}])." (either made by Q&A or attached to it):".$presentations if defined $presentations && $presentations ne "";
 	write_file ("$work_dir/General_info.wiki" ,$txt);
+	unlink glob ("$to_path/$change_id/*.rtf"); 
 	write_rtf ("$work_dir/1 Market_SC.rtf", @$info_ret[$index->{'Market_SC'}]);
-	write_rtf ("$work_dir/2 Description_SC.rtf", @$info_ret[$index->{'Description_SC'}]);
-	write_rtf ("$work_dir/3 HLD_SC.rtf", @$info_ret[$index->{'HLD_SC'}]);
-	write_rtf ("$work_dir/4 Messages_SC.rtf", @$info_ret[$index->{'Messages_SC'}]);
-	write_rtf ("$work_dir/5 Architecture_SC.rtf", @$info_ret[$index->{'Architecture_SC'}]);
+	write_rtf ("$work_dir/2 HLS_SC.rtf", @$info_ret[$index->{'HLS_SC'}]);
+	write_rtf ("$work_dir/3 Description_SC.rtf", @$info_ret[$index->{'Description_SC'}]);
+	write_rtf ("$work_dir/4 HLD_SC.rtf", @$info_ret[$index->{'HLD_SC'}]);
+	write_rtf ("$work_dir/5 Messages_SC.rtf", @$info_ret[$index->{'Messages_SC'}]);
+	write_rtf ("$work_dir/6 Architecture_SC.rtf", @$info_ret[$index->{'Architecture_SC'}]);
 	$update_control_file++;
     }
-
     write_control_file($crt_info, $work_dir, $cat) if $update_control_file;
 
     WikiCommons::move_dir("$work_dir", "$to_path/$change_id/");

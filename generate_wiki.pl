@@ -844,6 +844,12 @@ if ($path_type eq "mind_svn") {
 	WikiCommons::add_to_remove ("$wiki_dir/$url/$wiki_result", "dir");
 	my $rel_path = "$pages_toimp_hash->{$url}[$rel_path_pos]";
 	my $info_crt_h = $pages_toimp_hash->{$url}[$svn_url_pos];
+	my $has_deployment;
+	foreach (@{ $pages_toimp_hash->{$url}[$categories_pos] }){
+	    $has_deployment = 'Y' if $_ =~ m/^has_deployment Y$/i;
+# print "$_\n";
+	}
+# print "coco:".Dumper($pages_toimp_hash->{$url}[$categories_pos]);exit 1;
 
 	my $wiki = {};
 	local( $/, *FH ) ;
@@ -862,6 +868,9 @@ if ($path_type eq "mind_svn") {
 	closedir(DIR);
 	my $wrong = "";
 	my $deployment = {};
+
+	$deployment->{'00 General Information'} = "This document has been flaged as having deployment consideration. Search for this also in [[$url#Market_SC|Market_SC]], [[$url#HLS_SC|HLS_SC]], [[$url#Description_SC|Description_SC]], [[$url#HLD_SC|HLD_SC]], [[$url#Messages_SC|Messages_SC]] or [[$url#Architecture_SC|Architecture_SC]].\n\n" if $has_deployment eq "Y";
+# 	$deployment->{'00 General Information'} =~ s/^(\s*<center>.*)\n=/=/igms;
 	foreach my $file (sort @files) {
 	    my $file = "$path_files/$rel_path/$file";
 	    my ($name,$dir,$suffix) = fileparse($file, qr/\.[^.]*/);
@@ -982,10 +991,13 @@ if ($path_type eq "mind_svn") {
 	$url_deployment =~ s/^SC:/SC_Deployment:/;
 	$our_wiki->wiki_delete_page ($url_deployment) if ( $our_wiki->wiki_exists_page($url_deployment) && $delete_previous_page ne "no");
 	my $deployment_txt;
+# print Dumper($deployment);exit 1;
 	foreach my $doc_type (sort keys %$deployment) {
+	  my $used_name = $doc_type;
+	  $used_name =~ s/^[0-9]+\s*//;
 	  my $txt = $deployment->{$doc_type};
 	  next if ! defined $txt;
-	  $txt =~ s/(\n+|^)(=+)(.*?)(=+)\n/\n<b>$3 - [[$url#$doc_type|$doc_type]]<\/b>\n/ms;
+	  $txt =~ s/(\n+|^)(=+)(.*?)(=+)\n/\n<b>$3 - [[$url#$used_name|$used_name]]<\/b>\n/ms;
 	  $txt =~ s/\n(=+)(.*?)(=+)\n/\n<b>$2<\/b>\n/gms;
 	  $deployment_txt .= "$txt\n\n";
 	}

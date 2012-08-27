@@ -53,6 +53,8 @@
 
 %cancel_reason%
 
+%suspend_reason%
+
 
 '''Parent ID''': [[%parent_id%]]
 
@@ -71,3 +73,12 @@
 |}
 
 %fix_description%
+
+'''Test remarks''':
+%needs_test_remark%
+
+%incharge_test_remark%
+
+%approve_test_remark%
+
+

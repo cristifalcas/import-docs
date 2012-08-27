@@ -70,6 +70,12 @@ sub get_documents {
 	    if ($tmp[0] eq "Categories") {
 		foreach my $q (@tmp) {
 		    $q =~ s/(^\s*)|(\s*$)//g;
+		    if ($q =~ m/^has_deployment/i){
+			my $has_deployment = $q;$has_deployment =~ s/^has_deployment\s+//;
+			print "WTF is this: has_deployment = $has_deployment\n".Dumper(@data) if $has_deployment ne 'Y';
+			push @categories, $q;
+# print "$has_deployment\n";
+		    }
 		    next if $q !~ "^ChangeType";
 		    my $sc_type = $q;
 		    $sc_type =~ s/^ChangeType\s+//;
@@ -147,6 +153,7 @@ die "no namespace here 2: $node.\n".Dumper(@data) if $url_namespace eq "";
     }
     print "\tDone $count from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($count%500 != 0);
     print "+Searching for files in SC dir.\t". (WikiCommons::get_time_diff) ."\n";
+# print Dumper($pages_toimp_hash);exit 1;
     return $pages_toimp_hash;
 }
 
