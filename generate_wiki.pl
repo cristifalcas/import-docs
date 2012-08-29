@@ -119,7 +119,7 @@ if (defined $options->{'c'}) {
 	$make_categories = "no";
     }
 }
- 
+
 my $our_wiki;
 my $path_files = abs_path($options->{'d'});
 my $path_type = $options->{'n'};
@@ -749,6 +749,7 @@ if ($path_type eq "mind_svn") {
     $coco = new WikiMindCMS("$path_files");
     work_for_docs("$path_files");
 } elsif ($path_type eq "users") {
+
     $coco = new WikiMindUsers("$path_files");
     work_for_docs("$path_files");
 } elsif ($path_type =~ m/^crm_(.+)$/) {
@@ -775,26 +776,6 @@ if ($path_type eq "mind_svn") {
 	close (FH);
 
 	WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
-# 	if ($url !~ m/^CRM:(.*)/i) {
-# 	    my $crt_name = $url;
-# 	    $crt_name =~ s/(CRM.*)?:(.*)/$2/i;
-# 	    print "\tmake redirect from CRM:$crt_name to $url.\n";
-# 	    $our_wiki->wiki_delete_page("$url") if $our_wiki->wiki_exists_page("$url") && $delete_previous_page ne "no";
-# 	    $our_wiki->wiki_move_page("CRM:$crt_name", "$url");
-# 
-# 	    my $text = "md5 = ".$pages_toimp_hash->{$url}[$md5_pos]."\n";
-# 	    $text .= "rel_path = ".$pages_toimp_hash->{$url}[$rel_path_pos]."\n";
-# 	    $text .= "svn_url = ".$pages_toimp_hash->{$url}[$svn_url_pos]."\n";
-# 	    $text .= "link_type = ".$pages_toimp_hash->{$url}[$link_type_pos]."\n";
-# 	    my $redirect_text = "#REDIRECT [[CRM:$crt_name]]";
-# 	    WikiCommons::write_file("$wiki_dir/$url/$url.wiki", "$redirect_text");
-# 	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
-# 	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_info", $text);
-# 	    delete($pages_toimp_hash->{$url});
-# 	    delete $failed->{$url};
-# 	    next;
-# 	}
-
 	WikiCommons::add_to_remove("$wiki_dir/$url/$wiki_result", "dir");
 	my $work_dir = "$wiki_dir/$url";
 	WikiCommons::write_file("$work_dir/$url.wiki", $wiki_txt);
@@ -847,9 +828,7 @@ if ($path_type eq "mind_svn") {
 	my $has_deployment;
 	foreach (@{ $pages_toimp_hash->{$url}[$categories_pos] }){
 	    $has_deployment = 'Y' if $_ =~ m/^has_deployment Y$/i;
-# print "$_\n";
 	}
-# print "coco:".Dumper($pages_toimp_hash->{$url}[$categories_pos]);exit 1;
 
 	my $wiki = {};
 	local( $/, *FH ) ;
@@ -869,8 +848,9 @@ if ($path_type eq "mind_svn") {
 	my $wrong = "";
 	my $deployment = {};
 
-	$deployment->{'00 General Information'} = "This document has been flaged as having deployment consideration. Search for this also in [[$url#Market_SC|Market_SC]], [[$url#HLS_SC|HLS_SC]], [[$url#Description_SC|Description_SC]], [[$url#HLD_SC|HLD_SC]], [[$url#Messages_SC|Messages_SC]] or [[$url#Architecture_SC|Architecture_SC]].\n" if $has_deployment eq "Y";
-
+	my ($affected) = $wiki_txt =~ m/^.*(\n\'\'\'Affected Features & Parameters.*)\n+(\'\'\'Test remarks|\'\'\'FTP links)/gmsi;
+	$affected = "" if ! defined $affected;
+	$deployment->{'00 General Information'} = "This document has been flaged as having deployment consideration. Search for this also in [[$url#General Information|General Information]] and the other SC tabs imported.\n\n$affected\n" if defined $has_deployment && $has_deployment eq "Y";
 	foreach my $file (sort @files) {
 	    my $file = "$path_files/$rel_path/$file";
 	    my ($name,$dir,$suffix) = fileparse($file, qr/\.[^.]*/);

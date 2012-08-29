@@ -74,6 +74,8 @@
 
 %fix_description%
 
+%affectedFeatures%
+
 '''Test remarks''':
 %needs_test_remark%
 

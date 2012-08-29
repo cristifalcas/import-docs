@@ -42,11 +42,11 @@ MediaWiki::API - Provides a Perl interface to the MediaWiki API (http://www.medi
 
 =head1 VERSION
 
-Version 0.35
+Version 0.39
 
 =cut
 
-our $VERSION  = "0.35";
+our $VERSION  = "0.39";
 
 =head1 SYNOPSIS
 
@@ -102,7 +102,9 @@ Configuration options are
 
 =item * on_error = Function reference to call if an error occurs in the module.
 
-=item * use_http_get = Boolean 0 or 1 (defaults to 0). If set to 1, the perl module will use http GET method for accessing the api. By default it uses the POST method. Note that the module will still use POST for the api calls that require POST no matter what the value of this configuration option. Currently the following actions will work with GET: query, logout, purge, paraminfo.
+=item * use_http_get = Boolean 0 or 1 (defaults to 0). If set to 1, the perl module will use http GET method for accessing the api. By default it uses the POST method. Note that the module will still use POST for the api calls that require POST no matter what the value of this configuration option. Currently the following actions will work with GET: query, logout, purge, paraminfo - see get_actions configuration below.
+
+=item * get_actions = Hashref (defaults to { 'query' => 1, 'logout' => 1, purge' => 1, 'paraminfo' => 1 } ). This contains the API actions that are supported by the http GET method if it is enabled. Some wikis may have extensions that add more functions that work with an http GET request. If so, you can add actions as needed.
 
 =item * retries = Integer value; The number of retries to send an API request if an http error or JSON decoding error occurs. Defaults to 0 (try only once - don't retry). If max_retries is set to 4, and the wiki is down, the error won't be reported until after the 5th connection attempt. 
 
@@ -184,7 +186,6 @@ sub new {
   $ua->agent(__PACKAGE__ . "/$VERSION");
   $ua->default_header("Accept-Encoding" => "gzip, deflate");
   $ua->env_proxy() unless ($config->{no_proxy});
-  $ua->timeout( 7200 );
 
   $self->{ua} = $ua;
 
@@ -212,6 +213,13 @@ sub _get_config_defaults {
   $config{max_lag_delay} = DEF_MAX_LAG_DELAY;
   
   $config{use_http_get} = USE_HTTP_GET;
+  
+  $config{get_actions} = {
+    'query' => 1,
+    'logout' => 1,
+    'purge' => 1,
+    'paraminfo' => 1
+  };
 
   return \%config;
 }
@@ -298,20 +306,41 @@ MediaWiki's API uses UTF-8 and any 8 bit character string parameters are encoded
  # $mw->list ( $query ); # NOT OK
  $mw->list ( $query, {skip_encoding => 1} ); # ok
 
+If you are calling an API function which requires a file upload, e.g. import or upload, specify the file to upload as an arrayref containing the local filename. The API may return a warning, for example to say the file is a duplicate. To ignore warnings and force an upload, use ignorewarnings => 1. All the parameters as with everything else can be found on the MediaWiki API page.
+
+ $mw->api( {
+   action => 'import',
+   xml => ['wiki_dump.xml']
+  } );
+
+ $mw->api( {
+   action => 'upload',
+   filename => 'test.png',
+   comment => 'a test image',
+   file => ['test.png'],
+  } );
+
+You can also give the data to be uploaded directly, should you want to read the data in yourself. In this case, supply an arrayref with three parameters, starting with an "undef", followed by the filename, and then a Content => $data pair containing the data.
+
+ $mw->api( {
+   action => 'import',
+   xml => [ undef, 'wiki_dump.xml', Content => $data ]
+  } );
+
+ $mw->api( {
+   action => 'upload',
+   filename => 'test.png',
+   comment => 'a test image',
+   file => [ undef, 'test.png', Content => $data ],
+  } );
+
 =cut
 
 sub api {
   my ($self, $query, $options) = @_;
 
-  return $self->_error(ERR_CONFIG,"You need to give the URL to the mediawiki API php.")
+  return $self->_error(ERR_CONFIG, "You need to give the URL to the mediawiki API php.")
     unless $self->{config}->{api_url};
-
-  my $get_actions = {
-    'query' => 1,
-    'logout' => 1,
-    'purge' => 1,
-    'paraminfo' => 1
-  };
 
   my $retries = $self->{config}->{retries};
   my $maxlagretries = $self->{config}->{max_lag_retries};
@@ -323,7 +352,7 @@ sub api {
   # if the config is set to use GET we need to contruct a querystring. some actions are "POST" only -
   # edit, move, action = rollback, action = undelete, action = 
   my $querystring = '';
-  if ( $self->{config}->{use_http_get} && defined $get_actions->{$query->{action}} ){
+  if ( $self->{config}->{use_http_get} && $self->{config}->{get_actions}->{$query->{action}} ) {
     $querystring = _make_querystring( $query );
   }
 
@@ -339,11 +368,13 @@ sub api {
       }
 
       my $response;
+      my %headers;
       # if we are using the get method ($querystring is set above)
       if ( $querystring ) {
-        $response = $self->{ua}->get( $self->{config}->{api_url} . $querystring );
+        $response = $self->{ua}->get( $self->{config}->{api_url} . $querystring, %headers );
       } else {
-        $response = $self->{ua}->post( $self->{config}->{api_url}, $query );
+        $headers{'content-type'} = 'form-data' if $query->{action} eq 'upload' || $query->{action} eq 'import';
+        $response = $self->{ua}->post( $self->{config}->{api_url}, $query, %headers );
       }
       $self->{response} = $response;
       
@@ -435,17 +466,31 @@ sub logout {
 
 A helper function for doing edits using the MediaWiki API. Parameters are passed as a hashref which are described on the MediaWiki API editing page (http://www.mediawiki.org/wiki/API:Changing_wiki_content). Note that you need $wgEnableWriteAPI = true in your LocalSettings.php to use these features. This function will modify the input hashref.
 
-Currently only
+Currently
 
 =over
 
 =item * Create/Edit pages (Mediawiki >= 1.13 )
 
-=item * Move pages  (Mediawiki >= 1.12 )
+=item * Move pages (Mediawiki >= 1.12 )
 
-=item * Rollback  (Mediawiki >= 1.12 )
+=item * Rollback (Mediawiki >= 1.12 )
 
-=item * Delete pages  (Mediawiki >= 1.12 )
+=item * Delete pages (Mediawiki >= 1.12 )
+
+=item * Upload images (Mediawiki >= 1.16 )
+
+=item * Import pages (Mediawiki >= 1.15 )
+
+=item * (Un)protect pages (Mediawiki >= 1.12 )
+
+=item * (Un)block users (Mediawiki >= 1.12 )
+
+=item * (Un)watch a page (Mediawiki >= 1.18 )
+
+=item * Email user (Mediawiki >= 1.14 )
+
+=item * Patrol changes (Mediawiki >= 1.14 )
 
 =back
 
@@ -495,7 +540,7 @@ The following scrippet rolls back one or more edits from user MrVandal. If the u
 sub edit {
   my ($self, $query, $options) = @_;
 
-  # gets and sets a token for the specific action (different tokens for different edit actions such as rollback/delete etc). Also sets the timestamp for edits to avoid conflicts.
+  # gets and sets a token for the specific action (different tokens for different edit actions such as rollback/delete etc).
   return undef unless ( $self->_get_set_tokens( $query ) );
 
   # do the edit
@@ -643,6 +688,9 @@ sub list {
 
 =head2 MediaWiki::API->upload( $params_hashref )
 
+This function is deprecated. For uploading on mediawiki versions 1.16 or later, you are recommended to use MediaWiki::API->edit or MediaWiki::API->api directly, which has much better
+error handling, and supports uploading files by just passing a filename.
+
 A function to upload files to a MediaWiki. This function does not use the MediaWiki API currently as support for file uploading is not yet implemented. Instead it uploads using the Special:Upload page, and as such an additional configuration value is needed.
 
   my $mw = MediaWiki::API->new( {
@@ -672,6 +720,25 @@ Error checking is limited. Also note that the module will force a file upload, i
 sub upload {
   my ($self, $params) = @_;
 
+  # get the version of mediawiki running, and if less than 1.16 use the old upload mechanism
+  my $mwver = $self->_get_version;
+  $mwver =~ /(\d+)\.(\d+)/;
+  if ( $1 == 1 && $2 < 16 ) {
+    return $self->_upload_old($params);
+  }
+
+  my $query;
+  $query->{action} = 'upload';
+  $query->{filename} = $params->{title};
+  $query->{comment} = $params->{summary};
+  $query->{file} = [ undef, $params->{title}, Content => $params->{data} ];
+  $query->{ignorewarnings} = 1;
+  return $self->edit($query);
+}
+
+sub _upload_old {
+  my ($self, $params) = @_;
+
   return $self->_error(ERR_CONFIG,"You need to give the URL to the mediawiki Special:Upload page.") unless $self->{config}->{upload_url};
 
   my $response = $self->{ua}->post(
@@ -688,7 +755,6 @@ sub upload {
 
   return $self->_error(ERR_UPLOAD,"There was a problem uploading the file - $params->{title}") unless ( $response->code == 302 );
   return 1;
-
 }
 
 =head2 MediaWiki::API->download( $params_hashref )
@@ -742,15 +808,30 @@ sub download {
   return $response->decoded_content;
 }
 
+# returns the version of mediawiki being run 
+sub _get_version {
+  my ($self) = @_;
+  return $self->{config}->{mw_ver} if exists( $self->{config}->{mw_ver} );
+  return undef unless my $ref = $self->api(
+    {
+      action => 'query',
+      meta   => 'siteinfo'
+    } );
+  my $mwver = $ref->{query}->{general}->{generator};
+  $mwver =~ s/.+?(\d+\.\d+).*/$1/;
+  $self->{config}->{mw_ver} = $mwver;
+  return $mwver;
+}
+
 # returns a copy of a hash (passed by reference) encoded to utf-8
 # used to encode parameters before being passed to the api
 sub _encode_hashref_utf8 {
   my $uriver = $URI::VERSION;
   my ($self, $ref, $skipenc) = @_;
   for my $key ( keys %{$ref} ) {
-    # skip to next item if no value defined
-    next unless defined $ref->{$key};
-    # if we don't want to skip encoding and the item doesn't already have the utf8 flag set, or we are using
+    # skip to next item if no value defined or the item is a ref (i.e. a file upload)
+    next if ! defined $ref->{$key} || ref($ref->{$key});
+    # if we don't want to skip encoding and the item doesn't already have the utf8 flag set or we are using
     # an older version of URI.pm that doesn't handle the encoding correctly then we need to encode to utf8
     if ( ! $skipenc && ( ! utf8::is_utf8($ref->{$key}) || $URI::VERSION < 1.36) ) {
       $ref->{$key} = Encode::encode_utf8($ref->{$key});
@@ -782,7 +863,20 @@ sub _make_querystring {
 sub _get_set_tokens {
   my ($self, $query) = @_;
   my ($prop, $title, $token);
+  
   my $action = $query->{action};
+
+  if ( $action eq 'move' ) {
+    $title = $query->{from};
+  } elsif ( $action eq 'upload' ) {
+    $action = 'edit';
+    $title = $query->{filename};
+  } elsif ( $action eq 'emailuser' ) {
+    $action = 'email';
+    $title = 'User:' . $query->{target};
+  } else {
+    $title = $query->{title};
+  }
 
   # check if we have a cached token.
   if ( exists( $self->{config}->{tokens}->{$action} ) ) {
@@ -790,43 +884,56 @@ sub _get_set_tokens {
     return 1;
   }
 
+  # if we are doing an import, get the edit token using Main_Page as API docs suggest.
+  if ( $action eq 'import' ) {
+    # if a title is supplied use that page to get the edit token instead of Main_Page
+    if ( defined $query->{title} ) {
+      $title = $query->{title};
+    } else {
+      $title = "Main_Page";
+    }
+  }
+
   # set the properties we want to extract based on the action
-  # for edit we want to get the datestamp of the last revision also to avoid edit conflicts
-  $prop = 'info|revisions' if ( $action eq 'edit' );
-  $prop = 'info' if ( $action eq 'move' or $action eq 'delete' );
-  $prop = 'revisions' if ( $query->{action} eq 'rollback' );
-
-  if ( $action eq 'move' ) {
-    $title = $query->{from};
-  } else {
-    $title = $query->{title};
-  }
-
   if ( $action eq 'rollback' ) {
-    $token = 'rvtoken';
+    $prop = 'revisions'; 
   } else {
-    $token = 'intoken';
+    $prop = 'info';
   }
 
-  return undef unless ( my $ref = $self->api( { action => 'query', prop => 'info|revisions', $token => $action, titles => $title } ) );
+  $token = 'intoken';
+  $token = 'rvtoken' if ( $action eq 'rollback' );
+
+  my $ref;
+  if ( $action eq 'patrol' ) {
+    $ref = $self->api( { action => 'query', list => 'recentchanges', rclimit => '1', rctoken => $action } );
+  } else {
+    $ref = $self->api( { action => 'query', prop => $prop, $token => $action, titles => $title } );
+  }
+  return undef unless $ref;
 
   my ($pageid, $pageref) = each %{ $ref->{query}->{pages} };
 
   # if the page doesn't exist and we aren't editing/creating a new page then return an error
-  return $self->_error( ERR_EDIT, "Unable to $action page '$title'. Page does not exist.") if ( defined $pageref->{missing} && $action ne 'edit' );
+  if ( defined $pageref->{missing} && $action ne 'edit' && $action ne 'import' ) {
+    return $self->_error( ERR_EDIT, "Unable to $action page '$title'. Page does not exist.") 
+  }
 
   if ( $action eq 'rollback' ) {
     $query->{token} = @{ $pageref->{revisions} }[0]->{$action.'token'};
     my $lastuser = @{ $pageref->{revisions} }[0]->{user};
     $query->{user} = @{ $pageref->{revisions} }[0]->{user} unless defined $query->{user};
     return $self->_error( ERR_EDIT, "Unable to rollback edits from user '$query->{user}' for page '$title'. Last edit was made by user $lastuser" ) if ( $query->{user} ne $lastuser );
+  } elsif ( $action eq 'patrol' ) {
+    $query->{token} = @{$ref->{query}->{recentchanges}}[0]->{patroltoken};
   } else {
     $query->{token} = $pageref->{$action.'token'};
   }
 
   return $self->_error( ERR_EDIT, "Unable to get an edit token for action '$action'." ) unless ( defined $query->{token} );
 
-  # cache the token. rollback tokens are specific for the page name and last edited user so can not be cached.
+  # cache the token. rollback tokens are specific for the page name and last edited user so can not be cached. Note that although currently many of the tokens
+  # are equivalent, we cache them separately in case this was to change.
   if ( $action ne 'rollback' ) {
     $self->{config}->{tokens}->{$action} = $query->{token};
   }
@@ -902,11 +1009,15 @@ L<http://search.cpan.org/dist/MediaWiki-API>
 
 =item * Jason 'XtC' Skelly (xtc [at] amigaguide.org) for moral support
 
+=item * Nikolay Shaplov (n [at] shaplov.ru) for utf-8 patches and testing
+
+=item * Jeremy Muhlich (jmuhlich [at] bitflood.org) for utf-8 patches and testing for api upload support patch
+
 =back
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2008 - 2010 Jools Wills, all rights reserved.
+Copyright 2008 - 2012 Jools Wills, all rights reserved.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

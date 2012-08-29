@@ -4,6 +4,7 @@ use warnings;
 use strict;
 
 $SIG{__WARN__} = sub { die @_ };
+$| = 1;
 
 my @crt_timeData = localtime(time);
 foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
@@ -122,6 +123,14 @@ sub fix_sc_text {
 
 sub general_info {
     my ($info, $index, $modules, $tester, $initiator, $dealer) = @_;
+
+    my $sth = $dbh->prepare("select nvl(wm_concat(distinct(p.affectedFeatures)), ' ') from scproggroups p where changeid=:CHANGEID group by changeid");
+    $sth->bind_param( ":CHANGEID", @$info[$index->{'changeid'}] );
+    $sth->execute();
+    my $affectedFeatures = $sth->fetchrow_array();
+    $affectedFeatures = " " if ! defined $affectedFeatures;
+# print Dumper($affectedFeatures); exit 1;
+
     local( $/, *FH ) ;
     open(FH, "$general_template_file") or die "Can't open file for read: $!.\n";
     my $general = <FH>;
@@ -242,6 +251,13 @@ sub general_info {
 	$general =~ s/%fix_description%//;
     }
 
+    if ($affectedFeatures !~ m/^\s*$/) {
+	$tmp = fix_sc_text($affectedFeatures);
+	$general =~ s/%affectedFeatures%/\'\'\'Affected Features & Parameters\'\'\':\n\n$tmp/;
+    } else {
+	$general =~ s/%affectedFeatures%//;
+    }
+
     if (@$info[$index->{'needs test_remark'}] !~ m/^\s*$/) {
       $tmp = fix_sc_text(@$info[$index->{'needs test_remark'}]);
       $general =~ s/%needs_test_remark%/\'\'\'Needs test remark\'\'\':\n\n$tmp/;
@@ -306,6 +322,7 @@ sub general_info {
 
     $general =~ s/\n{3,}/\n\n\n/gm;
     push @categories, "has_deployment ". @$info[$index->{'deployment'}] if @$info[$index->{'deployment'}] eq "Y";
+# print Dumper(@$info[$index->{'deployment'}]);
     return ($general, \@categories);
 }
 
@@ -462,18 +479,6 @@ sub sql_generate_select_changeinfo {
 
     my $select = join ',', @select;
 
-# market:      SC_MARKETINFO rtf
-# hls:         sc_hlsinfo rtf, market ready remark???
-# description: SC_FUNCTION rtf
-# approve  : CANCELINFORMREMARK, SUSPENDINFORMREMARK
-# assign          : NEEDS_TEST_REMARK
-# arhitect:       SC_ARCHITECTURE_MEMO rtf
-# hld:         SC_HLD_MEMO rtf
-# programmers  : definitions remark???
-# affected:    fixexplanation SC_FIXES_DESCRIPTION, features@parameters???, modules sc_modules_list
-# test     : details remark TESTINCHARGEREMARK, test approve remark TESTREMARK
-# messages:  SC_MESSAGES rtf
-
     my $SEL_INFO = "
     select $select
     from SCCHANGE           a,
@@ -614,7 +619,7 @@ sub sql_get_all_changes {
 	die "Impossible.\n";
     }
 
-    my $SEL_CHANGES = "select changeid, nvl(crc,0), status, projectcode
+    my $SEL_CHANGES = "select changeid, nvl(crc,0), status, projectcode, nvl(deploymentconsideration, 'N')
 	from scchange
 	where product is not null and $cond $no_cancel";
 
@@ -941,7 +946,7 @@ while (<FH>) {
 close(FH);
 # my $dsn_mysql = ;
 $dbh_mysql = DBI->connect("DBI:mysql:database=$wikidb_name;host=$wikidb_server", "$wikidb_user", "$wikidb_pass");
-print "$sc_table";
+# print "$sc_table";
 my $sth_mysql = $dbh_mysql->prepare("CREATE TABLE IF NOT EXISTS $sc_table (
 SC_ID VARCHAR( 255 ) NOT NULL ,
 FIXVERSION VARCHAR( 255 ) ,
@@ -983,7 +988,7 @@ if ($bulk_svn_update eq "yes"){
 ## problem: after the first run we can have missing documents, but the general_info will not be updated
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
-next if $change_id ne "B101516";
+# next if $change_id ne "B628572";
 ## special chars: B06390
 ## docs B71488
 # my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
@@ -1038,11 +1043,12 @@ next if $change_id ne "B101516";
     my $arr = $crt_hash->{$change_id};
 
     $crt_info->{'SC_info'}->{'name'} = @$arr[0];
-    $crt_info->{'SC_info'}->{'size'} = @$arr[1].$control;
+    $crt_info->{'SC_info'}->{'size'} = @$arr[1].$control.(@$arr[4] eq "Y" ? "Y" : "");
     $crt_info->{'SC_info'}->{'revision'} = @$arr[2];
     $crt_info->{'SC_info'}->{'date'} = "sc_date is not used";
+
     my $cat = ();
-    if ( 1 || ! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) || $update_control_file || $force_db_update eq "yes" || $update_only_wiki_db eq "yes") {
+    if (! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) || $update_control_file || $force_db_update eq "yes" || $update_only_wiki_db eq "yes") {
  	print "\tUpdate SC info.\n";
 
 	my $prev = 'NULL';
@@ -1054,7 +1060,6 @@ next if $change_id ne "B101516";
 	print "\tChanged status: $crt_info->{'SC_info'}->{'revision'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'revision'} && "$crt_info->{'SC_info'}->{'revision'}" ne "$prev");
 
 	my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
-# print Dumper($info_ret);exit 1;
 	## some SR's are completly empty, so ignore them
 	next if (scalar @$info_ret == 0);
 	add_versions_to_wiki_db($change_id, $info_ret, $index);

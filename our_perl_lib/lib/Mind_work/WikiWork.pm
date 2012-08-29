@@ -7,7 +7,7 @@ use Mind_work::WikiCommons;
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 use MediaWiki::API;
-use MediaWiki::Bot;
+# use MediaWiki::Bot;
 # get_last($page, $user)
 # get_history($pagename[,$limit])
 # get_namespace_names()
