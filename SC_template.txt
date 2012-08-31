@@ -49,6 +49,9 @@
 |-
 | '''Status'''
 | %status%
+|-
+| '''Has deployment'''
+| %has_deployment%
 |}
 
 %cancel_reason%

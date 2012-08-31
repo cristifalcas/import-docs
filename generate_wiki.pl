@@ -848,7 +848,7 @@ if ($path_type eq "mind_svn") {
 	my $wrong = "";
 	my $deployment = {};
 
-	my ($affected) = $wiki_txt =~ m/^.*(\n\'\'\'Affected Features & Parameters.*)\n+(\'\'\'Test remarks|\'\'\'FTP links)/gmsi;
+	my ($affected) = $wiki_txt =~ m/^.*(\n\'\'\'Affected Features & Parameters.*?)\n+(\'\'\'Test remarks|\'\'\'FTP links)/gmsi;
 	$affected = "" if ! defined $affected;
 	$deployment->{'00 General Information'} = "This document has been flaged as having deployment consideration. Search for this also in [[$url#General Information|General Information]] and the other SC tabs imported.\n\n$affected\n" if defined $has_deployment && $has_deployment eq "Y";
 	foreach my $file (sort @files) {

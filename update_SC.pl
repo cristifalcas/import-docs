@@ -220,6 +220,12 @@ sub general_info {
     $general =~ s/%product%/@$info[$index->{'productname'}]/;
     $general =~ s/%full_status%/@$info[$index->{'fullstatus'}]/;
     $general =~ s/%status%/@$info[$index->{'status'}]/;
+    if (@$info[$index->{'deployment'}] eq "Y") {
+	$tmp = "Y => [[SC Deployment:@$info[$index->{'changeid'}]|here]]" 
+    } else {
+	$tmp = "N";
+    }
+    $general =~ s/%has_deployment%/$tmp/;
 
     if (@$info[$index->{'cancel_remark'}] !~ m/^\s*$/) {
 #       $tmp = @$info[$index->{'cancel_remark'}];
@@ -988,7 +994,7 @@ if ($bulk_svn_update eq "yes"){
 ## problem: after the first run we can have missing documents, but the general_info will not be updated
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
-# next if $change_id ne "B628572";
+# next if $change_id ne "B30679";
 ## special chars: B06390
 ## docs B71488
 # my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);

@@ -424,9 +424,12 @@ sub generate_html_file {
 	    local $SIG{ALRM} = sub { die "alarm\n" };
 # 	    alarm 46800; # 13 hours
 	    alarm 3600; # .5 hours
+	    ## filters http://cgit.freedesktop.org/libreoffice/core/tree/filter/source/config/fragments/filters
+	    my $filter = "html:HTML (StarWriter)";
+	    $filter = "html:HTML (StarCalc)" if $suffix =~ m/xlsx?/i;
 	    ## --headless dies, so we replace it with --display :10235
 	    system("Xvfb :10235 -screen 0 1024x768x16 &> /dev/null &");
-	    system("libreoffice", "--display", ":10235", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", "html:HTML (StarWriter)", "--outdir", "$dir", "$doc_file") == 0 or die "libreoffice failed: $?";
+	    system("libreoffice", "--display", ":10235", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filter, "--outdir", "$dir", "$doc_file") == 0 or die "libreoffice failed: $?";
 	    alarm 0;
 	};
 	$status = $@;
