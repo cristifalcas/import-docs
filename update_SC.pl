@@ -612,15 +612,19 @@ sub sql_get_all_changes {
 	$cond  = "projectcode = 'D' and (nvl(version,3) >= '2.30' or nvl(fixversion,3) >= '2.30')";
     } elsif ($sc_type eq 'CANCEL') {
 	$cond = "";
-	$no_cancel = "((projectcode = 'B' and (version >= '5.0' or (nvl(version, 1) < '5.0' and nvl(fixversion,6) > '5.0'))) or
-       (projectcode = 'F') or
-       (projectcode = 'I' and (nvl(version, 5) >= '4.00' or nvl(fixversion,5) >= '4.00')) or
-       (projectcode = 'H' and writtendatetime > '1Jan2008') or
-       (projectcode = 'R') or
-       (projectcode = 'T') or
-       (projectcode = 'D' and (nvl(version, 3) >= '2.30' or nvl(fixversion, 3) >= '2.30')))
-   and (status = 'Cancel' or status = 'Inform-Cancel' or
-       status = 'Market-Cancel')";
+	$no_cancel = "(
+      (projectcode = 'B' and (version >= '5.0' or (nvl(version, 1) < '5.0' and nvl(fixversion,6) > '5.0')))
+       or (projectcode = 'F')
+       or (projectcode = 'I' and (nvl(version, 5) >= '4.00' or nvl(fixversion,5) >= '4.00'))
+       or (projectcode = 'H' and writtendatetime > '1Jan2008')
+       or (projectcode = 'R')
+       or (projectcode = 'T')
+       or (projectcode = 'K')
+       or (projectcode = 'Z')
+       or (projectcode = 'A')
+       or (projectcode = 'P')
+       or (projectcode = 'D' and (nvl(version, 3) >= '2.30' or nvl(fixversion, 3) >= '2.30'))
+      ) and (status = 'Cancel' or status = 'Inform-Cancel' or status = 'Market-Cancel')";
     } else {
 	die "Impossible.\n";
     }
