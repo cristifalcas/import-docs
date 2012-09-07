@@ -762,31 +762,33 @@ sub get_all_pages_with_invalid_categories {
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
 
-print "##### Fix wiki sc type:\n";
-fix_wiki_sc_type($namespaces);
-print "##### Fix broken redirects:\n";
-broken_redirects;
-print "##### Fix double redirects:\n";
-scdoubleredirects;
-print "##### Remove unused images:\n";
-unused_images_dirty;
-print "##### Fix missing files:\n";
-fix_missing_files();
-print "##### Syncronize wiki files with fs files.\n";
-fix_images();
-# print "##### Wanted pages:\n";
-# my ($cat, $sc, $crm, $other) = fix_wanted_pages();
-# print "##### Get missing categories:\n";
-# my $wanted = wanted_categories();
-print "##### Get unused categories:\n";
-my $unused = unused_categories();
-print "##### Syncronize:\n";
-$local_pages = getlocalpages($namespaces);
-$wiki_pages = getwikipages($namespaces);
-syncronize_local_wiki;
+if ($view_only ne "user_sr") {
+    print "##### Fix wiki sc type:\n";
+    fix_wiki_sc_type($namespaces);
+    print "##### Fix broken redirects:\n";
+    broken_redirects;
+    print "##### Fix double redirects:\n";
+    scdoubleredirects;
+    print "##### Remove unused images:\n";
+    unused_images_dirty;
+    print "##### Fix missing files:\n";
+    fix_missing_files();
+    print "##### Syncronize wiki files with fs files.\n";
+    fix_images();
+    # print "##### Wanted pages:\n";
+    # my ($cat, $sc, $crm, $other) = fix_wanted_pages();
+    # print "##### Get missing categories:\n";
+    # my $wanted = wanted_categories();
+    print "##### Get unused categories:\n";
+    my $unused = unused_categories();
+    print "##### Syncronize:\n";
+    $local_pages = getlocalpages($namespaces);
+    $wiki_pages = getwikipages($namespaces);
+    syncronize_local_wiki;
+}
+
 print "##### Update users:\n";
 update_user_pages($namespaces->{'private'}->{'User'});
-
 
 ## all files deleted deleteArchivedFiles.php
 # rm -rf /media/share/wiki_images/deleted/*

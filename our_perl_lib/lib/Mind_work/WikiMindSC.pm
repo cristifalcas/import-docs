@@ -3,12 +3,23 @@ package WikiMindSC;
 use warnings;
 use strict;
 
-use File::Slurp;
+use DBI;
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 
 our $pages_toimp_hash = {};
 our $general_categories_hash = {};
+
+my ($wikidb_server, $wikidb_name, $wikidb_user, $wikidb_pass) = ();
+open(FH, "/var/www/html/wiki/LocalSettings.php") or die "Can't open file for read: $!.\n";
+while (<FH>) {
+  $wikidb_server = $2 if $_ =~ m/^(\s*\$wgDBserver\s*=\s*\")(.+)(\"\s*;\s*)$/;
+  $wikidb_name = $2 if $_ =~ m/^(\s*\$wgDBname\s*=\s*\")(.+)(\"\s*;\s*)$/;
+  $wikidb_user = $2 if $_ =~ m/^(\s*\$wgDBuser\s*=\s*\")(.+)(\"\s*;\s*)$/;
+  $wikidb_pass = $2 if $_ =~ m/^(\s*\$wgDBpassword\s*=\s*\")(.+)(\"\s*;\s*)$/;
+}
+close(FH);
+my $dbh_mysql = DBI->connect("DBI:mysql:database=$wikidb_name;host=$wikidb_server", "$wikidb_user", "$wikidb_pass");
 
 sub new {
     my $class = shift;
@@ -33,8 +44,8 @@ sub get_documents {
     my @all = grep { (!/^\.\.?$/) && -d "$path_files/$_" } readdir(DIR);
     closedir(DIR);
 
-    my $general_wiki_file = "General_info.wiki";
-    my $files_info_file = "files_info.txt";
+#     my $general_wiki_file = "General_info.wiki";
+#     my $files_info_file = "files_info.txt";
     my $total = @all;
     my $count = 0;
     my $url_sep = WikiCommons::get_urlsep;
@@ -42,21 +53,10 @@ sub get_documents {
     foreach my $node (sort @all) {
 	$count++;
 	print "\tDone $count from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($count%1000 == 0);
-# next if $node ne 'I004437';
-# 	if (! -e "$path_files/$node/$files_info_file" || ! -e "$path_files/$node/$general_wiki_file") {
-# 	    die "Can't find files_info or General wiki: $path_files/$node.\n";
-# 	    next;
-# 	}
-	die "Can't find files_info or General wiki: $path_files/$node.\n" if (! -e "$path_files/$node/$files_info_file" || ! -e "$path_files/$node/$general_wiki_file");
-	my $md5 = "$node";
-# 	open( my $input_fh, "<", "$path_files/$node/$files_info_file" ) || die "Can't open $path_files/$node/$files_info_file: $!";
-# 	my @data=<$input_fh>;
-
-# 	open(FH, "$path_files/$node/$files_info_file") || die("Could not open file!");
-# 	my @data=<FH>;
-# 	chomp @data;
-# 	close(FH);
-	my @data = read_file( "$path_files/$node/$files_info_file"  ) ;
+# 	die "Can't find files_info or General wiki: $path_files/$node.\n" if (! -e "$path_files/$node/$files_info_file" || ! -e "$path_files/$node/$general_wiki_file");
+	my $md5 = $node;
+	my $ret = $dbh_mysql->selectrow_array("select FILES_INFO_CRT from mind_sc_ids_versions where SC_ID='$node'");
+	my @data = split "\n", $ret;
 
 	my @categories = ();
 	my $info_crt_h ;
@@ -109,8 +109,8 @@ sub get_documents {
 		    } elsif ($node =~ m/^P/i) {
 			$url_namespace = "SC_Plugins_$sc_type";
 		    } else {
-			$url_namespace = "SC_iPhonex_$sc_type";
 die "no namespace here 1: $node.\n".Dumper(@data);
+			$url_namespace = "SC_iPhonex_$sc_type";
 		    }
 		    push @categories, "RealNameSpace ".$url_namespace;
 		    next;
@@ -139,12 +139,10 @@ die "no namespace here 1: $node.\n".Dumper(@data);
 		next;
 	    }
 	    $md5 .= "$tmp[2]" if defined $tmp[2];
-	    ## like this in order to not update everything after we added the date to docs
-	    die "Wrong number of fields for line $line in $node/$files_info_file.\n" if @tmp < 4 || @tmp > 5;
+	    die "Wrong number of fields for line $line in $node.\n" if @tmp < 4 || @tmp > 5;
 	    $info_crt_h->{$tmp[0]}->{'name'} = "$tmp[1]";
 	    $info_crt_h->{$tmp[0]}->{'size'} = "$tmp[2]";
 	    $info_crt_h->{$tmp[0]}->{'revision'} = "$tmp[3]";
-	    ## like this in order to not update everything after we added the date to docs
 	    $info_crt_h->{$tmp[0]}->{'date'} = "$tmp[4]" if defined $tmp[4];
 	}
 die "no namespace here 2: $node.\n".Dumper(@data) if $url_namespace eq "";

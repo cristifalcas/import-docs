@@ -73,12 +73,11 @@ use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."our_perl_lib/lib";
 use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
-use Digest::MD5 qw(md5 md5_hex md5_base64);
+# use Digest::MD5 qw(md5 md5_hex md5_base64);
 use Text::Balanced;
 # use Encode;
 use URI::Escape;
 use File::Path qw(make_path remove_tree);
-use File::Slurp;
 
 use Mind_work::WikiWork;
 use Mind_work::WikiCommons;
@@ -88,6 +87,25 @@ use Mind_work::WikiMindSVN;
 use Mind_work::WikiMindSC;
 use Mind_work::WikiMindCRM;
 use Mind_work::WikiMindCMS;
+
+use File::Slurp;
+use DBI;
+my ($wikidb_server, $wikidb_name, $wikidb_user, $wikidb_pass) = ();
+open(FH, "/var/www/html/wiki/LocalSettings.php") or die "Can't open file for read: $!.\n";
+while (<FH>) {
+  $wikidb_server = $2 if $_ =~ m/^(\s*\$wgDBserver\s*=\s*\")(.+)(\"\s*;\s*)$/;
+  $wikidb_name = $2 if $_ =~ m/^(\s*\$wgDBname\s*=\s*\")(.+)(\"\s*;\s*)$/;
+  $wikidb_user = $2 if $_ =~ m/^(\s*\$wgDBuser\s*=\s*\")(.+)(\"\s*;\s*)$/;
+  $wikidb_pass = $2 if $_ =~ m/^(\s*\$wgDBpassword\s*=\s*\")(.+)(\"\s*;\s*)$/;
+}
+close(FH);
+my $dbh_mysql = DBI->connect("DBI:mysql:database=$wikidb_name;host=$wikidb_server", "$wikidb_user", "$wikidb_pass");
+my $sth_mysql = $dbh_mysql->prepare("CREATE TABLE IF NOT EXISTS mind_wiki_info (
+WIKI_NAME VARCHAR( 255 ) NOT NULL ,
+FILES_INFO_INSERTED VARCHAR( 9000 ) ,
+PRIMARY KEY ( WIKI_NAME ) )");
+$sth_mysql->execute();
+$sth_mysql->finish();
 
 # declare the perl command line flags/options we want to allow
 my $options = {};
@@ -135,7 +153,7 @@ my $remote_work_path = "$path_prefix/remote_batch_files";
 
 my $wiki_result = "result";
 my $wiki_files_uploaded = "wiki_files_uploaded.txt";
-my $wiki_files_info = "wiki_files_info.txt";
+# my $wiki_files_info = "wiki_files_info.txt";
 
 my $pages_toimp_hash = {};
 my $pages_local_hash = {};
@@ -223,24 +241,26 @@ sub get_existing_pages {
     $_ = "$wiki_dir/".$_ foreach (@allfiles);
 
     $count_files = 0;
-    print "-Searching for files in local dir.\t". (WikiCommons::get_time_diff) ."\n";
+    print "-Searching for files in db.\t". (WikiCommons::get_time_diff) ."\n";
     my $total = scalar @allfiles;
     my $crt_nr = 0;
     foreach my $dir (sort @allfiles) {
 	if (-d "$dir") {
 	    next if ($dir eq "$wiki_dir/categories");
 	    $crt_nr++;
-	    print "\tDone $crt_nr from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($crt_nr%100 == 0);
-	    if ( -f "$dir/$wiki_files_info" && -s "$dir/$wiki_files_info") {
-		my ($name,$dir_dir,$suffix) = fileparse($dir, qr/\.[^.]*/);
-# next if ("$name$suffix" !~ m/I004437$/);
-# 		open(FILE, "$dir/$wiki_files_info");
-# 		my @info_text = <FILE>;
-# 		close FILE;
-		my @info_text = read_file( "$dir/$wiki_files_info" ) ;
+	    print "\tDone $crt_nr from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($crt_nr%2000 == 0);
+	    my ($name,$dir_dir,$suffix) = fileparse($dir, qr/\.[^.]*/);
+	    $name = "$name$suffix";
+# if ( -f "$dir/$wiki_files_info" && -s "$dir/$wiki_files_info") {
+# my $info_text = read_file( "$dir/$wiki_files_info" ) ;
+# my $sth_mysql = $dbh_mysql->do("REPLACE INTO mind_wiki_info (WIKI_NAME,FILES_INFO_INSERTED) VALUES (".$dbh_mysql->quote($name).", ".$dbh_mysql->quote($info_text).")");
+# }
+	    my $ret = $dbh_mysql->selectrow_arrayref("select FILES_INFO_INSERTED from mind_wiki_info where WIKI_NAME=".$dbh_mysql->quote($name)); 
+	    if (defined $ret) {
+		my @info_text = split "\n", @$ret[0];
 		chomp(@info_text);
 		if ( @info_text != 4 ) {
-		    print "\tFile $dir/$wiki_files_info does not have the correct number of entries.\n";
+		    print "\tFile $name does not have the correct number of entries.\n".Dumper(@info_text);
 		    next;
 		}
 
@@ -248,9 +268,9 @@ sub get_existing_pages {
 		my $rel_path = $info_text[$rel_path_pos]; $rel_path =~ s/(.*?)=\s*//;
 		my $svn_url = $info_text[$svn_url_pos]; $svn_url =~ s/(.*?)=\s*//;
 		my $url_type = $info_text[$link_type_pos]; $url_type =~ s/(.*?)=\s*//;
-
+# print Dumper($md5);# if $name =~ m/Mind 5.01.011 SP06 -- Release Notes/i;
 		if (!(defined $md5 && defined $rel_path && defined $url_type && defined $svn_url)){
-		    print "\tFile $dir/$wiki_files_info does not have the correct information.\n";
+		    print "\tFile $name does not have the correct information.\n";
 		    next;
 		}
 		$md5 =~ s/(^\s+|\s+$)//g;
@@ -258,10 +278,10 @@ sub get_existing_pages {
 		$svn_url =~ s/(^\s+|\s+$)//g;
 		$url_type =~ s/(^\s+|\s+$)//g;
 		die "\tWe already have this url. But this is insane...\t". (WikiCommons::get_time_diff) ."\n" if (exists $pages_toimp_hash->{$dir});
-		$pages_local_hash->{"$name$suffix"} = [$md5, $rel_path, $svn_url, $url_type, []];
+		$pages_local_hash->{$name} = [$md5, $rel_path, $svn_url, $url_type, []];
 		++$count_files;
 	    } else {
-		print "\tThis is not a correct wiki dir: $dir\n";
+		print "\tThis is not a correct wiki info: $name\n";
 		my @q = split '/', $dir;
 		my $name_bad = "$bad_dir/$q[$#q]".time();
 # 		WikiCommons::makedir("$name_bad");
@@ -273,7 +293,7 @@ sub get_existing_pages {
 	}
     }
     print "\tTotal number of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n";
-    print "+Searching for files in local dir.\t". (WikiCommons::get_time_diff) ."\n";
+    print "+Searching for files in db.\t". (WikiCommons::get_time_diff) ."\n";
 }
 
 sub generate_new_updated_pages {
@@ -436,20 +456,27 @@ sub generate_pages_to_delete_to_import {
 }
 
 sub delete_categories {
-    my ($files, $categories_dir) = @_;
+    my (@categories) = @_;
     return if (WikiCommons::is_remote eq "yes");
 
     print "-Delete categories.\t". (WikiCommons::get_time_diff) ."\n";
-    foreach my $category (@$files) {
-	my $dir_cat = "$categories_dir/Category:$category";
-	if ( -d $dir_cat ) {
-	    print "\tDelete category $category.\t". (WikiCommons::get_time_diff) ."\n";
-	    my ($name,$dir,$suffix) = fileparse("$dir_cat", qr/\.[^.]*/);
-	    $our_wiki->wiki_delete_page("$name$suffix") if ( $our_wiki->wiki_exists_page("$name$suffix") );
-	    remove_tree("$dir$name$suffix") || die "Can't remove dir $dir$name$suffix: $?.\n";
-	} else {
-	    print "Extra file in $categories_dir: $dir_cat.\n" if -f $dir_cat;
-	}
+#     my $sth = $dbh_mysql->prepare("SELECT WIKI_NAME FROM mind_wiki_info where lower(WIKI_NAME) like 'category:%'");
+#     $sth->execute;
+#     my $ret = $sth->fetchall_arrayref();
+# print Dumper(@categories);
+    foreach my $category (@categories) {
+# 	my $category = $key->[0];
+	print "\tDelete category $category.\t". (WikiCommons::get_time_diff) ."\n";
+	my $sth_mysql = $dbh_mysql->do("DELETE FROM mind_wiki_info where WIKI_NAME=".$dbh_mysql->quote($category));
+	$our_wiki->wiki_delete_page($category) if ( $our_wiki->wiki_exists_page($category) );
+# print Dumper($url);next;
+# 	my $dir_cat = "$categories_dir/Category:$category";
+# 	if ( -d $dir_cat ) {
+# 	    my ($name,$dir,$suffix) = fileparse("$dir_cat", qr/\.[^.]*/);
+# 	    remove_tree("$dir$name$suffix") || die "Can't remove dir $dir$name$suffix: $?.\n";
+# 	} else {
+# 	    print "Extra file in $categories_dir: $dir_cat.\n" if -f $dir_cat;
+# 	}
     }
     print "+Delete categories.\t". (WikiCommons::get_time_diff) ."\n";
 }
@@ -457,16 +484,18 @@ sub delete_categories {
 sub make_categories {
     return 1 if ( $make_categories eq "no");
     my $url = "";
-    my $categories_dir = "$wiki_dir/categories/";
-    my @files = ();
-    if (-e "$wiki_dir/categories/") {
-	opendir(DIR, "$categories_dir") || die("Cannot open directory $categories_dir.\n");
-	@files = grep { (!/^\.\.?$/) && -d "$categories_dir/$_" } readdir(DIR);
-	closedir(DIR);
-    }
+#     my $categories_dir = "$wiki_dir/categories/";
+#     my @files = ();
+#     if (-e "$wiki_dir/categories/") {
+# 	opendir(DIR, "$categories_dir") || die("Cannot open directory $categories_dir.\n");
+# 	@files = grep { (!/^\.\.?$/) && -d "$categories_dir/$_" } readdir(DIR);
+# 	closedir(DIR);
+#     }
     my $general_categories_hash = $coco->get_categories;
-    my @to_delete = (keys %$general_categories_hash);
-    delete_categories(\@to_delete, $categories_dir);
+#     my @to_delete = (keys %$general_categories_hash);
+#     delete_categories(\@to_delete, $categories_dir);
+    ## broken: we would need something like select * from mind_wiki_info where lower(WIKI_NAME) like 'category%-- crm' -- or whatever
+#     delete_categories(keys %$general_categories_hash);
 
     return if ($delete_everything eq "yes");
     print "-Making categories.\t". (WikiCommons::get_time_diff) ."\n";
@@ -477,8 +506,6 @@ sub make_categories {
 	    foreach my $sec_key (sort keys %{$general_categories_hash->{$key}} ) {
 		$text .= "\[\[Category:$sec_key\]\]\n" if exists $general_categories_hash->{$key}->{$sec_key} ;
 	    }
-	} else {
-# 	    $text .= "\[\[Category:$key\]\]\n";
 	}
 	$text .= "----\n\n";
 	if (WikiCommons::is_remote ne "yes"){
@@ -489,10 +516,17 @@ sub make_categories {
 	    WikiCommons::makedir("$remote_work_path");
 	    WikiCommons::write_file("$remote_work_path/$url", $text);
 	}
-	my $work_dir = "$wiki_dir/categories/$url";
-	WikiCommons::makedir("$work_dir");
-	WikiCommons::write_file ("$work_dir/$wiki_files_info", "md5 = 0\nrel_path = 0\nsvn_url = 0\nlink_type = category\n");
-	WikiCommons::write_file("$work_dir/$url", $text);
+# 	my $work_dir = "$wiki_dir/categories/$url";
+	my $txt = "md5 = 0\nrel_path = 0\nsvn_url = 0\nlink_type = category\n";
+	my $sth_mysql = $dbh_mysql->do("REPLACE INTO mind_wiki_info 
+		  (WIKI_NAME,FILES_INFO_INSERTED) VALUES 
+		  (".$dbh_mysql->quote($url).", ".$dbh_mysql->quote($txt).")");
+# 	WikiCommons::makedir("$work_dir");
+# 	WikiCommons::write_file ("$work_dir/$wiki_files_info", "md5 = 0\nrel_path = 0\nsvn_url = 0\nlink_type = category\n");
+# print Dumper("$work_dir/$wiki_files_info");die;
+# $sth_mysql->execute();
+# $sth_mysql->finish();
+# 	WikiCommons::write_file("$work_dir/$url", $text);
     }
     print "+Making categories.\t". (WikiCommons::get_time_diff) ."\n";
 }
@@ -522,7 +556,8 @@ sub insertdata {
     $text .= "rel_path = ".$pages_toimp_hash->{$url}[$rel_path_pos]."\n";
     $text .= "svn_url = ".$pages_toimp_hash->{$url}[$svn_url_pos]."\n";
     $text .= "link_type = ".$pages_toimp_hash->{$url}[$link_type_pos]."\n";
-    WikiCommons::write_file("$work_dir/$wiki_files_info", $text);
+#     WikiCommons::write_file("$work_dir/$wiki_files_info", $text);
+    my $sth_mysql = $dbh_mysql->do("REPLACE INTO mind_wiki_info (WIKI_NAME,FILES_INFO_INSERTED) VALUES (".$dbh_mysql->quote($url).", ".$dbh_mysql->quote($text).")");
     delete($pages_toimp_hash->{$url});
 
     my $fail = 0;
@@ -530,21 +565,6 @@ sub insertdata {
     opendir(DIR, $work_dir);
     my @files = grep { (!/^\.\.?$/) } readdir(DIR);
     closedir(DIR);
-#     if (scalar @files > 3 && ($work_dir !~ m/CMS:Why Partner With MIND$/ &&
-# 	    $work_dir !~ m/SVN:SES VF Greece QS System Description -- 5.02$/)) {
-# 	print "Dir $work_dir doesn't have the correct number of files.\n";
-# # 	$fail = 1;
-#     }
-#     foreach my $file (@files){
-# 	if ($file ne $wiki_files_uploaded && $file ne $wiki_files_info && $file !~ m/\.wiki$/ &&
-# 	      !(($work_dir =~ m/CMS:Why Partner With MIND$/ && $file eq "CMS:Why Partner With MIND_html_m3f074c53.png") ||
-# 		($work_dir =~ m/SVN:SES VF Greece QS System Description -- 5.02$/ && $file eq "SVN:SES VF Greece QS System Description -- 5.02_html_m302d1070.gif"))
-# 	  ) {
-# 	    print "File $file from $work_dir should not exist.\n".Dumper(@files);
-# # 	    $fail = 1;
-# 	    last ;
-# 	}
-#     }
     if ($fail){
 	my $name_bad = "$bad_dir/$url".time();
 	WikiCommons::makedir("$name_bad");
@@ -560,7 +580,7 @@ sub work_real {
     foreach my $url (sort keys %$pages_toimp_hash) {
 	eval {
 	$crt_nr++;
-	next if ($pages_toimp_hash->{$url}[$link_type_pos] eq "link");
+	next if WikiCommons::shouldSkipFile($url, $path_files/$pages_toimp_hash->{$url}[$rel_path_pos]) || $pages_toimp_hash->{$url}[$link_type_pos] eq "link";
 	WikiCommons::reset_time();
 	print "\n************************* $crt_nr of $total_nr\nMaking real url for $url\n\t\t$path_files/$pages_toimp_hash->{$url}[$rel_path_pos].\t". (WikiCommons::get_time_diff) ."\n";
 	my $svn_url = $pages_toimp_hash->{$url}[$svn_url_pos];
@@ -668,11 +688,11 @@ sub work_begin {
 	    ## do not delete uploaded files, because same files may be used by other pages. We delete them with the maintenance script
 # 	    $our_wiki->wiki_delete_page("$wiki_dir/$url/$wiki_files_uploaded");
 	    $our_wiki->wiki_delete_page($url) if ( $our_wiki->wiki_exists_page($url) );
+	    my $sth_mysql = $dbh_mysql->do("DELETE FROM mind_wiki_info where WIKI_NAME=".$dbh_mysql->quote($url));
 	    remove_tree("$wiki_dir/$url") || die "Can't remove dir $wiki_dir/$url: $?.\n";
 	}
     }
     use Storable qw(dclone);
-
     $failed = dclone($pages_toimp_hash);
     return $to_keep;
 }
@@ -735,7 +755,10 @@ sub make_redirect {
   my $redirect_text = "#redirect [[$url]]";
   WikiCommons::write_file("$wiki_dir/$url/$crt_name.wiki", "$redirect_text");
   WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
-  WikiCommons::write_file("$wiki_dir/$url/$wiki_files_info", $text);
+#   WikiCommons::write_file("$wiki_dir/$url/$wiki_files_info", $text);
+my $sth_mysql = $dbh_mysql->prepare("REPLACE INTO mind_wiki_info (WIKI_NAME,FILES_INFO_INSERTED) VALUES (".$dbh_mysql->quote($url).", ".$dbh_mysql->quote($text).")");
+$sth_mysql->execute();
+$sth_mysql->finish();
 #   delete($pages_toimp_hash->{$url});
   delete($redirect_toimp_hash->{$crt_name});
   delete $failed->{$url};
@@ -749,7 +772,6 @@ if ($path_type eq "mind_svn") {
     $coco = new WikiMindCMS("$path_files");
     work_for_docs("$path_files");
 } elsif ($path_type eq "users") {
-
     $coco = new WikiMindUsers("$path_files");
     work_for_docs("$path_files");
 } elsif ($path_type =~ m/^crm_(.+)$/) {

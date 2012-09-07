@@ -58,10 +58,10 @@ $to_path = abs_path("$to_path");
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 WikiCommons::set_real_path($path_prefix);
 
-my $sc_table = "mind_sc_ids_versions";
+# my $sc_table = "mind_sc_ids_versions";
 our $svn_pass = 'svncheckout';
 our $svn_user = 'svncheckout';
-our $files_info = "files_info.txt";
+# our $files_info = "files_info.txt";
 our $general_template_file = "$path_prefix/SC_template.txt";
 my $svn_type = "remote";
 # my $svn_type = "local";
@@ -714,13 +714,18 @@ sub sql_get_relpath {
 }
 
 sub get_previous {
-    my $path = shift;
-    my @info = ();
-    open(FH, "$path") or die "Can't open file $path.\n";
-    @info = <FH>;
-    close(FH);
-    chomp @info;
+#     my $path = shift;
+    my $change_id = shift;
     my $info_hash = {};
+    my @info = ();
+# open(FH, "$to_path/$change_id/files_info.txt") or die "Can't open file .\n";
+# @info = <FH>;
+# close(FH);
+    my $ret = $dbh_mysql->selectrow_array("select FILES_INFO_CRT from mind_sc_ids_versions where SC_ID='$change_id'");
+# print Dumper("$to_path/$change_id");die;
+    return $info_hash if ! defined $ret || ! -d "$to_path/$change_id";
+    @info = split "\n", $ret;
+    chomp @info;
     foreach my $line (@info) {
 	my @all = split(/;/, $line);
 	return if (@all < 1);
@@ -847,24 +852,24 @@ sub svn_list {
     return $res;
 }
 
-sub write_control_file {
-    my ($hash, $dir, $categories) = @_;
-    my $text = "";
-    print "\tWrite control file\n";
-    for (my $i=0;$i<@doc_types;$i++) {
-	next if ! exists $hash->{$doc_types[$i]};
-	my $name = $hash->{$doc_types[$i]}->{'name'} || '';
-	my $size = '';
-	$size = $hash->{$doc_types[$i]}->{'size'} if ( defined $hash->{$doc_types[$i]}->{'size'} );
-	my $rev = $hash->{$doc_types[$i]}->{'revision'} || '';
-	my $date = $hash->{$doc_types[$i]}->{'date'} || '';
-	$text .= (1000 + $i) ." $doc_types[$i];$name;$size;$rev;$date\n";
-    }
-
-    $text .= "SC_info;$hash->{'SC_info'}->{'name'};$hash->{'SC_info'}->{'size'};$hash->{'SC_info'}->{'revision'};$hash->{'SC_info'}->{'date'}\n";
-    $text .= "Categories;". (join ';',@$categories). "\n" if defined $categories && scalar @$categories;
-    write_file("$dir/$files_info", "$text");
-}
+# sub write_control_file {
+#     my ($hash, $dir, $categories) = @_;
+#     my $text = "";
+#     print "\tWrite control file\n";
+#     for (my $i=0;$i<@doc_types;$i++) {
+# 	next if ! exists $hash->{$doc_types[$i]};
+# 	my $rev = $hash->{$doc_types[$i]}->{'revision'} || '';
+# 	my $name = $hash->{$doc_types[$i]}->{'name'} || '';
+# 	my $date = $hash->{$doc_types[$i]}->{'date'} || '';
+# 	my $size = $hash->{$doc_types[$i]}->{'size'} || '';
+# # 	$size = $hash->{$doc_types[$i]}->{'size'} if ( defined $hash->{$doc_types[$i]}->{'size'} );
+# 	$text .= (1000 + $i) ." $doc_types[$i];$name;$size;$rev;$date\n";
+#     }
+# 
+#     $text .= "SC_info;$hash->{'SC_info'}->{'name'};$hash->{'SC_info'}->{'size'};$hash->{'SC_info'}->{'revision'};$hash->{'SC_info'}->{'date'}\n";
+#     $text .= "Categories;". (join ';',@$categories). "\n" if defined $categories && scalar @$categories;
+#     write_file("$dir/$files_info", "$text");
+# }
 
 sub search_for_presentations {
     my ($ftp_ip, $ftp_def, $ftp_market, $ftp_test, $change_id) = @_;
@@ -921,20 +926,40 @@ sub remove_old_dirs {
     my ($only_in_sc, $only_in_dirs, $common) = WikiCommons::array_diff( \@scdirs, \@dirs);
     foreach my $dir (@$only_in_dirs) {
 	print "Remove old dir $dir.\n";
+	my $sth_mysql = $dbh_mysql->do("delete from mind_sc_ids_versions where sc_id='$dir'");
+# 	$sth_mysql->execute();
+# 	$sth_mysql->finish();
 	remove_tree("$to_path/$dir");
     }
 }
 
 sub add_versions_to_wiki_db {
-    my ($change_id, $info, $index) = @_;
-    my $sth_mysql = $dbh_mysql->prepare("REPLACE INTO $sc_table VALUES ('$change_id', '@$info[$index->{'fixversion'}]', '@$info[$index->{'buildversion'}]', ' @$info[$index->{'version'}]', '@$info[$index->{'prodversion'}]')");
+    my ($change_id, $info, $index, $hash, $categories) = @_;
+#     my ($hash, $dir, $categories) = @_;
+    my $text = "";
+    for (my $i=0;$i<@doc_types;$i++) {
+	next if ! exists $hash->{$doc_types[$i]};
+	my $rev = $hash->{$doc_types[$i]}->{'revision'} || '';
+	my $name = $hash->{$doc_types[$i]}->{'name'} || '';
+	my $date = $hash->{$doc_types[$i]}->{'date'} || '';
+	my $size = $hash->{$doc_types[$i]}->{'size'} || '';
+# 	$size = $hash->{$doc_types[$i]}->{'size'} if ( defined $hash->{$doc_types[$i]}->{'size'} );
+	$text .= (1000 + $i) ." $doc_types[$i];$name;$size;$rev;$date\n";
+    }
 
-#     $sth_mysql->bind_param( ":SC_ID", $change_id );
-#     $sth_mysql->bind_param( ":FIXVERSION", @$info[$index->{'fixversion'}] );
-#     $sth_mysql->bind_param( ":BUILDVERSION", @$info[$index->{'buildversion'}] );
-#     $sth_mysql->bind_param( ":VERSION", @$info[$index->{'version'}] );
-#     $sth_mysql->bind_param( ":PRODVERSION", @$info[$index->{'prodversion'}] );
+    $text .= "SC_info;$hash->{'SC_info'}->{'name'};$hash->{'SC_info'}->{'size'};$hash->{'SC_info'}->{'revision'};$hash->{'SC_info'}->{'date'}\n";
+    $text .= "Categories;". (join ';',@$categories). "\n" if defined $categories && scalar @$categories;
+    
+#     write_file("$dir/$files_info", "$text");
 
+    my $sth_mysql = $dbh_mysql->prepare("REPLACE INTO mind_sc_ids_versions 
+		(SC_ID, FIXVERSION, BUILDVERSION, VERSION, PRODVERSION, FILES_INFO_CRT) 
+		VALUES 
+		('$change_id', '@$info[$index->{'fixversion'}]', 
+		 '@$info[$index->{'buildversion'}]', 
+		 '@$info[$index->{'version'}]', 
+		 '@$info[$index->{'prodversion'}]', 
+		 ".$dbh_mysql->quote($text).")");
     $sth_mysql->execute();
     $sth_mysql->finish();
 }
@@ -954,16 +979,16 @@ while (<FH>) {
   $wikidb_pass = $2 if $_ =~ m/^(\s*\$wgDBpassword\s*=\s*\")(.+)(\"\s*;\s*)$/;
 }
 close(FH);
-# my $dsn_mysql = ;
+
 $dbh_mysql = DBI->connect("DBI:mysql:database=$wikidb_name;host=$wikidb_server", "$wikidb_user", "$wikidb_pass");
-# print "$sc_table";
-my $sth_mysql = $dbh_mysql->prepare("CREATE TABLE IF NOT EXISTS $sc_table (
+my $sth_mysql = $dbh_mysql->prepare("CREATE TABLE IF NOT EXISTS mind_sc_ids_versions (
 SC_ID VARCHAR( 255 ) NOT NULL ,
 FIXVERSION VARCHAR( 255 ) ,
 BUILDVERSION VARCHAR( 255 ) ,
 VERSION VARCHAR( 255 ) ,
 PRODVERSION VARCHAR( 255 ) ,
-PRIMARY KEY ( SC_ID ))");
+FILES_INFO_CRT VARCHAR( 9000 ) ,
+PRIMARY KEY ( SC_ID ) )");
 $sth_mysql->execute();
 $sth_mysql->finish();
 
@@ -1013,7 +1038,8 @@ foreach my $change_id (sort keys %$crt_hash){
     my $missing_documents = {};
     my $crt_info = {};
     print "*************\n-Start working for $change_id: nr $count of $total.\t$dif\n";
-    my $prev_info = get_previous("$to_path/$change_id/$files_info") if (-e "$to_path/$change_id/$files_info");
+#     my $prev_info = get_previous("$to_path/$change_id/$files_info") if (-e "$to_path/$change_id/$files_info");
+    my $prev_info = get_previous($change_id);
 
     ### svn updates (first svn, because we need missing documents)
     my $update_control_file = 0;
@@ -1025,7 +1051,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	    my $dir = @$info_comm[$index_comm->{$key}];
 # 	    $dir =~ s/$db_relpath/$svn_local_path/ if ($svn_type eq "local");
 	    my $file = $svn_docs->{$key};
-	    my $res = svn_list("$dir", "$file");
+	    my $res = svn_list($dir, $file);
 
 	    my $doc_rev = $res->{'commit'}->{'revision'};
 	    my $doc_size = $res->{'size'};
@@ -1042,7 +1068,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	    if ( ! Compare($crt_info->{$key}, $prev_info->{$key}) ) {
 		print "\tUpdate svn http for $key.\n";
 		my $file_res = WikiCommons::http_get("$dir/$file", "$work_dir", "$svn_user", "$svn_pass");
-		move("$file_res", "$work_dir/$key.doc") || die "can't move file $file_res to $work_dir/$key.doc: $!.\n";
+		move($file_res, "$work_dir/$key.doc") || die "can't move file $file_res to $work_dir/$key.doc: $!.\n";
 		$update_control_file++;
 	    }
 	}
@@ -1071,9 +1097,7 @@ foreach my $change_id (sort keys %$crt_hash){
 
 	my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
 	## some SR's are completly empty, so ignore them
-	next if (scalar @$info_ret == 0);
-	add_versions_to_wiki_db($change_id, $info_ret, $index);
-	next if $update_only_wiki_db eq "yes";
+	next if scalar @$info_ret == 0 || $update_only_wiki_db eq "yes";
 	my $modules = sql_get_modules( split ',', @$info_ret[$index->{'modules'}] ) if defined @$info_ret[$index->{'modules'}];
 	my $tester = sql_get_workers_names( split ',', @$info_ret[$index->{'tester'}] ) if defined @$info_ret[$index->{'tester'}];
 	my $initiator = sql_get_workers_names( split ',', @$info_ret[$index->{'initiator'}] );
@@ -1095,9 +1119,10 @@ foreach my $change_id (sort keys %$crt_hash){
 	write_rtf ("$work_dir/5 Messages_SC.rtf", @$info_ret[$index->{'Messages_SC'}]);
 	write_rtf ("$work_dir/6 Architecture_SC.rtf", @$info_ret[$index->{'Architecture_SC'}]);
 	$update_control_file++;
+	add_versions_to_wiki_db($change_id, $info_ret, $index, $crt_info, $cat);
     }
-    write_control_file($crt_info, $work_dir, $cat) if $update_control_file;
-
+#     write_control_file($crt_info, $work_dir, $cat) if $update_control_file;
+# die;
     WikiCommons::move_dir("$work_dir", "$to_path/$change_id/");
     print "+Finish working for $change_id: nr $count of $total.\t$dif\n";
 }

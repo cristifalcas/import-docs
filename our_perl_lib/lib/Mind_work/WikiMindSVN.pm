@@ -84,6 +84,20 @@ sub fix_rest_dirs {
     return $rest;
 }
 
+sub get_md5_fast {
+    my $doc_file = shift;
+    ## md5 is fatser, but more IO consuming... we don't like high IO
+    my $md5 = WikiCommons::svn_info("$doc_file\@", "", "");
+    if (defined $md5) {
+	$md5 =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
+	chomp $md5;
+    } else {
+	print "are we reallly using md5 for $doc_file?\n";
+	$md5 = WikiCommons::get_file_md5($doc_file);
+    }
+    return $md5;
+}
+
 sub add_document {
     my ($doc_file,$dir_type, $path_file) = @_;
 
@@ -241,7 +255,8 @@ sub add_document {
 	## $ver, $main, $big_ver, $customer, $dir_type, $name
 	generate_categories("", $main, $big_ver, "", "SVN SC Documents", "");
 #  	push @categories, $customer;
-	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
+# 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
+	$pages_toimp_hash->{$page_url} = [get_md5_fast($doc_file), $rel_path, $svn_url, "link", \@categories];
 	return 0;
     }
 
@@ -283,7 +298,8 @@ sub add_document {
 
 	generate_categories("", $main, $big_ver, "", "SVN RN Documents", "");
 	die "RN $page_url already exists:\n\t$rel_path\n".Dumper($pages_toimp_hash->{$page_url}) if defined $pages_toimp_hash->{$page_url};
-	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
+# 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
+	$pages_toimp_hash->{$page_url} = [get_md5_fast($doc_file), $rel_path, $svn_url, "link", \@categories];
 	return 0;
     }
 
@@ -293,18 +309,11 @@ sub add_document {
 # print "2. $page_url\n";
     return 1 if $ver_fixed lt "5.00" && $ver_fixed ne "" && ($dir_type ne "Docs_SIPServer" && $dir_type ne "Docs_PaymentManager_Deployment"&& $dir_type ne "Docs_PaymentManager");
     if (defined $pages_ver->{$page_url}->{'ver'} ){
-	if ($pages_ver->{$page_url}->{'ver'} gt "$full_ver"){
+	if ($pages_ver->{$page_url}->{'ver'} gt $full_ver){
 # print "skip $full_ver because we have $pages_ver->{$page_url}->{'ver'}\n";
 	    return 0;
 	} elsif ($pages_ver->{$page_url}->{'ver'} eq $full_ver) {
-	    my $new = WikiCommons::svn_info("$path_file/$rel_path", "", "");
-	    if (defined $new) {
-		$new =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
-		chomp $new;
-	    } else {
-		$new = WikiCommons::get_file_md5($doc_file);
-	    }
-
+	    my $new = get_md5_fast($doc_file);
 	    my $old = WikiCommons::svn_info("$path_file/$pages_toimp_hash->{$page_url}[1]", "", "");
 	    if (defined $old) {
 		$old =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
@@ -316,7 +325,7 @@ sub add_document {
 	    if ($new ne $old) {
 		my $id = 1;
 		$id = $pages_ver->{$page_url}->{'id'} + 1 if (defined $pages_ver->{$page_url}->{'id'});
-# print "add extra $page_url because $full_ver is the same as $pages_ver->{$page_url}->{'ver'}\n";
+# 		print "add extra $page_url because $full_ver is the same as $pages_ver->{$page_url}->{'ver'}\n";
 		my $new_url = $page_url."$url_sep"."$id";
 		push(@{$pages_ver->{$page_url}->{'urls'}}, $new_url);
 		$page_url = $new_url;
@@ -356,7 +365,8 @@ sub add_document {
 	generate_categories($ver_fixed, $main, $big_ver, $customer, $dir_type, $correct_category);
     }
 
-    $pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
+#     $pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
+    $pages_toimp_hash->{$page_url} = [get_md5_fast($doc_file), $rel_path, $svn_url, "link", \@categories];
     $pages_ver->{$page_url}->{'ver'} = "$full_ver";
 # print "2. $page_url\n";
 
@@ -390,6 +400,11 @@ sub get_correct_category {
     return "Workflow" if $name =~ m/^Workflow\b/i;
     return "Database Documentation" if $name =~ m/(DB Documentation|Data Dictionary Tables)$/i;
     return "SIP Server" if $name =~ m/^SIP Server\b/i;
+    return "Authorize.Net" if $name =~ m/Authorize\.Net/i;
+    return "XML Invoice" if $name =~ m/XML Invoice - Reference Guide/i;
+    return "XML Invoice" if $name =~ m/Wireless - XML Invoice/i;
+    return "XML Invoice" if $name =~ m/XML Invoice Set ?Up/i;
+
     return $name;
 }
 

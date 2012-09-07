@@ -9,6 +9,7 @@ use File::Basename;
 use File::Copy;
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
+use Digest::MD5 qw(md5 md5_hex md5_base64);
 use XML::Simple;
 use LWP::UserAgent;
 use Encode;
@@ -26,7 +27,8 @@ sub set_real_path {
 
 sub svn_list {
     my ($url, $svn_pass, $svn_user) = @_;
-    my $output = `svn list --non-interactive --no-auth-cache --trust-server-cert --password "$svn_pass" --username "$svn_user" "$url"`;
+    my $q_url = quotemeta $url;
+    my $output = `svn list --non-interactive --no-auth-cache --trust-server-cert --password "$svn_pass" --username "$svn_user" $q_url 2>&1`;
     if ($?) {
 	print "\tError $? for svn list.\n";
 	return undef;
@@ -51,7 +53,8 @@ sub svn_checkout {
 
 sub svn_info {
     my ($url, $svn_pass, $svn_user) = @_;
-    my $output = `svn info --non-interactive --no-auth-cache --trust-server-cert --password "$svn_pass" --username "$svn_user" "$url"`;
+    my $q_url = quotemeta $url;
+    my $output = `svn info --non-interactive --no-auth-cache --trust-server-cert --password "$svn_pass" --username "$svn_user" $q_url 2>&1`; 
     if ($?) {
 	print "\tError $? for svn info.\n";
 	return undef;
@@ -584,6 +587,15 @@ sub get_correct_customer{
 
     return undef if ( ! $is_ok );
     return $crm_name;
+}
+
+sub shouldSkipFile {
+    my ($url, $file) = @_;
+    my $ret = 0;
+    $ret = 1 if $url eq "RN:Mind 5.30.001 - 002 -- Release Notes";
+die Dumper($url, $file) if $ret==1;
+
+    return $ret;
 }
 
 return 1;
