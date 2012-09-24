@@ -2,7 +2,7 @@
 print "Start\n";
 use warnings;
 use strict;
-
+$| = 1; 
 $SIG{__WARN__} = sub { die @_ };
 
 use Cwd 'abs_path','chdir';
@@ -104,7 +104,7 @@ SELECT T1.CHANGEID,
        T1.TITLE,
        nvl(T1.COMMENTS,' '),
        i.WorkerName,
-       t1.modules
+       nvl(t1.modules, ' ')
   FROM SCChange T1, SC_PLANS p, SC_BUILD_MANAGER b, SCWork i, sccustomers c
  WHERE  T1.Product IS NOT NULL
    AND T1.customer_id = c.id(+)
@@ -196,7 +196,7 @@ sub getWikiPages {
     my $info;
     $ns =~ s/_/ /g;
     my $namespaces = $our_wiki->wiki_get_namespaces;
-    foreach (keys %$namespaces){
+    foreach (sort keys %$namespaces){
 	next if $namespaces->{$_} ne $ns;
 	$pages = $our_wiki->wiki_get_all_pages($_);
     }
@@ -213,7 +213,7 @@ sub makeDeploymentPage {
     delete $ids->{'page'};
     my $clones;
     my $uniq_ids;
-    foreach (keys %$ids) {
+    foreach (sort keys %$ids) {
 	$uniq_ids->{$_} = 1 if defined $deployment_wiki->{$_};
 	if (defined $ids->{$_}) {
 	    $clones .= "\n\n$_ -> ". join " -> ",  @{$ids->{$_}};
@@ -244,7 +244,7 @@ foreach (@$projs) {
 print "Get all service packs.\n";
 my $sps = getSPs;
 foreach my $sp (sort keys %$sps) {
-# next if "$sp" !~ m/iPhonEX -- iPhonEX -- 5.30.017 gn/i;
+next if "$sp" !~ m/iPhonEX -- iPhonEX -- 7.00.001/i;
 # next if "$sp" !~ m/Sentori -- Main/i;
     my $sp_ids = $sps->{$sp};
     my $full_deployment->{'page'} = "$deployment_ns:Deployment$urlsep$sp$urlsep"."full";
@@ -252,7 +252,7 @@ foreach my $sp (sort keys %$sps) {
     my $txt = "[[".$full_deployment->{'page'}."| Full deployment consideration]].\n\n\n";
     my $txt_all = {};
     delete $sps->{$sp}->{'XXX_Cat'};
-    foreach my $id (keys %$sp_ids) {
+    foreach my $id (sort keys %$sp_ids) {
 	my $sp_txt;
 	my $sp_deployment->{'page'} = "$deployment_ns:Deployment$urlsep$sp$urlsep".$sp_ids->{$id}->{'sp'};
 	my $sp_bugs->{'page'} = "$deployment_ns:Bugs$urlsep$sp$urlsep".$sp_ids->{$id}->{'sp'};
@@ -281,6 +281,8 @@ foreach my $sp (sort keys %$sps) {
 	    } else {
 		$cust = $tasks->{$sc}->{'CUSTOMER'} ;
 	    }
+# print "$sp_deployment->{'page'}\n";
+# print Dumper($id, $tasks->{$sc}) if ! defined $tasks->{$sc}->{'modules'};
 	    my @module_ids = split ",",$tasks->{$sc}->{'modules'};
 	    my $modules = sql_get_modules(@module_ids);
 	    my $modules_str = join "\' <br/> \'", @$modules;
@@ -298,7 +300,6 @@ foreach my $sp (sort keys %$sps) {
     $txt .= $txt_all->{$_} foreach (reverse sort keys %$txt_all);
     $txt .= "$end\n\n";
     $our_wiki->wiki_edit_page("$deployment_ns:$sp", "$txt");
-
 }
 $dbh->disconnect if defined($dbh);
 print "Done.\n";

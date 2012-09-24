@@ -44,10 +44,10 @@ use URI::Escape;
 use Data::Compare;
 use Mind_work::WikiCommons;
 
-die "We need the temp path, the destination path and sc type:b1-5, f, i, h, r, d, t, k, z, a, p, cancel.\n" if ( $#ARGV != 2 );
+die "We need the temp path, the destination path and sc type:b1-5, f, i, h, r, d, e, g, s, t, k, z, a, p, cancel.\n" if ( $#ARGV != 2 );
 our ($tmp_path, $to_path, $sc_type) = @ARGV;
 
-die "sc type should be:b1-5, f, i, h, r, d, t, k, z, a, p, cancel.\n" if $sc_type !~ m/(^[fihrdtkzap]$)|(^b[1-5]$)|(^cancel$)/i;
+die "sc type should be:b1-5, f, i, h, r, d, e, g, s, t, k, z, a, p, cancel.\n" if $sc_type !~ m/(^[fihrdtkzapseg]$)|(^b[1-5]$)|(^cancel$)/i;
 $sc_type = uc $sc_type;
 
 remove_tree("$tmp_path");
@@ -598,6 +598,12 @@ sub sql_get_all_changes {
 	$cond  = "projectcode = 'H' and writtendatetime > '1Jan2008'";
     } elsif ($sc_type eq 'R') {
 	$cond  = "projectcode = 'R'";
+    } elsif ($sc_type eq 'E') {
+	$cond  = "projectcode = 'E'";
+    } elsif ($sc_type eq 'G') {
+	$cond  = "projectcode = 'G'";
+    } elsif ($sc_type eq 'S') {
+	$cond  = "projectcode = 'S'";
     } elsif ($sc_type eq 'T') {
 	$cond  = "projectcode = 'T'";
     } elsif ($sc_type eq 'K') {
@@ -618,6 +624,9 @@ sub sql_get_all_changes {
        or (projectcode = 'I' and (nvl(version, 5) >= '4.00' or nvl(fixversion,5) >= '4.00'))
        or (projectcode = 'H' and writtendatetime > '1Jan2008')
        or (projectcode = 'R')
+       or (projectcode = 'E')
+       or (projectcode = 'G')
+       or (projectcode = 'S')
        or (projectcode = 'T')
        or (projectcode = 'K')
        or (projectcode = 'Z')

@@ -100,12 +100,7 @@ while (<FH>) {
 }
 close(FH);
 my $dbh_mysql = DBI->connect("DBI:mysql:database=$wikidb_name;host=$wikidb_server", "$wikidb_user", "$wikidb_pass");
-my $sth_mysql = $dbh_mysql->prepare("CREATE TABLE IF NOT EXISTS mind_wiki_info (
-WIKI_NAME VARCHAR( 255 ) NOT NULL ,
-FILES_INFO_INSERTED VARCHAR( 9000 ) ,
-PRIMARY KEY ( WIKI_NAME ) )");
-$sth_mysql->execute();
-$sth_mysql->finish();
+# my $sth_mysql = $dbh_mysql->do("CREATE TABLE IF NOT EXISTS mind_wiki_info (WIKI_NAME VARCHAR( 255 ) NOT NULL ,FILES_INFO_INSERTED VARCHAR( 9000 ) ,PRIMARY KEY ( WIKI_NAME ) )");
 
 # declare the perl command line flags/options we want to allow
 my $options = {};
@@ -193,7 +188,7 @@ sub create_wiki {
     $doc_file = "$work_dir/$new_file$suffix";
 
     if ( -f $doc_file ) {
-	WikiCommons::generate_html_file( $doc_file );
+	WikiCommons::generate_html_file( $doc_file, "html" );
 	my $html_file = "$work_dir/$new_file.html";
 
 	if ( -f $html_file && ! -e ".~lock.$new_file#") {
@@ -496,12 +491,14 @@ sub make_categories {
 #     delete_categories(\@to_delete, $categories_dir);
     ## broken: we would need something like select * from mind_wiki_info where lower(WIKI_NAME) like 'category%-- crm' -- or whatever
 #     delete_categories(keys %$general_categories_hash);
-
+# return;
     return if ($delete_everything eq "yes");
+    my $categories_ref = $dbh_mysql->selectall_hashref("select WIKI_NAME from mind_wiki_info where WIKI_NAME like 'Category:%'", 'WIKI_NAME');
     print "-Making categories.\t". (WikiCommons::get_time_diff) ."\n";
     foreach my $key (sort keys %$general_categories_hash) {
 	my $text = "----\n\n";
 	$url = "Category:$key";
+	next if defined $categories_ref->{$url};
 	if (ref $general_categories_hash->{$key}) {
 	    foreach my $sec_key (sort keys %{$general_categories_hash->{$key}} ) {
 		$text .= "\[\[Category:$sec_key\]\]\n" if exists $general_categories_hash->{$key}->{$sec_key} ;
@@ -514,7 +511,7 @@ sub make_categories {
 	} else {
 	    print "\tCopy category to $remote_work_path\n";
 	    WikiCommons::makedir("$remote_work_path");
-	    WikiCommons::write_file("$remote_work_path/$url", $text);
+	    WikiCommons::write_file("$remote_work_path/$url.wiki", $text);
 	}
 # 	my $work_dir = "$wiki_dir/categories/$url";
 	my $txt = "md5 = 0\nrel_path = 0\nsvn_url = 0\nlink_type = category\n";
@@ -579,35 +576,35 @@ sub work_real {
     my $crt_nr = 0;
     foreach my $url (sort keys %$pages_toimp_hash) {
 	eval {
-	$crt_nr++;
-	next if WikiCommons::shouldSkipFile($url, $path_files/$pages_toimp_hash->{$url}[$rel_path_pos]) || $pages_toimp_hash->{$url}[$link_type_pos] eq "link";
-	WikiCommons::reset_time();
-	print "\n************************* $crt_nr of $total_nr\nMaking real url for $url\n\t\t$path_files/$pages_toimp_hash->{$url}[$rel_path_pos].\t". (WikiCommons::get_time_diff) ."\n";
-	my $svn_url = $pages_toimp_hash->{$url}[$svn_url_pos];
-	$svn_url = uri_escape( $svn_url,"^A-Za-z\/:0-9\-\._~%" );
-	my $wiki = create_wiki($url, "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]");
-	if (! defined $wiki ){
-	    WikiCommons::makedir("$bad_dir/$url");
-	    WikiCommons::move_dir("$wiki_dir/$url","$bad_dir/$url");
-	    delete($pages_toimp_hash->{$url});
-	    next;
-	}
-	my $head_text = "<center>\'\'\'This file was automatically imported from the following document: [[File:$url.zip|$url.zip]]\'\'\'\n\n";
-	$head_text .= "The original document can be found at [$svn_url this address]\n" if ($svn_url ne "");
-	$head_text .= "</center>\n----\n\n\n\n\n\n".$wiki."\n----\n\n";
-	$wiki = $head_text;
-	my $cat = $pages_toimp_hash->{$url}[$categories_pos];
-	foreach (@$cat) {
-	    $wiki = $wiki."[[Category:$_]]" if ($_ ne "");
-	}
+	  next if WikiCommons::shouldSkipFile($url, "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]") || $pages_toimp_hash->{$url}[$link_type_pos] eq "link";
+	  $crt_nr++;
+	  WikiCommons::reset_time();
+	  print "\n************************* $crt_nr of $total_nr\nMaking real url for $url\n\t\t$path_files/$pages_toimp_hash->{$url}[$rel_path_pos].\t". (WikiCommons::get_time_diff) ."\n";
+	  my $svn_url = $pages_toimp_hash->{$url}[$svn_url_pos];
+	  $svn_url = uri_escape( $svn_url,"^A-Za-z\/:0-9\-\._~%" );
+	  my $wiki = create_wiki($url, "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]");
+	  if (! defined $wiki ){
+	      WikiCommons::makedir("$bad_dir/$url");
+	      WikiCommons::move_dir("$wiki_dir/$url","$bad_dir/$url");
+	      delete($pages_toimp_hash->{$url});
+	      next;
+	  }
+	  my $head_text = "<center>\'\'\'This file was automatically imported from the following document: [[File:$url.zip|$url.zip]]\'\'\'\n\n";
+	  $head_text .= "The original document can be found at [$svn_url this address]\n" if ($svn_url ne "");
+	  $head_text .= "</center>\n----\n\n\n\n\n\n".$wiki."\n----\n\n";
+	  $wiki = $head_text;
+	  my $cat = $pages_toimp_hash->{$url}[$categories_pos];
+	  foreach (@$cat) {
+	      $wiki = $wiki."[[Category:$_]]" if ($_ ne "");
+	  }
 
-	$to_keep->{$url} = $pages_toimp_hash->{$url};
-	my ($name,$dir,$suffix) = fileparse($path_files."/".$pages_toimp_hash->{$url}[$rel_path_pos], qr/\.[^.]*/);
-	insertdata($url, $wiki);
-	if ($path_type eq "users"){
-	    my $text_url = "[InternetShortcut]\nURL=". $our_wiki->wiki_geturl ."/index.php/$url";
-	    WikiCommons::write_file ("$dir/$name.url", $text_url);
-	}
+	  $to_keep->{$url} = $pages_toimp_hash->{$url};
+	  my ($name,$dir,$suffix) = fileparse($path_files."/".$pages_toimp_hash->{$url}[$rel_path_pos], qr/\.[^.]*/);
+	  insertdata($url, $wiki);
+	  if ($path_type eq "users"){
+	      my $text_url = "[InternetShortcut]\nURL=". $our_wiki->wiki_geturl ."/index.php/$url";
+	      WikiCommons::write_file ("$dir/$name.url", $text_url);
+	  }
 	}; ## eval
 	print "Error generating for $url: $@\n" if $@ && $@ !~ m/^Exiting eval via next at/;
     }
@@ -686,7 +683,6 @@ sub work_begin {
 	foreach my $url (sort keys %$to_delete) {
 	    print "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";
 	    ## do not delete uploaded files, because same files may be used by other pages. We delete them with the maintenance script
-# 	    $our_wiki->wiki_delete_page("$wiki_dir/$url/$wiki_files_uploaded");
 	    $our_wiki->wiki_delete_page($url) if ( $our_wiki->wiki_exists_page($url) );
 	    my $sth_mysql = $dbh_mysql->do("DELETE FROM mind_wiki_info where WIKI_NAME=".$dbh_mysql->quote($url));
 	    remove_tree("$wiki_dir/$url") || die "Can't remove dir $wiki_dir/$url: $?.\n";
@@ -756,9 +752,9 @@ sub make_redirect {
   WikiCommons::write_file("$wiki_dir/$url/$crt_name.wiki", "$redirect_text");
   WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
 #   WikiCommons::write_file("$wiki_dir/$url/$wiki_files_info", $text);
-my $sth_mysql = $dbh_mysql->prepare("REPLACE INTO mind_wiki_info (WIKI_NAME,FILES_INFO_INSERTED) VALUES (".$dbh_mysql->quote($url).", ".$dbh_mysql->quote($text).")");
-$sth_mysql->execute();
-$sth_mysql->finish();
+  my $sth_mysql = $dbh_mysql->do("REPLACE INTO mind_wiki_info (WIKI_NAME,FILES_INFO_INSERTED) VALUES (".$dbh_mysql->quote($url).", ".$dbh_mysql->quote($text).")");
+# $sth_mysql->execute();
+# $sth_mysql->finish();
 #   delete($pages_toimp_hash->{$url});
   delete($redirect_toimp_hash->{$crt_name});
   delete $failed->{$url};
@@ -839,7 +835,7 @@ if ($path_type eq "mind_svn") {
     foreach my $url (sort keys %$pages_toimp_hash) {
 	eval {
 	$crt_nr++;
-# next if "$url" !~ "B105430";
+# next if "$url" !~ "B621568";
 	WikiCommons::reset_time();
 	print "\n************************* $crt_nr of $total_nr\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 	WikiCommons::makedir "$wiki_dir/$url/";
@@ -950,7 +946,7 @@ if ($path_type eq "mind_svn") {
 		$wiki_txt = $newwiki;
 	    } else {
 		$wiki_txt =~ s/\n(==+)(.*?)(==+)\n/\n\'\'\'$2\'\'\'\n/g;
-		$count += 6 - ( length($1) + length($1) );
+		$count += 6 - ( length($1) + length($3) ) if defined $1 && defined $3;
 	    }
 
 	    $wiki_txt =~ s/^\s*(.*)\s*$/$1/gs;
@@ -986,8 +982,6 @@ if ($path_type eq "mind_svn") {
 	}
 	my $is_canceled = 0;
 	$is_canceled++ if $pages_toimp_hash->{$url}[$svn_url_pos]->{'SC_info'}->{'revision'} =~ m/^Cancel$/i;
-	insertdata($url, $full_wiki);
-	make_redirect($url, $wrong_hash);
 
 	my $url_deployment = $url;
 	$url_deployment =~ s/^SC:/SC_Deployment:/;
@@ -1003,20 +997,24 @@ if ($path_type eq "mind_svn") {
 	  $txt =~ s/\n(=+)(.*?)(=+)\n/\n<b>$2<\/b>\n/gms;
 	  $deployment_txt .= "$txt\n\n";
 	}
-	next if ! defined $deployment_txt || $is_canceled;
-	my $title = $full_wiki;
-	$title =~ s/^<center><font size="[0-9]{1,}">'''(.*?)'''<\/font><\/center>.*$/$1/gsi;
-	$url =~ s/^SC:(.*)/$1/;
-	$deployment_txt = "=<small>[[SC:$url|$url: $title]]</small>=\n".$deployment_txt;
-	print "\tImporting url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n";
-	$our_wiki->wiki_edit_page($url_deployment, $deployment_txt);
-	die "Could not import url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url_deployment) );
+	insertdata($url, $full_wiki);
+
+	if (defined $deployment_txt && ! $is_canceled ) {
+	    my $title = $full_wiki;
+	    $title =~ s/^<center><font size="[0-9]{1,}">'''(.*?)'''<\/font><\/center>.*$/$1/gsi;
+	    my $url_s = $url; $url_s =~ s/^SC:(.*)/$1/;
+	    $deployment_txt = "=<small>[[SC:$url_s|$url_s: $title]]</small>=\n".$deployment_txt;
+	    print "\tImporting url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n";
+	    $our_wiki->wiki_edit_page($url_deployment, $deployment_txt);
+	    die "Could not import url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url_deployment) );
+	}
+	make_redirect($url, $wrong_hash);
 	}; ## eval
 	print "Error generating sc for $url: $@\n" if $@ && $@ !~ m/^Exiting eval via next at/;
     }
 }
 
-
+# quick_and_dirty_html_to_wiki
 sub quick_and_dirty_html_to_wiki {
     my $url = "SIP Call Flow";
     my $work_dir = "$wiki_dir/$url";
@@ -1060,7 +1058,7 @@ sub quick_and_dirty_html_to_wiki {
     die "Failed in cleanup.\n" if WikiCommons::cleanup($work_dir);
 }
 
-# quick_and_dirty_html_to_wiki
+$dbh_mysql->disconnect() if defined($dbh_mysql);
 @tmp = (sort keys %$failed);
 print "Failed:\n".Dumper(@tmp) if @tmp;
 @crt_timeData = localtime(time);

@@ -3,7 +3,7 @@ print "Start.\n";
 use warnings;
 use strict;
 $SIG{__WARN__} = sub { die @_ };
-
+$| = 1; 
 #syncronize wiki with local fs: delete all in only one of them
 #fix missing files: find pages with missing files, search for the pages on local dirs and remove them from both
 
@@ -40,21 +40,20 @@ use Digest::MD5 qw(md5 md5_hex md5_base64);
 use Mind_work::WikiWork;
 use Mind_work::WikiCommons;
 
-my $dbh;
+my ($dbh,$dbh_mysql);
 my $workdir = "/media/share/Documentation/cfalcas/q/import_docs/work/";
 my $images_dir = "/var/www/html/wiki/images/";
 my $our_wiki;
 $our_wiki = new WikiWork();
-my ($local_pages, $wiki_pages);
 my $view_only = shift;
 $view_only = 1 if ! defined $view_only;
 my $max_elements = 2000;
-my $max_to_delete = 2000;
+my $max_to_delete = 4000;
 
 sub fixnamespaces {
   my $namespaces = shift;
   my $res = {};
-  foreach my $ns_nr (keys %$namespaces){
+  foreach my $ns_nr (sort keys %$namespaces){
     if ($ns_nr >= 100) {
 	my $name = $namespaces->{$ns_nr};
 	$name =~ s/ /_/g;
@@ -102,7 +101,7 @@ sub get_results {
   return \@res;
 }
 
-sub sql_connect {
+sub sql_connect_oracle {
     my ($ip, $sid, $user, $pass) = @_;
     $dbh=DBI->connect("dbi:Oracle:host=$ip;sid=$sid", "$user", "$pass")|| die( $DBI::errstr . "\n" );
     $dbh->{AutoCommit}    = 0;
@@ -111,6 +110,19 @@ sub sql_connect {
     $dbh->{RowCacheSize}  = 16;
     $dbh->{LongReadLen}   = 52428800;
     $dbh->{LongTruncOk}   = 0;
+}
+
+sub sql_connect_mysql {
+    my ($wikidb_server, $wikidb_name, $wikidb_user, $wikidb_pass) = ();
+    open(FH, "/var/www/html/wiki/LocalSettings.php") or die "Can't open file for read: $!.\n";
+    while (<FH>) {
+      $wikidb_server = $2 if $_ =~ m/^(\s*\$wgDBserver\s*=\s*\")(.+)(\"\s*;\s*)$/;
+      $wikidb_name = $2 if $_ =~ m/^(\s*\$wgDBname\s*=\s*\")(.+)(\"\s*;\s*)$/;
+      $wikidb_user = $2 if $_ =~ m/^(\s*\$wgDBuser\s*=\s*\")(.+)(\"\s*;\s*)$/;
+      $wikidb_pass = $2 if $_ =~ m/^(\s*\$wgDBpassword\s*=\s*\")(.+)(\"\s*;\s*)$/;
+    }
+    close(FH);
+    $dbh_mysql = DBI->connect("DBI:mysql:database=$wikidb_name;host=$wikidb_server", "$wikidb_user", "$wikidb_pass"); 
 }
 
 sub sql_get_crm_info_for_user {
@@ -350,11 +362,11 @@ sub update_user_pages {
       $new_txt =~ s/(\n|^)$section_name\s*(\n.*|$)//gsi;
       next if $new_txt eq $txt;
 
-      sql_connect('10.0.0.103', 'SCROM', 'scview', 'scview');
+      sql_connect_oracle('10.0.0.103', 'SCROM', 'scview', 'scview');
       my $info_sc = sql_get_sc_info_for_user($name);
       $dbh->disconnect if defined($dbh);
 
-      sql_connect('10.0.10.92', 'BILL', 'service25', 'service25');
+      sql_connect_oracle('10.0.10.92', 'BILL', 'service25', 'service25');
       my $info_crm = sql_get_crm_info_for_user($name);
       $dbh->disconnect if defined($dbh);
 
@@ -373,8 +385,9 @@ sub update_user_pages {
 sub fix_wiki_sc_type {
   my $namespaces = shift;
   my $array = ();
+  print "\tremove non redirects from redir\n";
   my $hash = $namespaces->{'redir'};
-  foreach my $ns (keys %$hash){
+  foreach my $ns (sort keys %$hash){
     $array = $our_wiki->wiki_get_nonredirects("$hash->{$ns}");
     print "Found ". (scalar @$array) . " pages in namespace $ns.\n" if defined $array;
     foreach my $url (@$array) {
@@ -383,8 +396,9 @@ sub fix_wiki_sc_type {
     }
   }
 
+  print "\tremove redirects from real\n";
   $hash = $namespaces->{'real'};
-  foreach my $ns (keys %$hash){
+  foreach my $ns (sort keys %$hash){
     $array = $our_wiki->wiki_get_redirects("$hash->{$ns}");
     print "Found ". (scalar @$array) . " pages in namespace $ns.\n" if defined $array;
     foreach my $url (@$array) {
@@ -392,19 +406,21 @@ sub fix_wiki_sc_type {
       eval{$our_wiki->wiki_delete_page($url)} if ( ! $view_only && $our_wiki->wiki_exists_page("$url") );
     }
   }
-  ## syncronize redir and real
+
+  print "\tGet redirects\n";
   my $hash_redir = ();
   $hash = $namespaces->{'redir'};
-  foreach my $ns (keys %$hash){
+  foreach my $ns (sort keys %$hash){
     foreach (@{$our_wiki->wiki_get_redirects("$hash->{$ns}")}) {
       my $tmp = $_;
       $tmp =~ s/^(SC|CRM)(.*?)://i;
       $hash_redir->{$tmp} = $_;
     }
   }
+  print "\tGet real\n";
   my $hash_real = ();
   $hash = $namespaces->{'real'};
-  foreach my $ns (keys %$hash){
+  foreach my $ns (sort keys %$hash){
     next if ! defined $our_wiki->wiki_get_nonredirects("$hash->{$ns}");
     foreach (@{$our_wiki->wiki_get_nonredirects("$hash->{$ns}")}) {
       my $tmp = $_;
@@ -412,6 +428,8 @@ sub fix_wiki_sc_type {
       $hash_real->{$tmp} = $_;
     }
   }
+
+  print "\tSyncronize redir and real\n";
   my @a1 = keys %$hash_redir;
   my @a2 = keys %$hash_real;
   my ($only_in1, $only_in2) = WikiCommons::array_diff( \@a1, \@a2 );
@@ -487,38 +505,48 @@ sub scdoubleredirects {
 #   }
 # }
 
+sub bulk_delete {
+    my $text = shift;
+    return if $view_only || ! defined $text;
+    WikiCommons::write_file("/tmp/bulkdelete.txt", $text);
+    system("sudo", "-u", "apache", "php", "/var/www/html/wiki/maintenance/deleteBatch.php", "/tmp/bulkdelete.txt");
+}
+
 sub unused_images_dirty {
   my $link = "http://localhost/wiki/index.php?title=Special:UnusedFiles&limit=$max_elements&offset=0";
   my $res = get_results($link, "ul");
+#   my $to_delete;
   foreach my $elem (@$res){
       $elem =~ s/%27/'/g;
       $elem =~ s/%26/&/g;
+#       $to_delete .= "File:$elem\n";
       print "rm file $elem.\n";
       eval{$our_wiki->wiki_delete_page("File:$elem")} if ! $view_only;
   }
+#   bulk_delete($to_delete);
 }
 
-sub fix_wanted_pages {
-  my $link = "http://localhost/wiki/index.php?title=Special:WantedPages&limit=$max_elements&offset=0";
-  my $res = get_results($link);
-  my ($cat, $sc, $crm, $other) = ();
-  foreach my $elem (@$res){
-      next if $elem eq "Special:WhatLinksHere";
-      $elem =~ s/ \(page does not exist\)$//;
-#       $elem =~ s/ /_/g;
-#       print "$elem\n";#
-      if ($elem =~ m/^SC:[A-Z][0-9]+$/) {
-	push @$sc, $elem;
-      } elsif ($elem =~ m/^CRM:[A-Z][0-9]+$/) {
-	push @$crm, $elem;
-      } elsif ($elem =~ m/^Category:/) {
-	push @$cat, $elem;
-      } else {
-	push @$other, $elem;
-      }
-  }
-  return ($cat, $sc, $crm, $other);
-}
+# sub fix_wanted_pages {
+#   my $link = "http://localhost/wiki/index.php?title=Special:WantedPages&limit=$max_elements&offset=0";
+#   my $res = get_results($link);
+#   my ($cat, $sc, $crm, $other) = ();
+#   foreach my $elem (@$res){
+#       next if $elem eq "Special:WhatLinksHere";
+#       $elem =~ s/ \(page does not exist\)$//;
+# #       $elem =~ s/ /_/g;
+# #       print "$elem\n";#
+#       if ($elem =~ m/^SC:[A-Z][0-9]+$/) {
+# 	push @$sc, $elem;
+#       } elsif ($elem =~ m/^CRM:[A-Z][0-9]+$/) {
+# 	push @$crm, $elem;
+#       } elsif ($elem =~ m/^Category:/) {
+# 	push @$cat, $elem;
+#       } else {
+# 	push @$other, $elem;
+#       }
+#   }
+#   return ($cat, $sc, $crm, $other);
+# }
 
 sub fix_missing_files {
     ## this will delete pages if the user forgot to add an image
@@ -534,11 +562,82 @@ sub fix_missing_files {
 	$missing->{$page} = 1;
     }
   }
-  foreach my $page (keys %$missing) {
+#   my $to_delete;
+  foreach my $page (sort keys %$missing) {
       next if $page eq "CMS:MIND-IPhonEX CMS 80.00.020" && $page !~ m/[a-b _]+:/i;
       print "rm page $page.\n";
+#       $to_delete .= "$page\n";
       eval{$our_wiki->wiki_delete_page($page)} if ( $our_wiki->wiki_exists_page("$page") && ! $view_only);
   }
+#   bulk_delete($to_delete);
+}
+
+sub getlocalimages {
+  use File::Find;
+  our $local_pages = {};
+  print "Get local images.\n";
+  our $count = 0;
+  sub process_file {
+      my ($file, $full_path) = @_;
+      $count++;
+      $local_pages->{$file} = "$full_path";
+#       die if $count >10;
+  };
+
+  opendir(DIR, "$images_dir") || die("Cannot open directory $images_dir: $!.\n");
+  my @alldirs = grep { (!/^\.\.?$/) && m/^.$/ && -d "$images_dir/$_" } readdir(DIR);
+  closedir(DIR);
+  foreach my $dir (@alldirs) {
+    eval {find ({wanted => sub { process_file ($_,$File::Find::name) if -f $_ },}, "$images_dir/$dir")};
+  }
+
+  return $local_pages;
+}
+
+sub getdbimages {
+  use DBI;
+  my $files_imagelinks = {};
+#   my $db = DBI->connect('DBI:mysql:wikidb', 'wikiuser', '!0wikiuser@9') || die "Could not connect to database: $DBI::errstr";
+  my $sql_query="select distinct il_to from imagelinks";
+  my $query = $dbh_mysql->prepare($sql_query);
+  $query->execute();
+  while (my ($file) = $query->fetchrow_array ){
+    $files_imagelinks->{"$file"} = 1;
+  }
+
+  my $files_image = {};
+  $sql_query="select distinct img_name from image";
+  $query = $dbh_mysql->prepare($sql_query);
+  $query->execute();
+  while (my ($file) = $query->fetchrow_array ){
+    $files_image->{"$file"} = 1;
+  }
+  return ($files_imagelinks, $files_image);
+}
+
+sub getwikipages {
+  my $namespaces = shift;
+
+  my $wiki_pages = {};
+  my @arr = ();
+  foreach my $nstype (sort keys %$namespaces) {
+    next if $nstype eq "private";
+    print "Get wiki pages from $nstype.\n";
+    my $tmp = $namespaces->{$nstype};
+    @arr = ();
+    foreach my $ns (sort keys %$tmp) {
+      my $def = $our_wiki->wiki_get_all_pages($namespaces->{$nstype}->{$ns});
+      foreach my $page (@$def) { 
+	if (defined $page) {
+	    $page =~ s/ /_/g;
+	    push @arr, "$page";
+	} 
+      };
+    }
+    my %hash = map { $_ => 1 } @arr;
+    $wiki_pages->{$nstype} = \%hash;
+  }
+  return $wiki_pages;
 }
 
 sub getlocalpages {
@@ -572,6 +671,8 @@ sub getlocalpages {
 	$local_pages->{'real'}->{$normalyze_file} = "$adir/$file";
       } elsif ( defined $namespaces->{'normal'}->{$ns} ){
 	$local_pages->{'normal'}->{$normalyze_file} = "$adir/$file";
+      } else {
+	die "what is this: ns=$ns from file $file\n";
       }
     }
     closedir(DIR);
@@ -580,80 +681,47 @@ sub getlocalpages {
   return $local_pages;
 }
 
-sub getlocalimages {
-  use File::Find;
-  our $local_pages = {};
-  print "Get local images.\n";
-  our $count = 0;
-  sub process_file {
-      my ($file, $full_path) = @_;
-      $count++;
-      $local_pages->{$file} = "$full_path";
-#       die if $count >10;
-  };
-
-  opendir(DIR, "$images_dir") || die("Cannot open directory $images_dir: $!.\n");
-  my @alldirs = grep { (!/^\.\.?$/) && m/^.$/ && -d "$images_dir/$_" } readdir(DIR);
-  closedir(DIR);
-  foreach my $dir (@alldirs) {
-    eval {find ({wanted => sub { process_file ($_,$File::Find::name) if -f $_ },}, "$images_dir/$dir")};
-  }
-
-  return $local_pages;
-}
-
-sub getdbimages {
-  use DBI;
-  my $files_imagelinks = {};
-  my $db = DBI->connect('DBI:mysql:wikidb', 'wikiuser', '!0wikiuser@9') || die "Could not connect to database: $DBI::errstr";
-  my $sql_query="select distinct il_to from imagelinks";
-  my $query = $db->prepare($sql_query);
-  $query->execute();
-  while (my ($file) = $query->fetchrow_array ){
-    $files_imagelinks->{"$file"} = 1;
-  }
-
-  my $files_image = {};
-  $sql_query="select distinct img_name from image";
-  $query = $db->prepare($sql_query);
-  $query->execute();
-  while (my ($file) = $query->fetchrow_array ){
-    $files_image->{"$file"} = 1;
-  }
-  return ($files_imagelinks, $files_image);
-}
-
-sub getwikipages {
-  my $namespaces = shift;
-
-  my $wiki_pages = {};
-  my @arr = ();
-  foreach my $nstype (keys %$namespaces) {
-    next if $nstype eq "private";
-    print "Get wiki pages from $nstype.\n";
-    my $tmp = $namespaces->{$nstype};
-    @arr = ();
-    foreach my $ns (keys %$tmp) {
-      my $def = $our_wiki->wiki_get_all_pages($namespaces->{$nstype}->{$ns});
-      foreach my $page (@$def) { 
-	if (defined $page) {
-	    $page =~ s/ /_/g;
-	    push @arr, "$page";
-	} 
-      };
+sub getdbpages {
+    my $namespaces = shift;
+    print "Get db files\n";
+    my $ret = $dbh_mysql->selectall_arrayref("select wiki_name from mind_wiki_info"); 
+    my $hash;
+    foreach my $row (@$ret) {
+	my ($ns, $normalyze_file) = @$row[0] =~ m/^(.*?):(.*)$/;
+	next if ! defined $ns;
+	$normalyze_file =~ s/ /_/g;
+	$normalyze_file = WikiCommons::capitalize_string( $normalyze_file, 'onlyfirst' );
+	$normalyze_file = "$ns:$normalyze_file";
+	if ( defined $namespaces->{'redir'}->{$ns} ){
+	  $hash->{'redir'}->{$normalyze_file} = @$row[0];
+	} elsif ( defined $namespaces->{'real'}->{$ns} ){
+	  $hash->{'real'}->{$normalyze_file} = @$row[0];
+	} elsif ( defined $namespaces->{'normal'}->{$ns} ){
+	  $hash->{'normal'}->{$normalyze_file} = @$row[0];
+	} elsif ( defined $namespaces->{'private'}->{$ns} ){
+	  $hash->{'private'}->{$normalyze_file} = @$row[0];
+	} else {
+	  die "what is this: ns=$ns from file @$row[0]\n";
+	}
     }
-    my %hash = map { $_ => 1 } @arr;
-    $wiki_pages->{$nstype} = \%hash;
-  }
-  return $wiki_pages;
+    return $hash;
 }
 
 sub syncronize_local_wiki {
+    my $namespaces = shift;
+    my $local_pages = getlocalpages($namespaces);
+    my $wiki_pages = getwikipages($namespaces);
+    my $db_pages = getdbpages($namespaces);
+
     for my $tmp ('redir', 'real', 'normal'){
 	my $hash1 = $local_pages->{$tmp};
 	my $hash2 = $wiki_pages->{$tmp};
+	my $hash3 = $db_pages->{$tmp};
 	my @arr1 = (sort keys %$hash1);
 	my @arr2 = (sort keys %$hash2);
+	my @arr3 = (sort keys %$hash3);
+
+	print "## Syncronize local with wiki.\n";
 	my ($only_in1, $only_in2, $common) = WikiCommons::array_diff( \@arr1, \@arr2 );
 	print "$tmp only in local: ".Dumper($only_in1); print "$tmp only in wiki: ".Dumper($only_in2);
 	die "Too many to delete: in local = ".(scalar @$only_in1)." in wiki = ".(scalar @$only_in2).".\n" if scalar @$only_in1 > $max_to_delete || scalar @$only_in2 > $max_to_delete;
@@ -673,6 +741,32 @@ sub syncronize_local_wiki {
 	    eval{$our_wiki->wiki_delete_page($wiki)} if ( $our_wiki->wiki_exists_page("$wiki") && ! $view_only);
 	    delete $wiki_pages->{$tmp}->{$wiki};
 	}
+
+	print "## Syncronize wiki with db.\n";
+	($only_in1, $only_in2, $common) = WikiCommons::array_diff( \@arr3, \@arr2 );
+	print "$tmp only in db: ".Dumper($only_in1); print "$tmp only in wiki: ".Dumper($only_in2);
+	die "Too many to delete: in db = ".(scalar @$only_in1)." in wiki = ".(scalar @$only_in2).".\n" if scalar @$only_in1 > $max_to_delete || scalar @$only_in2 > $max_to_delete;
+	($count, $total) = (0, (scalar @$only_in1));
+	foreach my $db (@$only_in1) {
+	    $count++;
+	    print "rm from our db $db_pages->{$tmp}->{$db}: \t$count out of $total\n";
+	    $dbh_mysql->do("DELETE FROM mind_wiki_info where WIKI_NAME=".$dbh_mysql->quote($db_pages->{$tmp}->{$db})) if ! $view_only;
+	    delete $db_pages->{$tmp}->{$db};
+	}
+	($count, $total) = (0, (scalar @$only_in2));
+	foreach my $wiki (@$only_in2) {
+	    $count++;
+	    print "rm page $wiki: \t$count out of $total\n";
+	    eval{$our_wiki->wiki_delete_page($wiki)} if ( $our_wiki->wiki_exists_page("$wiki") && ! $view_only);
+	    delete $wiki_pages->{$tmp}->{$wiki};
+	    if (defined $local_pages->{$tmp}->{$wiki} ){
+		print "rm from local $workdir/$local_pages->{$tmp}->{$wiki}: \t$count out of $total\n";
+		if ( ! $view_only ) {
+		    remove_tree("$workdir/$local_pages->{$tmp}->{$wiki}") || die "Can't remove dir $workdir/$local_pages->{$tmp}->{$wiki}: $?.\n";
+		}
+		delete $local_pages->{$tmp}->{$wiki};
+	    }
+	}
     }
 }
 
@@ -686,7 +780,7 @@ sub fix_images {
   die "Check this shit out:\n".Dumper($only_in_imagelinks, $only_in_image) if scalar @{ $only_in_imagelinks } || scalar @{ $only_in_image };
 
   print "## Remove from wiki all images that are on disk and not on db also.\n";
-  foreach my $file (keys %$db_imagelinks) {
+  foreach my $file (sort keys %$db_imagelinks) {
       my $md5 = md5_hex($file);
       my $first_part = substr($md5, 0, 1);
       my $second_part = substr($md5, 0, 2);
@@ -698,7 +792,7 @@ sub fix_images {
 	  $db_imagelinks->{$file} = $file_name;
       }
   }
-  my @db_imagelinks = keys %$db_imagelinks;
+  my @db_imagelinks = sort keys %$db_imagelinks;
 
   print "## Get all images from wiki api (slow).\n";
   my $wiki_images_api = $our_wiki->wiki_get_all_images();
@@ -716,7 +810,7 @@ sub fix_images {
 
   print "## Get all images from disk.\n";
   my $local_images = getlocalimages;
-  my @local_images = keys %$local_images;
+  my @local_images = sort keys %$local_images;
   my ($only_in_db, $only_in_fs, $common_all) = WikiCommons::array_diff( \@db_imagelinks, \@local_images);
   # should be nothing in $only_in_db and $only_in_fs:
   # - $only_in_db: missing images that should have been cleand by the script
@@ -726,7 +820,8 @@ sub fix_images {
   print "## Remove all images from disk that are not in db also.\n";
   foreach my $file (@$only_in_fs){
     print "delete file $file from disk\n";
-    unlink("$local_images->{$file}") or die "Could not delete the file $local_images->{$file}: ".$!."\n";
+    system ("sudo", "-u", "apache", "rm", "$local_images->{$file}") == 0 or die "Could not delete the file $local_images->{$file}: ".$!."\n";
+#     unlink("$local_images->{$file}") or die "Could not delete the file $local_images->{$file}: ".$!."\n";
   }
 }
 
@@ -752,6 +847,50 @@ sub get_all_pages_with_invalid_categories {
   }
 }
 
+sub check_deployment_pages {
+    my $namespaces = shift;
+    use Time::Local;
+    print "## Get all ids with deployment from sc db\n";
+    ## this should have fewer then what we have
+    sql_connect_oracle('10.0.0.103', 'SCROM', 'scview', 'scview');
+    my $sth = $dbh->prepare("select changeid from scchange where deploymentconsideration='Y'");
+    $sth->execute();
+    my @arr1;
+    while (my @row = $sth->fetchrow_array()){
+	push @arr1, @row;
+    }
+    $dbh->disconnect if defined($dbh);
+
+#     print "## Get all wiki sc urls\n";
+#     my @arr2 = @{ $our_wiki->wiki_get_all_pages($namespaces->{redir}->{SC}) };
+
+    print "## Get all wiki sc deployment urls\n";
+    my @arr3 = @{ $our_wiki->wiki_get_all_pages($namespaces->{deploy}->{SC_Deployment}) };
+    ## check with time from redirect
+    print "##Check that in wiki the time difference between SC and SC_Deployment is small.\n";
+    foreach my $url (@arr3) {
+	my ($ns, $name) = $url =~ m/^(SC Deployment):(.*)$/i;
+	next if $name !~ m/^[a-z][0-9]+$/i;
+	if (! $our_wiki->wiki_exists_page("SC:$name")){
+print Dumper($url, $our_wiki->wiki_get_page_timestamp($url), $our_wiki->wiki_get_page_timestamp("SC:$name")) if $name =~ m/^B/i;
+# 	    $our_wiki->wiki_delete_page($url);
+	    next;
+	}
+	my $deployment_time = $our_wiki->wiki_get_page_timestamp($url);
+	my ($d_date, $d_y, $d_mon, $d_d, $d_hour, $d_h, $d_min, $d_s) = $deployment_time =~ m/^((\d{4})-(\d{2})-(\d{2}))T((\d{2}):(\d{2}):(\d{2}))Z$/;
+	my $d_unixtime = timegm($d_s,$d_min,$d_h,$d_d,$d_mon-1,$d_y);
+	my $redir_time = $our_wiki->wiki_get_page_timestamp("SC:$name");
+	my ($r_date, $r_y, $r_mon, $r_d, $r_hour, $r_h, $r_min, $r_s) = $redir_time =~ m/^((\d{4})-(\d{2})-(\d{2}))T((\d{2}):(\d{2}):(\d{2}))Z$/;
+	my $r_unixtime = timegm($r_s,$r_min,$r_h,$r_d,$r_mon-1,$r_y);
+	print Dumper($url, $deployment_time, $d_unixtime, $redir_time, $r_unixtime, $d_unixtime-$r_unixtime);
+	if (abs($d_unixtime-$r_unixtime)>60) {
+print Dumper($url, $our_wiki->wiki_get_page_timestamp($url), $our_wiki->wiki_get_page_timestamp("SC:$name"))
+# 	    $our_wiki->wiki_delete_page($url);
+# 	    $our_wiki->wiki_delete_page("SC:$name");
+	}
+    }
+}
+
 # delete_all_svn_categories();
 # get_all_pages_with_invalid_categories();
 # exit 1;
@@ -759,8 +898,10 @@ sub get_all_pages_with_invalid_categories {
 # print Dumper($q);
 # exit;
 
+sql_connect_mysql();
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
+check_deployment_pages($namespaces);exit 1;
 
 if ($view_only ne "user_sr") {
     print "##### Fix wiki sc type:\n";
@@ -775,17 +916,16 @@ if ($view_only ne "user_sr") {
     fix_missing_files();
     print "##### Syncronize wiki files with fs files.\n";
     fix_images();
-    # print "##### Wanted pages:\n";
-    # my ($cat, $sc, $crm, $other) = fix_wanted_pages();
-    # print "##### Get missing categories:\n";
-    # my $wanted = wanted_categories();
+#     # print "##### Wanted pages:\n";
+#     # my ($cat, $sc, $crm, $other) = fix_wanted_pages();
+#     # print "##### Get missing categories:\n";
+#     # my $wanted = wanted_categories();
     print "##### Get unused categories:\n";
     my $unused = unused_categories();
     print "##### Syncronize:\n";
-    $local_pages = getlocalpages($namespaces);
-    $wiki_pages = getwikipages($namespaces);
-    syncronize_local_wiki;
+    syncronize_local_wiki($namespaces);
 }
+$dbh_mysql->disconnect() if defined($dbh_mysql);
 
 print "##### Update users:\n";
 update_user_pages($namespaces->{'private'}->{'User'});

@@ -306,6 +306,7 @@ sub add_document {
     $page_url = "SVN:$page_url";
 
     my $full_ver = "$ver $ver_id $ver_sp";
+    $full_ver =~ s/(^\s+)|(\s+$)//g;
 # print "2. $page_url\n";
     return 1 if $ver_fixed lt "5.00" && $ver_fixed ne "" && ($dir_type ne "Docs_SIPServer" && $dir_type ne "Docs_PaymentManager_Deployment"&& $dir_type ne "Docs_PaymentManager");
     if (defined $pages_ver->{$page_url}->{'ver'} ){
@@ -313,6 +314,22 @@ sub add_document {
 # print "skip $full_ver because we have $pages_ver->{$page_url}->{'ver'}\n";
 	    return 0;
 	} elsif ($pages_ver->{$page_url}->{'ver'} eq $full_ver) {
+# 	    my $oldfile_time = WikiCommons::svn_info("$path_file/$pages_toimp_hash->{$page_url}[1]", "", "");
+# 	    $oldfile_time =~ s/^.*?\nLast Changed Date: (\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}).*\n.*?$/$1/gs;
+# 	    my $newfile_time = WikiCommons::svn_info($doc_file, "", "");
+# 	    $newfile_time =~ s/^.*?\nLast Changed Date: (\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}).*\n.*?$/$1/gs;
+# 	    if ($newfile_time eq $oldfile_time) {
+# 		if ("$path_file/$pages_toimp_hash->{$page_url}[1]" =~ m/\/Archive\//) {
+# print Dumper(1, "$path_file/$pages_toimp_hash->{$page_url}[1]", $doc_file, $oldfile_time, $newfile_time);exit 1;
+# 		} elsif ($doc_file =~m/\/Archive\//) {
+# 		    return 0; 
+# 		} else {
+# print Dumper(2, "$path_file/$pages_toimp_hash->{$page_url}[1]", $doc_file, $oldfile_time, $newfile_time);exit 1;
+# 		}
+# 	    } else {
+# print Dumper(3, "$path_file/$pages_toimp_hash->{$page_url}[1]", $doc_file, $oldfile_time, $newfile_time);exit 1;
+# 	    }
+
 	    my $new = get_md5_fast($doc_file);
 	    my $old = WikiCommons::svn_info("$path_file/$pages_toimp_hash->{$page_url}[1]", "", "");
 	    if (defined $old) {
@@ -367,8 +384,7 @@ sub add_document {
 
 #     $pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
     $pages_toimp_hash->{$page_url} = [get_md5_fast($doc_file), $rel_path, $svn_url, "link", \@categories];
-    $pages_ver->{$page_url}->{'ver'} = "$full_ver";
-# print "2. $page_url\n";
+    $pages_ver->{$page_url}->{'ver'} = $full_ver;
 
 #     push(@{$pages_ver->{"$fixed_name$url->{'ver'}_sep$ver_without_sp"}}, $ver_sp);
 }
@@ -416,7 +432,7 @@ sub get_documents {
 	print "-Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
 	$count_files = 0;
 	find ({
-	    wanted => sub { add_document ($File::Find::name, $append_dir, "$self->{path_files}", "$url_sep") if -f && (/(\.doc|\.docx|\.rtf)$/i || /.*parameter.*Description.*\.xls$/i) },},
+	    wanted => sub { add_document ($File::Find::name, $append_dir, "$self->{path_files}", "$url_sep") if -f && (/(\.doc|\.docx|\.rtf)$/i || /.*parameter.*Description.*\.xlsx?$/i) },},
 	    "$self->{path_files}/$append_dir"
 	    ) if  (-d "$self->{path_files}/$append_dir");
 # 	find ({

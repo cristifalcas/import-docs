@@ -119,18 +119,26 @@ sub heading_new_line {
 sub tree_fix_links_images {
     my ($tree, $dir) = @_;
     print "\t Fix links.\n";
-
+    my $old_files_for_delete;
     foreach (@{  $tree->extract_links()  }) {
 	my($link, $element, $attr, $tag) = @$_;
 	if ($tag eq "img" || $tag eq "body") {
 	    my $name_img = uri_unescape($link);
 	    $name_img =~ s/^\.\.\///;
 	    my $name_new = WikiCommons::get_file_md5("$dir/$name_img")."_conv.jpg";
+	    if (! -f "$dir/$name_img") {
+		print "Can't find file $dir/$name_img ($name_new).\n";
+		next;
+	    }
 	    system("convert", "$dir/$name_img", "-background", "white", "-flatten", "$dir/$name_new") == 0 or die "error runnig convert: $!.\n";
-	    system("mogrify", "-strip", "$dir/$name_new"); ## importImages.php Segmentation fault
+# 	    unlink "$dir/$name_img" || die "can't delete old image $dir/$name_img\n";
+	    $old_files_for_delete->{"$dir/$name_img"} = 1;
+	    ## importImages.php Segmentation fault
+	    system("mogrify", "-strip", "$dir/$name_new") == 0 or die "error runnig mogrify: $!.\n"; 
 	    $element->attr($attr, uri_escape($name_new));
 	}
     }
+    unlink $_  foreach (keys %$old_files_for_delete);
     return $tree;
 }
 
@@ -155,8 +163,8 @@ WikiCommons::write_file("$dir/".++$i.". tree_remove_TOC.$name.html", tree_to_htm
     $tree = heading_new_line($tree);
 
 #     $tree->no_space_compacting(1);
-    my $text1 = tree_to_text($tree);
-WikiCommons::write_file("$dir/".++$i.". tree_text1.$name.txt", $text1, 1) if $debug eq "yes";
+#     my $text1 = tree_to_text($tree);
+# WikiCommons::write_file("$dir/".++$i.". tree_text1.$name.txt", $text1, 1) if $debug eq "yes";
 #     $tree->no_space_compacting(0);
     $tree = tree_fix_links_images($tree, $dir);
     ## after TOC, because in TOC we use div
@@ -190,16 +198,8 @@ WikiCommons::write_file("$dir/".++$i.". tree_clean_span_to_div.$name.html", tree
 #     $html = html_tidy( $html, 0 );
 # WikiCommons::write_file("$dir/html_tidy2.$name.html", $html, 1);
 
-
-#     $tree->no_space_compacting(1);
-    my $text2 = tree_to_text($tree);
-WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1) if $debug eq "yes";
-
-    foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
-	$a_tag->postinsert(['br']);
-	$a_tag->preinsert(['br']);
-    }
-
+#     my $text2 = tree_to_text($tree);
+# WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1) if $debug eq "yes";
 #     my $clean_text1 = $text1;
 #     my $clean_text2 = $text2;
 #     $clean_text1 =~ s/\s*//gs;
@@ -219,7 +219,12 @@ WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1) if $deb
 # 	print "Missing text after working on html file $name, in dir $dir.\n";
 # 	return undef;
 #     }}
-    ## here we remove text, so we use it last
+    ## here we remove/add text, so we use it last
+    foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
+	$a_tag->postinsert(['br']);
+	$a_tag->preinsert(['br']);
+    }
+
     $tree = tree_fix_numbers_in_headings($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_fix_numbers_in_headings.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
 
@@ -345,6 +350,7 @@ sub tree_clean_span {
 				    || $att =~ m/^\s*letter-spacing:/i
 				    || $att =~ m/^\s*position: absolute\s*$/i
 				    || $att =~ m/^\s*(margin-)?(top|left|right): -?[0-9]{1,}(\.[0-9]{1,})?in\s*$/i
+				    || $att =~ m/^\s*margin: [0-9]{1,}(\.[0-9]{1,})?in\s*$/i
 				    || $att =~ m/^\s*(border|padding)/i) {
 			    next;
 			} elsif ($att =~ m/^\s*font-variant: (small-caps|normal)\s*$/i
@@ -864,8 +870,9 @@ sub fix_wiki_chars {
     $wiki =~ s/\x{c3}\x{af}\x{e2}\x{80}\x{9a}\x{c2}\x{a7}/\x{e2}\x{96}\x{a0}/gsi;
     ## CHECK MARK
     $wiki =~ s/\x{EF}\x{81}\x{90}/\x{e2}\x{9c}\x{94}/gsi;
-    $wiki =~ s/\x{EF}\x{192}\x{BC}/\x{e2}\x{9c}\x{94}/gsi;
     $wiki =~ s/\x{ef}\x{83}\x{bc}/\x{e2}\x{9c}\x{94}/gsi;
+    $wiki =~ s/\x{ef}\x{83}\x{96}/\x{e2}\x{9c}\x{94}/gsi;
+    $wiki =~ s/\x{EF}\x{192}\x{bc}/\x{e2}\x{9c}\x{94}/gsi;
 
     ## BALLOT X
     $wiki =~ s/\x{EF}\x{81}\x{8F}/\x{e2}\x{9c}\x{98}/gsi;
@@ -972,7 +979,7 @@ sub fix_wiki_link_to_sc {
 #     print "\tFix links to SC.\t". (WikiCommons::get_time_diff) ."\n";
     my $newwiki = $wiki;
     my $count = 0;
-    while ($wiki =~ m/(\[\[Image:[[:print:]]*?(B|I|F|H|R|D|T|Z|K|A|P)[[:digit:]]{4,}[[:print:]]*?\]\])|(\b(B|I|F|H|R|D|T|Z|K|A|P)[[:digit:]]{4,}\b)/g ) {
+    while ($wiki =~ m/(\[\[Image:[[:print:]]*?(B|I|F|H|R|D|E|G|S|T|Z|K|A|P)[[:digit:]]{4,}[[:print:]]*?\]\])|(\b(B|I|F|H|R|D|E|G|S|T|Z|K|A|P)[[:digit:]]{4,}\b)/g ) {
 	my $found_string = $&;
 	my $found_string_end_pos = pos($wiki);
 

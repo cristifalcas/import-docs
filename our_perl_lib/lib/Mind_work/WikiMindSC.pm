@@ -98,6 +98,12 @@ sub get_documents {
 			$url_namespace = "SC_PaymentManager_$sc_type";
 		    } elsif ($node =~ m/^D/i) {
 			$url_namespace = "SC_PhonexONE_$sc_type";
+		    } elsif ($node =~ m/^E/i) {
+			$url_namespace = "SC_CMS_$sc_type";
+		    } elsif ($node =~ m/^G/i) {
+			$url_namespace = "SC_MindReporter_$sc_type";
+		    } elsif ($node =~ m/^S/i) {
+			$url_namespace = "SC_Simulators_$sc_type";
 		    } elsif ($node =~ m/^T/i) {
 			$url_namespace = "SC_Nagios_$sc_type";
 		    } elsif ($node =~ m/^Z/i) {

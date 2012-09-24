@@ -273,7 +273,7 @@ sub normalize_text {
 
 sub get_file_md5 {
     my $doc_file = shift;
-    open(FILE, $doc_file) or die "Can't open '$doc_file': $!\n";
+    open(FILE, $doc_file) or die "Can't open '$doc_file' for md5: $!\n";
     binmode(FILE);
     my $doc_md5 = Digest::MD5->new->addfile(*FILE)->hexdigest;
     close(FILE);
@@ -408,43 +408,78 @@ sub check_vers {
 }
 
 sub generate_html_file {
-    my $doc_file = shift;
+    my ($doc_file, $type) = @_;
+#     my $max_wait_time = 300; # 1800 = .5 hours # 46800 = 13 hours
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
-    print "\t-Generating html file from $name$suffix.\t". (get_time_diff) ."\n";
-    `kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | gawk '{print \$2}') &>/dev/null`;
-    eval {
-	local $SIG{ALRM} = sub { die "alarm\n" };
-# 	alarm 46800; # 13 hours
-	alarm 1800; # .5 hours
-	system("python", "$real_path/convertors/unoconv", "-f", "html", "$doc_file") == 0 or die "unoconv failed: $?";
-	alarm 0;
-    };
-    my $status = $@;
-    if ($status) {
-	print "Error: Timed out: $status.\n";
+    my $status;
+    ## filters http://cgit.freedesktop.org/libreoffice/core/tree/filter/source/config/fragments/filters
+    my $filters = { "html" => $suffix =~ m/xlsx?/i ? "html:HTML (StarCalc)" : "html:HTML (StarWriter)",
+		    "pdf"  => "pdf:impress_pdf_Export",
+		    "swf"  => "swf:impress_flash_Export",
+		    "txt"  => "txt:TEXT (StarWriter_Web)",
+		  };
+    my $commands = {
+	  "3. our office with X" => ["/opt/libreoffice3.6/program/soffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
+	  "4. our office" => ["/opt/libreoffice3.6/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
+	  "5. unoconv" => ["python", "$real_path/convertors/unoconv", "-f", "$type", "$doc_file"],
+	  "6. system office with X" => ["libreoffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
+	  "7. system office" => ["libreoffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
+	  "8. our office old with X" => ["/opt/libreoffice3.4/program/soffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
+	  "9. our office old " => ["/opt/libreoffice3.4/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
+	};
+
+    print "\t-Generating html file from $name$suffix.\t". (get_time_diff) ."\n\t\t$doc_file\n";
+    system("Xvfb :10235 -screen 0 1024x768x16 &> /dev/null &"); ## if we don't use headless
+#     system("python $real_path/convertors/unoconv -l &"); ## start a listener
+    my $max_wait_time = 60;
+    $max_wait_time = 20 if (-s $doc_file < 100000);
+    foreach my $key (sort keys %$commands) {
+	print "\tTrying to use $key.\t". (get_time_diff) ."\n";
 	`kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | gawk '{print \$2}') &>/dev/null`;
+	sleep 1;
 	eval {
-	    local $SIG{ALRM} = sub { die "alarm\n" };
-# 	    alarm 46800; # 13 hours
-	    alarm 3600; # .5 hours
-	    ## filters http://cgit.freedesktop.org/libreoffice/core/tree/filter/source/config/fragments/filters
-	    my $filter = "html:HTML (StarWriter)";
-	    $filter = "html:HTML (StarCalc)" if $suffix =~ m/xlsx?/i;
-	    ## --headless dies, so we replace it with --display :10235
-	    system("Xvfb :10235 -screen 0 1024x768x16 &> /dev/null &");
-	    system("libreoffice", "--display", ":10235", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filter, "--outdir", "$dir", "$doc_file") == 0 or die "libreoffice failed: $?";
-	    alarm 0;
+	  local $SIG{ALRM} = sub { die "alarm\n" };
+	  alarm $max_wait_time;
+	  system(@{$commands->{$key}});
+	  alarm 0;
 	};
 	$status = $@;
-	if ($status) {
-	    print "Error: Timed out: $status.\n";
-	    `kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | gawk '{print \$2}') &>/dev/null`;
-	} else {
-	    print "\tFinished: $status.\n";
-	}
-    } else {
-	print "\tFinished: $status.\n";
+	last if ! $status && -f "$dir/$name.html";
+	$max_wait_time = $max_wait_time <= 60 ? 300 : $max_wait_time * 2;
+# 	$max_wait_time = $max_wait_time * 2;
+	print "\t\tError: $status. Try again with next command.\t". (get_time_diff) ."\n";
     }
+#     `kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | gawk '{print \$2}') &>/dev/null`;
+#     eval {
+# 	local $SIG{ALRM} = sub { die "alarm\n" };
+# 	alarm $max_wait_time + 30; # .5 hours
+# # 	system("python", "$real_path/convertors/unoconv", "-f", "$type", "$doc_file") == 0 or die "unoconv failed: $?"; # , "-vvv"
+# 	system("/opt/libreoffice3.6/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file") == 0 or die "libreoffice3.6 failed: $?";
+# 	alarm 0;
+#     };
+#     my $status = $@;
+#     if ($status) {
+# 	print "Error: Timed out: $status. Try again with filter $filters->{$type}.\n";
+# 	`kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin\\|unoconv | grep -v grep | gawk '{print \$2}') &>/dev/null`;
+# 	eval {
+# 	    local $SIG{ALRM} = sub { die "alarm\n" };
+# 	    alarm $max_wait_time * 2;
+# 	    ## --headless dies, so we replace it with --display :10235
+# 	    system("libreoffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file") == 0 or die "libreoffice failed: $?";
+# # 	    system("Xvfb :10235 -screen 0 1024x768x16 &> /dev/null &");
+# # 	    system("libreoffice", "--display", ":10235", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file") == 0 or die "libreoffice failed: $?";
+# 	    alarm 0;
+# 	};
+# 	$status = $@;
+# 	if ($status) {
+# 	    print "Error: Timed out: $status.\n";
+# 	    `kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | gawk '{print \$2}') &>/dev/null`;
+# 	} else {
+# 	    print "\tFinished.\n";
+# 	}
+#     } else {
+# 	print "\tFinished.\n";
+#     }
 
     print "\t+Generating html file from $name$suffix.\t". (get_time_diff) ."\n";
     return $status;
@@ -491,7 +526,7 @@ sub get_correct_customer{
     $name =~ s/(^\s+)|(\s+$)//g;
     return "" if $name =~ m/^\s*$/;
 
-    return "AFRIPA" if $name eq "Afripa Telecom";
+    return "Afripa" if $name eq "Afripa Telecom" || $name =~ m/afripa/i;;
     return "SIW" if $name =~ m/^SI$/i;
     return "VDC" if $name eq "VTI";
     return "TELEFONICA PERU" if $name eq "Telefonica Del Peru" || $name eq "Telefonica - Peru";
@@ -546,7 +581,7 @@ sub get_correct_customer{
     return "SMART" if $name eq "SmartPCS";
     return "Pelephone" if $name =~ m/^Pelephone$/i;
     return "Eastlink" if $name =~ m/^Eastlink$/i;
-    return "Alon Cellular" if $name =~ m/^(alon|AlonCellular)/i;
+    return "Alon" if $name =~ m/^(alon|AlonCellular|Alon Cellular)/i;
 
     if ( ! scalar keys %$customers ){
 	$customers = WikiCommons::xmlfile_to_hash ("$real_path/customers.xml");
@@ -592,9 +627,14 @@ sub get_correct_customer{
 sub shouldSkipFile {
     my ($url, $file) = @_;
     my $ret = 0;
-    $ret = 1 if $url eq "RN:Mind 5.30.001 - 002 -- Release Notes";
-die Dumper($url, $file) if $ret==1;
-
+    $ret = 1 if $url eq "CMS:PhonEX ONE 2.30 Installation Technical Guide" && -s $file == 10507264;
+    $ret = 1 if $url eq "CMS:PhonEX ONE 2.30 Installation Technical Guide For Red Box" && -s $file == 5887087;
+    $ret = 1 if $url eq "CMS:PhonEX ONE 2.31 FAQs" && -s $file == 7906304;
+#     $ret = 1 if $url eq "CMS:PhonEX ONE 2.31 Installation Technical Guide" && -s $file == 9917952;
+    $ret = 1 if $url eq "CMS:PhonEX ONE 2.31 Installation Technical Guide For Red Box" && -s $file == 8760832;
+    $ret = 1 if $url eq "XXX" && -s $file == 100;
+    $ret = 1 if $url eq "XXX" && -s $file == 100;
+    print "Skipping file $file with url $url. They should be saved in docx with Microsoft Word and copied instead of the original doc.\n" if $ret==1;
     return $ret;
 }
 

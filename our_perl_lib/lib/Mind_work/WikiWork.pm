@@ -196,8 +196,9 @@ sub wiki_edit_page {
 
 sub wiki_import_files {
     my ($self, $file_path, $url) = @_;
+    ## need in /etc/sudoers to have "wiki ALL=(apache) NOPASSWD: ALL"
     print "\t-Uploading files ($file_path) for url $url.\t". (WikiCommons::get_time_diff) ."\n";
-    my $cmd_output = `php "$wiki_site_path/maintenance/importImages.php" --conf "$wiki_site_path/LocalSettings.php" --user="$wiki_user" --overwrite --check-userblock "$file_path"`;
+    my $cmd_output = `sudo -u apache php "$wiki_site_path/maintenance/importImages.php" --conf "$wiki_site_path/LocalSettings.php" --user="$wiki_user" --overwrite --check-userblock "$file_path"`;
     die "\tError $? for importImages.php: ".Dumper($cmd_output) if ($?);
     print "$cmd_output\n";
     print "\t+Uploading files for url $url.\t". (WikiCommons::get_time_diff) ."\n";
@@ -234,14 +235,17 @@ sub wiki_upload_file {
 
 sub wiki_exists_page {
     my ($self, $title) = @_;
-    my $page = $mw->get_page( { title => "$title" } );
-
-    unless ( $page->{'*'} ) {
-    return 0;
-    }
+    my $page = $mw->get_page( { title => $title } );
+# print Dumper($page->{'timestamp'});
+    return 0 unless ( $page->{'*'} ) ;
     return 1;
 }
 
+sub wiki_get_page_timestamp {
+    my ($self, $title) = @_;
+    my $page = $mw->get_page( { title => $title } );
+    return $page->{'timestamp'};
+}
 sub wiki_geturl {
     return $wiki_url;
 }

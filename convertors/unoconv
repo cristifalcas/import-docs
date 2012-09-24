@@ -81,10 +81,10 @@ def find_offices():
                             '/Applications/OpenOffice.org.app/Contents' ]
 
         else:
-            extrapaths += glob.glob('/usr/lib*/libreoffice*') + \
+            extrapaths += glob.glob('/usr/lib*/libreoffice1*') + \
+                          glob.glob('/opt/libreoffice*') + \
                           glob.glob('/usr/lib*/openoffice*') + \
                           glob.glob('/usr/lib*/ooo*') + \
-                          glob.glob('/opt/libreoffice*') + \
                           glob.glob('/opt/openoffice*') + \
                           glob.glob('/opt/ooo*') + \
                           glob.glob('/usr/local/libreoffice*') + \

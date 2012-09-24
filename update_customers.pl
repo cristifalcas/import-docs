@@ -2,7 +2,7 @@
 
 use warnings;
 use strict;
-
+$| = 1;
 $SIG{__WARN__} = sub { die @_ };
 
 use Cwd 'abs_path','chdir';
