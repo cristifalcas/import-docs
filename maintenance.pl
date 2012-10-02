@@ -48,7 +48,7 @@ $our_wiki = new WikiWork();
 my $view_only = shift;
 $view_only = 1 if ! defined $view_only;
 my $max_elements = 2000;
-my $max_to_delete = 4000;
+my $max_to_delete = 2000;
 
 sub fixnamespaces {
   my $namespaces = shift;
@@ -515,15 +515,15 @@ sub bulk_delete {
 sub unused_images_dirty {
   my $link = "http://localhost/wiki/index.php?title=Special:UnusedFiles&limit=$max_elements&offset=0";
   my $res = get_results($link, "ul");
-#   my $to_delete;
+  my $ret = 0;
   foreach my $elem (@$res){
       $elem =~ s/%27/'/g;
       $elem =~ s/%26/&/g;
-#       $to_delete .= "File:$elem\n";
+      $ret = 1;
       print "rm file $elem.\n";
       eval{$our_wiki->wiki_delete_page("File:$elem")} if ! $view_only;
   }
-#   bulk_delete($to_delete);
+  return $ret;
 }
 
 # sub fix_wanted_pages {
@@ -562,14 +562,14 @@ sub fix_missing_files {
 	$missing->{$page} = 1;
     }
   }
-#   my $to_delete;
+#   my $ret = 0;
   foreach my $page (sort keys %$missing) {
       next if $page eq "CMS:MIND-IPhonEX CMS 80.00.020" && $page !~ m/[a-b _]+:/i;
       print "rm page $page.\n";
-#       $to_delete .= "$page\n";
-      eval{$our_wiki->wiki_delete_page($page)} if ( $our_wiki->wiki_exists_page("$page") && ! $view_only);
+#       $ret = 1;
+      eval{print "XXXX should we delete $page?\n";$our_wiki->wiki_delete_page($page)} if 0 && ( $our_wiki->wiki_exists_page("$page") && ! $view_only);
   }
-#   bulk_delete($to_delete);
+#   return $ret;
 }
 
 sub getlocalimages {
@@ -861,19 +861,17 @@ sub check_deployment_pages {
     }
     $dbh->disconnect if defined($dbh);
 
-#     print "## Get all wiki sc urls\n";
-#     my @arr2 = @{ $our_wiki->wiki_get_all_pages($namespaces->{redir}->{SC}) };
-
     print "## Get all wiki sc deployment urls\n";
     my @arr3 = @{ $our_wiki->wiki_get_all_pages($namespaces->{deploy}->{SC_Deployment}) };
     ## check with time from redirect
     print "##Check that in wiki the time difference between SC and SC_Deployment is small.\n";
+    my @to_delete;
     foreach my $url (@arr3) {
 	my ($ns, $name) = $url =~ m/^(SC Deployment):(.*)$/i;
 	next if $name !~ m/^[a-z][0-9]+$/i;
-	if (! $our_wiki->wiki_exists_page("SC:$name")){
-print Dumper($url, $our_wiki->wiki_get_page_timestamp($url), $our_wiki->wiki_get_page_timestamp("SC:$name")) if $name =~ m/^B/i;
-# 	    $our_wiki->wiki_delete_page($url);
+	if ((! $our_wiki->wiki_exists_page("SC:$name")) || $our_wiki->wiki_exists_page("SC_Cancel:$name")){
+	    print "\tDeployment url $url doesn't have a corresponding SC.\n";
+	    push @to_delete, $url;
 	    next;
 	}
 	my $deployment_time = $our_wiki->wiki_get_page_timestamp($url);
@@ -882,12 +880,14 @@ print Dumper($url, $our_wiki->wiki_get_page_timestamp($url), $our_wiki->wiki_get
 	my $redir_time = $our_wiki->wiki_get_page_timestamp("SC:$name");
 	my ($r_date, $r_y, $r_mon, $r_d, $r_hour, $r_h, $r_min, $r_s) = $redir_time =~ m/^((\d{4})-(\d{2})-(\d{2}))T((\d{2}):(\d{2}):(\d{2}))Z$/;
 	my $r_unixtime = timegm($r_s,$r_min,$r_h,$r_d,$r_mon-1,$r_y);
-	print Dumper($url, $deployment_time, $d_unixtime, $redir_time, $r_unixtime, $d_unixtime-$r_unixtime);
 	if (abs($d_unixtime-$r_unixtime)>60) {
-print Dumper($url, $our_wiki->wiki_get_page_timestamp($url), $our_wiki->wiki_get_page_timestamp("SC:$name"))
-# 	    $our_wiki->wiki_delete_page($url);
-# 	    $our_wiki->wiki_delete_page("SC:$name");
+	    print "\tTime difference for $url between deployment and sc is ".($d_unixtime-$r_unixtime).".\n";
+	    push @to_delete, $url;
+	    push @to_delete, "SC:$name";
 	}
+    }
+    foreach (@to_delete){
+	$our_wiki->wiki_delete_page($_) if ! $view_only;
     }
 }
 
@@ -901,21 +901,16 @@ print Dumper($url, $our_wiki->wiki_get_page_timestamp($url), $our_wiki->wiki_get
 sql_connect_mysql();
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
-check_deployment_pages($namespaces);exit 1;
 
 if ($view_only ne "user_sr") {
+    print "##### Fix deployment pages:\n";
+    check_deployment_pages($namespaces);
     print "##### Fix wiki sc type:\n";
     fix_wiki_sc_type($namespaces);
     print "##### Fix broken redirects:\n";
     broken_redirects;
     print "##### Fix double redirects:\n";
     scdoubleredirects;
-    print "##### Remove unused images:\n";
-    unused_images_dirty;
-    print "##### Fix missing files:\n";
-    fix_missing_files();
-    print "##### Syncronize wiki files with fs files.\n";
-    fix_images();
 #     # print "##### Wanted pages:\n";
 #     # my ($cat, $sc, $crm, $other) = fix_wanted_pages();
 #     # print "##### Get missing categories:\n";
@@ -924,6 +919,12 @@ if ($view_only ne "user_sr") {
     my $unused = unused_categories();
     print "##### Syncronize:\n";
     syncronize_local_wiki($namespaces);
+    print "##### Remove unused images:\n";
+    while (unused_images_dirty()){};
+    print "##### Fix missing files:\n";
+    fix_missing_files();
+    print "##### Syncronize wiki files with fs files.\n";
+    fix_images();
 }
 $dbh_mysql->disconnect() if defined($dbh_mysql);
 

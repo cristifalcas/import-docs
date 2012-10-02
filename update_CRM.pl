@@ -150,13 +150,9 @@ sub print_coco {
 
 sub write_file {
     my ($path, $text) = @_;
-    open (FILE, ">$path") or die "can't open file $path for writing: $!\n";
     $text = encode_utf8( $text );
-# use Encode;
-#     $text = Encode::decode("cp1251", $text);
-# binmode FILE, ":utf8";
-# print "$text";
-#     Encode::from_to( $text, "cp1251", "utf8");
+    $text =~ s/\x{c2}\x{96}/-/gsi;
+    open (FILE, ">$path") or die "can't open file $path for writing: $!\n";
     print FILE "$text";
     close (FILE);
 }
@@ -475,7 +471,7 @@ sub sql_connect {
     $dbh->{LongReadLen} = 1024 * 1024;
     $dbh->{LongTruncOk}   = 0;
 }
-
+my $q=0;
 sub parse_text {
     my ($text, $extra_info) = @_;
     return $text if $text =~ m/^\s*$/;
@@ -494,9 +490,7 @@ Enterprise Solutions Support|
 Sentori Support Center|
 MIND CTI eService, USA Center|
 MIND CTI eService, Israel Center)\n+[a-zA-Z0-9 ,]{0,}\n+$tmp\n+Service Call Data:\n+Number:[ ]+$extra_info->{'customer'} \/ $extra_info->{'sr_no'}\n+Received:[ ]+($extra_info->{sr_date}|$extra_info->{sr_usa_date})\n+Current Status:[ ]+[a-zA-Z0-9 ]{1,}\n+$tmp\n+PLEASE DO NOT REPLY TO THIS EMAIL - Use the CRM\n*";
-#print "$text\n\n\n\n\n\n$reg_exp\n";
 	$text =~ s/$reg_exp//gs;
-#print "$text\n";exit 1;
     }
 #     my $enc = get_encoding($text);
 # # print "$enc\n";exit 1;
@@ -509,9 +503,10 @@ MIND CTI eService, Israel Center)\n+[a-zA-Z0-9 ,]{0,}\n+$tmp\n+Service Call Data
 #     }
 # print "$text\n";exit 1;
 
-    $text = WikiClean::fix_small_issues( $text );
+# open (MYFILE, '>/media/share/Documentation/cfalcas/q/import_docs/0000.wiki.q'.($q++)); print MYFILE $text; close (MYFILE);
     $text =~ s/([^\n])\n([^\n])/$1\n\n$2/gm;
-
+    $text = WikiClean::fix_small_issues($text);
+# open (MYFILE, '>/media/share/Documentation/cfalcas/q/import_docs/0000.wiki.qq'.($q)); print MYFILE $text; close (MYFILE);
     $text =~ s/(~{3,})/<nowiki>$1<\/nowiki>/gm;
     $text =~ s/(\[\[)/<nowiki>$1<\/nowiki>/gm;
     $text = WikiClean::fix_wiki_link_to_sc( $text );
@@ -744,7 +739,7 @@ my @new_cust_arr = ();
 foreach my $cust (sort keys %$customers){
     print "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
 # print "$customers->{$cust}->{'displayname'}\n";next;
-# next if $customers->{$cust}->{'displayname'} ne "IRISTEL";
+# next if $customers->{$cust}->{'displayname'} ne "SIW";
 #     next if (! defined $customers->{$cust}->{'ver'} || $customers->{$cust}->{'ver'} lt "5.00")
 # 	    && $customers->{$cust}->{'displayname'} ne "Billing";
 # 	    && $customers->{$cust}->{'displayname'} !~ m/mtpcs/i;

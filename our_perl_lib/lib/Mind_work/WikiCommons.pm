@@ -408,10 +408,25 @@ sub check_vers {
 }
 
 sub generate_html_file {
-    my ($doc_file, $type) = @_;
+    my ($doc_file, $type, $user) = @_;
+    print "\t## using user ".Dumper($user);
 #     my $max_wait_time = 300; # 1800 = .5 hours # 46800 = 13 hours
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
     my $status;
+    my $user_crt = `id -u`;chomp($user_crt);
+    my $user_exists;
+    my @change_user;
+    if (defined $user) {
+	my $user_exists = `id -u $user`;
+	chomp($user_exists);
+	if ($user_exists =~ m/^[0-9]+$/ && $user_exists != $user_crt) {
+	  @change_user = ("sudo", "-u", "$user");
+	  system("cp", $ENV{"HOME"}."/.Xauthority", "/home/$user/") == 0 || die "can't copy Xauthority to user $user\n"; 
+	}
+    }
+    my $kill_sudo = join (" ", @change_user);
+# print Dumper(@change_user, $kill_sudo);
+
     ## filters http://cgit.freedesktop.org/libreoffice/core/tree/filter/source/config/fragments/filters
     my $filters = { "html" => $suffix =~ m/xlsx?/i ? "html:HTML (StarCalc)" : "html:HTML (StarWriter)",
 		    "pdf"  => "pdf:impress_pdf_Export",
@@ -419,67 +434,40 @@ sub generate_html_file {
 		    "txt"  => "txt:TEXT (StarWriter_Web)",
 		  };
     my $commands = {
-	  "3. our office with X" => ["/opt/libreoffice3.6/program/soffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
-	  "4. our office" => ["/opt/libreoffice3.6/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
-	  "5. unoconv" => ["python", "$real_path/convertors/unoconv", "-f", "$type", "$doc_file"],
-	  "6. system office with X" => ["libreoffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
-	  "7. system office" => ["libreoffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
-	  "8. our office old with X" => ["/opt/libreoffice3.4/program/soffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
-	  "9. our office old " => ["/opt/libreoffice3.4/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
+	  "3. our office with X" => [@change_user, "/opt/libreoffice3.6/program/soffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
+# 	  "4. our office" => [@change_user, "/opt/libreoffice3.6/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
+# 	  "5. unoconv" => [@change_user, "python", "$real_path/convertors/unoconv", "-f", "$type", "$doc_file"],
+# 	  "6. system office with X" => ["libreoffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
+# 	  "7. system office" => [@change_user, "libreoffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
+# 	  "8. our office old with X" => [@change_user, "/opt/libreoffice3.4/program/soffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
+# 	  "9. our office old " => [@change_user, "/opt/libreoffice3.4/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
 	};
 
     print "\t-Generating html file from $name$suffix.\t". (get_time_diff) ."\n\t\t$doc_file\n";
     system("Xvfb :10235 -screen 0 1024x768x16 &> /dev/null &"); ## if we don't use headless
 #     system("python $real_path/convertors/unoconv -l &"); ## start a listener
-    my $max_wait_time = 60;
-    $max_wait_time = 20 if (-s $doc_file < 100000);
+    my $max_wait_time = 150;
+    $max_wait_time = 30 if (-s $doc_file < 100000);
     foreach my $key (sort keys %$commands) {
 	print "\tTrying to use $key.\t". (get_time_diff) ."\n";
-	`kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | gawk '{print \$2}') &>/dev/null`;
+	`$kill_sudo kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | gawk '{print \$2}') &>/dev/null`;
 	sleep 1;
 	eval {
 	  local $SIG{ALRM} = sub { die "alarm\n" };
 	  alarm $max_wait_time;
-	  system(@{$commands->{$key}});
+	  my $res = system(@{$commands->{$key}});
+# print Dumper($res);
 	  alarm 0;
 	};
 	$status = $@;
+
+	`$kill_sudo find \"$dir\" -user $user_exists -type f -exec chgrp nobody {} \\;` if defined $user_exists;
+	`$kill_sudo find \"$dir\" -user $user_exists -type f -exec chmod g+rw   {} \\;` if defined $user_exists;
 	last if ! $status && -f "$dir/$name.html";
 	$max_wait_time = $max_wait_time <= 60 ? 300 : $max_wait_time * 2;
 # 	$max_wait_time = $max_wait_time * 2;
 	print "\t\tError: $status. Try again with next command.\t". (get_time_diff) ."\n";
     }
-#     `kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | gawk '{print \$2}') &>/dev/null`;
-#     eval {
-# 	local $SIG{ALRM} = sub { die "alarm\n" };
-# 	alarm $max_wait_time + 30; # .5 hours
-# # 	system("python", "$real_path/convertors/unoconv", "-f", "$type", "$doc_file") == 0 or die "unoconv failed: $?"; # , "-vvv"
-# 	system("/opt/libreoffice3.6/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file") == 0 or die "libreoffice3.6 failed: $?";
-# 	alarm 0;
-#     };
-#     my $status = $@;
-#     if ($status) {
-# 	print "Error: Timed out: $status. Try again with filter $filters->{$type}.\n";
-# 	`kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin\\|unoconv | grep -v grep | gawk '{print \$2}') &>/dev/null`;
-# 	eval {
-# 	    local $SIG{ALRM} = sub { die "alarm\n" };
-# 	    alarm $max_wait_time * 2;
-# 	    ## --headless dies, so we replace it with --display :10235
-# 	    system("libreoffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file") == 0 or die "libreoffice failed: $?";
-# # 	    system("Xvfb :10235 -screen 0 1024x768x16 &> /dev/null &");
-# # 	    system("libreoffice", "--display", ":10235", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file") == 0 or die "libreoffice failed: $?";
-# 	    alarm 0;
-# 	};
-# 	$status = $@;
-# 	if ($status) {
-# 	    print "Error: Timed out: $status.\n";
-# 	    `kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | gawk '{print \$2}') &>/dev/null`;
-# 	} else {
-# 	    print "\tFinished.\n";
-# 	}
-#     } else {
-# 	print "\tFinished.\n";
-#     }
 
     print "\t+Generating html file from $name$suffix.\t". (get_time_diff) ."\n";
     return $status;

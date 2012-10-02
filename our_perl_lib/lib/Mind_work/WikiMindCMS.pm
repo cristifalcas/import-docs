@@ -14,6 +14,7 @@ our $pages_toimp_hash = {};
 our $general_categories_hash = {};
 our $count_files;
 my $pages_ver = {};
+my $pages_nr = {};
 
 sub new {
     my $class = shift;
@@ -30,6 +31,20 @@ sub generate_categories {
     my ($name) = @_;
     ## $general_categories_hash->{5.01.019}->{5.01} means that 5.01.019 will be in 5.01 category
     $general_categories_hash->{'CMS All documents'} = 1;
+}
+
+sub get_md5_fast {
+    my $doc_file = shift;
+    ## md5 is fatser, but more IO consuming... we don't like high IO
+    my $md5 = WikiCommons::svn_info("$doc_file\@", "", "");
+    if (defined $md5) {
+	$md5 =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
+	chomp $md5;
+    } else {
+	print "are we reallly using md5 for $doc_file?\n";
+	$md5 = WikiCommons::get_file_md5($doc_file);
+    }
+    return $md5;
 }
 
 sub add_document {
@@ -69,15 +84,15 @@ sub add_document {
     }
 
     my $i = 0;
-    while (1) {
-	if ( exists $pages_toimp_hash->{"$page_url$i"} ){
-	    $i++ ;
-	} else {
-	    last;
-	}
-    }
-    $page_url = $page_url." - $i" if $i;
-    $pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
+    if ( exists $pages_toimp_hash->{$page_url} ){
+	my $i = $pages_nr->{$page_url}->{'id'};
+	$i++ ;
+	$pages_nr->{$page_url}->{'id'} = $i;
+	$page_url = "$page_url -- $i";
+    } 
+
+    $pages_toimp_hash->{$page_url} = [get_md5_fast($doc_file), $rel_path, $svn_url, "link", \@categories];
+    
 }
 
 sub get_documents {

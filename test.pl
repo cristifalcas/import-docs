@@ -11,6 +11,12 @@ use File::Basename;
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 
+my $q = `id -u wiki_2`;
+my $w = `id -u wiki_3`;
+chomp($q); chomp($w);
+print Dumper($q,$w );
+exit 1;
+
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 print "$path_prefix\n";
 # my $real_path = abs_path($0);
