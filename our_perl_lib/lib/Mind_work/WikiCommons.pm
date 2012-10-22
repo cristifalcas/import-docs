@@ -273,11 +273,28 @@ sub normalize_text {
 
 sub get_file_md5 {
     my $doc_file = shift;
+    print "\tGetting md5 for $doc_file\n";
+    my $doc_md5;
+    eval{
     open(FILE, $doc_file) or die "Can't open '$doc_file' for md5: $!\n";
     binmode(FILE);
-    my $doc_md5 = Digest::MD5->new->addfile(*FILE)->hexdigest;
+    $doc_md5 = Digest::MD5->new->addfile(*FILE)->hexdigest;
     close(FILE);
+    };
+    if ($@) {
+	print "\tError in getting md5:".Dumper($@);
+	$doc_md5 = get_file_sha($doc_file);
+    }
     return $doc_md5;
+}
+
+sub get_file_sha {
+    my $doc_file = shift;
+    die "Not a file: $doc_file\n" if ! -f $doc_file;
+    use Digest::SHA qw(sha1_hex);
+    my $sha = Digest::SHA->new();
+    $sha->addfile($doc_file);
+    return $sha->hexdigest;;
 }
 
 sub capitalize_string {
@@ -435,12 +452,12 @@ sub generate_html_file {
 		  };
     my $commands = {
 	  "3. our office with X" => [@change_user, "/opt/libreoffice3.6/program/soffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
-# 	  "4. our office" => [@change_user, "/opt/libreoffice3.6/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
-# 	  "5. unoconv" => [@change_user, "python", "$real_path/convertors/unoconv", "-f", "$type", "$doc_file"],
-# 	  "6. system office with X" => ["libreoffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
-# 	  "7. system office" => [@change_user, "libreoffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
-# 	  "8. our office old with X" => [@change_user, "/opt/libreoffice3.4/program/soffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
-# 	  "9. our office old " => [@change_user, "/opt/libreoffice3.4/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
+	  "4. our office" => [@change_user, "/opt/libreoffice3.6/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
+	  "5. unoconv" => [@change_user, "python", "$real_path/convertors/unoconv", "-f", "$type", "$doc_file"],
+	  "6. system office with X" => ["libreoffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
+	  "7. system office" => [@change_user, "libreoffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
+	  "8. our office old with X" => [@change_user, "/opt/libreoffice3.4/program/soffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
+	  "9. our office old " => [@change_user, "/opt/libreoffice3.4/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
 	};
 
     print "\t-Generating html file from $name$suffix.\t". (get_time_diff) ."\n\t\t$doc_file\n";
@@ -455,14 +472,13 @@ sub generate_html_file {
 	eval {
 	  local $SIG{ALRM} = sub { die "alarm\n" };
 	  alarm $max_wait_time;
-	  my $res = system(@{$commands->{$key}});
-# print Dumper($res);
+	  system(@{$commands->{$key}});
 	  alarm 0;
 	};
 	$status = $@;
 
-	`$kill_sudo find \"$dir\" -user $user_exists -type f -exec chgrp nobody {} \\;` if defined $user_exists;
-	`$kill_sudo find \"$dir\" -user $user_exists -type f -exec chmod g+rw   {} \\;` if defined $user_exists;
+	`$kill_sudo find \"$dir\" -user $user -type f -exec chgrp nobody {} \\;` if defined $user_exists;
+	`$kill_sudo find \"$dir\" -user $user -type f -exec chmod g+rw   {} \\;` if defined $user_exists;
 	last if ! $status && -f "$dir/$name.html";
 	$max_wait_time = $max_wait_time <= 60 ? 300 : $max_wait_time * 2;
 # 	$max_wait_time = $max_wait_time * 2;

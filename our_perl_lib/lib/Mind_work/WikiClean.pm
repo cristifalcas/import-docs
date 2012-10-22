@@ -125,11 +125,11 @@ sub tree_fix_links_images {
 	if ($tag eq "img" || $tag eq "body") {
 	    my $name_img = uri_unescape($link);
 	    $name_img =~ s/^\.\.\///;
-	    my $name_new = WikiCommons::get_file_md5("$dir/$name_img")."_conv.jpg";
 	    if (! -f "$dir/$name_img") {
-		print "Can't find file $dir/$name_img ($name_new).\n";
+		print "Can't find file $dir/$name_img.\n";
 		next;
 	    }
+	    my $name_new = WikiCommons::get_file_md5("$dir/$name_img")."_conv.jpg";
 	    system("convert", "$dir/$name_img", "-background", "white", "-flatten", "$dir/$name_new") == 0 or die "error runnig convert: $!.\n";
 # 	    unlink "$dir/$name_img" || die "can't delete old image $dir/$name_img\n";
 	    $old_files_for_delete->{"$dir/$name_img"} = 1;
@@ -751,6 +751,7 @@ WikiCommons::write_file("$dir/fix_external_links.$name.txt", $wiki, 1) if $debug
 #     $wiki = fix_wiki_menus( $wiki, $dir );
 # WikiCommons::write_file("$dir/fix_wiki_menus.$name.txt", $wiki, 1);
     $wiki = fix_small_issues( $wiki );
+    $wiki =~ s/^[:\s]*$//gm; ## not good for crm
 WikiCommons::write_file("$dir/fix_small_issues.$name.txt", $wiki, 1) if $debug eq "yes";
 
     WikiCommons::write_file("$dir/$name.wiki", $wiki);
@@ -803,7 +804,7 @@ sub fix_small_issues {
     $wiki =~ s/^([ \t]*=+[ \t]*)(.*?)([ \t]*=+[ \t]*)$/\n\n$1$2$3\n/gm;
     $wiki =~ s/^\{\|(.*)$/\n\{\|$1 class="wikitable" /mg;
     $wiki =~ s/\|}\s*{\|/\|}\n\n\n{\|/mg;
-    $wiki =~ s/^[:\s]*$//gm;
+
     return $wiki;
 }
 

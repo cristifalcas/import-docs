@@ -519,10 +519,11 @@ sub unused_images_dirty {
   foreach my $elem (@$res){
       $elem =~ s/%27/'/g;
       $elem =~ s/%26/&/g;
-      $ret = 1;
+      $ret = 1 if ! $view_only;
       print "rm file $elem.\n";
       eval{$our_wiki->wiki_delete_page("File:$elem")} if ! $view_only;
   }
+  print "\treturn from unused images with code $ret.\n";
   return $ret;
 }
 
@@ -562,14 +563,12 @@ sub fix_missing_files {
 	$missing->{$page} = 1;
     }
   }
-#   my $ret = 0;
+
   foreach my $page (sort keys %$missing) {
       next if $page eq "CMS:MIND-IPhonEX CMS 80.00.020" && $page !~ m/[a-b _]+:/i;
-      print "rm page $page.\n";
-#       $ret = 1;
-      eval{print "XXXX should we delete $page?\n";$our_wiki->wiki_delete_page($page)} if 0 && ( $our_wiki->wiki_exists_page("$page") && ! $view_only);
+      print "should we rm page $page.\n";
+      eval{$our_wiki->wiki_delete_page($page)} if ! $view_only;# $our_wiki->wiki_exists_page("$page") &&
   }
-#   return $ret;
 }
 
 sub getlocalimages {
@@ -777,6 +776,13 @@ sub fix_images {
   my @w = keys %$db_image;
   my ($only_in_imagelinks, $only_in_image, $common_) = WikiCommons::array_diff( \@q, \@w);
   ## should be identical
+  foreach (@$only_in_imagelinks){
+    last if $view_only;
+    print "\tcreate page $_\n";
+    $our_wiki->wiki_edit_page($_, "to delete\n");
+    print "\tdelete page $_\n";
+    $our_wiki->wiki_delete_page($_);
+  }
   die "Check this shit out:\n".Dumper($only_in_imagelinks, $only_in_image) if scalar @{ $only_in_imagelinks } || scalar @{ $only_in_image };
 
   print "## Remove from wiki all images that are on disk and not on db also.\n";
@@ -899,6 +905,31 @@ sub check_deployment_pages {
 # exit;
 
 sql_connect_mysql();
+
+if ($view_only eq "q") {
+my $sth = $dbh_mysql->prepare("select CONCAT(page_namespace,':',page_title) from wikidb.page q, wikidb.text w, wikidb.revision e
+where ((page_namespace>=100 and page_namespace<200) or page_namespace=400 or page_namespace=450)
+and e.rev_timestamp>'20121004000000' and e.rev_timestamp<'20121015100000' 
+and e.rev_text_id =w.old_id
+and q.page_latest=e.rev_id limit 0,1000");
+    $sth->execute();
+    while (my @row = $sth->fetchrow_array()){
+	if ($row[0] =~ m/^([0-9]+):(.+)$/i){
+	    my $nr = $1;
+	    my $name = $2;
+	    $row[0] = "SC:$2" if ($nr<200 && $nr !=196);
+	    $row[0] = "SC_Deployment:$2" if ($nr ==196);
+	    $row[0] = "SVN:$2" if ($nr==400);
+	    $row[0] = "SVN_SC:$2" if ($nr==450);
+	} else {
+	    die "not goood\n";
+	}
+# 	print "$row[0]\n";
+	$our_wiki->wiki_delete_page($row[0]);
+    }
+    exit 0;
+}
+
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
 
@@ -920,7 +951,7 @@ if ($view_only ne "user_sr") {
     print "##### Syncronize:\n";
     syncronize_local_wiki($namespaces);
     print "##### Remove unused images:\n";
-    while (unused_images_dirty()){};
+     while (unused_images_dirty()){};
     print "##### Fix missing files:\n";
     fix_missing_files();
     print "##### Syncronize wiki files with fs files.\n";

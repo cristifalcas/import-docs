@@ -3,6 +3,12 @@ use warnings;
 use strict;
 $| = 1;
 
+# select q.*,w.*,e.* from wikidb.page q, wikidb.text w, wikidb.revision e
+# where page_namespace>=100 and page_namespace<200
+# and e.rev_timestamp>'20121004000000' and e.rev_timestamp<'20121015000000' 
+# and e.rev_text_id =w.old_id
+# and q.page_latest=e.rev_id LIMIT 0, 300
+
 use Cwd 'abs_path';
 use File::Basename;
 # use File::Copy;

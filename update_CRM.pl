@@ -503,10 +503,9 @@ MIND CTI eService, Israel Center)\n+[a-zA-Z0-9 ,]{0,}\n+$tmp\n+Service Call Data
 #     }
 # print "$text\n";exit 1;
 
-# open (MYFILE, '>/media/share/Documentation/cfalcas/q/import_docs/0000.wiki.q'.($q++)); print MYFILE $text; close (MYFILE);
-    $text =~ s/([^\n])\n([^\n])/$1\n\n$2/gm;
+    $text =~ s/(\n){2,}/\n\n\n/gs;
+    $text =~ s/([^\n])\n([^\n])/$1\n\n$2/gs;
     $text = WikiClean::fix_small_issues($text);
-# open (MYFILE, '>/media/share/Documentation/cfalcas/q/import_docs/0000.wiki.qq'.($q)); print MYFILE $text; close (MYFILE);
     $text =~ s/(~{3,})/<nowiki>$1<\/nowiki>/gm;
     $text =~ s/(\[\[)/<nowiki>$1<\/nowiki>/gm;
     $text = WikiClean::fix_wiki_link_to_sc( $text );
@@ -564,7 +563,6 @@ sub write_header {
     $wiki .= "<div style=\"float: right;\">$time $date</div>\n\n";
     $wiki .= "\'\'\'From\'\'\': $name\n\n";
     $wiki .= "\'\'\'Event $key\'\'\': $hash->{event}->{desc} ($hash->{event}->{code}) \'\'\'Status\'\'\': $hash->{status}->{desc} ($hash->{status}->{code}) <div style=\"float: right;\">\'\'\'Customer visible\'\'\': $hash->{show_to_customer}</div>\n\n";
-#     $wiki .= "</font>\n\n";
     $wiki .= "----\n";
     $wiki .= "</p>\n</div>\n\n";
     return $wiki;
@@ -579,7 +577,6 @@ sub get_color {
     $extra_info->{'event_date'} = "$date";
     if ($hash->{'show_to_customer'} ne '1') {
 	### this is a mind message
-# 	$color = "<font color=\"#2B1B17\">\n";
 	$color = "<font color=\"grey\">\n";
 	if (scalar keys %{$hash->{'person'}}) {
 	    $name = "$hash->{'person'}->{'first_name'} $hash->{'person'}->{'last_name'} ([mailto:$hash->{'person'}->{'email'} $hash->{'person'}->{'email'}])";
@@ -657,7 +654,6 @@ sub write_sr {
 		    die "Unknown event: $desc.$info->{0}->{'number'}\n";
 		}
 	    }
-# 	    $wiki .= "$color\n$sr_text\n$attachements\n</div>\n" if ($sr_text ne '' || $attachements ne '');
 	    my $reference =  $ref->{'ref1'};
 	    if ( defined $reference && $reference !~ m/^\s*$/ ){
 		my @arr_ref = split /[,\.;:_\-\s\/+&]/, $reference;
@@ -676,15 +672,8 @@ sub write_sr {
 	    $wiki .= "----\n";
 	}
     }
-#     $wiki .= "\n\n[[Category:$info->{0}->{'customer'}]]\n[[Category:$info->{0}->{'customer'} -- CRM]]\n\n";
     $wiki .= "\n\n[[Category:$info->{0}->{'customer'} -- CRM]]\n\n";
-
     $wiki =~ s/\x{ef}\x{bf}\x{bd}/?/gsi;
-#     $wiki =~ s/\x{c2}\x{91}/"/gsi;
-#     $wiki =~ s/\x{c2}\x{92}/'/gsi;
-#     $wiki =~ s/\x{c2}\x{93}/"/gsi;
-#     $wiki =~ s/\x{c2}\x{94}/"/gsi;
-#     $wiki =~ s/\x{c2}\x{96}/-/gsi;
 
     return $wiki;
 }
@@ -738,7 +727,6 @@ my @new_cust_arr = ();
 
 foreach my $cust (sort keys %$customers){
     print "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
-# print "$customers->{$cust}->{'displayname'}\n";next;
 # next if $customers->{$cust}->{'displayname'} ne "SIW";
 #     next if (! defined $customers->{$cust}->{'ver'} || $customers->{$cust}->{'ver'} lt "5.00")
 # 	    && $customers->{$cust}->{'displayname'} ne "Billing";
@@ -766,15 +754,11 @@ foreach my $cust (sort keys %$customers){
     print "\tadd $total new files.\n";
     my $nr = 0;
     foreach my $sr (sort {$a<=>$b} keys %$crt_srs) {
-# print "$sr\n";next if $sr != 160;
-# next if $sr != 835;
-# print "$sr\n";next if $sr < 22;
 	my $info = {};
 	$info = get_sr($cust, $sr);
 	my $name = "$dir/".sprintf("%07d", $sr)."_".(scalar keys %$info);
 	$info->{'0'} = get_sr_desc($cust, $sr);
 	next if ! defined $info->{'0'}->{'desc'};
-# 	write_xml ($info, $name);
 	my $txt = write_sr($info);
 	write_file ( "$name.wiki", $txt);
 	print_coco(++$nr, $total);
