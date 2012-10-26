@@ -119,9 +119,12 @@ my $big_dump_mode = "no";
 my $delete_previous_page = "yes";
 my $pid_old = "100000";
 my $max_to_delete = 1000;
-my $nr_threads = 5;
 my $type_old = "";
 my $lo_user;
+my $docs_nr_forks = 2;
+my $links_nr_forks = 5;
+my $crm_nr_forks = 5;
+my $sc_nr_forks = 3;
 
 if (defined $options->{'c'}) {
     if ($options->{'c'} =~ m/^y$/i){
@@ -149,12 +152,7 @@ my $remote_work_path = "$path_prefix/remote_batch_files";
 
 my $wiki_result = "result";
 my $wiki_files_uploaded = "wiki_files_uploaded.txt";
-# my $wiki_files_info = "wiki_files_info.txt";
-
 my ($failed, $to_delete, $to_keep, $pages_toimp_hash, $pages_local_hash, $redirect_toimp_hash);
-# my $pages_toimp_hash = {};
-# my $pages_local_hash = {};
-# my $redirect_toimp_hash = {};
 
 my $md5_pos = 0;
 my $rel_path_pos = 1;
@@ -265,7 +263,6 @@ sub get_existing_pages {
 		my $rel_path = $info_text[$rel_path_pos]; $rel_path =~ s/(.*?)=\s*//;
 		my $svn_url = $info_text[$svn_url_pos]; $svn_url =~ s/(.*?)=\s*//;
 		my $url_type = $info_text[$link_type_pos]; $url_type =~ s/(.*?)=\s*//;
-# print Dumper($md5);# if $name =~ m/Mind 5.01.011 SP06 -- Release Notes/i;
 		if (!(defined $md5 && defined $rel_path && defined $url_type && defined $svn_url)){
 		    print "\tFile $name does not have the correct information.\n";
 		    next;
@@ -294,7 +291,6 @@ sub get_existing_pages {
 }
 
 sub generate_new_updated_pages {
-#     my ($to_delete, $to_keep) = @_;
     ### sort already existing files and svn files
     ## if it's the same url and (md5, rel_path) we should keep it, so we remove it from svn hash
     ##    else we need to delete and reimpot it
@@ -315,11 +311,9 @@ sub generate_new_updated_pages {
 	    }
 	}
     }
-#     return ($to_delete, $to_keep);
 }
 
 sub generate_real_and_links {
-#     my ($to_delete, $to_keep) = @_;
     ### clean up already existing files
     ## for each md5 that is the same from to_keep, we must have 1 and only one real url, all others - links
     ## so, if we have 0 real urls, we remove all pages
@@ -362,11 +356,9 @@ sub generate_real_and_links {
 	    }
 	}
     }
-#     return ($to_delete, $to_keep);
 }
 
 sub generate_cleaned_real_and_links {
-#     my $to_keep = shift;
     ## for all pages that need to be imported, make one real and let all the rest links
     my $md5_map = {};
     my $md5_map_keep = {};
@@ -390,11 +382,9 @@ sub generate_cleaned_real_and_links {
 	}
 	print "done $count out of $total.\t". (WikiCommons::get_time_diff) ."\n" if ++$count%1000 == 0;
     }
-#     return ($to_delete, $to_keep);
 }
 
 sub generate_pages_for_real_and_redir {
-#     my ($to_delete, $to_keep) = @_;
     if ( $big_dump_mode ne "yes" && ($path_type eq "sc_docs" || $path_type =~ m/^crm_/i )){
 	my $redirect_url = "";
 	### we import SC_XXX, but not SC:
@@ -426,19 +416,14 @@ sub generate_pages_for_real_and_redir {
 	    }
 	}
     }
-#     return $to_delete, $to_keep;
 }
 
 sub generate_pages_to_delete_to_import {
-#     my ( $to_delete, $to_keep ) = {};
     print "Start generating new/updated/to_delete/to_keep urls.\t". (WikiCommons::get_time_diff) ."\n";
-#     ($to_delete, $to_keep) = generate_new_updated_pages($to_delete, $to_keep);
     generate_new_updated_pages();
     print "Done generating new/updated urls.\t". (WikiCommons::get_time_diff) ."\n";
-#     ($to_delete, $to_keep) = generate_real_and_links($to_delete, $to_keep);
     generate_real_and_links();
     print "Done separating urls in real and links.\t". (WikiCommons::get_time_diff) ."\n";
-#     ($to_delete, $to_keep) = generate_pages_for_real_and_redir($to_delete, $to_keep);
     generate_pages_for_real_and_redir();
     print "Done cleaning real and redirects.\t". (WikiCommons::get_time_diff) ."\n";
     generate_cleaned_real_and_links();
@@ -451,52 +436,13 @@ sub generate_pages_to_delete_to_import {
     print "2. Number of files to import as links: ",scalar keys %$tmp,"\n";
     print "3. Number of files already imported: ",scalar keys %$to_keep,"\n";
     print "4. Number of files to delete: ",scalar keys %$to_delete,"\n";
-
-#     return $to_delete, $to_keep;
 }
-
-# sub delete_categories {
-#     my (@categories) = @_;
-#     return if (WikiCommons::is_remote eq "yes");
-# 
-#     print "-Delete categories.\t". (WikiCommons::get_time_diff) ."\n";
-# #     my $sth = $dbh_mysql->prepare("SELECT WIKI_NAME FROM mind_wiki_info where lower(WIKI_NAME) like 'category:%'");
-# #     $sth->execute;
-# #     my $ret = $sth->fetchall_arrayref();
-# # print Dumper(@categories);
-#     foreach my $category (@categories) {
-# # 	my $category = $key->[0];
-# 	print "\tDelete category $category.\t". (WikiCommons::get_time_diff) ."\n";
-# 	my $sth_mysql = $dbh_mysql->do("DELETE FROM mind_wiki_info where WIKI_NAME=".$dbh_mysql->quote($category));
-# 	$our_wiki->wiki_delete_page($category) if ( $our_wiki->wiki_exists_page($category) );
-# # print Dumper($url);next;
-# # 	my $dir_cat = "$categories_dir/Category:$category";
-# # 	if ( -d $dir_cat ) {
-# # 	    my ($name,$dir,$suffix) = fileparse("$dir_cat", qr/\.[^.]*/);
-# # 	    remove_tree("$dir$name$suffix") || die "Can't remove dir $dir$name$suffix: $?.\n";
-# # 	} else {
-# # 	    print "Extra file in $categories_dir: $dir_cat.\n" if -f $dir_cat;
-# # 	}
-#     }
-#     print "+Delete categories.\t". (WikiCommons::get_time_diff) ."\n";
-# }
 
 sub make_categories {
     return 1 if ( $make_categories eq "no");
     my $url = "";
-#     my $categories_dir = "$wiki_dir/categories/";
-#     my @files = ();
-#     if (-e "$wiki_dir/categories/") {
-# 	opendir(DIR, "$categories_dir") || die("Cannot open directory $categories_dir.\n");
-# 	@files = grep { (!/^\.\.?$/) && -d "$categories_dir/$_" } readdir(DIR);
-# 	closedir(DIR);
-#     }
+
     my $general_categories_hash = $coco->get_categories;
-#     my @to_delete = (keys %$general_categories_hash);
-#     delete_categories(\@to_delete, $categories_dir);
-    ## broken: we would need something like select * from mind_wiki_info where lower(WIKI_NAME) like 'category%-- crm' -- or whatever
-#     delete_categories(keys %$general_categories_hash);
-# return;
     return if ($delete_everything eq "yes");
     my $categories_ref = $dbh_mysql->selectall_hashref("select WIKI_NAME from mind_wiki_info where WIKI_NAME like 'Category:%'", 'WIKI_NAME');
     print "-Making categories.\t". (WikiCommons::get_time_diff) ."\n";
@@ -518,18 +464,11 @@ sub make_categories {
 	    WikiCommons::makedir("$remote_work_path");
 	    WikiCommons::write_file("$remote_work_path/$url.wiki", $text);
 	}
-# 	my $work_dir = "$wiki_dir/categories/$url";
 	my $txt = "md5 = 0\nrel_path = 0\nsvn_url = 0\nlink_type = category\n";
 # 	print "\t## adding to db new val $txt\n";
 	my $sth_mysql = $dbh_mysql->do("REPLACE INTO mind_wiki_info 
 		  (WIKI_NAME,FILES_INFO_INSERTED) VALUES 
 		  (".$dbh_mysql->quote($url).", ".$dbh_mysql->quote($txt).")");
-# 	WikiCommons::makedir("$work_dir");
-# 	WikiCommons::write_file ("$work_dir/$wiki_files_info", "md5 = 0\nrel_path = 0\nsvn_url = 0\nlink_type = category\n");
-# print Dumper("$work_dir/$wiki_files_info");die;
-# $sth_mysql->execute();
-# $sth_mysql->finish();
-# 	WikiCommons::write_file("$work_dir/$url", $text);
     }
     print "+Making categories.\t". (WikiCommons::get_time_diff) ."\n";
 }
@@ -573,105 +512,13 @@ sub insertdata {
 	WikiCommons::makedir("$name_bad");
 	WikiCommons::move_dir("$work_dir","$name_bad");
     }
-    delete $failed->{$url};
+#     delete $failed->{$url};
 }
-
-#sub work_real {
-#     my ($path_files) = @_;
-#     my $total_nr = scalar keys %$pages_toimp_hash;
-#     my $crt_nr = 0;
-#     foreach my $url (sort keys %$pages_toimp_hash) {
-# 	eval {
-# 	  next if WikiCommons::shouldSkipFile($url, "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]") || $pages_toimp_hash->{$url}[$link_type_pos] eq "link";
-# 	  $crt_nr++;
-# 	  WikiCommons::reset_time();
-# 	  print "\n************************* $crt_nr of $total_nr\nMaking real url for $url\n\t\t$path_files/$pages_toimp_hash->{$url}[$rel_path_pos].\t". (WikiCommons::get_time_diff) ."\n";
-# 	  my $svn_url = $pages_toimp_hash->{$url}[$svn_url_pos];
-# 	  $svn_url = uri_escape( $svn_url,"^A-Za-z\/:0-9\-\._~%" );
-# 	  my $wiki = create_wiki($url, "$path_files/$pages_toimp_hash->{$url}[$rel_path_pos]");
-# 	  if (! defined $wiki ){
-# 	      WikiCommons::makedir("$bad_dir/$url");
-# 	      WikiCommons::move_dir("$wiki_dir/$url","$bad_dir/$url");
-# # 	      delete($pages_toimp_hash->{$url});
-# 	      next;
-# 	  }
-# 	  my $head_text = "<center>\'\'\'This file was automatically imported from the following document: [[File:$url.zip|$url.zip]]\'\'\'\n\n";
-# 	  $head_text .= "The original document can be found at [$svn_url this address]\n" if ($svn_url ne "");
-# 	  $head_text .= "</center>\n----\n\n\n\n\n\n".$wiki."\n----\n\n";
-# 	  $wiki = $head_text;
-# 	  my $cat = $pages_toimp_hash->{$url}[$categories_pos];
-# 	  foreach (@$cat) {
-# 	      $wiki = $wiki."[[Category:$_]]" if ($_ ne "");
-# 	  }
-# 
-# 	  $to_keep->{$url} = $pages_toimp_hash->{$url};
-# 	  my ($name,$dir,$suffix) = fileparse($path_files."/".$pages_toimp_hash->{$url}[$rel_path_pos], qr/\.[^.]*/);
-# 	  insertdata($url, $wiki);
-# 	  if ($path_type eq "users"){
-# 	      my $text_url = "[InternetShortcut]\nURL=". $our_wiki->wiki_geturl ."/index.php/$url";
-# 	      WikiCommons::write_file ("$dir/$name.url", $text_url);
-# 	  }
-# 	}; ## eval
-# 	print "Error generating for $url: $@\n" if $@ && $@ !~ m/^Exiting eval via next at/;
-#     }
-#}
-
-#sub work_link {
-#     my $to_keep = shift;
-    ## presumbly we have now only links
-#    my $md5_map = {};
-#    push @{$md5_map->{$to_keep->{$_}[$md5_pos]}{$to_keep->{$_}[$link_type_pos]}}, ($_) foreach (keys %$to_keep);
-#    foreach my $md5 (keys %$md5_map) {
-#	my $nr_real = 0; $nr_real = scalar @{ $md5_map->{$md5}{"real"} } if (exists $md5_map->{$md5}{"real"});
-#	my $nr_link = 0; $nr_link = scalar @{ $md5_map->{$md5}{"link"} } if (exists $md5_map->{$md5}{"link"});
-#	die "We should only have ONE real link: real=$nr_real link=$nr_link, md5=$md5.\n".Dumper($md5_map->{$md5}) if ($nr_real != 1);
-#    }
-#    fork_function(5, \&link_worker, $md5_map) if scalar keys %$pages_toimp_hash;
-    
-
-#     my $total_nr = scalar keys %$pages_toimp_hash;
-#     my $crt_nr = 0;
-
-#     foreach my $url (sort keys %$pages_toimp_hash) {
-# 	$crt_nr++;
-# 	WikiCommons::reset_time();
-# 	print "\n************************* $crt_nr of $total_nr\nMaking link for url $url\n\t\t$path_files/$pages_toimp_hash->{$url}[$rel_path_pos].\t". (WikiCommons::get_time_diff) ."\n";
-# 	my $link_to = $md5_map->{$pages_toimp_hash->{$url}[$md5_pos]}->{"real"}[0];
-# 	next if ! defined $link_to; ## probably the real page failed to import, so we ignore the links also
-# # die "Fucked up link\n".Dumper($link_to, $url, $md5_pos,$md5_map->{$pages_toimp_hash->{$url}[$md5_pos]}, $pages_toimp_hash->{$url},$md5_map, $to_keep) if ! defined $link_to;
-# 	die "We should have a url in to_keep.\n" if (scalar @{$pages_toimp_hash->{$url}} != scalar @{$to_keep->{$link_to}});
-# 	my ($link_name,$link_dir,$link_suffix) = fileparse($to_keep->{$link_to}[$rel_path_pos], qr/\.[^.]*/);
-# 	my ($name,$dir,$suffix) = fileparse($pages_toimp_hash->{$url}[$rel_path_pos], qr/\.[^.]*/);
-# 
-# 	my $new_file = "$url$suffix";
-# 	my $link_file = "$wiki_dir/$link_to/$link_to.wiki";
-# 	WikiCommons::makedir("$wiki_dir/$url/");
-# 	WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
-# 	copy("$link_file","$wiki_dir/$url/$url.wiki") or die "Copy failed for link: $link_file to $wiki_dir/$url: $!\t". (WikiCommons::get_time_diff) ."\n";
-# 	open (FILEHANDLE, "$wiki_dir/$url/$url.wiki") or die $!."\t". (WikiCommons::get_time_diff) ."\n";
-# 	my $wiki = do { local $/; <FILEHANDLE> };
-# 	close (FILEHANDLE);
-# 
-# 	my $svn_url = $pages_toimp_hash->{$url}[$svn_url_pos];
-# 	$svn_url = uri_escape( $svn_url,"^A-Za-z\/:0-9\-\._~%" );
-# 
-# 	my $head_text = "<center>\'\'\'This file was shamesly copied from the following url: [[$link_to]] because the doc files are identical.\'\'\'\n\n";
-# 	$head_text .= "The original document can be found at [$svn_url this address]\n" if ($svn_url ne "");
-# 	$head_text .= "</center>\n----\n\n\n\n\n\n".$wiki."\n----\n\n";
-# 	$wiki = $head_text;
-# 	my $cat = $pages_toimp_hash->{$url}[$categories_pos];
-# 	foreach (@$cat) {
-# 	    $wiki = $wiki."[[Category:$_]]" if ($_ ne "");
-# 	}
-# 	insertdata($url, $wiki);
-#     }
-#}
 
 sub work_begin {
     WikiCommons::reset_time();
     get_existing_pages;
 
-#     my ($to_delete, $to_keep) = {};
     if ($delete_everything eq "yes") {
 	$to_delete->{$_} = $pages_local_hash->{$_} foreach (sort keys %$pages_local_hash);
 	$pages_toimp_hash = {};
@@ -684,8 +531,6 @@ sub work_begin {
 		delete( $pages_local_hash->{$key});
 	    }
 	}
-
-# 	($to_delete, $to_keep) = generate_pages_to_delete_to_import;
 	generate_pages_to_delete_to_import();
     }
     if (WikiCommons::is_remote ne "yes") {
@@ -701,17 +546,11 @@ sub work_begin {
     }
     use Storable qw(dclone);
     $failed = dclone($pages_toimp_hash);
-#     return $to_keep;
 }
 
 sub work_for_docs {
-#     my ($path_files) = @_;
-    work_begin;
     make_categories if scalar keys %$pages_toimp_hash;
-#    work_real();
-    #make real pages
-    fork_function(1, \&real_worker) if scalar keys %$pages_toimp_hash;
-#    work_link();
+    fork_function($docs_nr_forks, \&real_worker) if scalar keys %$pages_toimp_hash;
     ## make links to real pages
     my $md5_map = {};
     push @{$md5_map->{$to_keep->{$_}[$md5_pos]}{$to_keep->{$_}[$link_type_pos]}}, ($_) foreach (keys %$to_keep);
@@ -720,7 +559,7 @@ sub work_for_docs {
 	my $nr_link = 0; $nr_link = scalar @{ $md5_map->{$md5}{"link"} } if (exists $md5_map->{$md5}{"link"});
 	die "We should only have ONE real link: real=$nr_real link=$nr_link, md5=$md5.\n".Dumper($md5_map->{$md5}) if ($nr_real != 1);
     }
-    fork_function(5, \&link_worker, $md5_map) if scalar keys %$pages_toimp_hash;
+    fork_function($links_nr_forks, \&link_worker, $md5_map) if scalar keys %$pages_toimp_hash;
 }
 
 sub split_redirects {
@@ -740,7 +579,7 @@ sub make_redirect {
     my $url = $redirect_toimp_hash->{$crt_name}->{'url'}; ## full url
 
     WikiCommons::makedir "$wiki_dir/$url/";
-    if ($crt_name =~ m/^SC:/i && (! $our_wiki->wiki_exists_page("$crt_name") || defined $wrong_hash->{$url})) {
+    if ($crt_name =~ m/^SC:/i && (! $our_wiki->wiki_exists_page($crt_name) || defined $wrong_hash->{$url})) {
 	remove_tree("$wiki_dir/$url/") if -d "$wiki_dir/$url/";
 	remove_tree("$wiki_dir/$crt_name/") if -d "$wiki_dir/$crt_name/";
 	next;
@@ -759,7 +598,7 @@ sub make_redirect {
     WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
     my $sth_mysql = $dbh_mysql->do("REPLACE INTO mind_wiki_info (WIKI_NAME,FILES_INFO_INSERTED) VALUES (".$dbh_mysql->quote($url).", ".$dbh_mysql->quote($text).")");
     delete $redirect_toimp_hash->{$crt_name};
-    delete $failed->{$url};
+#     delete $failed->{$url};
 }
 
 sub fork_function {
@@ -778,6 +617,8 @@ sub fork_function {
 	    my $url = (sort keys %$pages_toimp_hash)[0];
 	    print "Got new thread to run $url\n";
 	    my $val = $pages_toimp_hash->{$url};
+	    $crt_nr++;
+	    print "\n************************* $crt_nr of $total_nr\nMaking url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 	    my $pid = fork();
 	    if (! defined ($pid)){
 		die  "Can't fork.\n";
@@ -791,8 +632,6 @@ sub fork_function {
 		$function->($url, $val, $crt_thread, @function_args);
 		exit 100;
 	    }
-	    $crt_nr++;
-	    print "\n************************* $crt_nr of $total_nr\nMaking url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 	    $running->{$pid}->{'thread'} = $crt_thread;
 	    $running->{$pid}->{'url'} = $url;
 	    $running->{$pid}->{'val'} = $val;
@@ -890,7 +729,7 @@ sub link_worker {
 
 sub real_worker {
     my ($url, $val, $thread) = @_;
-    $lo_user = "wiki_$thread";
+    $lo_user = $lo_user."_$thread";
     exit 10 if $val->[$link_type_pos] eq "link" || WikiCommons::shouldSkipFile($url, "$path_files/$val->[$rel_path_pos]");
     my $exit = 0;
     $exit = eval {
@@ -925,78 +764,198 @@ sub real_worker {
     exit $exit;
 }
 
-sub cleanAndExit {
-    print "Killing all child processes\n";
-    kill 9, map {s/\s//g; $_} split /\n/, `ps -o pid --no-headers --ppid $$`;
-    exit 1000;
-}
-
-use sigtrap 'handler' => \&cleanAndExit, 'INT', 'ABRT', 'QUIT', 'TERM';
-
-if (-f "$pid_file") {
-    open (FH, "<$pid_file") or die "Could not read file $pid_file.\n";
-    my @info = <FH>;
-    close (FH);
-    chomp @info;
-    $pid_old = $info[0];
-    my $exists = kill 0, $pid_old if defined $pid_old && $pid_old =~ m/^[0-9]+$/;
-    if ( $exists ) {
-# 	my $proc_name = `ps -p $pid_old -o cmd`;
-# 	print "$proc_name\n";
-# 	die "Process is already running.\n" if $proc_name =~ m/(.+?)generate_wiki\.pl -d (.+?) -n $path_type(.*)/;
-	exit 1;
+sub SC_general_info {
+    my ($url, $ftp_links) = @_;
+    my $rel_path = $pages_toimp_hash->{$url}[$rel_path_pos];
+    my $has_deployment;
+    foreach (@{ $pages_toimp_hash->{$url}[$categories_pos] }){
+	$has_deployment = 'Y' if $_ =~ m/^has_deployment\s+Y$/i;
     }
+    my $general_wiki_file = "General_info.wiki";
+    local( $/, *FH ) ;
+    open(FH, "$path_files/$rel_path/$general_wiki_file") || die("Could not open file: $!");
+    my $wiki_txt = <FH>;
+    close (FH);
+    $wiki_txt =~ s/^[\f ]+|[\f ]+$//mg;
+    $wiki_txt .= "\n\n'''FTP links:'''\n\n";
+    foreach my $key (keys %$ftp_links) {
+	$wiki_txt .= "[$ftp_links->{$key}/$rel_path $key]\n\n";
+    }
+
+    my ($affected) = $wiki_txt =~ m/^.*(\n\'\'\'Affected Features & Parameters.*?)\n+(\'\'\'Test remarks|\'\'\'FTP links)/gmsi;
+    $affected = "" if ! defined $affected;
+    my $deployment_txt = "This document has been flaged as having deployment consideration. Search for this also in [[$url#General Information|General Information]] and the other SC tabs imported.\n\n$affected\n" if defined $has_deployment && $has_deployment eq "Y";
+    return ($wiki_txt, $deployment_txt);
 }
-WikiCommons::write_file($pid_file,"$$\n");
 
-$our_wiki = new WikiWork();
-if ($path_type eq "mind_svn") {
-    $lo_user = "wiki";
-    $coco = new WikiMindSVN($path_files);
-    work_for_docs();
-} elsif ($path_type eq "cms_svn") {
-    $lo_user = "wiki";
-    $coco = new WikiMindCMS($path_files);
-    work_for_docs();
-} elsif ($path_type eq "users") {
-    $lo_user = "wiki_users";
-    $coco = new WikiMindUsers($path_files);
-    work_for_docs();
-} elsif ($path_type =~ m/^crm_(.+)$/) {
-    $all_real = "yes";
-    $coco = new WikiMindCRM("$path_files", "$1");
+sub sc_worker {
+    my ($url, $val, $thread, $ftp_links, $info_h) = @_;
+    $lo_user = $lo_user."_$thread";
+    my $wrong_hash = {};
+    eval {
+# return if "$url" !~ "B621568";
+    WikiCommons::makedir "$wiki_dir/$url/";
+    WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
+    WikiCommons::add_to_remove ("$wiki_dir/$url/$wiki_result", "dir");
+    my $rel_path = $pages_toimp_hash->{$url}[$rel_path_pos];
+    
+    my ($wiki, $deployment, $wrong);
+    my ($wiki_general_txt, $deployment_general_txt) = SC_general_info($url, $ftp_links);
+    $wiki->{'0'} = $wiki_general_txt;
+    $deployment->{'00 General Information'} = $deployment_general_txt if defined $deployment_general_txt;
 
-    work_begin();
-    make_categories();
-    split_redirects();
-    fork_function(5, \&crm_worker);
-#     my $total_nr = scalar keys %$pages_toimp_hash;
-#     my $crt_nr = 0;
-#     foreach my $url (sort keys %$pages_toimp_hash) {
-# 	eval{
-# 	$crt_nr++;
-# 	WikiCommons::reset_time();
-# 	print "\n************************* $crt_nr of $total_nr\nMaking crm url for $url.\t". (WikiCommons::get_time_diff) ."\n";
-# 	WikiCommons::makedir "$wiki_dir/$url/";
-# 	my $rel_path = "$pages_toimp_hash->{$url}[$rel_path_pos]";
-# 
-# 	print "$path_files/$rel_path\n";
-# 	local( $/, *FH ) ;
-# 	open(FH, "$path_files/$rel_path") || die("Could not open file: $!");
-# 	my $wiki_txt = <FH>;
-# 	close (FH);
-# 
-# 	WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
-# 	WikiCommons::add_to_remove("$wiki_dir/$url/$wiki_result", "dir");
-# 	my $work_dir = "$wiki_dir/$url";
-# 	WikiCommons::write_file("$work_dir/$url.wiki", $wiki_txt);
-# 	insertdata ($url, $wiki_txt);
-# 	make_redirect($url);
-# 	}; ## eval
-# 	print "Error generating crm for $url: $@\n" if $@ && $@ !~ m/^Exiting eval via next at/;
-#     }
-} elsif ($path_type eq "sc_docs") {
-    $all_real = "yes";
+    opendir(DIR, "$path_files/$rel_path") || die("Cannot open directory $path_files/$rel_path: $!.\n");
+    my @files = grep { (!/^\.\.?$/) && -f "$path_files/$rel_path/$_" && /(\.rtf)|(\.doc)/i } readdir(DIR);
+    closedir(DIR);
+
+    foreach my $file (sort @files) {
+	my $file = "$path_files/$rel_path/$file";
+	my ($name,$dir,$suffix) = fileparse($file, qr/\.[^.]*/);
+	my ($node, $title, $header);
+	if ($suffix eq ".doc" || $suffix eq ".odt" || $suffix eq ".docx") {
+	    my $info_crt_h = $pages_toimp_hash->{$url}[$svn_url_pos];
+	    foreach my $key (keys %$info_crt_h) {
+		next if $key eq "SC_info";
+		if ($key =~ m/^([0-9]{1,}) $name$/) {
+		    $node = $1;
+		    $title = $name;
+		    my $date = "";
+		    $date = $info_crt_h->{$key}->{'date'} if defined $info_crt_h->{$key}->{'date'};
+		    $date =~ s/T/\t/;
+		    $date =~ s/.[0-9]{1,}Z$//i;
+		    $header = "<center>\'\'\'This file was automatically imported from the following document: [[File:$url $name.zip]]\'\'\'\n\n";
+		    $header .= "The original document can be found at [$info_h->{$name}/$info_crt_h->{$key}->{'name'} this address]\n\nThe last update on this document was performed at $date.\n";
+		    $header .= "</center>\n----\n\n";
+		    last;
+		}
+	    }
+	} elsif ($suffix eq ".rtf") {
+	    $title = $name;
+	    $title =~ s/^([0-9]{1,}) //;
+	    $node = $1;
+	    $header = "";
+	} else {
+	    die "WTF?\n";
+	}
+
+	if (! defined $title) {
+	    print "No title for $name.\n";
+	    $wrong = "yes";
+	    last;
+	}
+	print "\tWork for $file.\n";
+	my $wiki_txt = create_wiki("$url/$url $name", "$file", "$url $name");
+	if (! defined $wiki_txt ){
+# 		$to_keep->{$url} = $pages_toimp_hash->{$url};
+	    delete $pages_toimp_hash->{$url};
+	    $wrong = "yes";
+	    print "Skip url $url\n";
+	    last;
+	}
+	WikiCommons::add_to_remove("$wiki_dir/$url/$url $name", "dir");
+	$wiki_txt =~ s/\n(=+)(.*?)(=+)\n/\n=$1$2$3=\n/g;
+	$deployment->{$title} = WikiClean::get_deployment_conf($wiki_txt) if $title ne "STP document";
+
+	my $count = 0;
+	if ($name !~ m/(review document)|(review docuemnt)/) {
+	    my $newwiki = $wiki_txt;
+	    my $q ="";
+	    my $menu_h = {};
+	    while ($wiki_txt =~ m/\n(==+)(.*?)(==+)\n/g ) {
+		my $found_string = $&;
+		my $length1 = length($1); my $length2 = length($3); my $menu_name = $2;
+		foreach my $key (keys %$menu_h) {
+		    delete $menu_h->{$key} if ( $key >= $length1+1 );
+		}
+
+		if ( exists $menu_h->{$length1} ) {
+		    $menu_h->{$length1}++ ;
+		} else {
+		    $menu_h->{$length1} = 1;
+		}
+
+		$q = "";
+		foreach my $key (sort {$a<=>$b} keys %$menu_h) {
+		    $q .= $menu_h->{$key}.".";
+		}
+		$q .= " ";
+		my $found_string_end_pos = pos($wiki_txt);
+		substr($newwiki, $found_string_end_pos - length($found_string) + $count, length($found_string)) = "\n\'\'\'$q$menu_name\'\'\'\n";
+		$count += 6 - ( $length1 + $length2 ) + length($q) * 1;
+	    }
+	    $wiki_txt = $newwiki;
+	} else {
+	    $wiki_txt =~ s/\n(==+)(.*?)(==+)\n/\n\'\'\'$2\'\'\'\n/g;
+	    $count += 6 - ( length($1) + length($3) ) if defined $1 && defined $3;
+	}
+
+	$wiki_txt =~ s/^\s*(.*)\s*$/$1/gs;
+	next if $wiki_txt eq '';
+	$wiki_txt = "\n=$title=\n\n".$header.$wiki_txt."\n\n";
+	$wiki->{$node} = $wiki_txt;
+
+	### from dir $url/$doc$type/$wiki_result get all files in $url/$wiki_result
+	WikiCommons::add_to_remove("$wiki_dir/$url/$wiki_result", "dir");
+	WikiCommons::copy_dir ("$wiki_dir/$url/$url $name/$wiki_result", "$wiki_dir/$url/$wiki_result") if ($suffix eq ".doc");
+    }
+
+    if (defined $wrong && $wrong eq "yes"){
+	my $name_bad = "$bad_dir/$url".time();
+	WikiCommons::move_dir("$path_files/$rel_path", "$name_bad");
+	$wrong_hash->{$url} = 1;
+	return ;
+    }
+    my $full_wiki = "";
+    $full_wiki .= $wiki->{$_} foreach (sort {$a<=>$b} keys %$wiki);
+
+    WikiCommons::write_file("$wiki_dir/$url/$url.wiki", "$full_wiki");
+
+    my $dir = "$wiki_dir/$url/$wiki_result";
+    opendir(DIR, $dir);
+    @files = grep { (!/^\.\.?$/) && -f "$dir/$_" } readdir(DIR);
+    closedir(DIR);
+    if ( @files ) {
+	my $files = join "\nFile:", @files;
+	WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "File:$files\n");
+    } else {
+	WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
+    }
+    my $is_canceled = 0;
+    $is_canceled++ if $pages_toimp_hash->{$url}[$svn_url_pos]->{'SC_info'}->{'revision'} =~ m/^Cancel$/i;
+
+    my $url_deployment = $url;
+    $url_deployment =~ s/^SC:/SC_Deployment:/;
+    $our_wiki->wiki_delete_page ($url_deployment) if ( $our_wiki->wiki_exists_page($url_deployment) && $delete_previous_page ne "no");
+    my $deployment_txt;
+# print Dumper($deployment);exit 1;
+    foreach my $doc_type (sort keys %$deployment) {
+      my $used_name = $doc_type;
+      $used_name =~ s/^[0-9]+\s*//;
+      my $txt = $deployment->{$doc_type};
+      next if ! defined $txt;
+      $txt =~ s/(\n+|^)(=+)(.*?)(=+)\n/\n<b>$3 - [[$url#$used_name|$used_name]]<\/b>\n/ms;
+      $txt =~ s/\n(=+)(.*?)(=+)\n/\n<b>$2<\/b>\n/gms;
+      $deployment_txt .= "$txt\n\n";
+    }
+    insertdata($url, $full_wiki);
+
+    if (defined $deployment_txt && ! $is_canceled ) {
+	my $title = $full_wiki;
+	$title =~ s/^<center><font size="[0-9]{1,}">'''(.*?)'''<\/font><\/center>.*$/$1/gsi;
+	my $url_s = $url; $url_s =~ s/^SC:(.*)/$1/;
+	$deployment_txt = "=<small>[[SC:$url_s|$url_s: $title]]</small>=\n".$deployment_txt;
+	print "\tImporting url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n";
+	$our_wiki->wiki_edit_page($url_deployment, $deployment_txt);
+	die "Could not import url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url_deployment) );
+    }
+    make_redirect($url, $wrong_hash);
+    }; ## eval
+    print "Error generating sc for $url: $@\n" if $@ && $@ !~ m/^Exiting eval via next at/;
+
+    exit 0;
+}
+
+sub getCommonInfoSC {
     my $info_h = {};
     open(FH, "$path_files/common_info") || die("Could not open file common_info: $!\n");
     my @info = <FH>;
@@ -1012,205 +971,9 @@ if ($path_type eq "mind_svn") {
     $ftp_links->{'FTP_def_attach'} = "ftp://$info_h->{'FTP_USER'}:$info_h->{'FTP_PASS'}\@$info_h->{'FTP_IP'}/$info_h->{'FTP_def_attach'}";
     $ftp_links->{'FTP_market_attach'} = "ftp://$info_h->{'FTP_USER'}:$info_h->{'FTP_PASS'}\@$info_h->{'FTP_IP'}/$info_h->{'FTP_market_attach'}";
     $ftp_links->{'FTP_test_attach'} = "ftp://$info_h->{'FTP_USER'}:$info_h->{'FTP_PASS'}\@$info_h->{'FTP_IP'}/$info_h->{'FTP_test_attach'}";
-
-    $coco = new WikiMindSC("$path_files", WikiCommons::get_urlsep);
-    work_begin();
-    make_categories();
-    my $tmp = {};
-    foreach (keys %$pages_toimp_hash) {$tmp->{$_} = 1 if ($pages_toimp_hash->{$_}[$link_type_pos] eq "link")};
-    die "There are no links.\n" if scalar keys %$tmp;
-
-    my $general_wiki_file = "General_info.wiki";
-    split_redirects();
-    my $total_nr = scalar keys %$pages_toimp_hash;
-    my $crt_nr = 0;
-    my $wrong_hash = {};
-    ## add users: adduser $user -m -G nobody; chmod a+rwx /home/$user/;touch /home/$user/.Xauthority; chmod a+rw /home/$user/.Xauthority
-    ## add to sudoers
-#     my @users_queue = ("wiki_1", "wiki_2", "wiki_3", "wiki_4", "wiki_5");
-    $lo_user = "wiki";
-
-    foreach my $url (sort keys %$pages_toimp_hash) {
-	eval {
-	$crt_nr++;
-# next if "$url" !~ "B621568";
-	WikiCommons::reset_time();
-	print "\n************************* $crt_nr of $total_nr\nMaking sc url for $url.\t". (WikiCommons::get_time_diff) ."\n";
-	WikiCommons::makedir "$wiki_dir/$url/";
-	WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
-	WikiCommons::add_to_remove ("$wiki_dir/$url/$wiki_result", "dir");
-	my $rel_path = "$pages_toimp_hash->{$url}[$rel_path_pos]";
-	my $info_crt_h = $pages_toimp_hash->{$url}[$svn_url_pos];
-	my $has_deployment;
-	foreach (@{ $pages_toimp_hash->{$url}[$categories_pos] }){
-	    $has_deployment = 'Y' if $_ =~ m/^has_deployment Y$/i;
-	}
-
-	my $wiki = {};
-	local( $/, *FH ) ;
-	open(FH, "$path_files/$rel_path/$general_wiki_file") || die("Could not open file: $!");
-	my $wiki_txt = <FH>;
-	close (FH);
-	$wiki_txt =~ s/^[\f ]+|[\f ]+$//mg;
-	$wiki_txt .= "\n\n'''FTP links:'''\n\n";
-	foreach my $key (keys %$ftp_links) {
-	    $wiki_txt .= "[$ftp_links->{$key}/$rel_path $key]\n\n";
-	}
-	$wiki->{'0'} = $wiki_txt;
-
-	opendir(DIR, "$path_files/$rel_path") || die("Cannot open directory $path_files/$rel_path: $!.\n");
-	my @files = grep { (!/^\.\.?$/) && -f "$path_files/$rel_path/$_" && /(\.rtf)|(\.doc)/i } readdir(DIR);
-	closedir(DIR);
-	my $wrong = "";
-	my $deployment = {};
-
-	my ($affected) = $wiki_txt =~ m/^.*(\n\'\'\'Affected Features & Parameters.*?)\n+(\'\'\'Test remarks|\'\'\'FTP links)/gmsi;
-	$affected = "" if ! defined $affected;
-	$deployment->{'00 General Information'} = "This document has been flaged as having deployment consideration. Search for this also in [[$url#General Information|General Information]] and the other SC tabs imported.\n\n$affected\n" if defined $has_deployment && $has_deployment eq "Y";
-	foreach my $file (sort @files) {
-	    my $file = "$path_files/$rel_path/$file";
-	    my ($name,$dir,$suffix) = fileparse($file, qr/\.[^.]*/);
-	    my ($node, $title, $header) = "";
-	    if ($suffix eq ".doc" || $suffix eq ".odt") {
-		foreach my $key (keys %$info_crt_h) {
-		    next if $key eq "SC_info";
-		    if ($key =~ m/^([0-9]{1,}) $name$/) {
-			$node = $1;
-			$title = $name;
-			my $date = "";
-			$date = $info_crt_h->{$key}->{'date'} if defined $info_crt_h->{$key}->{'date'};
-			$date =~ s/T/\t/;
-			$date =~ s/.[0-9]{1,}Z$//i;
-			$header = "<center>\'\'\'This file was automatically imported from the following document: [[File:$url $name.zip]]\'\'\'\n\n";
-			$header .= "The original document can be found at [$info_h->{$name}/$info_crt_h->{$key}->{'name'} this address]\n\nThe last update on this document was performed at $date.\n";
-			$header .= "</center>\n----\n\n";
-			last;
-		    }
-		}
-	    } elsif ($suffix eq ".rtf") {
-		$title = $name;
-		$title =~ s/^([0-9]{1,}) //;
-		$node = $1;
-		$header = "";
-	    } else {
-		die "WTF?\n";
-	    }
-
-	    if (! defined $title) {
-		print "No title for $name.\n";
-		$wrong = "yes";
-		last;
-	    }
-	    print "\tWork for $file.\n";
-	    my $wiki_txt = create_wiki("$url/$url $name", "$file", "$url $name");
-	    if (! defined $wiki_txt ){
-# 		$to_keep->{$url} = $pages_toimp_hash->{$url};
-		delete $pages_toimp_hash->{$url};
-		$wrong = "yes";
-		print "Skip url $url\n";
-		last;
-	    }
-	    WikiCommons::add_to_remove("$wiki_dir/$url/$url $name", "dir");
-	    $wiki_txt =~ s/\n(=+)(.*?)(=+)\n/\n=$1$2$3=\n/g;
-	    $deployment->{$title} = WikiClean::get_deployment_conf($wiki_txt) if $title ne "STP document";
-
-	    my $count = 0;
-	    if ($name !~ m/(review document)|(review docuemnt)/) {
-		my $newwiki = $wiki_txt;
-		my $q ="";
-		my $menu_h = {};
-		while ($wiki_txt =~ m/\n(==+)(.*?)(==+)\n/g ) {
-		    my $found_string = $&;
-		    my $length1 = length($1); my $length2 = length($3); my $menu_name = $2;
-		    foreach my $key (keys %$menu_h) {
-			delete $menu_h->{$key} if ( $key >= $length1+1 );
-		    }
-
-		    if ( exists $menu_h->{$length1} ) {
-			$menu_h->{$length1}++ ;
-		    } else {
-			$menu_h->{$length1} = 1;
-		    }
-
-		    $q = "";
-		    foreach my $key (sort {$a<=>$b} keys %$menu_h) {
-			$q .= $menu_h->{$key}.".";
-		    }
-		    $q .= " ";
-		    my $found_string_end_pos = pos($wiki_txt);
-		    substr($newwiki, $found_string_end_pos - length($found_string) + $count, length($found_string)) = "\n\'\'\'$q$menu_name\'\'\'\n";
-		    $count += 6 - ( $length1 + $length2 ) + length($q) * 1;
-		}
-		$wiki_txt = $newwiki;
-	    } else {
-		$wiki_txt =~ s/\n(==+)(.*?)(==+)\n/\n\'\'\'$2\'\'\'\n/g;
-		$count += 6 - ( length($1) + length($3) ) if defined $1 && defined $3;
-	    }
-
-	    $wiki_txt =~ s/^\s*(.*)\s*$/$1/gs;
-	    next if $wiki_txt eq '';
-	    $wiki_txt = "\n=$title=\n\n".$header.$wiki_txt."\n\n";
-	    $wiki->{$node} = $wiki_txt;
-
-	    ### from dir $url/$doc$type/$wiki_result get all files in $url/$wiki_result
-	    WikiCommons::add_to_remove("$wiki_dir/$url/$wiki_result", "dir");
-	    WikiCommons::copy_dir ("$wiki_dir/$url/$url $name/$wiki_result", "$wiki_dir/$url/$wiki_result") if ($suffix eq ".doc");
-	}
-
-	if ($wrong eq "yes"){
-	    my $name_bad = "$bad_dir/$url".time();
-	    WikiCommons::move_dir("$path_files/$rel_path", "$name_bad");
-	    $wrong_hash->{$url} = 1;
-	    next ;
-	}
-	my $full_wiki = "";
-	$full_wiki .= $wiki->{$_} foreach (sort {$a<=>$b} keys %$wiki);
-
-	WikiCommons::write_file("$wiki_dir/$url/$url.wiki", "$full_wiki");
-
-	my $dir = "$wiki_dir/$url/$wiki_result";
-	opendir(DIR, $dir);
-	@files = grep { (!/^\.\.?$/) && -f "$dir/$_" } readdir(DIR);
-	closedir(DIR);
-	if ( @files ) {
-	    my $files = join "\nFile:", @files;
-	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "File:$files\n");
-	} else {
-	    WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
-	}
-	my $is_canceled = 0;
-	$is_canceled++ if $pages_toimp_hash->{$url}[$svn_url_pos]->{'SC_info'}->{'revision'} =~ m/^Cancel$/i;
-
-	my $url_deployment = $url;
-	$url_deployment =~ s/^SC:/SC_Deployment:/;
-	$our_wiki->wiki_delete_page ($url_deployment) if ( $our_wiki->wiki_exists_page($url_deployment) && $delete_previous_page ne "no");
-	my $deployment_txt;
-# print Dumper($deployment);exit 1;
-	foreach my $doc_type (sort keys %$deployment) {
-	  my $used_name = $doc_type;
-	  $used_name =~ s/^[0-9]+\s*//;
-	  my $txt = $deployment->{$doc_type};
-	  next if ! defined $txt;
-	  $txt =~ s/(\n+|^)(=+)(.*?)(=+)\n/\n<b>$3 - [[$url#$used_name|$used_name]]<\/b>\n/ms;
-	  $txt =~ s/\n(=+)(.*?)(=+)\n/\n<b>$2<\/b>\n/gms;
-	  $deployment_txt .= "$txt\n\n";
-	}
-	insertdata($url, $full_wiki);
-
-	if (defined $deployment_txt && ! $is_canceled ) {
-	    my $title = $full_wiki;
-	    $title =~ s/^<center><font size="[0-9]{1,}">'''(.*?)'''<\/font><\/center>.*$/$1/gsi;
-	    my $url_s = $url; $url_s =~ s/^SC:(.*)/$1/;
-	    $deployment_txt = "=<small>[[SC:$url_s|$url_s: $title]]</small>=\n".$deployment_txt;
-	    print "\tImporting url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n";
-	    $our_wiki->wiki_edit_page($url_deployment, $deployment_txt);
-	    die "Could not import url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url_deployment) );
-	}
-	make_redirect($url, $wrong_hash);
-	}; ## eval
-	print "Error generating sc for $url: $@\n" if $@ && $@ !~ m/^Exiting eval via next at/;
-    }
+    return ($ftp_links, $info_h);
 }
+
 
 # quick_and_dirty_html_to_wiki
 sub quick_and_dirty_html_to_wiki {
@@ -1254,6 +1017,65 @@ sub quick_and_dirty_html_to_wiki {
     $pages_toimp_hash->{$url}[$link_type_pos] = "";
     insertdata($url, $wiki);
     die "Failed in cleanup.\n" if WikiCommons::cleanup($work_dir);
+}
+
+sub cleanAndExit {
+    print "Killing all child processes\n";
+    kill 9, map {s/\s//g; $_} split /\n/, `ps -o pid --no-headers --ppid $$`;
+    exit 1000;
+}
+
+use sigtrap 'handler' => \&cleanAndExit, 'INT', 'ABRT', 'QUIT', 'TERM';
+
+if (-f "$pid_file") {
+    open (FH, "<$pid_file") or die "Could not read file $pid_file.\n";
+    my @info = <FH>;
+    close (FH);
+    chomp @info;
+    $pid_old = $info[0];
+    my $exists = kill 0, $pid_old if defined $pid_old && $pid_old =~ m/^[0-9]+$/;
+    if ( $exists ) {
+	my $proc_name = `ps -p $pid_old -o cmd`;
+# 	print "$proc_name\n";
+# 	die "Process is already running.\n" if $proc_name =~ m/(.+?)generate_wiki\.pl -d (.+?) -n $path_type(.*)/;
+	exit 1 if $proc_name =~ m/(.+?)generate_wiki\.pl -d (.+?) -n $path_type(.*)/;
+    }
+}
+WikiCommons::write_file($pid_file,"$$\n");
+
+$our_wiki = new WikiWork();
+if ($path_type eq "mind_svn") {
+    $lo_user = "wiki_svn";
+    $coco = new WikiMindSVN($path_files);
+    work_begin();
+    work_for_docs();
+} elsif ($path_type eq "cms_svn") {
+    $lo_user = "wiki_cms";
+    $coco = new WikiMindCMS($path_files);
+    work_begin();
+    work_for_docs();
+} elsif ($path_type eq "users") {
+    $lo_user = "wiki";
+    $coco = new WikiMindUsers($path_files);
+    work_begin();
+    work_for_docs();
+} elsif ($path_type =~ m/^crm_(.+)$/) {
+    $lo_user = "";
+    $coco = new WikiMindCRM("$path_files", "$1");
+    $all_real = "yes";
+    work_begin();
+    make_categories();
+    split_redirects();
+    fork_function($crm_nr_forks, \&crm_worker);
+} elsif ($path_type eq "sc_docs") {
+    $lo_user = "wiki_sc";
+    $coco = new WikiMindSC("$path_files", WikiCommons::get_urlsep);
+    $all_real = "yes";
+    work_begin();
+    make_categories();
+    split_redirects();
+    foreach (keys %$pages_toimp_hash) {die "There are no links.\n" if ($pages_toimp_hash->{$_}[$link_type_pos] eq "link")};
+    fork_function($sc_nr_forks, \&sc_worker, getCommonInfoSC());
 }
 
 $dbh_mysql->disconnect() if defined($dbh_mysql);
