@@ -9,6 +9,7 @@ use Cwd 'abs_path';
 use File::Basename;
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
+use Log::Log4perl qw(:easy);
 
 our $pages_toimp_hash = {};
 our $general_categories_hash = {};
@@ -41,7 +42,7 @@ sub get_md5_fast {
 	$md5 =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
 	chomp $md5;
     } else {
-	print "are we reallly using md5 for $doc_file?\n";
+	INFO "are we reallly using md5 for $doc_file?\n";
 	$md5 = WikiCommons::get_file_md5($doc_file);
     }
     return $md5;
@@ -100,14 +101,14 @@ sub get_documents {
     my @APPEND_DIRS=("Docs_CMS", "Docs_Phonex", "Docs_Sentori");
     my $url_sep = WikiCommons::get_urlsep;
     foreach my $append_dir (@APPEND_DIRS) {
-	print "-Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
+	INFO "-Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
 	$count_files = 0;
 	find ({
 	    wanted => sub { add_document ($File::Find::name, $append_dir, "$self->{path_files}", "$url_sep") if -f && (/(\.doc|\.docx|\.rtf|\.xls)$/i) },},
 	    "$self->{path_files}/$append_dir"
 	    ) if  (-d "$self->{path_files}/$append_dir");
-	print "\tTotal number of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n";
-	print "+Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
+	INFO "\tTotal number of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n";
+	INFO "+Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
     }
 
     return $pages_toimp_hash;
@@ -131,7 +132,7 @@ sub find_svn_helper {
 	}
 	$dir = dirname($dir);
     } while ($dir ne "$path_file");
-    die "should have found a wiki helper until now for $doc_file: dir $dir svndir $path_file.\t". (WikiCommons::get_time_diff) ."\n";
+    LOGDIE "should have found a wiki helper until now for $doc_file: dir $dir svndir $path_file.\t". (WikiCommons::get_time_diff) ."\n";
 }
 
 return 1;

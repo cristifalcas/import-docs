@@ -6,6 +6,7 @@ use strict;
 use Mind_work::WikiCommons;
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
+use Log::Log4perl qw(:easy);
 use MediaWiki::API;
 # use MediaWiki::Bot;
 # get_last($page, $user)
@@ -31,12 +32,12 @@ our $hash = ();
 my $nr_pages = 0;
 
 sub wiki_on_error {
-    print "1. Error code: " . $mw->{error}->{code} . "\n";
-    print "2. Error details: " . Dumper($mw->{error}->{details})."\n";
+    INFO "1. Error code: " . $mw->{error}->{code} . "\n";
+    INFO "2. Error details: " . Dumper($mw->{error}->{details})."\n";
     $mw->{response}->{_request}->{_content}="*** deleted ***";
-    print "3. Error response: " . Dumper($mw->{response})."\n";
-    print "4. Error stacktrace: " . $mw->{error}->{stacktrace}."\n";
-    print "time elapsed"."\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "3. Error response: " . Dumper($mw->{response})."\n";
+    INFO "4. Error stacktrace: " . $mw->{error}->{stacktrace}."\n";
+    INFO "time elapsed"."\t". (WikiCommons::get_time_diff) ."\n";
     die;
 }
 
@@ -46,10 +47,10 @@ sub new {
     if (WikiCommons::is_remote ne "yes" ) {
 	my ($user, $pass) = ($wiki_user, $wiki_pass);
 	($user, $pass) = ($robot_user, $robot_pass) if defined $self->{'user_type'} && $self->{'user_type'} eq "robot";
-	$mw = MediaWiki::API->new({ api_url => "$wiki_url/api.php" }, retries  => 3) or die "coco";
+	$mw = MediaWiki::API->new({ api_url => "$wiki_url/api.php" }, retries  => 3) or LOGDIE "coco";
 	$mw->{config}->{on_error} = \&wiki_on_error;
 	$mw->login( {lgname => $user, lgpassword => $pass } )
-	    || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+	    || LOGDIE $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     }
     bless($self, $class);
     return $self;
@@ -109,7 +110,7 @@ sub wiki_get_all_categories {
     $mw->list ( { action => 'query',
 	    list => 'allcategories', aclimit=>'5000',},
 	{ max => 1000, hook => \&wiki_add_url } )
-		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+		|| LOGDIE $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     return $array;
 }
 
@@ -120,7 +121,7 @@ sub wiki_get_all_images {
     $mw->list ( { action => 'query',
 	    list => 'allimages', ailimit=>'5000',},
 	{ max => 1000, hook => \&wiki_add_url } )
-		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+		|| LOGDIE $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     return $array;
 }
 
@@ -152,7 +153,7 @@ sub wiki_delete_page {
 	  push @img, $title;
 	}
     } else {
-      die "Unknown type for images: ".Dumper($title);
+      LOGDIE "Unknown type for images: ".Dumper($title);
     }
 
     foreach my $url (@img) {
@@ -160,9 +161,9 @@ sub wiki_delete_page {
       my $page = $mw->get_page( { title => $url } );
       unless ( defined $page->{missing} ) {
 #       if ( defined $url && wiki_exists_page($self, $url) && not defined $page->{missing} ) {
-	print "\tDelete page $url.\n";
+	INFO "\tDelete page $url.\n";
 	$mw->edit( { action => 'delete', title => $url, reason => 'no longer needed' } )
-	|| die "Could not delete url $url: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
+	|| LOGDIE "Could not delete url $url: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
       }
     }
 }
@@ -178,30 +179,30 @@ sub wiki_get_deleted_revs {
 	    drnamespace => $ns,
 	    drprop    => 'revid|user',},
 	{ max => 10, hook => \&wiki_add_url2 } )
-		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+		|| LOGDIE $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     return $hash;
 }
 
 sub wiki_edit_page {
   my ($self, $title, $text) = @_;
-  print "\t-Uploading page for url $title. ". (WikiCommons::get_time_diff) ."\n";
+  INFO "\t-Uploading page for url $title. ". (WikiCommons::get_time_diff) ."\n";
   my $page = $mw->get_page( { title => $title } );
-  print "\tCreating a new page for url $title.\n" if ($page->{missing});
+  INFO "\tCreating a new page for url $title.\n" if ($page->{missing});
   my $timestamp = $page->{timestamp};
 
   $mw->edit( { action => 'edit', title => $title, text => Encode::decode('utf8', $text) } )
-      || die "Could not upload text for $title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
-  print "\t+Uploading page for url $title. ". (WikiCommons::get_time_diff) ."\n";
+      || LOGDIE "Could not upload text for $title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
+  INFO "\t+Uploading page for url $title. ". (WikiCommons::get_time_diff) ."\n";
 }
 
 sub wiki_import_files {
     my ($self, $file_path, $url) = @_;
     ## need in /etc/sudoers to have "wiki ALL=(apache) NOPASSWD: ALL"
-    print "\t-Uploading files ($file_path) for url $url.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t-Uploading files ($file_path) for url $url.\t". (WikiCommons::get_time_diff) ."\n";
     my $cmd_output = `sudo -u apache php "$wiki_site_path/maintenance/importImages.php" --conf "$wiki_site_path/LocalSettings.php" --user="$wiki_user" --overwrite --check-userblock "$file_path"`;
-    die "\tError $? for importImages.php: ".Dumper($cmd_output) if ($?);
-    print "$cmd_output\n";
-    print "\t+Uploading files for url $url.\t". (WikiCommons::get_time_diff) ."\n";
+    LOGDIE "\tError $? for importImages.php: ".Dumper($cmd_output) if ($?);
+    INFO "$cmd_output\n";
+    INFO "\t+Uploading files for url $url.\t". (WikiCommons::get_time_diff) ."\n";
 }
 
 sub wiki_upload_file {
@@ -214,11 +215,11 @@ sub wiki_upload_file {
     } elsif (ref($files) eq "") {
 	push @images, $files;
     } else {
-	die "as\n";
+	LOGDIE "as\n";
     }
     foreach my $img (@images) {
-	print "\t-Start uploading file $img.\n";
-	open FILE, "$img" or die $!;
+	INFO "\t-Start uploading file $img.\n";
+	open FILE, "$img" or LOGDIE $!;
 	binmode FILE;
 	my ($buffer, $data);
 	while ( read(FILE, $buffer, 65536) )  {
@@ -228,15 +229,15 @@ sub wiki_upload_file {
 	my ($name,$dir,$suffix) = fileparse($img, qr/\.[^.]*/);
 	$mw->upload( { title => "$name$suffix",
 		    summary => 'This is the summary to go on the Image:file.jpg page',
-		    data => $data } ) || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
-	print "\t+Start uploading file $img.\n";
+		    data => $data } ) || LOGDIE $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+	INFO "\t+Start uploading file $img.\n";
     }
 }
 
 sub wiki_exists_page {
     my ($self, $title) = @_;
     my $page = $mw->get_page( { title => $title } );
-# print Dumper($page->{'timestamp'});
+# INFO Dumper($page->{'timestamp'});
     return 0 unless ( $page->{'*'} ) ;
     return 1;
 }
@@ -254,7 +255,7 @@ sub wiki_move_page {
     my ($self, $title, $new_title) = @_;
     $mw->edit( {
     action => 'move', from => "$title", to => "$new_title" } )
-    || die "Could not move url $title to $new_title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff)."\n";
+    || LOGDIE "Could not move url $title to $new_title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff)."\n";
 }
 
 sub wiki_get_nonredirects {
@@ -264,7 +265,7 @@ sub wiki_get_nonredirects {
 	    list => 'allpages', aplimit=>'5000',
 	    apnamespace => "$ns", apfilterredir => "nonredirects" },
 	{ max => 1000, hook => \&wiki_add_url } )
-		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+		|| LOGDIE $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     return $array;
 }
 
@@ -275,7 +276,7 @@ sub wiki_get_redirects {
 	    list => 'allpages', aplimit=>'5000',
 	    apnamespace => "$ns", apfilterredir => "redirects" },
 	{ max => 1000, hook => \&wiki_add_url } )
-		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+		|| LOGDIE $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     return $array;
 }
 
@@ -286,7 +287,7 @@ sub wiki_get_all_pages {
 	    list => 'allpages', aplimit=>'5000',
 	    apnamespace => "$ns" },
 	{ max => 1000, hook => \&wiki_add_url } )
-		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+		|| LOGDIE $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     return $array;
 }
 
@@ -303,7 +304,7 @@ sub wiki_get_unused_images {
 	    push @$unused_img, $image;
 	    $nr_ok++;
         }
-	print "Done $nr_all out of $total, with $nr_ok good.\n" if ($nr_all%1000 == 0);
+	INFO "Done $nr_all out of $total, with $nr_ok good.\n" if ($nr_all%1000 == 0);
     }
     return $unused_img;
 }
@@ -319,7 +320,7 @@ sub wiki_get_pages_using {
 	    list => 'imageusage', iulimit => "$limit",
 	    iutitle => "$file" },
 	{ max => "$max", hook => \&wiki_add_url } )
-		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+		|| LOGDIE $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     return $array;
 }
 
@@ -330,7 +331,7 @@ sub wiki_get_pages_linking_to {
 	    list => 'backlinks', bllimit => "5000",
 	    bltitle => "$url" },
 	{ max => "1000", hook => \&wiki_add_url } )
-		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+		|| LOGDIE $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     return $array;
 } 
 
@@ -345,7 +346,7 @@ sub wiki_get_pages_in_category {
 	    list => 'categorymembers', iulimit => "$limit",
 	    cmtitle => "$cat" },
 	{ max => "$max", hook => \&wiki_add_url } )
-		|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+		|| LOGDIE $mw->{error}->{code} . ': ' . $mw->{error}->{details};
     return $array;
 } 
 

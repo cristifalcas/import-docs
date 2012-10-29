@@ -12,6 +12,7 @@ $Data::Dumper::Sortkeys = 1;
 use Digest::MD5 qw(md5 md5_hex md5_base64);
 use XML::Simple;
 use LWP::UserAgent;
+use Log::Log4perl qw(:easy);
 use Encode;
 
 our $start_time = 0;
@@ -30,7 +31,7 @@ sub svn_list {
     my $q_url = quotemeta $url;
     my $output = `svn list --non-interactive --no-auth-cache --trust-server-cert --password "$svn_pass" --username "$svn_user" $q_url 2>&1`;
     if ($?) {
-	print "\tError $? for svn list.\n";
+	INFO "\tError $? for svn list.\n";
 	return undef;
     }
     $output =~ s/\/$//gm;
@@ -43,10 +44,10 @@ sub svn_checkout {
     return undef if undef $list;
     my $output = `svn co --non-interactive --no-auth-cache --trust-server-cert --password "$svn_pass" --username "$svn_user" "$url" "$local"`; # 2> /dev/null
     if ($?) {
-	die "\tError $? for svn checkout $url to $local.\n";
+	LOGDIE "\tError $? for svn checkout $url to $local.\n";
 	return undef;
     }
-    print "$output\n";
+    INFO "$output\n";
     return 1;
 }
 
@@ -56,7 +57,7 @@ sub svn_info {
     my $q_url = quotemeta $url;
     my $output = `svn info --non-interactive --no-auth-cache --trust-server-cert --password "$svn_pass" --username "$svn_user" $q_url 2>&1`; 
     if ($?) {
-	print "\tError $? for svn info.\n";
+	INFO "\tError $? for svn info.\n";
 	return undef;
     }
     $output =~ s/\/$//gm;
@@ -72,25 +73,25 @@ sub http_get {
     my $request = HTTP::Request->new(GET => "$dir");
     $request->authorization_basic("$svn_user", "$svn_pass") if defined $svn_user && defined $svn_pass;
 
-    print "\t-Get from url $url_path.\n";
+    INFO "\t-Get from url $url_path.\n";
     my $retries = 0;
     while ($retries < 3) {
 	$request->uri( $url_path );
 	my $response = $ua->request($request);
 	if ($response->is_success) {
 	    $content .= $response->content;
-# 	    print $response->decoded_content;
+# 	    INFO $response->decoded_content;
 	    last;
 	}else {
 	    if ($response->status_line eq "404 Not Found") {
 		return;
 	    } else {
-		print Dumper($response->status_line) ."\tfor file $url_path\n" ;
+		INFO Dumper($response->status_line) ."\tfor file $url_path\n" ;
 		$retries++;
 	    }
 	}
     }
-    die "Unknown error when retrieving file $url_path.\n" if $retries >= 3;
+    LOGDIE "Unknown error when retrieving file $url_path.\n" if $retries >= 3;
     my $res = "";
     if ( defined $local_path && $local_path !~ m/^\s*$/i ) {
 	write_file("$local_path/$name$suffix", $content);
@@ -98,7 +99,7 @@ sub http_get {
     } else {
 	$res = $content;
     }
-    print "\t+Get from url $url_path.\n";
+    INFO "\t+Get from url $url_path.\n";
     return "$res";
 }
 
@@ -130,7 +131,7 @@ sub cleanup {
 
     foreach my $key (keys %$clean_up) {
 	if ($clean_up->{"$key"} eq "file") {
-# 	    unlink("$key") or die "Could not delete the file $key: ".$!."\n";
+# 	    unlink("$key") or LOGDIE "Could not delete the file $key: ".$!."\n";
 	    unlink("$key") or return 1;
 	    delete $clean_up->{"$key"};
 	}
@@ -140,8 +141,8 @@ sub cleanup {
 	    remove_tree("$key");
 	    delete $clean_up->{"$key"};
 	} else {
-# 	    die "caca $clean_up->{$key} for $key\n";
-	    print "caca $clean_up->{$key} for $key\n";
+# 	    LOGDIE "caca $clean_up->{$key} for $key\n";
+	    INFO "caca $clean_up->{$key} for $key\n";
 	    return 1;
 	}
     }
@@ -152,17 +153,17 @@ sub cleanup {
 
 sub copy_dir {
     my ($from_dir, $to_dir) = @_;
-    opendir my($dh), $from_dir or die "Could not open dir '$from_dir': $!";
+    opendir my($dh), $from_dir or LOGDIE "Could not open dir '$from_dir': $!";
     for my $entry (readdir $dh) {
 #         next if $entry =~ /$regex/;
         my $source = "$from_dir/$entry";
         my $destination = "$to_dir/$entry";
         if (-d $source) {
 	    next if $source =~ "\.?\.";
-            mkdir $destination or die "mkdir '$destination' failed: $!" if not -e $destination;
+            mkdir $destination or LOGDIE "mkdir '$destination' failed: $!" if not -e $destination;
             copy_dir($source, $destination);
         } else {
-            copy($source, $destination) or die "copy failed: $source to $destination $!";
+            copy($source, $destination) or LOGDIE "copy failed: $source to $destination $!";
         }
     }
     closedir $dh;
@@ -171,15 +172,15 @@ sub copy_dir {
 
 sub move_dir {
     my ($src, $trg) = @_;
-    die "\tTarget $trg is a file.\n" if (-f $trg);
+    LOGDIE "\tTarget $trg is a file.\n" if (-f $trg);
     makedir("$trg", 1) if (! -e $trg);
     opendir(DIR, "$src") || die("Cannot open directory $src.\n");
     my @files = grep { (!/^\.\.?$/) } readdir(DIR);
     closedir(DIR);
     foreach my $file (@files){
-	move("$src/$file", "$trg/$file") or die "Move file $src/$file to $trg failed: $!\n";
+	move("$src/$file", "$trg/$file") or LOGDIE "Move file $src/$file to $trg failed: $!\n";
     }
-    remove_tree("$src") || die "Can't remove dir $src.\n";
+    remove_tree("$src") || LOGDIE "Can't remove dir $src.\n";
 }
 
 sub write_file {
@@ -187,8 +188,8 @@ sub write_file {
     $remove = 0 if not defined $remove;
     my ($name,$dir,$suffix) = fileparse($path, qr/\.[^.]*/);
     add_to_remove("$dir/$name$suffix", "file") if $remove ne 0;
-    print "\tWriting file $name$suffix.\t". get_time_diff() ."\n";
-    open (FILE, ">$path") or die "at generic write can't open file $path for writing: $!\n";
+    INFO "\tWriting file $name$suffix.\t". get_time_diff() ."\n";
+    open (FILE, ">$path") or LOGDIE "at generic write can't open file $path for writing: $!\n";
     ### don't decode/encode to utf8
     print FILE "$text";
     close (FILE);
@@ -214,12 +215,12 @@ sub makedir {
     if (@$err) {
 	for my $diag (@$err) {
 	    my ($file, $message) = %$diag;
-	    if ($file eq '') { print "general error: $message.\n"; }
-	    else { print "problem unlinking $file: $message.\n"; }
+	    if ($file eq '') { INFO "general error: $message.\n"; }
+	    else { INFO "problem unlinking $file: $message.\n"; }
 	}
-	die "Can't make dir $dir: $!.\n";
+	LOGDIE "Can't make dir $dir: $!.\n";
     }
-    die "Dir not created.\n" if ! -d $dir;
+    LOGDIE "Dir not created.\n" if ! -d $dir;
 }
 
 sub add_to_remove {
@@ -273,16 +274,16 @@ sub normalize_text {
 
 sub get_file_md5 {
     my $doc_file = shift;
-    print "\tGetting md5 for $doc_file\n";
+    INFO "\tGetting md5 for $doc_file\n";
     my $doc_md5;
     eval{
-    open(FILE, $doc_file) or die "Can't open '$doc_file' for md5: $!\n";
+    open(FILE, $doc_file) or LOGDIE "Can't open '$doc_file' for md5: $!\n";
     binmode(FILE);
     $doc_md5 = Digest::MD5->new->addfile(*FILE)->hexdigest;
     close(FILE);
     };
     if ($@) {
-	print "\tError in getting md5:".Dumper($@);
+	INFO "\tError in getting md5:".Dumper($@);
 	$doc_md5 = get_file_sha($doc_file);
     }
     return $doc_md5;
@@ -290,7 +291,7 @@ sub get_file_md5 {
 
 sub get_file_sha {
     my $doc_file = shift;
-    die "Not a file: $doc_file\n" if ! -f $doc_file;
+    LOGDIE "Not a file: $doc_file\n" if ! -f $doc_file;
     use Digest::SHA qw(sha1_hex);
     my $sha = Digest::SHA->new();
     $sha->addfile($doc_file);
@@ -308,7 +309,7 @@ sub capitalize_string {
     } elsif ($type eq "onlyfirst") {
 	$str =~ s/\b(\w)/\U$1/;
     } else {
-	die "Capitalization: first (first letter is capital and the rest remain the same), small (all letters to lowercase) or all (only first letter is capital, and the rest are lowercase).\n";
+	LOGDIE "Capitalization: first (first letter is capital and the rest remain the same), small (all letters to lowercase) or all (only first letter is capital, and the rest are lowercase).\n";
     }
     return $str;
 }
@@ -358,7 +359,7 @@ sub fix_name {
 
 sub check_vers {
     my ($main, $ver) = @_;
-    die "main $main or ver $ver is not defined.\n" if (! defined $main || ! defined $ver);
+    LOGDIE "main $main or ver $ver is not defined.\n" if (! defined $main || ! defined $ver);
 #     ver:
 #     V7.00.001 SP28 DEMO
 #     V5.01.008OMP
@@ -375,8 +376,8 @@ sub check_vers {
     my $regexp_main = qr/^\s*v?[0-9]{1,}(\.[0-9]{1,})*\s*([a-z0-9 ]{1,})?\s*(SP\s*[0-9]{1,}(\.[0-9]{1,})*)?$/is;
     my $regexp_ver = qr/^\s*v?[0-9]{1,}(\.[0-9]{1,})*\s*([a-z0-9 ]{1,})?\s*(SP\s*[0-9]{1,}(\.[0-9]{1,})*)?\s*(demo)?\s*$/is;
 
-    die "Main version $main is not correct.\n" if $main !~ m/$regexp_main/i;
-#     die "Ver version $ver is not correct.\n" if $ver !~ m/$regexp_ver/i;
+    LOGDIE "Main version $main is not correct.\n" if $main !~ m/$regexp_main/i;
+#     LOGDIE "Ver version $ver is not correct.\n" if $ver !~ m/$regexp_ver/i;
     $ver =$main if $ver !~ m/$regexp_ver/i;
 
     ### make versions like N.NN and remove any leading v
@@ -419,14 +420,14 @@ sub check_vers {
     $ver_fixed =~ s/(^\s*|\s*$)//g;
     $ver_sp =~ s/(^\s*|\s*$)//g;
 
-    die "Main $main_v is not like version $ver_v.\n" if $ver_v !~ m/^$main_v/;
+    LOGDIE "Main $main_v is not like version $ver_v.\n" if $ver_v !~ m/^$main_v/;
 
     return $big_ver, $main_v, $ver_v, $ver_fixed, $ver_sp, $ver_id;
 }
 
 sub generate_html_file {
     my ($doc_file, $type, $user) = @_;
-    print "\t## using user ".Dumper($user);
+    INFO "\t## using user ".Dumper($user);
 #     my $max_wait_time = 300; # 1800 = .5 hours # 46800 = 13 hours
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
     my $status;
@@ -434,16 +435,13 @@ sub generate_html_file {
     my $user_exists;
     my @change_user;
     if (defined $user) {
-	my $user_exists = `id -u $user`;
-	chomp($user_exists);
+	my $user_exists = `id -u $user`; chomp($user_exists);
 	if ($user_exists =~ m/^[0-9]+$/ && $user_exists != $user_crt) {
 	  @change_user = ("sudo", "-u", "$user");
-	  system("cp", $ENV{"HOME"}."/.Xauthority", "/home/$user/") == 0 || die "can't copy Xauthority to user $user\n"; 
+	  system("cp", $ENV{"HOME"}."/.Xauthority", "/home/$user/") == 0 || LOGDIE "can't copy Xauthority to user $user\n"; 
 	}
     }
-    my $kill_sudo = join (" ", @change_user);
-# print Dumper(@change_user, $kill_sudo);
-
+    my $sudo_user = join (" ", @change_user);
     ## filters http://cgit.freedesktop.org/libreoffice/core/tree/filter/source/config/fragments/filters
     my $filters = { "html" => $suffix =~ m/xlsx?/i ? "html:HTML (StarCalc)" : "html:HTML (StarWriter)",
 		    "pdf"  => "pdf:impress_pdf_Export",
@@ -460,14 +458,14 @@ sub generate_html_file {
 	  "9. our office old " => [@change_user, "/opt/libreoffice3.4/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
 	};
 
-    print "\t-Generating html file from $name$suffix.\t". (get_time_diff) ."\n\t\t$doc_file\n";
+    INFO "\t-Generating html file from $name$suffix.\t". (get_time_diff) ."\n\t\t$doc_file\n";
     system("Xvfb :10235 -screen 0 1024x768x16 &> /dev/null &"); ## if we don't use headless
 #     system("python $real_path/convertors/unoconv -l &"); ## start a listener
     my $max_wait_time = 150;
     $max_wait_time = 30 if (-s $doc_file < 100000);
     foreach my $key (sort keys %$commands) {
-	print "\tTrying to use $key.\t". (get_time_diff) ."\n";
-	`$kill_sudo kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | gawk '{print \$2}') &>/dev/null`;
+	INFO "\tTrying to use $key.\t". (get_time_diff) ."\n";
+	`$sudo_user kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | gawk '{print \$2}') &>/dev/null`;
 	sleep 1;
 	eval {
 	  local $SIG{ALRM} = sub { die "alarm\n" };
@@ -477,15 +475,15 @@ sub generate_html_file {
 	};
 	$status = $@;
 
-	`$kill_sudo find \"$dir\" -user $user -type f -exec chgrp nobody {} \\;` if defined $user_exists;
-	`$kill_sudo find \"$dir\" -user $user -type f -exec chmod g+rw   {} \\;` if defined $user_exists;
+# 	`$sudo_user find \"$dir\" -user $user -type f -exec chgrp nobody {} \\;` if defined $user_exists;
+# 	`$sudo_user find \"$dir\" -user $user -type f -exec chmod g+rw   {} \\;` if defined $user_exists;
 	last if ! $status && -f "$dir/$name.html";
 	$max_wait_time = $max_wait_time <= 60 ? 300 : $max_wait_time * 2;
 # 	$max_wait_time = $max_wait_time * 2;
-	print "\t\tError: $status. Try again with next command.\t". (get_time_diff) ."\n";
+	INFO "\t\tError: $status. Try again with next command.\t". (get_time_diff) ."\n";
     }
 
-    print "\t+Generating html file from $name$suffix.\t". (get_time_diff) ."\n";
+    INFO "\t+Generating html file from $name$suffix.\t". (get_time_diff) ."\n";
     return $status;
 }
 
@@ -494,7 +492,7 @@ sub reset_time {
 }
 
 sub array_diff {
-    print "-Compute difference and uniqueness.\n";
+    INFO "-Compute difference and uniqueness.\n";
     my ($arr1, $arr2) = @_;
     my %seen = (); my @uniq1 = grep { ! $seen{$_} ++ } @$arr1; $arr1 = \@uniq1;
     %seen = (); my @uniq2 = grep { ! $seen{$_} ++ } @$arr2; $arr2 = \@uniq2;
@@ -509,7 +507,7 @@ sub array_diff {
 	push @{ $count{$element} > 1 ? \@intersection : \@difference }, $element;
 # 	push @difference, $element if $count{$element} <= 1;
     }
-    print "\tdifference done.\n";
+    INFO "\tdifference done.\n";
 
     my $arr1_hash = ();
     $arr1_hash->{$_} = 1 foreach (@$arr1);
@@ -521,7 +519,7 @@ sub array_diff {
 	    push @only_in_arr2, $element;
 	}
     }
-    print "+Compute difference and uniqueness.\n";
+    INFO "+Compute difference and uniqueness.\n";
     return \@only_in_arr1,  \@only_in_arr2,  \@intersection;
 }
 
@@ -638,7 +636,7 @@ sub shouldSkipFile {
     $ret = 1 if $url eq "CMS:PhonEX ONE 2.31 Installation Technical Guide For Red Box" && -s $file == 8760832;
     $ret = 1 if $url eq "XXX" && -s $file == 100;
     $ret = 1 if $url eq "XXX" && -s $file == 100;
-    print "Skipping file $file with url $url. They should be saved in docx with Microsoft Word and copied instead of the original doc.\n" if $ret==1;
+    INFO "Skipping file $file with url $url. They should be saved in docx with Microsoft Word and copied instead of the original doc.\n" if $ret==1;
     return $ret;
 }
 

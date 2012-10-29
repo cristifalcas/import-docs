@@ -9,6 +9,7 @@ use Cwd 'abs_path';
 use File::Basename;
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
+use Log::Log4perl qw(:easy);
 
 our $pages_toimp_hash = {};
 our $general_categories_hash = {};
@@ -92,7 +93,7 @@ sub get_md5_fast {
 	$md5 =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
 	chomp $md5;
     } else {
-	print "are we reallly using md5 for $doc_file?\n";
+	INFO "are we reallly using md5 for $doc_file?\n";
 	$md5 = WikiCommons::get_file_md5($doc_file);
     }
     return $md5;
@@ -124,7 +125,7 @@ sub add_document {
 	my $q = $customer;
 	$customer = WikiCommons::get_correct_customer($customer);
 	if (! defined $customer) {
-	    print "EE** Unknown customer $q from file $doc_file.\n";
+	    INFO "EE** Unknown customer $q from file $doc_file.\n";
 	    $customer = "";
 	}
     }
@@ -219,7 +220,7 @@ sub add_document {
 	    $rest = fix_rest_dirs ($str, quotemeta $values[$#values]);
 	}
         $fixed_name = WikiCommons::fix_name ( $name, $customer );
-    } else { die "Unknown document type: $dir_type.\n" }
+    } else { LOGDIE "Unknown document type: $dir_type.\n" }
 
     $basic_url = "$basic_url$url_sep$customer" if ($customer ne "");
 
@@ -242,10 +243,10 @@ sub add_document {
     $fixed_name =~ s/\s+/ /g;
     my $page_url = "$fixed_name$basic_url";
 #     my $page_url_caps = WikiCommons::capitalize_string( $page_url, 'small' );
-    die "No page for $doc_file.\n" if ($page_url eq "");
+    LOGDIE "No page for $doc_file.\n" if ($page_url eq "");
 
     ++$count_files;
-    print "\tNumber of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n" if ($count_files%100 == 0);
+    INFO "\tNumber of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n" if ($count_files%100 == 0);
     ### SC notes
     if ($name =~ m/^B[[:digit:]]{4,}\s+/){
 	$page_url = "SVN_SC:$page_url";
@@ -297,7 +298,7 @@ sub add_document {
 	push @categories, $big_ver;
 
 	generate_categories("", $main, $big_ver, "", "SVN RN Documents", "");
-	die "RN $page_url already exists:\n\t$rel_path\n".Dumper($pages_toimp_hash->{$page_url}) if defined $pages_toimp_hash->{$page_url};
+	LOGDIE "RN $page_url already exists:\n\t$rel_path\n".Dumper($pages_toimp_hash->{$page_url}) if defined $pages_toimp_hash->{$page_url};
 # 	$pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), $rel_path, $svn_url, "link", \@categories];
 	$pages_toimp_hash->{$page_url} = [get_md5_fast($doc_file), $rel_path, $svn_url, "link", \@categories];
 	return 0;
@@ -307,11 +308,11 @@ sub add_document {
 
     my $full_ver = "$ver $ver_id $ver_sp";
     $full_ver =~ s/(^\s+)|(\s+$)//g;
-# print "2. $page_url\n";
+# INFO "2. $page_url\n";
     return 1 if $ver_fixed lt "5.00" && $ver_fixed ne "" && ($dir_type ne "Docs_SIPServer" && $dir_type ne "Docs_PaymentManager_Deployment"&& $dir_type ne "Docs_PaymentManager");
     if (defined $pages_ver->{$page_url}->{'ver'} ){
 	if ($pages_ver->{$page_url}->{'ver'} gt $full_ver){
-# print "skip $full_ver because we have $pages_ver->{$page_url}->{'ver'}\n";
+# INFO "skip $full_ver because we have $pages_ver->{$page_url}->{'ver'}\n";
 	    return 0;
 	} elsif ($pages_ver->{$page_url}->{'ver'} eq $full_ver) {
 # 	    my $oldfile_time = WikiCommons::svn_info("$path_file/$pages_toimp_hash->{$page_url}[1]", "", "");
@@ -320,14 +321,14 @@ sub add_document {
 # 	    $newfile_time =~ s/^.*?\nLast Changed Date: (\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}).*\n.*?$/$1/gs;
 # 	    if ($newfile_time eq $oldfile_time) {
 # 		if ("$path_file/$pages_toimp_hash->{$page_url}[1]" =~ m/\/Archive\//) {
-# print Dumper(1, "$path_file/$pages_toimp_hash->{$page_url}[1]", $doc_file, $oldfile_time, $newfile_time);exit 1;
+# INFO Dumper(1, "$path_file/$pages_toimp_hash->{$page_url}[1]", $doc_file, $oldfile_time, $newfile_time);exit 1;
 # 		} elsif ($doc_file =~m/\/Archive\//) {
 # 		    return 0; 
 # 		} else {
-# print Dumper(2, "$path_file/$pages_toimp_hash->{$page_url}[1]", $doc_file, $oldfile_time, $newfile_time);exit 1;
+# INFO Dumper(2, "$path_file/$pages_toimp_hash->{$page_url}[1]", $doc_file, $oldfile_time, $newfile_time);exit 1;
 # 		}
 # 	    } else {
-# print Dumper(3, "$path_file/$pages_toimp_hash->{$page_url}[1]", $doc_file, $oldfile_time, $newfile_time);exit 1;
+# INFO Dumper(3, "$path_file/$pages_toimp_hash->{$page_url}[1]", $doc_file, $oldfile_time, $newfile_time);exit 1;
 # 	    }
 
 	    my $new = get_md5_fast($doc_file);
@@ -342,7 +343,7 @@ sub add_document {
 	    if ($new ne $old) {
 		my $id = 1;
 		$id = $pages_ver->{$page_url}->{'id'} + 1 if (defined $pages_ver->{$page_url}->{'id'});
-# 		print "add extra $page_url because $full_ver is the same as $pages_ver->{$page_url}->{'ver'}\n";
+# 		INFO "add extra $page_url because $full_ver is the same as $pages_ver->{$page_url}->{'ver'}\n";
 		my $new_url = $page_url."$url_sep"."$id";
 		push(@{$pages_ver->{$page_url}->{'urls'}}, $new_url);
 		$page_url = $new_url;
@@ -354,14 +355,14 @@ sub add_document {
 	    ### this is less then
 	    ### remove all previous urls
 	    foreach my $url ( @{$pages_ver->{$page_url}->{'urls'}} ){
-# print "remove previous url $url because $full_ver is greater then ".$pages_ver->{$page_url}->{'ver'}."\n";
+# INFO "remove previous url $url because $full_ver is greater then ".$pages_ver->{$page_url}->{'ver'}."\n";
 		delete $pages_toimp_hash->{$url};
 	    }
 	    delete $pages_ver->{$page_url};
 	}
     } else {
 	### this is for new urls
-# print "add new $page_url\n";
+# INFO "add new $page_url\n";
     }
 #     return 0 if (exists $pages_ver->{$page_url}->{'ver'} && $pages_ver->{$page_url}->{'ver'} gt "$full_ver");
     my @categories = ();
@@ -429,7 +430,7 @@ sub get_documents {
     my @APPEND_DIRS=("Docs", "Docs_Customizations", "Docs_POS", "Docs_PaymentManager", "Docs_PaymentManager_Deployment", "Docs_SIPServer", "Projects", "Projects_Common", "Projects_Customizations", "Projects_Deployment", "Projects_Deployment_Common", "Projects_Deployment_Customization");
     my $url_sep = WikiCommons::get_urlsep;
     foreach my $append_dir (@APPEND_DIRS) {
-	print "-Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
+	INFO "-Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
 	$count_files = 0;
 	find ({
 	    wanted => sub { add_document ($File::Find::name, $append_dir, "$self->{path_files}", "$url_sep") if -f && (/(\.doc|\.docx|\.rtf)$/i || /.*parameter.*Description.*\.xlsx?$/i) },},
@@ -439,8 +440,8 @@ sub get_documents {
 # 	    wanted => sub { add_document ($File::Find::name, $append_dir, "$self->{path_files}", "$url_sep") if -f && /.*parameter.*Description.*\.xls$/i },},
 # 	    "$self->{path_files}/$append_dir"
 # 	    ) if  (-d "$self->{path_files}/$append_dir");
-	print "\tTotal number of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n";
-	print "+Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
+	INFO "\tTotal number of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n";
+	INFO "+Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
     }
 
     return $pages_toimp_hash;
@@ -464,12 +465,12 @@ sub find_svn_helper {
 	}
 	$dir = dirname($dir);
     } while ($dir ne "$path_file");
-    die "should have found a wiki helper until now for $doc_file: dir $dir svndir $path_file.\t". (WikiCommons::get_time_diff) ."\n";
+    LOGDIE "should have found a wiki helper until now for $doc_file: dir $dir svndir $path_file.\t". (WikiCommons::get_time_diff) ."\n";
 }
 
 sub fix_naming {
     my ($fixed_name, $customer) = @_;
-# print "1a. $fixed_name\n";
+# INFO "1a. $fixed_name\n";
 
     $fixed_name =~ s/^$customer|$customer$//gi;
     ## Specific updates
@@ -639,7 +640,7 @@ sub fix_naming {
     return "Global Roaming Manager" if ($fixed_name eq '4.10.103 Global Roaming Manager (GRM)');
 
     $fixed_name =~ s/^\s*|\s*$//g;
-# print "1c. $fixed_name\n";
+# INFO "1c. $fixed_name\n";
     return $fixed_name;
 }
 

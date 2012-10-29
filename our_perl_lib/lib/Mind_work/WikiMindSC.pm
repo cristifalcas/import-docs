@@ -6,12 +6,13 @@ use strict;
 use DBI;
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
+use Log::Log4perl qw(:easy);
 
 our $pages_toimp_hash = {};
 our $general_categories_hash = {};
 
 my ($wikidb_server, $wikidb_name, $wikidb_user, $wikidb_pass) = ();
-open(FH, "/var/www/html/wiki/LocalSettings.php") or die "Can't open file for read: $!.\n";
+open(FH, "/var/www/html/wiki/LocalSettings.php") or LOGDIE "Can't open file for read: $!.\n";
 while (<FH>) {
   $wikidb_server = $2 if $_ =~ m/^(\s*\$wgDBserver\s*=\s*\")(.+)(\"\s*;\s*)$/;
   $wikidb_name = $2 if $_ =~ m/^(\s*\$wgDBname\s*=\s*\")(.+)(\"\s*;\s*)$/;
@@ -49,11 +50,11 @@ sub get_documents {
     my $total = @all;
     my $count = 0;
     my $url_sep = WikiCommons::get_urlsep;
-    print "-Searching for files in SC dir.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "-Searching for files in SC dir.\t". (WikiCommons::get_time_diff) ."\n";
     foreach my $node (sort @all) {
 	$count++;
-	print "\tDone $count from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($count%1000 == 0);
-# 	die "Can't find files_info or General wiki: $path_files/$node.\n" if (! -e "$path_files/$node/$files_info_file" || ! -e "$path_files/$node/$general_wiki_file");
+	INFO "\tDone $count from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($count%1000 == 0);
+# 	LOGDIE "Can't find files_info or General wiki: $path_files/$node.\n" if (! -e "$path_files/$node/$files_info_file" || ! -e "$path_files/$node/$general_wiki_file");
 	my $md5 = $node;
 	my $ret = $dbh_mysql->selectrow_array("select FILES_INFO_CRT from mind_sc_ids_versions where SC_ID='$node'");
 	my @data = split "\n", $ret;
@@ -72,16 +73,16 @@ sub get_documents {
 		    $q =~ s/(^\s*)|(\s*$)//g;
 		    if ($q =~ m/^has_deployment/i){
 			my $has_deployment = $q;$has_deployment =~ s/^has_deployment\s+//;
-			print "WTF is this: has_deployment = $has_deployment\n".Dumper(@data) if $has_deployment ne 'Y';
+			INFO "WTF is this: has_deployment = $has_deployment\n".Dumper(@data) if $has_deployment ne 'Y';
 			push @categories, $q;
-# print "$has_deployment\n";
+# INFO "$has_deployment\n";
 		    }
 		    next if $q !~ "^ChangeType";
 		    my $sc_type = $q;
 		    $sc_type =~ s/^ChangeType\s+//;
 		    push @categories, $q;
 		    if ($sc_type ne "Change" && $sc_type ne "Bug") {
-			print "\tSC type is unknown: $sc_type.\n";
+			INFO "\tSC type is unknown: $sc_type.\n";
 			$sc_type = "Bug";
 		    }
 		    if ( $path_files =~ m/canceled/i ) {
@@ -115,7 +116,7 @@ sub get_documents {
 		    } elsif ($node =~ m/^P/i) {
 			$url_namespace = "SC_Plugins_$sc_type";
 		    } else {
-die "no namespace here 1: $node.\n".Dumper(@data);
+LOGDIE "no namespace here 1: $node.\n".Dumper(@data);
 			$url_namespace = "SC_iPhonex_$sc_type";
 		    }
 		    push @categories, "RealNameSpace ".$url_namespace;
@@ -139,25 +140,25 @@ die "no namespace here 1: $node.\n".Dumper(@data);
 			push @categories, "version_m ".$main;
 			push @categories, "version_v ".$ver_fixed;
 		    } else {
-			die "Unknown category in $line: $q.\n";
+			LOGDIE "Unknown category in $line: $q.\n";
 		    }
 		}
 		next;
 	    }
 	    $md5 .= "$tmp[2]" if defined $tmp[2];
-	    die "Wrong number of fields for line $line in $node.\n" if @tmp < 4 || @tmp > 5;
+	    LOGDIE "Wrong number of fields for line $line in $node.\n" if @tmp < 4 || @tmp > 5;
 	    $info_crt_h->{$tmp[0]}->{'name'} = "$tmp[1]";
 	    $info_crt_h->{$tmp[0]}->{'size'} = "$tmp[2]";
 	    $info_crt_h->{$tmp[0]}->{'revision'} = "$tmp[3]";
 	    $info_crt_h->{$tmp[0]}->{'date'} = "$tmp[4]" if defined $tmp[4];
 	}
-die "no namespace here 2: $node.\n".Dumper(@data) if $url_namespace eq "";
+LOGDIE "no namespace here 2: $node.\n".Dumper(@data) if $url_namespace eq "";
 	$pages_toimp_hash->{"$url_namespace:$node"} = [$md5." redirect", "$node", $info_crt_h, "real", \@categories];
 	$pages_toimp_hash->{"SC:$node"} = [$md5, "$node", $info_crt_h, "real", \@categories];
     }
-    print "\tDone $count from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($count%500 != 0);
-    print "+Searching for files in SC dir.\t". (WikiCommons::get_time_diff) ."\n";
-# print Dumper($pages_toimp_hash);exit 1;
+    INFO "\tDone $count from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($count%500 != 0);
+    INFO "+Searching for files in SC dir.\t". (WikiCommons::get_time_diff) ."\n";
+# INFO Dumper($pages_toimp_hash);exit 1;
     return $pages_toimp_hash;
 }
 

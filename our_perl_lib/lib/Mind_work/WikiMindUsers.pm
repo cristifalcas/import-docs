@@ -8,6 +8,7 @@ use File::Basename;
 use Cwd 'abs_path';
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
+use Log::Log4perl qw(:easy);
 
 our $pages_toimp_hash = {};
 our $general_categories_hash = {};
@@ -48,7 +49,7 @@ sub add_document {
 
     if (-f "$dir/$name.txt") {
 	local( $/, *FILEHANDLE ) ;
-	open (FILEHANDLE, "$dir/$name.txt") or die $!."\t". (WikiCommons::get_time_diff) ."\n";
+	open (FILEHANDLE, "$dir/$name.txt") or LOGDIE $!."\t". (WikiCommons::get_time_diff) ."\n";
 # 	my @text = <FILEHANDLE>;
 	my $text1 = <FILEHANDLE>;
 	close (FILEHANDLE);
@@ -100,18 +101,18 @@ sub add_document {
 	    return;
 	}
     } else {
-	print "Invalid users doc. txt file missing: $dir/$name.txt.\n";
+	INFO "Invalid users doc. txt file missing: $dir/$name.txt.\n";
 	return;
     }
 
-    die "Url is empty.\n" if $page_url eq '';
+    LOGDIE "Url is empty.\n" if $page_url eq '';
 
     if (exists $pages_toimp_hash->{$page_url}) {
 	$duplicates->{$page_url}->{$doc_file} = 1;
 	return 0;
     }
 
-    print "No txt page for $doc_file.\n" if ($page_url eq "" );
+    INFO "No txt page for $doc_file.\n" if ($page_url eq "" );
     $pages_toimp_hash->{$page_url} = [WikiCommons::get_file_md5($doc_file), "$rel_path", "", "link", \@categories];
 }
 

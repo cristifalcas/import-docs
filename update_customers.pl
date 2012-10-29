@@ -30,11 +30,16 @@ use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."./our_perl_lib/lib";
 use DBI;
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
+Log::Log4perl->easy_init({ level   => $DEBUG,
+#                            file    => ">>test.log" 
+# 			   layout   => "%d [%5p] (%6P) [%rms] [%M] - %m{chomp}\t%x\n",
+			   layout   => "%5p (%6P) %m{chomp}\n",
+});
 use XML::Simple;
 use URI::Escape;
 use Mind_work::WikiCommons;
 use Mind_work::WikiWork;
-die "We need the destination path.\n" if ( $#ARGV != 0 );
+LOGDIE "We need the destination path.\n" if ( $#ARGV != 0 );
 our $to_path = shift;
 $to_path = abs_path("$to_path");
 
@@ -52,7 +57,7 @@ sub write_customer {
     my $name = $hash->{'displayname'};
     delete $hash->{'displayname'};
 
-    print "\tWrite $name info.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\tWrite $name info.\t". (WikiCommons::get_time_diff) ."\n";
     my $txt = "=Information=\n\n";
 
     my $acct_mng = "";
@@ -129,7 +134,7 @@ sub write_customer {
 
     delete $hash->{'customer_id'};
 
-    die "Leftovers:".Dumper($hash) if scalar (keys %$hash) && $name ne "VStar";
+    LOGDIE "Leftovers:".Dumper($hash) if scalar (keys %$hash) && $name ne "VStar";
     $our_wiki->wiki_delete_page("Category:$name") if ( $our_wiki->wiki_exists_page("Category:$name") );
     $our_wiki->wiki_edit_page("Category:$name", $txt);
 }
@@ -211,7 +216,7 @@ my $q = {};
 
 while ( my @row=$sth->fetchrow_array() ) {
     my $id = $row[0];
-    die "Already have this id for cust.\n" if exists $customers->{$id};
+    LOGDIE "Already have this id for cust.\n" if exists $customers->{$id};
     $customers->{$id}->{'name'} = $row[1];
     $customers->{$id}->{'displayname'} = $row[2];
     $q->{"nr".$id}->{'name'} = $row[1];
@@ -227,4 +232,4 @@ $dbh->disconnect if defined($dbh);
 
 WikiCommons::hash_to_xmlfile( $q, "$to_path/customers.xml", "customers" );
 
-print "Done.\n";
+INFO "Done.\n";

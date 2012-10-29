@@ -11,6 +11,7 @@ use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 use HTML::TreeBuilder;
 use HTML::WikiConverter;
+use Log::Log4perl qw(:easy);
 # use HTML::Tidy;
 use Text::Balanced qw (
     extract_tagged
@@ -65,9 +66,9 @@ sub tree_clean_div {
 	    } elsif ($attr_name eq "id" ) {
 		$id++;
 	    } else {
-# 		die "Unknown tag in div: $attr_name = $attr_value\n";
+# 		LOGDIE "Unknown tag in div: $attr_name = $attr_value\n";
 # 		return undef;
-		print "Unknown tag in div: $attr_name = $attr_value\n";
+		INFO "Unknown tag in div: $attr_name = $attr_value\n";
 		$a_tag->attr("$attr_name", undef);
 	    }
 	}
@@ -79,20 +80,20 @@ sub tree_clean_div {
 
 sub tree_remove_TOC {
     my $tree = shift;
-    print "\t-Clean table of contents.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t-Clean table of contents.\t". (WikiCommons::get_time_diff) ."\n";
     foreach my $a_tag ($tree->guts->look_down(_tag => "div")) {
 	if (defined $a_tag->attr('id') && $a_tag->attr('id') =~ m/^Table of Contents[0-9]$/ ){
-	    print "\tfound TOC: ".$a_tag->attr('id')."\n" ;
+	    INFO "\tfound TOC: ".$a_tag->attr('id')."\n" ;
 	    $a_tag->detach;
 	}
     }
     foreach my $a_tag ($tree->guts->look_down(_tag => "multicol")) {
 	if (defined $a_tag->attr('id') && $a_tag->attr('id') =~ m/^Alphabetical Index[0-9]$/ ){
-	    print "\tfound index: ".$a_tag->attr('id')."\n" ;
+	    INFO "\tfound index: ".$a_tag->attr('id')."\n" ;
 	    $a_tag->detach;
 	}
     }
-    print "\t+Clean table of contents.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t+Clean table of contents.\t". (WikiCommons::get_time_diff) ."\n";
 
     return $tree;
 }
@@ -101,7 +102,7 @@ sub tree_only_one_body {
     my $tree = shift;
     foreach my $a_tag ($tree->guts->look_down(_tag => "body")) {
 	my $dad = $a_tag->parent->tag;
-	die "Body and html tags are strange ".$dad.".\n" if $dad ne "html" || $a_tag->parent->parent;
+	LOGDIE "Body and html tags are strange ".$dad.".\n" if $dad ne "html" || $a_tag->parent->parent;
     }
 }
 
@@ -118,7 +119,7 @@ sub heading_new_line {
 
 sub tree_fix_links_images {
     my ($tree, $dir) = @_;
-    print "\t Fix links.\n";
+    INFO "\t Fix links.\n";
     my $old_files_for_delete;
     foreach (@{  $tree->extract_links()  }) {
 	my($link, $element, $attr, $tag) = @$_;
@@ -126,15 +127,15 @@ sub tree_fix_links_images {
 	    my $name_img = uri_unescape($link);
 	    $name_img =~ s/^\.\.\///;
 	    if (! -f "$dir/$name_img") {
-		print "Can't find file $dir/$name_img.\n";
+		INFO "Can't find file $dir/$name_img.\n";
 		next;
 	    }
 	    my $name_new = WikiCommons::get_file_md5("$dir/$name_img")."_conv.jpg";
-	    system("convert", "$dir/$name_img", "-background", "white", "-flatten", "$dir/$name_new") == 0 or die "error runnig convert: $!.\n";
-# 	    unlink "$dir/$name_img" || die "can't delete old image $dir/$name_img\n";
+	    system("convert", "$dir/$name_img", "-background", "white", "-flatten", "$dir/$name_new") == 0 or LOGDIE "error runnig convert: $!.\n";
+# 	    unlink "$dir/$name_img" || LOGDIE "can't delete old image $dir/$name_img\n";
 	    $old_files_for_delete->{"$dir/$name_img"} = 1;
 	    ## importImages.php Segmentation fault
-	    system("mogrify", "-strip", "$dir/$name_new") == 0 or die "error runnig mogrify: $!.\n"; 
+	    system("mogrify", "-strip", "$dir/$name_new") == 0 or LOGDIE "error runnig mogrify: $!.\n"; 
 	    $element->attr($attr, uri_escape($name_new));
 	}
     }
@@ -146,7 +147,7 @@ sub cleanup_html {
     my ($html, $file_name) = @_;
     my ($name,$dir,$suffix) = fileparse($file_name, qr/\.[^.]*/);
 
-    print "\t-Fix html file $name.html.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t-Fix html file $name.html.\t". (WikiCommons::get_time_diff) ."\n";
 
     my $tree = HTML::TreeBuilder->new();
 
@@ -216,7 +217,7 @@ WikiCommons::write_file("$dir/".++$i.". tree_clean_span_to_div.$name.html", tree
 # 	    $name eq "RN:RN220010 -- CMS";
 # WikiCommons::write_file("$dir/".++$i." html_text1.$name.txt", $text1, 1);
 # WikiCommons::write_file("$dir/".++$i." html_text2.$name.txt", $text2, 1);
-# 	print "Missing text after working on html file $name, in dir $dir.\n";
+# 	INFO "Missing text after working on html file $name, in dir $dir.\n";
 # 	return undef;
 #     }}
     ## here we remove/add text, so we use it last
@@ -230,7 +231,7 @@ WikiCommons::write_file("$dir/".++$i.". tree_fix_numbers_in_headings.$name.html"
 
     $tree->no_space_compacting(0);
     my $html_res = tree_to_html($tree);
-    print "\t+Fix html file $name.html.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t+Fix html file $name.html.\t". (WikiCommons::get_time_diff) ."\n";
     $tree = $tree->delete;
 WikiCommons::write_file("$dir/$name.fixed.html", $html_res, 1) if $debug eq "yes";
     return Encode::encode('utf8', $html_res);
@@ -278,7 +279,7 @@ sub tree_clean_font {
 		$a_tag->attr("$attr_name", undef);
 		next;
 	    }
-	    die "Attr name for font: $attr_name = $attr_value.\n";
+	    LOGDIE "Attr name for font: $attr_name = $attr_value.\n";
 	}
 	tree_remove_empty_element($a_tag);
     }
@@ -313,7 +314,7 @@ sub tree_clean_span_to_div {
 # 	    $txt .= $content;
 # 	}
  $a_tag->tag("mind_tag") if $multi;
-# print $a_tag->as_text."\n" if $multi;
+# INFO $a_tag->as_text."\n" if $multi;
     }
     return $tree;
 }
@@ -357,7 +358,7 @@ sub tree_clean_span {
 				    || $att =~ m/^\s*text-transform: uppercase\s*$/i) {
 			    $res .= $att.";";
 			} else {
-			    die "Attr name for span_style = $att.\n";
+			    LOGDIE "Attr name for span_style = $att.\n";
 			}
 		    }
 		}
@@ -368,7 +369,7 @@ sub tree_clean_span {
 		    || $attr_name eq "dir" || $attr_name eq "lang") {
 		$a_tag->attr("$attr_name", undef);
 	    } else {
-		die "Attr name for span: $attr_name = $attr_value.\n";
+		LOGDIE "Attr name for span: $attr_name = $attr_value.\n";
 	    }
 	}
 	tree_remove_empty_element($a_tag);
@@ -379,7 +380,7 @@ sub tree_clean_span {
 sub tree_clean_headings {
     my $tree = shift;
 
-    print "\t-Fix headings.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t-Fix headings.\t". (WikiCommons::get_time_diff) ."\n";
 
     foreach my $a_tag ($tree->descendants()) {
 	if ($a_tag->tag =~ m/^h[0-9]{1,2}$/) {
@@ -416,7 +417,7 @@ sub tree_clean_headings {
 	}
     }
 
-    print "\t+Fix headings.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t+Fix headings.\t". (WikiCommons::get_time_diff) ."\n";
     return $tree;
 }
 
@@ -428,7 +429,7 @@ sub tree_headings_clean_images {
 	my $tag = $$b_tag->tag();
 	if ($tag eq "img" || $tag eq "table") {
 	    my $img = $$b_tag->clone;
-# print $img->as_HTML."\n";
+# INFO $img->as_HTML."\n";
 	    $$b_tag->detach;
 	    my $p = HTML::Element->new('p');
 	    my $b = HTML::Element->new('br');
@@ -455,7 +456,7 @@ sub tree_headings_clean_content {
 	    || $tag eq "center" || $tag eq "i" || $tag eq "strong") {
 	    $$b_tag->replace_with_content;
 	} else {
-	    die "reference in heading: $tag\n";
+	    LOGDIE "reference in heading: $tag\n";
 	    return undef;
 	}
     }
@@ -479,7 +480,7 @@ sub tree_headings_clean_attr {
 	    $a_tag->attr("$attr_name", undef);
 # 		} elsif ($attr_name eq "cellpadding") {
 	} else {
-	    die "Unknown attr in heading: $attr_name = $attr_value.\n";
+	    LOGDIE "Unknown attr in heading: $attr_name = $attr_value.\n";
 	    return undef;
 	}
     }
@@ -499,15 +500,15 @@ my @q=();
 	}
     }
     if ( scalar @ancestors ) {
-# 	print "all lists here: ".Encode::encode('utf8', $a_tag->as_text)."\n\t";
+# 	INFO "all lists here: ".Encode::encode('utf8', $a_tag->as_text)."\n\t";
 	foreach my $parent (@ancestors) {
-# 	    print "".$parent->tag."\t";
+# 	    INFO "".$parent->tag."\t";
 	    last if $parent->tag eq "body";
 	    $parent->replace_with_content;
 	}
-# 	print "\n";
+# 	INFO "\n";
     } else {
-	die "not all lists here: ".Encode::encode('utf8', $a_tag->as_text)."\n".Dumper(@q) if ! scalar @q;
+	LOGDIE "not all lists here: ".Encode::encode('utf8', $a_tag->as_text)."\n".Dumper(@q) if ! scalar @q;
 	$a_tag->tag("b");
     }
 }
@@ -534,7 +535,7 @@ sub tree_clean_tables_attributes {
 	    $a_tag->attr("$attr_name", undef);
 	} elsif ($attr_name eq "cellpadding") {
 	} else {
-	    die "Unknown attr in table: $attr_name = $attr_value.\n";
+	    LOGDIE "Unknown attr in table: $attr_name = $attr_value.\n";
 	    return undef;
 	}
     }
@@ -565,7 +566,7 @@ sub tree_clean_tables {
 
 	### expect only col and tr
 	foreach my $b_tag ($a_tag->content_list){
-	    die "not reference in table\n" if ! ref $b_tag;
+	    LOGDIE "not reference in table\n" if ! ref $b_tag;
 	    my $tag = $b_tag->tag;
 	    if ( $tag eq "col" || $tag eq "colgroup"){
 		$b_tag->detach;
@@ -577,16 +578,16 @@ sub tree_clean_tables {
 			$a_tag->attr("$attr_name", undef);
 		    } elsif ( $attr_name eq "bgcolor") {
 		    } else {
-			die "Unknown attr in tr: $attr_name = $attr_value.\n";
+			LOGDIE "Unknown attr in tr: $attr_name = $attr_value.\n";
 			return undef;
 		    }
 		}
 		### expect only td in tr
 		my $has_content = 0;
 		foreach my $c_tag ($b_tag->content_list){
-		    die "not reference in tr\n" if ! ref $c_tag;
+		    LOGDIE "not reference in tr\n" if ! ref $c_tag;
 		    my $tag = $c_tag->tag;
-		    die "Unknown tag: $tag\n" if $tag ne "td" && $tag ne "th";
+		    LOGDIE "Unknown tag: $tag\n" if $tag ne "td" && $tag ne "th";
 		    ### clean td attributes
 		    foreach my $attr_name ($c_tag->all_external_attr_names){
 			my $attr_value = $c_tag->attr($attr_name);
@@ -600,7 +601,7 @@ sub tree_clean_tables {
 			    $c_tag->attr("$attr_name", undef);
 			} elsif ($attr_name eq "bgcolor" || $attr_name eq "colspan" || $attr_name eq "rowspan") {
 			} else {
-			    die "Unknown attr in $tag: $attr_name = $attr_value.\n";
+			    LOGDIE "Unknown attr in $tag: $attr_name = $attr_value.\n";
 			}
 		    }
 		    ### remove empty td, add new lines
@@ -621,7 +622,7 @@ sub tree_clean_tables {
 		}
 		$b_tag->detach if ( ! $has_content );
 	    } else {
-		die "Unknown tag in table: $tag.\n";
+		LOGDIE "Unknown tag in table: $tag.\n";
 		return undef;
 	    }
 	}
@@ -639,7 +640,7 @@ sub tree_clean_lists_ol_ul {
 	    } elsif (($attr_name eq "start" && $attr_value =~ m/^[0-9]+$/i) ||
 		    (($attr_name eq "type" && $attr_value =~ m/^[Ia]$/i))) {
 	    } else {
-die "Unknown attributes for ol/ul:\n".Dumper($attr_name,$attr_value);
+LOGDIE "Unknown attributes for ol/ul:\n".Dumper($attr_name,$attr_value);
 	    }
 	}
     }
@@ -696,13 +697,13 @@ sub make_wiki_from_html {
     my $html_file = shift;
     my ($name,$dir,$suffix) = fileparse($html_file, qr/\.[^.]*/);
 
-    open (FILEHANDLE, "$html_file") or die "at wiki from html Can't open file $html_file: ".$!."\n";
+    open (FILEHANDLE, "$html_file") or LOGDIE "at wiki from html Can't open file $html_file: ".$!."\n";
     my $html = do { local $/; <FILEHANDLE> };
     close (FILEHANDLE);
 
     $html = cleanup_html($html, $html_file) || return undef;
 
-    print "\t-Generating wiki file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t-Generating wiki file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
     my $wiki;
     my $strip_tags = [ '~comment', 'head', 'script', 'style', 'strike'];
     my $wc = new HTML::WikiConverter(
@@ -723,11 +724,11 @@ WikiCommons::write_file("$dir/original.$name.wiki", $wiki, 1) if $debug eq "yes"
     my $parsed_html = $wc->parsed_html;
 WikiCommons::write_file("$dir/parsed.$name.html", $parsed_html, 1) if $debug eq "yes";
 
-    print "\t+Generating wiki file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t+Generating wiki file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
     $wiki =~ s/mind_tag/div/gm;
 
     my $image_files = ();
-    print "\t-Fixing wiki.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t-Fixing wiki.\t". (WikiCommons::get_time_diff) ."\n";
 #     $wiki =~ s/[ ]{8}/\t/gs;
     $wiki = fix_wiki_chars($wiki);
 WikiCommons::write_file("$dir/fix_wiki_chars.$name.txt", $wiki, 1) if $debug eq "yes";
@@ -755,7 +756,7 @@ WikiCommons::write_file("$dir/fix_external_links.$name.txt", $wiki, 1) if $debug
 WikiCommons::write_file("$dir/fix_small_issues.$name.txt", $wiki, 1) if $debug eq "yes";
 
     WikiCommons::write_file("$dir/$name.wiki", $wiki);
-    print "\t+Fixing wiki.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t+Fixing wiki.\t". (WikiCommons::get_time_diff) ."\n";
 
     return ($wiki, $image_files);
 }
@@ -824,7 +825,7 @@ sub fix_wiki_chars {
 # #
 # #     get utf8 codes from http://www.fileformat.info/info/unicode/char/25cb/index.htm
 # #     decode character in hex (replace character with utf8represantation):
-# # 		perl -e 'print sprintf("\\x{%x}", $_) foreach (unpack("C*", "Ó"));print"\n"'
+# # 		perl -e 'INFO sprintf("\\x{%x}", $_) foreach (unpack("C*", "Ó"));print"\n"'
     # copyright
     $wiki =~ s/\x{EF}\x{192}\x{A3}/\x{C2}\x{A9}/gsi;
     $wiki =~ s/\x{EF}\x{192}\x{201C}/\x{C2}\x{A9}/gsi;
@@ -895,14 +896,14 @@ sub fix_wiki_chars {
 
 sub get_wiki_images {
     my ($wiki, $image_files, $dir) = @_;
-    print "\tFix images from wiki.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\tFix images from wiki.\t". (WikiCommons::get_time_diff) ."\n";
     while ($wiki =~ m/(\[\[Image:)([[:print:]].*?)(\]\])/g ) {
 	my $pic_name = uri_unescape( $2 );
 	$pic_name =~ s/(.*?)(\|.*)/$1/;
 	my $info = image_info("$dir/$pic_name");
 	if (my $error = $info->{error}) {
-	    print "Can't parse image info for dir \"$dir\", file \"$pic_name\":\n\t $error.\t". (WikiCommons::get_time_diff) ."\n";
-	    die "" if $dir !~ m/CMS:MIND-IPhonEX CMS 80.00.020/;
+	    INFO "Can't parse image info for dir \"$dir\", file \"$pic_name\":\n\t $error.\t". (WikiCommons::get_time_diff) ."\n";
+	    LOGDIE "" if $dir !~ m/CMS:MIND-IPhonEX CMS 80.00.020/;
 	    next;
 	}
 	push (@$image_files,  "$dir/$pic_name");
@@ -912,7 +913,7 @@ sub get_wiki_images {
 
 sub fix_wiki_footers {
     my $wiki = shift;
-    print "\tFix footers from wiki.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\tFix footers from wiki.\t". (WikiCommons::get_time_diff) ."\n";
     ## fix footers
     $wiki =~ s/(<div id="sdfootnote.*?">)/----\n$1/gsi;
     my $count = 0;
@@ -934,7 +935,7 @@ sub fix_wiki_footers {
 
 sub fix_wiki_links_menus {
     my $wiki = shift;
-    print "\tFix links to menus from wiki.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\tFix links to menus from wiki.\t". (WikiCommons::get_time_diff) ."\n";
     ## fix links to menus
     my $newwiki = $wiki;
     my $count = 0;
@@ -962,7 +963,7 @@ sub fix_wiki_links_menus {
 sub fix_wiki_url {
     my $wiki = shift;
     ### fix url links
-#     print "\tFix urls from wiki.\t". (WikiCommons::get_time_diff) ."\n";
+#     INFO "\tFix urls from wiki.\t". (WikiCommons::get_time_diff) ."\n";
     my $newwiki = $wiki;
     while ($wiki =~ m/(http:\/\/.*?)\s+/g) {
 	my $q = $1;
@@ -977,7 +978,7 @@ sub fix_wiki_url {
 sub fix_wiki_link_to_sc {
     my $wiki = shift;
     ## for every B1111 make it a link
-#     print "\tFix links to SC.\t". (WikiCommons::get_time_diff) ."\n";
+#     INFO "\tFix links to SC.\t". (WikiCommons::get_time_diff) ."\n";
     my $newwiki = $wiki;
     my $count = 0;
     while ($wiki =~ m/(\[\[Image:[[:print:]]*?(B|I|F|H|R|D|E|G|S|T|Z|K|A|P)[[:digit:]]{4,}[[:print:]]*?\]\])|(\b(B|I|F|H|R|D|E|G|S|T|Z|K|A|P)[[:digit:]]{4,}\b)/g ) {
@@ -985,7 +986,7 @@ sub fix_wiki_link_to_sc {
 	my $found_string_end_pos = pos($wiki);
 
 	next if ($found_string =~ /^\[\[Image:/);
-	print "\tSC link: $found_string\n";
+	INFO "\tSC link: $found_string\n";
 	my $new_string = " [[SC:$found_string|$found_string]] ";
 	substr($newwiki, $found_string_end_pos - length($found_string)+$count, length($found_string)) = $new_string;
 	$count += length($new_string) - length($found_string);
@@ -1005,7 +1006,7 @@ sub get_deployment_conf {
 	$txt =~ s/\n={1,$heading_length}[^=].*//ms;
 	$txt = "$heading$txt";
 	return if $txt =~ m/^\n*=+(Deployment consideration( \(mandatory for Payment Manager\))?\.?|Deployment configuration &amp; consideration\.?)=+\n+(<font color="#0000ff">)?(Add all assumptions, settings, actions, etc that are relevant for the correct deployment and use of the system\.?|Specify all configuration, and consideration that are relevant for correct deployment of the system\.?)?(TBD|NR|NA|N\/?R|N\/?A)?\.?\s*(<\/font>)?\n*(TBD|NR|NA|N\/?R|N\/?A)?\.?\s*\n*$/gsi;
-	print "\t Found some deployment stuff.\n";
+	INFO "\t Found some deployment stuff.\n";
 	return $txt;
     }
     return;

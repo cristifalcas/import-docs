@@ -9,7 +9,7 @@ $| = 1;
 # perl -e 'print sprintf("\\x{%x}", $_) foreach (unpack("C*", "Ó"));print"\n"' 
 
 $SIG{__WARN__} = sub { die @_ };
-
+chdir "/tmp/" || die "can't go to /tmp.\n";
 # categories:
 # $file_url -> $rest_dir[length], $ver, $cust
 # $rest_dir[length] -> $rest_dir[length-1]
@@ -78,6 +78,12 @@ use Text::Balanced;
 # use Encode;
 use URI::Escape;
 use File::Path qw(make_path remove_tree);
+use Log::Log4perl qw(:easy);
+Log::Log4perl->easy_init({ level   => $DEBUG,
+#                            file    => ">>test.log" 
+# 			   layout   => "%d [%5p] (%6P) [%rms] [%M] - %m{chomp}\t%x\n",
+			   layout   => "%5p (%6P) %m{chomp}\n",
+});
 
 use Mind_work::WikiWork;
 use Mind_work::WikiCommons;
@@ -91,7 +97,7 @@ use Mind_work::WikiMindCMS;
 use File::Slurp;
 use DBI;
 my ($wikidb_server, $wikidb_name, $wikidb_user, $wikidb_pass) = ();
-open(FH, "/var/www/html/wiki/LocalSettings.php") or die "Can't open file for read: $!.\n";
+open(FH, "/var/www/html/wiki/LocalSettings.php") or LOGDIE "Can't open file for read: $!.\n";
 while (<FH>) {
   $wikidb_server = $2 if $_ =~ m/^(\s*\$wgDBserver\s*=\s*\")(.+)(\"\s*;\s*)$/;
   $wikidb_name = $2 if $_ =~ m/^(\s*\$wgDBname\s*=\s*\")(.+)(\"\s*;\s*)$/;
@@ -167,24 +173,24 @@ WikiCommons::set_real_path($path_prefix);
 
 sub create_wiki {
     my ($page_url, $doc_file, $zip_name) = @_;
-    die "Page url is empty.\n" if $page_url eq '';
+    LOGDIE "Page url is empty.\n" if $page_url eq '';
     $zip_name = $page_url if ! defined $zip_name;
     my $work_dir = "$wiki_dir/$page_url";
 
     my ($name_url,$dir_url,$suffix_url) = fileparse($page_url, qr/\.[^.]*/);
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
     if ( -d $work_dir) {
-	print "Path $work_dir already exists. Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
+	INFO "Path $work_dir already exists. Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
 	my $name_bad = "$bad_dir/$page_url".time();
 	WikiCommons::makedir("$name_bad");
 	WikiCommons::move_dir("$work_dir", "$name_bad");
-	die "Directory still exists." if ( -d $work_dir);
+	LOGDIE "Directory still exists." if ( -d $work_dir);
     }
     WikiCommons::makedir ("$work_dir");
     $name = WikiCommons::normalize_text($name);
 
     my $new_file = "$name_url$suffix_url";
-    copy("$doc_file","$work_dir/$new_file$suffix") or die "Copy failed for $page_url at create_wiki: $doc_file to $work_dir: $!\t". (WikiCommons::get_time_diff) ."\n";
+    copy("$doc_file","$work_dir/$new_file$suffix") or LOGDIE "Copy failed for $page_url at create_wiki: $doc_file to $work_dir: $!\t". (WikiCommons::get_time_diff) ."\n";
     $doc_file = "$work_dir/$new_file$suffix";
 
     if ( -f $doc_file ) {
@@ -200,31 +206,31 @@ sub create_wiki {
 	    WikiCommons::makedir ("$dest");
 
 	    my %seen = ();
-	    open (FILE, ">>$work_dir/$wiki_files_uploaded") or die "at create wiki can't open file $work_dir/$wiki_files_uploaded for writing: $!\t". (WikiCommons::get_time_diff) ."\n";
-	    print "\t-Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
+	    open (FILE, ">>$work_dir/$wiki_files_uploaded") or LOGDIE "at create wiki can't open file $work_dir/$wiki_files_uploaded for writing: $!\t". (WikiCommons::get_time_diff) ."\n";
+	    INFO "\t-Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
 	    foreach my $img (@$image_files){
-		move ("$img", "$dest") or die "Moving file \"$img\" failed: $!\t". (WikiCommons::get_time_diff) ."\n" unless $seen{$img}++;
+		move ("$img", "$dest") or LOGDIE "Moving file \"$img\" failed: $!\t". (WikiCommons::get_time_diff) ."\n" unless $seen{$img}++;
 		my ($img_name,$img_dir,$img_suffix) = fileparse($img, qr/\.[^.]*/);
 		print FILE "File:$img_name$img_suffix\n";
 	    }
 	    $image_files = ();
 
 	    my $zip = Archive::Zip->new();
-	    $zip->addFile( "$work_dir/$new_file$suffix", "$new_file$suffix") or die "Error adding file $new_file$suffix to zip.\t". (WikiCommons::get_time_diff) ."\n";
-	    die "Write error for zip file.\t". (WikiCommons::get_time_diff) ."\n" if $zip->writeToFileNamed( "$dest/$zip_name.zip" ) != AZ_OK;
+	    $zip->addFile( "$work_dir/$new_file$suffix", "$new_file$suffix") or LOGDIE "Error adding file $new_file$suffix to zip.\t". (WikiCommons::get_time_diff) ."\n";
+	    LOGDIE "Write error for zip file.\t". (WikiCommons::get_time_diff) ."\n" if $zip->writeToFileNamed( "$dest/$zip_name.zip" ) != AZ_OK;
 	    print FILE "File:$zip_name.zip\n";
 	    close (FILE);
-	    print "\t+Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
+	    INFO "\t+Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
 
 	    WikiCommons::add_to_remove( $doc_file, "file" );
 	    WikiCommons::add_to_remove( $html_file, "file" );
 	    return $wiki;
 	} else {
-	    print "OpenOffice could not create the html file.\t". (WikiCommons::get_time_diff) ."\n";
+	    INFO "OpenOffice could not create the html file.\t". (WikiCommons::get_time_diff) ."\n";
 	    return;
 	}
     } else {
-	 print "Strange, can't find the doc file in $work_dir.\t". (WikiCommons::get_time_diff) ."\n";
+	 INFO "Strange, can't find the doc file in $work_dir.\t". (WikiCommons::get_time_diff) ."\n";
 	 return;
     }
 }
@@ -236,14 +242,14 @@ sub get_existing_pages {
     $_ = "$wiki_dir/".$_ foreach (@allfiles);
 
     $count_files = 0;
-    print "-Searching for files in db.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "-Searching for files in db.\t". (WikiCommons::get_time_diff) ."\n";
     my $total = scalar @allfiles;
     my $crt_nr = 0;
     foreach my $dir (sort @allfiles) {
 	if (-d "$dir") {
 	    next if ($dir eq "$wiki_dir/categories");
 	    $crt_nr++;
-	    print "\tDone $crt_nr from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($crt_nr%2000 == 0);
+	    INFO "\tDone $crt_nr from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($crt_nr%2000 == 0);
 	    my ($name,$dir_dir,$suffix) = fileparse($dir, qr/\.[^.]*/);
 	    $name = "$name$suffix";
 # if ( -f "$dir/$wiki_files_info" && -s "$dir/$wiki_files_info") {
@@ -255,7 +261,7 @@ sub get_existing_pages {
 		my @info_text = split "\n", @$ret[0];
 		chomp(@info_text);
 		if ( @info_text != 4 ) {
-		    print "\tFile $name does not have the correct number of entries.\n".Dumper(@info_text);
+		    INFO "\tFile $name does not have the correct number of entries.\n".Dumper(@info_text);
 		    next;
 		}
 
@@ -264,30 +270,30 @@ sub get_existing_pages {
 		my $svn_url = $info_text[$svn_url_pos]; $svn_url =~ s/(.*?)=\s*//;
 		my $url_type = $info_text[$link_type_pos]; $url_type =~ s/(.*?)=\s*//;
 		if (!(defined $md5 && defined $rel_path && defined $url_type && defined $svn_url)){
-		    print "\tFile $name does not have the correct information.\n";
+		    INFO "\tFile $name does not have the correct information.\n";
 		    next;
 		}
 		$md5 =~ s/(^\s+|\s+$)//g;
 		$rel_path =~ s/(^\s+|\s+$)//g;
 		$svn_url =~ s/(^\s+|\s+$)//g;
 		$url_type =~ s/(^\s+|\s+$)//g;
-		die "\tWe already have this url. But this is insane...\t". (WikiCommons::get_time_diff) ."\n" if (exists $pages_toimp_hash->{$dir});
+		LOGDIE "\tWe already have this url. But this is insane...\t". (WikiCommons::get_time_diff) ."\n" if (exists $pages_toimp_hash->{$dir});
 		$pages_local_hash->{$name} = [$md5, $rel_path, $svn_url, $url_type, []];
 		++$count_files;
 	    } else {
-		print "\tThis is not a correct wiki info: $name\n";
+		INFO "\tThis is not a correct wiki info: $name\n";
 		my @q = split '/', $dir;
 		my $name_bad = "$bad_dir/$q[$#q]".time();
 # 		WikiCommons::makedir("$name_bad");
 		WikiCommons::move_dir("$dir","$name_bad");
-		die "\tDirectory still exists." if ( -d $dir);
+		LOGDIE "\tDirectory still exists." if ( -d $dir);
 	    }
 	} else {
-	    print "\tExtra files in wiki dir: $dir\n";
+	    INFO "\tExtra files in wiki dir: $dir\n";
 	}
     }
-    print "\tTotal number of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n";
-    print "+Searching for files in db.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\tTotal number of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "+Searching for files in db.\t". (WikiCommons::get_time_diff) ."\n";
 }
 
 sub generate_new_updated_pages {
@@ -304,9 +310,9 @@ sub generate_new_updated_pages {
 	    delete($pages_toimp_hash->{$url});
 	} else {
 	    if (exists $pages_toimp_hash->{$url}) {
-		print "Url $url will be updated because: \n\t\tcrt_md5\n\t\t\t$pages_local_hash->{$url}[$md5_pos] <> \n\t\t\t$pages_toimp_hash->{$url}[$md5_pos] or \n\t\tcrt_rel_path \n\t\t\t$pages_local_hash->{$url}[$rel_path_pos] <> \n\t\t\t$pages_toimp_hash->{$url}[$rel_path_pos].\n";
+		INFO "Url $url will be updated because: \n\t\tcrt_md5\n\t\t\t$pages_local_hash->{$url}[$md5_pos] <> \n\t\t\t$pages_toimp_hash->{$url}[$md5_pos] or \n\t\tcrt_rel_path \n\t\t\t$pages_local_hash->{$url}[$rel_path_pos] <> \n\t\t\t$pages_toimp_hash->{$url}[$rel_path_pos].\n";
 	    } else {
-		print "Delete url $url because it doesn't exist anymore.\n";
+		INFO "Delete url $url because it doesn't exist anymore.\n";
 		$to_delete->{$url} = $pages_local_hash->{$url};
 	    }
 	}
@@ -331,7 +337,7 @@ sub generate_real_and_links {
 	if ( $nr_real == 0 ) {
 	    my $q = $md5_map->{$md5}{"link"};
 	    foreach my $url (@$q) {
-		print "Remove link url $url because of all links: $nr_link.\n";
+		INFO "Remove link url $url because of all links: $nr_link.\n";
 		$to_delete->{$url} = $to_keep->{$url} if (exists $to_keep->{$url});
 		$pages_toimp_hash->{$url} = $to_keep->{$url} if (exists $to_keep->{$url});
 		delete($to_keep->{$url});
@@ -340,7 +346,7 @@ sub generate_real_and_links {
 	if ( $nr_real > 1 ) {
 	    my $q = $md5_map->{$md5}{"real"};
 	    for (my $i=0; $i < $nr_real - 1; $i++) {
-		print "Remove real url @$q[$i] because of too many real links: $nr_real.\n";
+		INFO "Remove real url @$q[$i] because of too many real links: $nr_real.\n";
 		$to_delete->{@$q[$i]} = $to_keep->{@$q[$i]};
 		$pages_toimp_hash->{@$q[$i]} = $to_keep->{@$q[$i]};
 		delete($to_keep->{@$q[$i]});
@@ -348,7 +354,7 @@ sub generate_real_and_links {
 	    }
 	    $q = $md5_map->{$md5}{"link"};
 	    foreach my $url (@$q) {
-		print "Remove link url $url because of too many real links: $nr_real.\n";
+		INFO "Remove link url $url because of too many real links: $nr_real.\n";
 		$to_delete->{$url} = $to_keep->{$url} if (exists $to_keep->{$url});
 		$pages_toimp_hash->{$url} = $to_keep->{$url} if (exists $to_keep->{$url});
 		$pages_toimp_hash->{$url}[$link_type_pos] = "link";
@@ -363,7 +369,7 @@ sub generate_cleaned_real_and_links {
     my $md5_map = {};
     my $md5_map_keep = {};
     return if ($all_real eq "yes");
-    print "\tstart checking for links.\n";
+    INFO "\tstart checking for links.\n";
     push @{$md5_map->{$pages_toimp_hash->{$_}[$md5_pos]}{$pages_toimp_hash->{$_}[$link_type_pos]}}, ($_) foreach (sort keys %$pages_toimp_hash);
     push @{$md5_map_keep->{$to_keep->{$_}[$md5_pos]}{$to_keep->{$_}[$link_type_pos]}}, ($_) foreach (sort keys %$to_keep);
 
@@ -380,7 +386,7 @@ sub generate_cleaned_real_and_links {
 		}
 	    }
 	}
-	print "done $count out of $total.\t". (WikiCommons::get_time_diff) ."\n" if ++$count%1000 == 0;
+	INFO "done $count out of $total.\t". (WikiCommons::get_time_diff) ."\n" if ++$count%1000 == 0;
     }
 }
 
@@ -419,23 +425,23 @@ sub generate_pages_for_real_and_redir {
 }
 
 sub generate_pages_to_delete_to_import {
-    print "Start generating new/updated/to_delete/to_keep urls.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "Start generating new/updated/to_delete/to_keep urls.\t". (WikiCommons::get_time_diff) ."\n";
     generate_new_updated_pages();
-    print "Done generating new/updated urls.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "Done generating new/updated urls.\t". (WikiCommons::get_time_diff) ."\n";
     generate_real_and_links();
-    print "Done separating urls in real and links.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "Done separating urls in real and links.\t". (WikiCommons::get_time_diff) ."\n";
     generate_pages_for_real_and_redir();
-    print "Done cleaning real and redirects.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "Done cleaning real and redirects.\t". (WikiCommons::get_time_diff) ."\n";
     generate_cleaned_real_and_links();
-    print "Done final cleaning of urls.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "Done final cleaning of urls.\t". (WikiCommons::get_time_diff) ."\n";
 
     my $tmp = {};
     foreach (keys %$pages_toimp_hash) {$tmp->{$_} = 1 if ($pages_toimp_hash->{$_}[$link_type_pos] eq "link")};
 
-    print "1. Number of files to import: ",scalar keys %$pages_toimp_hash,"\n";
-    print "2. Number of files to import as links: ",scalar keys %$tmp,"\n";
-    print "3. Number of files already imported: ",scalar keys %$to_keep,"\n";
-    print "4. Number of files to delete: ",scalar keys %$to_delete,"\n";
+    INFO "1. Number of files to import: ",scalar keys %$pages_toimp_hash,"\n";
+    INFO "2. Number of files to import as links: ",scalar keys %$tmp,"\n";
+    INFO "3. Number of files already imported: ",scalar keys %$to_keep,"\n";
+    INFO "4. Number of files to delete: ",scalar keys %$to_delete,"\n";
 }
 
 sub make_categories {
@@ -445,7 +451,7 @@ sub make_categories {
     my $general_categories_hash = $coco->get_categories;
     return if ($delete_everything eq "yes");
     my $categories_ref = $dbh_mysql->selectall_hashref("select WIKI_NAME from mind_wiki_info where WIKI_NAME like 'Category:%'", 'WIKI_NAME');
-    print "-Making categories.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "-Making categories.\t". (WikiCommons::get_time_diff) ."\n";
     foreach my $key (sort keys %$general_categories_hash) {
 	my $text = "----\n\n";
 	$url = "Category:$key";
@@ -458,19 +464,19 @@ sub make_categories {
 	$text .= "----\n\n";
 	if (WikiCommons::is_remote ne "yes"){
 	    $our_wiki->wiki_edit_page($url, $text);
-	    die "Could not import url $url.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url) );
+	    LOGDIE "Could not import url $url.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url) );
 	} else {
-	    print "\tCopy category to $remote_work_path\n";
+	    INFO "\tCopy category to $remote_work_path\n";
 	    WikiCommons::makedir("$remote_work_path");
 	    WikiCommons::write_file("$remote_work_path/$url.wiki", $text);
 	}
 	my $txt = "md5 = 0\nrel_path = 0\nsvn_url = 0\nlink_type = category\n";
-# 	print "\t## adding to db new val $txt\n";
+# 	INFO "\t## adding to db new val $txt\n";
 	my $sth_mysql = $dbh_mysql->do("REPLACE INTO mind_wiki_info 
 		  (WIKI_NAME,FILES_INFO_INSERTED) VALUES 
 		  (".$dbh_mysql->quote($url).", ".$dbh_mysql->quote($txt).")");
     }
-    print "+Making categories.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "+Making categories.\t". (WikiCommons::get_time_diff) ."\n";
 }
 
 sub insertdata {
@@ -480,25 +486,25 @@ sub insertdata {
 
     if (WikiCommons::is_remote ne "yes"){
 	$our_wiki->wiki_import_files ("$work_dir/$wiki_result", "$url");
-	print "\tDeleting url $url just to be sure.\t". (WikiCommons::get_time_diff) ."\n";
+	INFO "\tDeleting url $url just to be sure.\t". (WikiCommons::get_time_diff) ."\n";
 	$our_wiki->wiki_delete_page ($url) if ( $our_wiki->wiki_exists_page($url) && $delete_previous_page ne "no");
-	print "\tImporting url $url.\t". (WikiCommons::get_time_diff) ."\n";
+	INFO "\tImporting url $url.\t". (WikiCommons::get_time_diff) ."\n";
 	$our_wiki->wiki_edit_page($url, $wiki);
-	die "Could not import url $url.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url) );
-	print "\tDone $url.\t". (WikiCommons::get_time_diff) ."\n";
+	LOGDIE "Could not import url $url.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url) );
+	INFO "\tDone $url.\t". (WikiCommons::get_time_diff) ."\n";
     } else {
-	print "\tCopy files to $remote_work_path/$wiki_result\n";
+	INFO "\tCopy files to $remote_work_path/$wiki_result\n";
 	WikiCommons::makedir("$remote_work_path/$wiki_result");
 	WikiCommons::add_to_remove ("$remote_work_path/$wiki_result", "dir");
 	WikiCommons::copy_dir ("$work_dir/$wiki_result", "$remote_work_path/$wiki_result") if -e "$work_dir/$wiki_result";
-	copy("$work_dir/$url.full.wiki","$remote_work_path/$url") or die "Copy failed for: $url.full.wiki to $remote_work_path: $!\t". (WikiCommons::get_time_diff) ."\n";
+	copy("$work_dir/$url.full.wiki","$remote_work_path/$url") or LOGDIE "Copy failed for: $url.full.wiki to $remote_work_path: $!\t". (WikiCommons::get_time_diff) ."\n";
     }
 
     my $text = "md5 = ".$pages_toimp_hash->{$url}[$md5_pos]."\n";
     $text .= "rel_path = ".$pages_toimp_hash->{$url}[$rel_path_pos]."\n";
     $text .= "svn_url = ".$pages_toimp_hash->{$url}[$svn_url_pos]."\n";
     $text .= "link_type = ".$pages_toimp_hash->{$url}[$link_type_pos]."\n";
-#     print "\t## adding to db new val $text\n";
+#     INFO "\t## adding to db new val $text\n";
     my $sth_mysql = $dbh_mysql->do("REPLACE INTO mind_wiki_info (WIKI_NAME,FILES_INFO_INSERTED) VALUES (".$dbh_mysql->quote($url).", ".$dbh_mysql->quote($text).")");
     delete($pages_toimp_hash->{$url});
 
@@ -534,10 +540,10 @@ sub work_begin {
 	generate_pages_to_delete_to_import();
     }
     if (WikiCommons::is_remote ne "yes") {
-        die Dumper(sort keys %$to_delete)."\nToo many to delete.\n" if (keys %$to_delete) > $max_to_delete;
+        LOGDIE Dumper(sort keys %$to_delete)."\nToo many to delete.\n" if (keys %$to_delete) > $max_to_delete;
 	foreach my $url (sort keys %$to_delete) {
-	    print "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";
-	    remove_tree("$wiki_dir/$url") || die "Can't remove dir $wiki_dir/$url: $?.\n";
+	    INFO "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";
+	    remove_tree("$wiki_dir/$url") || LOGDIE "Can't remove dir $wiki_dir/$url: $?.\n";
 	    my $sth_mysql = $dbh_mysql->do("DELETE FROM mind_wiki_info where WIKI_NAME=".$dbh_mysql->quote($url));
 	    $our_wiki->wiki_delete_page($url) if ( $our_wiki->wiki_exists_page($url) );
 	    $url =~ s/^(SC[^:]*)/SC_Deployment/;
@@ -557,13 +563,13 @@ sub work_for_docs {
     foreach my $md5 (keys %$md5_map) {
 	my $nr_real = 0; $nr_real = scalar @{ $md5_map->{$md5}{"real"} } if (exists $md5_map->{$md5}{"real"});
 	my $nr_link = 0; $nr_link = scalar @{ $md5_map->{$md5}{"link"} } if (exists $md5_map->{$md5}{"link"});
-	die "We should only have ONE real link: real=$nr_real link=$nr_link, md5=$md5.\n".Dumper($md5_map->{$md5}) if ($nr_real != 1);
+	LOGDIE "We should only have ONE real link: real=$nr_real link=$nr_link, md5=$md5.\n".Dumper($md5_map->{$md5}) if ($nr_real != 1);
     }
     fork_function($links_nr_forks, \&link_worker, $md5_map) if scalar keys %$pages_toimp_hash;
 }
 
 sub split_redirects {
-    print "\tExtracting redirects.\n";
+    INFO "\tExtracting redirects.\n";
     foreach my $url (sort keys %$pages_toimp_hash) {
 	if ($url !~ m/^(SC|CRM):(.*)$/i) {
 	    my ($type_full, $type, $crt_name) = ($url =~ m/((SC|CRM)[ _].+)?:(.*)/i);
@@ -585,7 +591,7 @@ sub make_redirect {
 	next;
     }
 
-    print "\tmake redirect from $crt_name to $url.\n";
+    INFO "\tmake redirect from $crt_name to $url.\n";
     $our_wiki->wiki_delete_page("$url") if $our_wiki->wiki_exists_page("$url") && $delete_previous_page ne "no";
     $our_wiki->wiki_move_page("$crt_name", "$url");
 
@@ -604,26 +610,27 @@ sub make_redirect {
 sub fork_function {
     my ($nr_threads, $function, @function_args) = @_;
     use POSIX ":sys_wait_h";
-    print "Start forking.\n";
+    INFO "Start forking.\n";
     my ($running, $links);
     my $total_nr = scalar keys %$pages_toimp_hash;
     my $crt_nr = 0;
     my @thread = (1..$nr_threads);
 
     while (1) {
-# print Dumper(scalar @thread, scalar keys %$running, keys %$pages_toimp_hash);
+# INFO Dumper(scalar @thread, scalar keys %$running, keys %$pages_toimp_hash);
 	my $crt_thread = shift @thread if scalar keys %$pages_toimp_hash;
 	if (defined $crt_thread) {
 	    my $url = (sort keys %$pages_toimp_hash)[0];
-	    print "Got new thread to run $url\n";
+	    INFO "Got new thread to run $url\n";
 	    my $val = $pages_toimp_hash->{$url};
 	    $crt_nr++;
-	    print "\n************************* $crt_nr of $total_nr\nMaking url for $url.\t". (WikiCommons::get_time_diff) ."\n";
+	    INFO "************************* $crt_nr of $total_nr\n";
+	    INFO "Making url for $url.\t". (WikiCommons::get_time_diff) ."\n";
 	    my $pid = fork();
 	    if (! defined ($pid)){
-		die  "Can't fork.\n";
+		LOGDIE  "Can't fork.\n";
 	    } elsif ($pid==0) {
-		print "Start fork function $url.\n";
+		INFO "Start fork function $url.\n";
 		WikiCommons::reset_time();
 		my $child_dbh = $dbh_mysql->clone();
 		$dbh_mysql->{InactiveDestroy} = 1;
@@ -642,7 +649,7 @@ sub fork_function {
 	my $pid = waitpid(-1, WNOHANG);
 	my $exit_status = $? >> 8;
 	if ($pid > 0) {
-	    print "child $pid died, from id with status=$exit_status: reapead.\n";
+	    INFO "child $pid died, from id with status=$exit_status: reapead.\n";
 	    my $url = $running->{$pid}->{'url'};
 	    push @thread, $running->{$pid}->{'thread'};
 	    $to_keep->{$url} = $running->{$pid}->{'val'} if $exit_status == 0;
@@ -666,7 +673,7 @@ sub crm_worker {
     WikiCommons::reset_time();
     WikiCommons::makedir "$wiki_dir/$url/";
     my $rel_path = $val->[$rel_path_pos];
-    print "$path_files/$rel_path\n";
+    INFO "$path_files/$rel_path\n";
     local( $/, *FH ) ;
     open(FH, "$path_files/$rel_path") || die("Could not open file: $!");
     my $wiki_txt = <FH>;
@@ -678,10 +685,10 @@ sub crm_worker {
     WikiCommons::write_file("$work_dir/$url.wiki", $wiki_txt);
     insertdata ($url, $wiki_txt);
     make_redirect($url);
-    print "done crm $url.\n";
+    INFO "done crm $url.\n";
     }; ## eval
     if ($@ && $@ !~ m/^Exiting eval via next at/) {
-	print "Error generating crm for $url: $@\n";
+	INFO "Error generating crm for $url: $@\n";
 	exit 1;
     }
     exit 0;
@@ -694,7 +701,7 @@ sub link_worker {
     WikiCommons::reset_time();
     my $link_to = $md5_map->{$val->[$md5_pos]}->{"real"}[0];
     exit 1 if ! defined $link_to; ## probably the real page failed to import, so we ignore the links also
-    die "We should have a url in to_keep.\n" if (scalar @$val != scalar @{$to_keep->{$link_to}});
+    LOGDIE "We should have a url in to_keep.\n" if (scalar @$val != scalar @{$to_keep->{$link_to}});
     my ($link_name,$link_dir,$link_suffix) = fileparse($to_keep->{$link_to}[$rel_path_pos], qr/\.[^.]*/);
     my ($name,$dir,$suffix) = fileparse($val->[$rel_path_pos], qr/\.[^.]*/);
 
@@ -702,8 +709,8 @@ sub link_worker {
     my $link_file = "$wiki_dir/$link_to/$link_to.wiki";
     WikiCommons::makedir("$wiki_dir/$url/");
     WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
-    copy("$link_file","$wiki_dir/$url/$url.wiki") or die "Copy failed for link: $link_file to $wiki_dir/$url: $!\t". (WikiCommons::get_time_diff) ."\n";
-    open (FILEHANDLE, "$wiki_dir/$url/$url.wiki") or die $!."\t". (WikiCommons::get_time_diff) ."\n";
+    copy("$link_file","$wiki_dir/$url/$url.wiki") or LOGDIE "Copy failed for link: $link_file to $wiki_dir/$url: $!\t". (WikiCommons::get_time_diff) ."\n";
+    open (FILEHANDLE, "$wiki_dir/$url/$url.wiki") or LOGDIE $!."\t". (WikiCommons::get_time_diff) ."\n";
     my $wiki = do { local $/; <FILEHANDLE> };
     close (FILEHANDLE);
 
@@ -721,7 +728,7 @@ sub link_worker {
     insertdata($url, $wiki);
     }; ## eval
     if ($@ && $@ !~ m/^Exiting eval via next at/) {
-	print "Error generating link for $url: $@\n";
+	INFO "Error generating link for $url: $@\n";
 	exit 1;
     }
     exit 0;
@@ -758,7 +765,7 @@ sub real_worker {
       }
     }; ## eval
     if ($@ && $@ !~ m/^Exiting eval via next at/) {
-	print "Error generating crm for $url: $@\n";
+	INFO "Error generating crm for $url: $@\n";
 	exit 1;
     }
     exit $exit;
@@ -835,21 +842,21 @@ sub sc_worker {
 	    $node = $1;
 	    $header = "";
 	} else {
-	    die "WTF?\n";
+	    LOGDIE "WTF?\n";
 	}
 
 	if (! defined $title) {
-	    print "No title for $name.\n";
+	    ERROR "No title for $name.\n";
 	    $wrong = "yes";
 	    last;
 	}
-	print "\tWork for $file.\n";
+	INFO "\tWork for $file.\n";
 	my $wiki_txt = create_wiki("$url/$url $name", "$file", "$url $name");
 	if (! defined $wiki_txt ){
 # 		$to_keep->{$url} = $pages_toimp_hash->{$url};
 	    delete $pages_toimp_hash->{$url};
 	    $wrong = "yes";
-	    print "Skip url $url\n";
+	    ERROR "Skip url $url\n";
 	    last;
 	}
 	WikiCommons::add_to_remove("$wiki_dir/$url/$url $name", "dir");
@@ -903,7 +910,7 @@ sub sc_worker {
 	my $name_bad = "$bad_dir/$url".time();
 	WikiCommons::move_dir("$path_files/$rel_path", "$name_bad");
 	$wrong_hash->{$url} = 1;
-	return ;
+	exit 20;
     }
     my $full_wiki = "";
     $full_wiki .= $wiki->{$_} foreach (sort {$a<=>$b} keys %$wiki);
@@ -927,7 +934,7 @@ sub sc_worker {
     $url_deployment =~ s/^SC:/SC_Deployment:/;
     $our_wiki->wiki_delete_page ($url_deployment) if ( $our_wiki->wiki_exists_page($url_deployment) && $delete_previous_page ne "no");
     my $deployment_txt;
-# print Dumper($deployment);exit 1;
+# INFO Dumper($deployment);exit 1;
     foreach my $doc_type (sort keys %$deployment) {
       my $used_name = $doc_type;
       $used_name =~ s/^[0-9]+\s*//;
@@ -944,14 +951,16 @@ sub sc_worker {
 	$title =~ s/^<center><font size="[0-9]{1,}">'''(.*?)'''<\/font><\/center>.*$/$1/gsi;
 	my $url_s = $url; $url_s =~ s/^SC:(.*)/$1/;
 	$deployment_txt = "=<small>[[SC:$url_s|$url_s: $title]]</small>=\n".$deployment_txt;
-	print "\tImporting url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n";
+	INFO "\tImporting url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n";
 	$our_wiki->wiki_edit_page($url_deployment, $deployment_txt);
-	die "Could not import url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url_deployment) );
+	LOGDIE "Could not import url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url_deployment) );
     }
     make_redirect($url, $wrong_hash);
     }; ## eval
-    print "Error generating sc for $url: $@\n" if $@ && $@ !~ m/^Exiting eval via next at/;
-
+    if ($@ && $@ !~ m/^Exiting eval via next at/) {
+	ERROR "Error generating sc for $url: $@\n";
+	exit 10;
+    }
     exit 0;
 }
 
@@ -974,7 +983,6 @@ sub getCommonInfoSC {
     return ($ftp_links, $info_h);
 }
 
-
 # quick_and_dirty_html_to_wiki
 sub quick_and_dirty_html_to_wiki {
     my $url = "SIP Call Flow";
@@ -994,21 +1002,21 @@ sub quick_and_dirty_html_to_wiki {
     WikiCommons::add_to_remove ("$work_dir/$wiki_result", "dir");
     WikiCommons::makedir ("$dest");
     my %seen = ();
-    open (FILE, ">>$work_dir/$wiki_files_uploaded") or die "at create wiki can't open file $work_dir/$wiki_files_uploaded for writing: $!\t". (WikiCommons::get_time_diff) ."\n";
-    print "\t-Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
+    open (FILE, ">>$work_dir/$wiki_files_uploaded") or LOGDIE "at create wiki can't open file $work_dir/$wiki_files_uploaded for writing: $!\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t-Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
     foreach my $img (@$image_files){
-	move ("$img", "$dest") or die "Moving file \"$img\" failed: $!\t". (WikiCommons::get_time_diff) ."\n" unless $seen{$img}++;
+	move ("$img", "$dest") or LOGDIE "Moving file \"$img\" failed: $!\t". (WikiCommons::get_time_diff) ."\n" unless $seen{$img}++;
 	my ($img_name,$img_dir,$img_suffix) = fileparse($img, qr/\.[^.]*/);
 	print FILE "File:$img_name$img_suffix\n";
     }
     $image_files = ();
 
     my $zip = Archive::Zip->new();
-    $zip->addFile( "$work_dir/$name$suffix", "$name$suffix") or die "Error adding file $name$suffix to zip.\t". (WikiCommons::get_time_diff) ."\n";
-    die "Write error for zip file.\t". (WikiCommons::get_time_diff) ."\n" if $zip->writeToFileNamed( "$dest/$zip_name.zip" ) != AZ_OK;
+    $zip->addFile( "$work_dir/$name$suffix", "$name$suffix") or LOGDIE "Error adding file $name$suffix to zip.\t". (WikiCommons::get_time_diff) ."\n";
+    LOGDIE "Write error for zip file.\t". (WikiCommons::get_time_diff) ."\n" if $zip->writeToFileNamed( "$dest/$zip_name.zip" ) != AZ_OK;
     print FILE "File:$zip_name.zip\n";
     close (FILE);
-    print "\t+Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t+Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
     WikiCommons::add_to_remove( $html_file, "file" );
 
     $pages_toimp_hash->{$url}[$md5_pos] = "";
@@ -1016,11 +1024,11 @@ sub quick_and_dirty_html_to_wiki {
     $pages_toimp_hash->{$url}[$svn_url_pos] = "";
     $pages_toimp_hash->{$url}[$link_type_pos] = "";
     insertdata($url, $wiki);
-    die "Failed in cleanup.\n" if WikiCommons::cleanup($work_dir);
+    LOGDIE "Failed in cleanup.\n" if WikiCommons::cleanup($work_dir);
 }
 
 sub cleanAndExit {
-    print "Killing all child processes\n";
+    WARN "Killing all child processes\n";
     kill 9, map {s/\s//g; $_} split /\n/, `ps -o pid --no-headers --ppid $$`;
     exit 1000;
 }
@@ -1028,7 +1036,7 @@ sub cleanAndExit {
 use sigtrap 'handler' => \&cleanAndExit, 'INT', 'ABRT', 'QUIT', 'TERM';
 
 if (-f "$pid_file") {
-    open (FH, "<$pid_file") or die "Could not read file $pid_file.\n";
+    open (FH, "<$pid_file") or LOGDIE "Could not read file $pid_file.\n";
     my @info = <FH>;
     close (FH);
     chomp @info;
@@ -1037,8 +1045,8 @@ if (-f "$pid_file") {
     if ( $exists ) {
 	my $proc_name = `ps -p $pid_old -o cmd`;
 # 	print "$proc_name\n";
-# 	die "Process is already running.\n" if $proc_name =~ m/(.+?)generate_wiki\.pl -d (.+?) -n $path_type(.*)/;
-	exit 1 if $proc_name =~ m/(.+?)generate_wiki\.pl -d (.+?) -n $path_type(.*)/;
+	LOGDIE "Process is already running.\n" if $proc_name =~ m/(.+?)generate_wiki\.pl -d (.+?) -n $path_type(.*)/;
+# 	exit 1 if $proc_name =~ m/(.+?)generate_wiki\.pl -d (.+?) -n $path_type(.*)/;
     }
 }
 WikiCommons::write_file($pid_file,"$$\n");
@@ -1074,14 +1082,14 @@ if ($path_type eq "mind_svn") {
     work_begin();
     make_categories();
     split_redirects();
-    foreach (keys %$pages_toimp_hash) {die "There are no links.\n" if ($pages_toimp_hash->{$_}[$link_type_pos] eq "link")};
+    foreach (keys %$pages_toimp_hash) {LOGDIE "There are no links.\n" if ($pages_toimp_hash->{$_}[$link_type_pos] eq "link")};
     fork_function($sc_nr_forks, \&sc_worker, getCommonInfoSC());
 }
 
 $dbh_mysql->disconnect() if defined($dbh_mysql);
 @tmp = (sort keys %$failed);
-print "Failed:\n".Dumper(@tmp) if @tmp;
+ERROR "Failed:\n".Dumper(@tmp) if @tmp;
 @crt_timeData = localtime(time);
 foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
-print "End ". ($crt_timeData[5]+1900) ."-$crt_timeData[4]-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
-unlink("$pid_file") or die "Could not delete the file $pid_file: ".$!."\n";
+INFO "End ". ($crt_timeData[5]+1900) ."-$crt_timeData[4]-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
+unlink("$pid_file") or LOGDIE "Could not delete the file $pid_file: ".$!."\n";

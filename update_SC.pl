@@ -35,6 +35,11 @@ use Net::FTP;
 use File::Path qw(make_path remove_tree);
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
+Log::Log4perl->easy_init({ level   => $DEBUG,
+#                            file    => ">>test.log" 
+# 			   layout   => "%d [%5p] (%6P) [%rms] [%M] - %m{chomp}\t%x\n",
+			   layout   => "%5p (%6P) %m{chomp}\n",
+});
 use File::Listing qw(parse_dir);
 use File::Find;
 use File::Copy;
@@ -44,10 +49,10 @@ use URI::Escape;
 use Data::Compare;
 use Mind_work::WikiCommons;
 
-die "We need the temp path, the destination path and sc type:b1-5, f, i, h, r, d, e, g, s, t, k, z, a, p, cancel.\n" if ( $#ARGV != 2 );
+LOGDIE "We need the temp path, the destination path and sc type:b1-5, f, i, h, r, d, e, g, s, t, k, z, a, p, cancel.\n" if ( $#ARGV != 2 );
 our ($tmp_path, $to_path, $sc_type) = @ARGV;
 
-die "sc type should be:b1-5, f, i, h, r, d, e, g, s, t, k, z, a, p, cancel.\n" if $sc_type !~ m/(^[fihrdtkzapseg]$)|(^b[1-5]$)|(^cancel$)/i;
+LOGDIE "sc type should be:b1-5, f, i, h, r, d, e, g, s, t, k, z, a, p, cancel.\n" if $sc_type !~ m/(^[fihrdtkzapseg]$)|(^b[1-5]$)|(^cancel$)/i;
 $sc_type = uc $sc_type;
 
 remove_tree("$tmp_path");
@@ -74,7 +79,7 @@ my $update_only_wiki_db = "no";
 my $ppt_local_files_prefix="/mnt/wiki_files/wiki_files/ppt_as_flash/";
 my $ppt_apache_files_prefix="10.0.0.99/presentations/";
 
-die "Template file missing.\n" if ! -e $general_template_file;
+LOGDIE "Template file missing.\n" if ! -e $general_template_file;
 
 our $time = time();
 my $svn_info_all = {};
@@ -101,7 +106,7 @@ sub write_rtf {
     $data =~ s/(^\s+)|(\s+$)//;
     $data =~ s/\$\$\@\@/\'/gs;
     if (! defined $data || $data eq "") {
-	unlink "$name" || die "Could not delete rtf file: $name.\n";
+	unlink "$name" || LOGDIE "Could not delete rtf file: $name.\n";
 	return;
     }
     write_file("$name", $data);
@@ -129,10 +134,10 @@ sub general_info {
     $sth->execute();
     my $affectedFeatures = $sth->fetchrow_array();
     $affectedFeatures = " " if ! defined $affectedFeatures;
-# print Dumper($affectedFeatures); exit 1;
+# INFO Dumper($affectedFeatures); exit 1;
 
     local( $/, *FH ) ;
-    open(FH, "$general_template_file") or die "Can't open file for read: $!.\n";
+    open(FH, "$general_template_file") or LOGDIE "Can't open file for read: $!.\n";
     my $general = <FH>;
     close(FH);
     my @categories = ();
@@ -194,7 +199,7 @@ sub general_info {
 		if ($q eq "" ){
 		    $tmp .= " [[CRM:$final_cust$url_sep$w]]";
 		} else {
-		    die "Strange crmid: $bug with $q == $w.\n" if ! defined $w || $w eq "";
+		    LOGDIE "Strange crmid: $bug with $q == $w.\n" if ! defined $w || $w eq "";
 		    my $qq = WikiCommons::get_correct_customer( $q );
 		    if (defined $qq) {
 			$tmp .= " [[CRM:$qq$url_sep$w]]";
@@ -210,7 +215,7 @@ sub general_info {
 	}
 	$general =~ s/%customer_bug%/\'\'\'Customer bug\'\'\' (CRM ID): $tmp/;
     } else {
-# print "@$info[$index->{'customer_bug'}]   @$info[$index->{'crmid'}]\n";
+# INFO "@$info[$index->{'customer_bug'}]   @$info[$index->{'crmid'}]\n";
 	$general =~ s/%customer_bug%//;
     }
     $general =~ s/%type%/@$info[$index->{'changetype'}]/;
@@ -328,7 +333,7 @@ sub general_info {
 
     $general =~ s/\n{3,}/\n\n\n/gm;
     push @categories, "has_deployment ". @$info[$index->{'deployment'}] if @$info[$index->{'deployment'}] eq "Y";
-# print Dumper(@$info[$index->{'deployment'}]);
+# INFO Dumper(@$info[$index->{'deployment'}]);
     return ($general, \@categories);
 }
 
@@ -417,13 +422,13 @@ sub sql_get_common_info {
     }
 
     $SEL_INFO = "select $select" . $SEL_INFO . " where prj.projectcode = \'$type\'";
-# print Dumper($SEL_INFO);exit 1;
+# INFO Dumper($SEL_INFO);exit 1;
     my @info = ();
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
     my $nr=0;
     while ( my @row=$sth->fetchrow_array() ) {
-	die "too many rows\n" if $nr++;
+	LOGDIE "too many rows\n" if $nr++;
 	@info = @row;
 	chomp @info;
     }
@@ -527,7 +532,7 @@ sub sql_get_changeinfo {
     $sth->execute();
     my $nr=0;
     while ( my @row=$sth->fetchrow_array() ) {
-	die "too many rows\n" if $nr++;
+	LOGDIE "too many rows\n" if $nr++;
 	chomp @row;
 	@info = @row;
     }
@@ -568,7 +573,7 @@ sub sql_get_dealer_names {
 }
 
 sub sql_get_all_changes {
-    print "-Get all db changes ". (time() - $time) .".\n";
+    INFO "-Get all db changes ". (time() - $time) .".\n";
     my $cond = "";
     my $ver = "";
     if ($sc_type eq 'B1') {
@@ -635,7 +640,7 @@ sub sql_get_all_changes {
        or (projectcode = 'D' and (nvl(version, 3) >= '2.30' or nvl(fixversion, 3) >= '2.30'))
       ) and (status = 'Cancel' or status = 'Inform-Cancel' or status = 'Market-Cancel')";
     } else {
-	die "Impossible.\n";
+	LOGDIE "Impossible.\n";
     }
 
     my $SEL_CHANGES = "select changeid, nvl(crc,0), status, projectcode, nvl(deploymentconsideration, 'N')
@@ -648,7 +653,7 @@ sub sql_get_all_changes {
     while ( my @row=$sth->fetchrow_array() ) {
 	$crt_hash->{$row[0]} = \@row;
     }
-    print "+Get all db changes ". (time() - $time) .".\n";
+    INFO "+Get all db changes ". (time() - $time) .".\n";
     return $crt_hash;
 }
 
@@ -682,7 +687,7 @@ sub sql_get_svn_docs {
     $sth->execute();
     my $docs = {};
     while ( my @row=$sth->fetchrow_array() ) {
-	die "too many rows\n" if $#row>1;
+	LOGDIE "too many rows\n" if $#row>1;
 	$docs->{$row[0]} = $row[1];
     }
     return $docs;
@@ -717,7 +722,7 @@ sub sql_get_relpath {
     my $sth = $dbh->prepare($SEL);
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
-	die "too many rows\n" if $#row>1;
+	LOGDIE "too many rows\n" if $#row>1;
 	return $row[0];
     }
 }
@@ -727,11 +732,11 @@ sub get_previous {
     my $change_id = shift;
     my $info_hash = {};
     my @info = ();
-# open(FH, "$to_path/$change_id/files_info.txt") or die "Can't open file .\n";
+# open(FH, "$to_path/$change_id/files_info.txt") or LOGDIE "Can't open file .\n";
 # @info = <FH>;
 # close(FH);
     my $ret = $dbh_mysql->selectrow_array("select FILES_INFO_CRT from mind_sc_ids_versions where SC_ID='$change_id'");
-# print Dumper("$to_path/$change_id");die;
+# INFO Dumper("$to_path/$change_id");die;
     return $info_hash if ! defined $ret || ! -d "$to_path/$change_id";
     @info = split "\n", $ret;
     chomp @info;
@@ -750,9 +755,9 @@ sub get_previous {
 }
 #
 # sub ftpconnect {
-#     print "\t*** Connecting again: $nr_retries.\n" if $nr_retries>=0;
-#     $ftp = Net::FTP->new("$ip", Debug => 0, Timeout => 300) or die "Cannot connect to some.host.name: $@";
-#     $ftp->login("$user","$pass") or die "Cannot login ", $ftp->message;
+#     INFO "\t*** Connecting again: $nr_retries.\n" if $nr_retries>=0;
+#     $ftp = Net::FTP->new("$ip", Debug => 0, Timeout => 300) or LOGDIE "Cannot connect to some.host.name: $@";
+#     $ftp->login("$user","$pass") or LOGDIE "Cannot login ", $ftp->message;
 #     $ftp->pasv;
 #     $ftp->binary();
 #     $nr_retries++;
@@ -775,15 +780,15 @@ sub get_previous {
 # 	} elsif ($type eq "f") {
 # 	    push @files, "$name";
 # 	} else {
-# 	    die "Unknown file type : $type for $name at $change_id in $remote_path.\n";
+# 	    LOGDIE "Unknown file type : $type for $name at $change_id in $remote_path.\n";
 # 	}
 #     }
 #     foreach my $file (@files) {
-# 	print "\tGet file $file.\n";
+# 	INFO "\tGet file $file.\n";
 # 	my $res = $ftp->get("$file", "$local_dir/$file");
 # 	my $err = $!;
 # 	if (!defined $res && $ftp->message =~ m/: The system cannot find the file specified.\s*$/) {
-# 	    print "\t=== Fucking weird file name: $file\n";
+# 	    INFO "\t=== Fucking weird file name: $file\n";
 # 	} else {
 # 	    return "get $file ".$ftp->message." ".$err if !defined $res || (defined $err && $err ne "");
 # 	}
@@ -798,7 +803,7 @@ sub get_previous {
 #
 #     my $count = 1;
 #
-#     print "Connect to ftp.\n";
+#     INFO "Connect to ftp.\n";
 #     our $nr_retries = -1;
 #     our $ftp;
 #
@@ -806,9 +811,9 @@ sub get_previous {
 #     ftpconnect;
 #     foreach my $change_id (sort @ids){
 # 	my $dif = time() - $time;
-# 	print " ftp for $change_id ".$count++ ." from ". scalar @ids."\t$dif.\n";
+# 	INFO " ftp for $change_id ".$count++ ." from ". scalar @ids."\t$dif.\n";
 # 	foreach my $type ($ftp_uri_def, $ftp_uri_mrkt, $ftp_uri_test) {
-# 	    print "   ftp for dir $type/$change_id\t$dif.\n";
+# 	    INFO "   ftp for dir $type/$change_id\t$dif.\n";
 # 	    my $remote_path = "$type/$change_id/";
 # 	    my $local_type = $type; $local_type =~ s/\/$//g;
 # 	    my ($name,$dir,$suffix) = fileparse("$local_type", qr/\.[^.]*/);
@@ -819,7 +824,7 @@ sub get_previous {
 # 	    while ($status ne "OK") {
 # 		$status = ftp_cmds($change_id, "$work_dir/ftp/$name", $remote_path);
 # 		if ($status ne "OK") {
-# 		    print "\t=== Error with message: $status.\n";
+# 		    INFO "\t=== Error with message: $status.\n";
 # 		    ftpconnect;
 # 		}
 # 	    }
@@ -828,7 +833,7 @@ sub get_previous {
 # 	move("$ftp_tmp_path/$change_id", "$result_dir/$change_id");
 #     }
 #     $ftp->quit;
-#     print "Disconnect to ftp.\n";
+#     INFO "Disconnect to ftp.\n";
 # }
 
 sub write_common_info {
@@ -843,7 +848,7 @@ sub write_common_info {
 
 sub svn_list {
     my ($dir, $file) = @_;
-    print "\t-SVN list for $file.\t". (time() - $time)."\n" if defined $file;
+    INFO "\t-SVN list for $file.\t". (time() - $time)."\n" if defined $file;
     my $res = "";;
     if (exists $svn_info_all->{$dir}) {
 	$res = $svn_info_all->{$dir}->{$file};
@@ -851,20 +856,20 @@ sub svn_list {
 	$dir .= "/$file" if defined $file;
 	my $xml = `svn list --xml --non-interactive --no-auth-cache --trust-server-cert --password $svn_pass --username $svn_user \'$dir\' 2> /dev/null`;
 	if ($?) {
-	    print "\tError $? for svn.\n";
+	    INFO "\tError $? for svn.\n";
 	    return undef;
 	}
 	my $hash = XMLin($xml);
 	$res = $hash->{'list'}->{'entry'} if exists $hash->{'list'}->{'entry'};
     }
-    print "\t+SVN list for $file.\t". (time() - $time)."\n" if defined $file;
+    INFO "\t+SVN list for $file.\t". (time() - $time)."\n" if defined $file;
     return $res;
 }
 
 # sub write_control_file {
 #     my ($hash, $dir, $categories) = @_;
 #     my $text = "";
-#     print "\tWrite control file\n";
+#     INFO "\tWrite control file\n";
 #     for (my $i=0;$i<@doc_types;$i++) {
 # 	next if ! exists $hash->{$doc_types[$i]};
 # 	my $rev = $hash->{$doc_types[$i]}->{'revision'} || '';
@@ -914,14 +919,14 @@ To open the presentation in a new tab, click [http://$apache_file here]. The ori
 sub clean_existing_dir {
     my ($change_id, $svn_docs) = @_;
     return if ! -e "$to_path/$change_id";
-    opendir(DIR, "$to_path/$change_id") || die "Cannot open directory $to_path/$change_id: $!.\n";
+    opendir(DIR, "$to_path/$change_id") || LOGDIE "Cannot open directory $to_path/$change_id: $!.\n";
     my @files = grep { (!/^\.\.?$/) && -f "$to_path/$change_id/$_" && "$_" =~ /\.doc$/} readdir(DIR);
     closedir(DIR);
     foreach my $file (@files){
 	my ($name,$dir,$suffix) = fileparse($file, qr/\.[^.]*/);
 	if ( ! exists $svn_docs->{$name}) {
-	    print "\tDelete file $file because it doesn't exist on svn anymore.\n";
-	    unlink("$to_path/$change_id/$file") or die "Could not delete the file $file: $!\n" ;
+	    INFO "\tDelete file $file because it doesn't exist on svn anymore.\n";
+	    unlink("$to_path/$change_id/$file") or LOGDIE "Could not delete the file $file: $!\n" ;
 	}
     }
 }
@@ -929,12 +934,12 @@ sub clean_existing_dir {
 sub remove_old_dirs {
     my @scdirs = @_;
     ## remove not needed directories
-    opendir(DIR, "$to_path") || die "Cannot open directory $to_path: $!.\n";
+    opendir(DIR, "$to_path") || LOGDIE "Cannot open directory $to_path: $!.\n";
     my @dirs = grep { (!/^\.\.?$/) && -d "$to_path/$_"} readdir(DIR);
     closedir(DIR);
     my ($only_in_sc, $only_in_dirs, $common) = WikiCommons::array_diff( \@scdirs, \@dirs);
     foreach my $dir (@$only_in_dirs) {
-	print "Remove old dir $dir.\n";
+	INFO "Remove old dir $dir.\n";
 	my $sth_mysql = $dbh_mysql->do("delete from mind_sc_ids_versions where sc_id='$dir'");
 # 	$sth_mysql->execute();
 # 	$sth_mysql->finish();
@@ -980,7 +985,7 @@ sub add_versions_to_wiki_db {
 
 ### connect to mysql to use the wikidb
 my ($wikidb_server, $wikidb_name, $wikidb_user, $wikidb_pass) = ();
-open(FH, "/var/www/html/wiki/LocalSettings.php") or die "Can't open file for read: $!.\n";
+open(FH, "/var/www/html/wiki/LocalSettings.php") or LOGDIE "Can't open file for read: $!.\n";
 while (<FH>) {
   $wikidb_server = $2 if $_ =~ m/^(\s*\$wgDBserver\s*=\s*\")(.+)(\"\s*;\s*)$/;
   $wikidb_name = $2 if $_ =~ m/^(\s*\$wgDBname\s*=\s*\")(.+)(\"\s*;\s*)$/;
@@ -1011,7 +1016,7 @@ my $crt_hash = sql_get_all_changes();
 my ($index, $SEL_INFO) = sql_generate_select_changeinfo();
 
 my $total = scalar (keys %$crt_hash);
-# print "total $total\n"; exit 1;
+# INFO "total $total\n"; exit 1;
 remove_old_dirs(keys %$crt_hash);
 
 if ($bulk_svn_update eq "yes"){
@@ -1020,12 +1025,12 @@ if ($bulk_svn_update eq "yes"){
 	my $tmp = @$info_comm[$index_comm->{$key}];
 	next if ($tmp !~ "^http://" || defined $svn_info_all->{$tmp});
 	while ( ! defined $svn_info_all->{$tmp} && $retries < 3){
-	    print "\tRetrieve svn list for $key.\t". (time() - $time) ."\n";
+	    INFO "\tRetrieve svn list for $key.\t". (time() - $time) ."\n";
 	    my $res = svn_list($tmp);
 	    $svn_info_all->{$tmp} = $res if defined $res;
 	    $retries++;
 	}
-	die if $retries == 3;
+	LOGDIE if $retries == 3;
     };
 }
 
@@ -1036,8 +1041,8 @@ foreach my $change_id (sort keys %$crt_hash){
 ## special chars: B06390
 ## docs B71488
 # my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
-# print Dumper($info_ret, $SEL_INFO) if ! defined @$info_ret[$index->{'deployment'}];
-# print Dumper($change_id,@$info_ret[$index->{'deployment'}]);next if @$info_ret[$index->{'deployment'}] ne "Y";
+# INFO Dumper($info_ret, $SEL_INFO) if ! defined @$info_ret[$index->{'deployment'}];
+# INFO Dumper($change_id,@$info_ret[$index->{'deployment'}]);next if @$info_ret[$index->{'deployment'}] ne "Y";
 # @$info_ret[$index->{'deployment'}]
     $count++;
     my $dif = time() - $time;
@@ -1046,7 +1051,7 @@ foreach my $change_id (sort keys %$crt_hash){
     my $todo = {};
     my $missing_documents = {};
     my $crt_info = {};
-    print "*************\n-Start working for $change_id: nr $count of $total.\t$dif\n";
+    INFO "*************\n-Start working for $change_id: nr $count of $total.\t$dif\n";
 #     my $prev_info = get_previous("$to_path/$change_id/$files_info") if (-e "$to_path/$change_id/$files_info");
     my $prev_info = get_previous($change_id);
 
@@ -1065,7 +1070,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	    my $doc_rev = $res->{'commit'}->{'revision'};
 	    my $doc_size = $res->{'size'};
 	    if ( ! defined $res || (! defined $doc_rev && ! defined $doc_size)) {
-		print "\tSC $change_id says we have document for $key, but we don't have anything on svn.\n";
+		INFO "\tSC $change_id says we have document for $key, but we don't have anything on svn.\n";
 		$missing_documents->{$key} = "$dir/$file";
 		next;
 	    }
@@ -1075,9 +1080,9 @@ foreach my $change_id (sort keys %$crt_hash){
 	    $crt_info->{$key}->{'revision'} = $doc_rev;
 	    $crt_info->{$key}->{'date'} =  $res->{'commit'}->{'date'};
 	    if ( ! Compare($crt_info->{$key}, $prev_info->{$key}) ) {
-		print "\tUpdate svn http for $key.\n";
+		INFO "\tUpdate svn http for $key.\n";
 		my $file_res = WikiCommons::http_get("$dir/$file", "$work_dir", "$svn_user", "$svn_pass");
-		move($file_res, "$work_dir/$key.doc") || die "can't move file $file_res to $work_dir/$key.doc: $!.\n";
+		move($file_res, "$work_dir/$key.doc") || LOGDIE "can't move file $file_res to $work_dir/$key.doc: $!.\n";
 		$update_control_file++;
 	    }
 	}
@@ -1094,15 +1099,15 @@ foreach my $change_id (sort keys %$crt_hash){
 
     my $cat = ();
     if (! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) || $update_control_file || $force_db_update eq "yes" || $update_only_wiki_db eq "yes") {
- 	print "\tUpdate SC info.\n";
+ 	INFO "\tUpdate SC info.\n";
 
 	my $prev = 'NULL';
 	$prev = $prev_info->{'SC_info'}->{'size'} if defined $prev_info->{'SC_info'}->{'size'};
-	print "\tChanged CRC: $crt_info->{'SC_info'}->{'size'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'size'} && "$crt_info->{'SC_info'}->{'size'}" ne "$prev");
+	INFO "\tChanged CRC: $crt_info->{'SC_info'}->{'size'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'size'} && "$crt_info->{'SC_info'}->{'size'}" ne "$prev");
 
 	$prev = 'NULL';
 	$prev = $prev_info->{'SC_info'}->{'revision'} if defined $prev_info->{'SC_info'}->{'revision'};
-	print "\tChanged status: $crt_info->{'SC_info'}->{'revision'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'revision'} && "$crt_info->{'SC_info'}->{'revision'}" ne "$prev");
+	INFO "\tChanged status: $crt_info->{'SC_info'}->{'revision'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'revision'} && "$crt_info->{'SC_info'}->{'revision'}" ne "$prev");
 
 	my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
 	## some SR's are completly empty, so ignore them
@@ -1133,10 +1138,10 @@ foreach my $change_id (sort keys %$crt_hash){
 #     write_control_file($crt_info, $work_dir, $cat) if $update_control_file;
 # die;
     WikiCommons::move_dir("$work_dir", "$to_path/$change_id/");
-    print "+Finish working for $change_id: nr $count of $total.\t$dif\n";
+    INFO "+Finish working for $change_id: nr $count of $total.\t$dif\n";
 }
 
 $dbh->disconnect if defined($dbh);
 $dbh_mysql->disconnect() if defined($dbh_mysql);
 
-print "Done.\n";
+INFO "Done.\n";

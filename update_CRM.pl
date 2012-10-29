@@ -78,6 +78,11 @@ use LWP::UserAgent;
 use File::Path qw(make_path remove_tree);
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
+Log::Log4perl->easy_init({ level   => $DEBUG,
+#                            file    => ">>test.log" 
+# 			   layout   => "%d [%5p] (%6P) [%rms] [%M] - %m{chomp}\t%x\n",
+			   layout   => "%5p (%6P) %m{chomp}\n",
+});
 use File::Listing qw(parse_dir);
 use File::Find;
 use File::Copy;
@@ -93,7 +98,7 @@ use Mind_work::WikiWork;
 
 our $to_path = shift;
 our $domain = shift;
-die "We need the destination path and the domain: m=MIND, s=Sentori, p=PhonEX. We got :$to_path and $domain.\n" if ( ! defined $to_path || ! defined $domain || $domain !~ m/^[msp]$/i);
+LOGDIE "We need the destination path and the domain: m=MIND, s=Sentori, p=PhonEX. We got :$to_path and $domain.\n" if ( ! defined $to_path || ! defined $domain || $domain !~ m/^[msp]$/i);
 WikiCommons::makedir ("$to_path");
 $to_path = abs_path("$to_path");
 
@@ -105,7 +110,7 @@ $to_path = abs_path("$to_path");
     } elsif ($domain =~ m/s/i) {
         $dept = '(13)';
     } else {
-        die "All srs unknown domain: $domain.\n";
+        LOGDIE "All srs unknown domain: $domain.\n";
     }
 #1, 3, 4, 9, 13 0-3 mind, 4,9 phonex, 13 sentori';
 
@@ -127,15 +132,15 @@ my $customers = {};
 # # write_file('./1', $txt);die;
 #     use Encode::Guess;# qw/latin1 utf8  cp1251 iso-8859-1 iso-8859-2/;
 # #     use Encode::Guess Encode->encodings(":all");
-# # print Dumper(Encode->encodings(":all"));exit 1;
+# # INFO Dumper(Encode->encodings(":all"));exit 1;
 # #     use Encode;
 #     my $enc = guess_encoding($txt, qw/utf8 iso-8859-1/);
-#     return '', print "Can't guess encoding: $enc.\n" if (!ref($enc));
-# #     print Dumper($enc->name);
+#     return '', INFO "Can't guess encoding: $enc.\n" if (!ref($enc));
+# #     INFO Dumper($enc->name);
 # # write_file('./test1',$txt);
 # # write_file('./test',decode('latin1',$txt));
 # #     my $utf = $enc->name."\n".$enc->decode($txt);
-# # print "$utf\n";die;
+# # INFO "$utf\n";die;
 # # decode('utf8',$utf);
 # #     return $enc->decode($txt);
 #     return $enc->name;
@@ -145,14 +150,14 @@ sub print_coco {
     my ($nr, $total) = @_;
     my @array = qw( \ | / - );
     my $padded = sprintf("%05d", $nr);
-    print "\t\t\t\trunning $padded out of $total".$array[$nr%@array]." \r";
+    INFO "\t\t\t\trunning $padded out of $total".$array[$nr%@array]." \r";
 }
 
 sub write_file {
     my ($path, $text) = @_;
     $text = encode_utf8( $text );
     $text =~ s/\x{c2}\x{96}/-/gsi;
-    open (FILE, ">$path") or die "can't open file $path for writing: $!\n";
+    open (FILE, ">$path") or LOGDIE "can't open file $path for writing: $!\n";
     print FILE "$text";
     close (FILE);
 }
@@ -249,7 +254,7 @@ sub get_customers {
     my $sth = $dbh->prepare($SEL_INFO);
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
-	die "Already have this id for cust: $row[0].\n" if exists $customers->{$row[0]};
+	LOGDIE "Already have this id for cust: $row[0].\n" if exists $customers->{$row[0]};
 	$customers->{$row[0]}->{'name'} = $row[1];
 	$customers->{$row[0]}->{'displayname'} = $row[2];
 	$customers->{$row[0]}->{'dept_code'} = $row[3];
@@ -314,7 +319,7 @@ select t.rsceventssrno,
 	$info->{$row[0]}->{'person'} = {};
 	$info->{$row[0]}->{'customer_contact'} = get_customer_desc($cust, $row[8]);
 	$info->{$row[0]}->{'person'}->{$_} = $staff->{$row[4]}->{$_} foreach (keys %{$staff->{$row[4]}});
-# print Dumper($info->{$row[0]}->{'person'});
+# INFO Dumper($info->{$row[0]}->{'person'});
 	$info->{$row[0]}->{'short_desc'} = $row[5];
 	my $desc = get_event_desc($sc_no, $row[0], $cust);
 	$info->{$row[0]}->{'description'} = $desc;
@@ -370,7 +375,7 @@ select t.rscmainproblemdescription,
     }
     $info->{'number'} = $srscno;
     $info->{'customer'} = $customers->{$customer}->{'displayname'};
-    print "Strange things for $customer:\n".Dumper($info) if $ok != 1;
+    INFO "Strange things for $customer:\n".Dumper($info) if $ok != 1;
     return $info;
 }
 
@@ -404,7 +409,7 @@ select t.rcustcontlastname,
 	$info->{'phone'} = $row[5];
 	$info->{'phone_mobile'} = $row[6];
     }
-    print "Customer code $code does not exists anymore.\n" if ! keys %$info;
+    INFO "Customer code $code does not exists anymore.\n" if ! keys %$info;
     return $info;
 }
 
@@ -427,7 +432,7 @@ select t.rsceventdoctype,
     $sth->bind_param( ":SRNO", $srno );
     $sth->execute();
     while ( my @row=$sth->fetchrow_array() ) {
-	die "too many rows: $scno, $srno, $customer\n" if exists $info->{$row[0]};
+	LOGDIE "too many rows: $scno, $srno, $customer\n" if exists $info->{$row[0]};
 # 	my $data = get_encoding(substr $row[2], 2);
 	my $data = substr $row[2], 2;
 	$data = $ftp_addr.$data if $row[0] eq 'B';
@@ -493,7 +498,7 @@ MIND CTI eService, Israel Center)\n+[a-zA-Z0-9 ,]{0,}\n+$tmp\n+Service Call Data
 	$text =~ s/$reg_exp//gs;
     }
 #     my $enc = get_encoding($text);
-# # print "$enc\n";exit 1;
+# # INFO "$enc\n";exit 1;
 #     if ($enc ne "utf8" && $enc ne ""){
 #     Encode::from_to($text, "$enc", "utf8");
 # use Encode;
@@ -501,7 +506,7 @@ MIND CTI eService, Israel Center)\n+[a-zA-Z0-9 ,]{0,}\n+$tmp\n+Service Call Data
 #     utf8::upgrade($text);
 # # 	$text = WikiClean::fix_wiki_chars( $text );
 #     }
-# print "$text\n";exit 1;
+# INFO "$text\n";exit 1;
 
     $text =~ s/(\n){2,}/\n\n\n/gs;
     $text =~ s/([^\n])\n([^\n])/$1\n\n$2/gs;
@@ -597,7 +602,7 @@ sub get_color {
 	$name = "$hash->{'customer_contact'}->{'first_name'} $hash->{'customer_contact'}->{'last_name'} ([mailto:$hash->{'customer_contact'}->{'email'} $hash->{'customer_contact'}->{'email'}]);\nPhone = $hash->{'customer_contact'}->{'phone'}; Mobile phone = $hash->{'customer_contact'}->{'phone_mobile'}\n$department; $pos";
     } else {
 	$color = "<font color=\"#0000FF\">\n";
-	print "\tNo customer and no mind engineer. Maybe a customer message.\n";
+	INFO "\tNo customer and no mind engineer. Maybe a customer message.\n";
     }
     $name = parse_text($name, undef);
     $name =~ s/(<nowiki>)(\[mailto:)(<\/nowiki>)/$2/gm;  ### fix parse_text
@@ -607,7 +612,7 @@ sub get_color {
 sub write_sr {
     my $info = shift;
     my @keys = keys %$info;
-    die "pai da de ce?\n".Dumper($info) if scalar keys %{$info->{$keys[0]}} < 2 ;
+    LOGDIE "pai da de ce?\n".Dumper($info) if scalar keys %{$info->{$keys[0]}} < 2 ;
     my $extra_info = {};
     my $wiki = "";
     foreach my $key (sort {$a<=>$b} keys %$info){
@@ -624,7 +629,7 @@ sub write_sr {
 	    my ($name, $color, $event_from_mind) = get_color($hash, $extra_info, $date, $time);
 	    ### Header
 	    if ( ! defined $hash->{'event'} ){
-		print "No event code for event $key.\n";
+		INFO "No event code for event $key.\n";
 		$hash->{'event'}->{'code'} = '';
 		$hash->{'event'}->{'desc'} = '';
 	    }
@@ -651,7 +656,7 @@ sub write_sr {
 		    my $text = parse_text($hash->{'description'}->{$desc}, $event_from_mind?$extra_info:undef);
 		    $sr_text .= "$text\n\n";
 		} else {
-		    die "Unknown event: $desc.$info->{0}->{'number'}\n";
+		    LOGDIE "Unknown event: $desc.$info->{0}->{'number'}\n";
 		}
 	    }
 	    my $reference =  $ref->{'ref1'};
@@ -681,7 +686,7 @@ sub write_sr {
 sub get_previous {
     my $dir = shift;
     my $info = {};
-    opendir(DIR, "$dir") || die "Cannot open directory $dir: $!.\n";
+    opendir(DIR, "$dir") || LOGDIE "Cannot open directory $dir: $!.\n";
     my @files = grep { (!/^\.\.?$/) && -f "$dir/$_" && "$_" ne "attributes.xml" && "$_" =~ m/\.wiki$/ && -s "$dir/$_" } readdir(DIR);
     closedir(DIR);
     foreach my $file (@files){
@@ -697,7 +702,7 @@ sub get_previous {
 sub get_previous_customers {
     my $dir = shift;
     my $info = {};
-    opendir(DIR, "$dir") || die "Cannot open directory $dir: $!.\n";
+    opendir(DIR, "$dir") || LOGDIE "Cannot open directory $dir: $!.\n";
     my @alldirs = grep { (!/^\.\.?$/) && -d "$dir/$_" } readdir(DIR);
     closedir(DIR);
     foreach my $adir (@alldirs){
@@ -712,7 +717,7 @@ $ENV{NLS_LANG} = 'AMERICAN_AMERICA.AL32UTF8';
 sql_connect('10.0.10.92', 'BILL', 'service25', 'service25');
 WikiCommons::reset_time();
 local $| = 1;
-print "-Get common info.\t". (WikiCommons::get_time_diff) ."\n";
+INFO "-Get common info.\t". (WikiCommons::get_time_diff) ."\n";
 get_eventscode();
 get_customers();
 get_staff();
@@ -720,13 +725,13 @@ get_priorities();
 get_problem_categories();
 get_problem_types();
 get_servicestatus();
-print "+Get common info.\t". (WikiCommons::get_time_diff) ."\n";
+INFO "+Get common info.\t". (WikiCommons::get_time_diff) ."\n";
 
 my $crt_cust = get_previous_customers($to_path);
 my @new_cust_arr = ();
 
 foreach my $cust (sort keys %$customers){
-    print "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
 # next if $customers->{$cust}->{'displayname'} ne "SIW";
 #     next if (! defined $customers->{$cust}->{'ver'} || $customers->{$cust}->{'ver'} lt "5.00")
 # 	    && $customers->{$cust}->{'displayname'} ne "Billing";
@@ -746,12 +751,12 @@ foreach my $cust (sort keys %$customers){
 	}
     }
 
-    print "\tremove ".(scalar keys %$prev_srs)." old files.\n";
+    INFO "\tremove ".(scalar keys %$prev_srs)." old files.\n";
     foreach my $key (keys %$prev_srs) {
-	unlink("$dir/$prev_srs->{$key}") or die "Could not delete the file $dir/$prev_srs->{$key}: ".$!."\n";
+	unlink("$dir/$prev_srs->{$key}") or LOGDIE "Could not delete the file $dir/$prev_srs->{$key}: ".$!."\n";
     }
     my $total = scalar keys %$crt_srs;
-    print "\tadd $total new files.\n";
+    INFO "\tadd $total new files.\n";
     my $nr = 0;
     foreach my $sr (sort {$a<=>$b} keys %$crt_srs) {
 	my $info = {};
@@ -768,7 +773,7 @@ foreach my $cust (sort keys %$customers){
 ### remove old dirs
 my @arr2 = (keys %$crt_cust);
 my ($only_in_arr1, $only_in_arr2, $intersection) = WikiCommons::array_diff( \@new_cust_arr, \@arr2 );
-remove_tree("$to_path/$_") || die "Can't remove dir $to_path/$_: $?.\n" foreach (@$only_in_arr2);
+remove_tree("$to_path/$_") || LOGDIE "Can't remove dir $to_path/$_: $?.\n" foreach (@$only_in_arr2);
 
 $dbh->disconnect if defined($dbh);
-print "Done.\n";
+INFO "Done.\n";
