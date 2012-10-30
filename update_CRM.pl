@@ -78,6 +78,7 @@ use LWP::UserAgent;
 use File::Path qw(make_path remove_tree);
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
+use Log::Log4perl qw(:easy);
 Log::Log4perl->easy_init({ level   => $DEBUG,
 #                            file    => ">>test.log" 
 # 			   layout   => "%d [%5p] (%6P) [%rms] [%M] - %m{chomp}\t%x\n",

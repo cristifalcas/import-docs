@@ -47,8 +47,8 @@ WikiCommons::makedir ("$from_path") if ! -d "$from_path";
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 
 die "We need the source and destination paths. We got :$from_path and $to_path.\n" if ( ! defined $to_path || ! defined $from_path);
-$to_path = abs_path("$to_path");
-$from_path = abs_path("$from_path");
+$to_path = abs_path($to_path);
+$from_path = abs_path($from_path);
 my $hash_new = {};
 my $hash_prev = {};
 my @failed = ();
@@ -137,14 +137,17 @@ sub clean_ftp_dir {
   opendir(DIR, "$dir") || die("Cannot open directory $dir.\n");
   my @files_in_dir = grep { (!/^\.\.?$/) } readdir(DIR);
   closedir(DIR); 
-  open FILE, "$list" or die $!;
+  open FILE, $list or die $!;
   my @files_in_listing = <FILE>;
   close FILE;
 
   foreach my $file (@files_in_dir){
     my $exists = 0;
     foreach my $file_list (@files_in_listing) {
-       $exists = 1, last if $file_list =~ m/$file\r?\n?$/gms;
+	if ($file_list =~ m/$file\r?\n?$/gms) {
+	    $exists = 1; 
+	    last;
+	}
     }
     if (! $exists){
 	print "Removing file $file.\n";
@@ -157,7 +160,7 @@ if ($work_type eq "u") {
   # "--restrict-file-names=nocontrol",
 #   print "Updating ftp dir (wget).\n";
 #   system("wget", "-N", "-r", "-l", "inf", "--no-remove-listing", "-P", "$from_path", "ftp://10.10.1.10/SC/", "-A.ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT", "-o", "/var/log/mind/wiki_logs/wiki_ftp_mirror.log");
-  find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, "$from_path" ) if  (-d "$from_path");
+  find ({ wanted => sub { clean_ftp_dir ($File::Find::name) if -f && (/^\.listing$/i) },}, $from_path ) if  (-d $from_path);
   print "Cleaning $from_path dir ...\n";
   system("find", "$from_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "{}", "\;");
   print "Cleaning $to_path dir ...\n";

@@ -28,6 +28,12 @@ use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."our_perl_lib/lib";
 use DBI;
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
+use Log::Log4perl qw(:easy);
+Log::Log4perl->easy_init({ level   => $DEBUG,
+#                            file    => ">>test.log" 
+# 			   layout   => "%d [%5p] (%6P) [%rms] [%M] - %m{chomp}\t%x\n",
+			   layout   => "%5p (%rms) %m{chomp}\n",
+});
 use Mind_work::WikiCommons;
 use Mind_work::WikiWork;
 
@@ -210,10 +216,11 @@ sub getWikiPages {
 sub makeDeploymentPage {
     my $ids = shift;
     my $title = $ids->{'page'};
-    delete $ids->{'page'};
+#     delete $ids->{'page'};
     my $clones;
     my $uniq_ids;
     foreach (sort keys %$ids) {
+	next if $_ eq "page";
 	$uniq_ids->{$_} = 1 if defined $deployment_wiki->{$_};
 	if (defined $ids->{$_}) {
 	    $clones .= "\n\n$_ -> ". join " -> ",  @{$ids->{$_}};
@@ -229,7 +236,7 @@ sub makeDeploymentPage {
 	$txt .= "\n\n\n\n{{:".$deployment_wiki->{$_}."}}" if defined $deployment_wiki->{$_};
     }
     $txt .= "\n\n\n\n----\n----\n\nThe following clones where found for this SP:$clones" if defined $clones;
-    $our_wiki->wiki_edit_page("$title", "$txt") if defined $uniq_ids;
+    $our_wiki->wiki_edit_page($title, $txt) if defined $uniq_ids;
 }
 
 $ENV{NLS_LANG} = 'AMERICAN_AMERICA.AL32UTF8';
@@ -241,11 +248,12 @@ foreach (@$projs) {
     $our_wiki->wiki_edit_page("Category:$tmp[0]$urlsep$tmp[1]", "----\n[[Category:$projects_title]]");
 }
 
-print "Get all service packs.\n";
+INFO "Get all service packs.\n";
 my $sps = getSPs;
+
 foreach my $sp (sort keys %$sps) {
-next if "$sp" !~ m/iPhonEX -- iPhonEX -- 7.00.001/i;
-# next if "$sp" !~ m/Sentori -- Main/i;
+# next if $sp !~ m/iPhonEX -- iPhonEX -- 7.00.002/i;
+# next if $sp !~ m/Sentori -- Main/i;
     my $sp_ids = $sps->{$sp};
     my $full_deployment->{'page'} = "$deployment_ns:Deployment$urlsep$sp$urlsep"."full";
     my $end = "[[Category:".$sps->{$sp}->{'XXX_Cat'}."]]";
@@ -257,8 +265,6 @@ next if "$sp" !~ m/iPhonEX -- iPhonEX -- 7.00.001/i;
 	my $sp_deployment->{'page'} = "$deployment_ns:Deployment$urlsep$sp$urlsep".$sp_ids->{$id}->{'sp'};
 	my $sp_bugs->{'page'} = "$deployment_ns:Bugs$urlsep$sp$urlsep".$sp_ids->{$id}->{'sp'};
 	$txt_all->{$sp_ids->{$id}->{'sp'}} = "\n\n{{:".$sp_bugs->{'page'}."}}";
-	$sp_txt .= "\n----\n".$sp_ids->{$id}->{'build_type'}." ".$sp_ids->{$id}->{'version'}." ".$sp_ids->{$id}->{'sp'}.". Description: ".$sp_ids->{$id}->{'description'}.". Build date: ".$sp_ids->{$id}->{'build_date'}."\n\n";
-	$sp_txt .= "[[".$sp_deployment->{'page'}."|Deployment consideration]].\n\n" if $our_wiki->wiki_exists_page($sp_deployment->{'page'});
 	$sp_txt .=
 '{| class="wikitable" style="background: #f5fffa"
 |- style="background: #DDFFDD;"
@@ -293,13 +299,16 @@ next if "$sp" !~ m/iPhonEX -- iPhonEX -- 7.00.001/i;
 	    $sp_deployment->{$sc} = getClones($sc);
 	}
 	$sp_txt .= "|}\n\n";
-	$our_wiki->wiki_edit_page($sp_bugs->{'page'}, "$sp_txt");
 	makeDeploymentPage($sp_deployment);
+	$sp_txt = "[[".$sp_deployment->{'page'}."|Deployment consideration]].\n\n$sp_txt" if $our_wiki->wiki_exists_page($sp_deployment->{'page'});
+	$sp_txt = "\n----\n".$sp_ids->{$id}->{'build_type'}." ".$sp_ids->{$id}->{'version'}." ".$sp_ids->{$id}->{'sp'}.". Description: ".$sp_ids->{$id}->{'description'}.". Build date: ".$sp_ids->{$id}->{'build_date'}."\n\n$sp_txt";
+	$our_wiki->wiki_edit_page($sp_bugs->{'page'}, $sp_txt);
+	undef $sp_deployment;
     }
     makeDeploymentPage($full_deployment);
     $txt .= $txt_all->{$_} foreach (reverse sort keys %$txt_all);
     $txt .= "$end\n\n";
-    $our_wiki->wiki_edit_page("$deployment_ns:$sp", "$txt");
+    $our_wiki->wiki_edit_page("$deployment_ns:$sp", $txt);
 }
 $dbh->disconnect if defined($dbh);
-print "Done.\n";
+INFO "Done.\n";

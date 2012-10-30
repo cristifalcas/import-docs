@@ -38,7 +38,7 @@ sub wiki_on_error {
     INFO "3. Error response: " . Dumper($mw->{response})."\n";
     INFO "4. Error stacktrace: " . $mw->{error}->{stacktrace}."\n";
     INFO "time elapsed"."\t". (WikiCommons::get_time_diff) ."\n";
-    die;
+    LOGDIE;
 }
 
 sub new {
@@ -58,6 +58,7 @@ sub new {
 
 sub wiki_get_namespaces {
     my $self = shift;
+    INFO "Wiki get namespaces.\n";
     my %return;
     my $res = $mw->api({
             action => 'query',
@@ -76,8 +77,9 @@ sub wiki_get_namespaces {
 
 sub delete_archived_image {
     my ($self, $archive) = @_;
-    my $summary = 'deleting old version of image';
     my ($timestamp, $file) = split(m/!/, $archive);
+    INFO "Wiki delete file $file.\n";
+    my $summary = 'deleting old version of image';
     my $res;
 
     if  ( wiki_exists_page($self, "File:$file") ) {
@@ -93,20 +95,22 @@ sub delete_archived_image {
 
 sub wiki_get_categories {
     my $self = shift;
+    INFO "Wiki get categories 1.\n";
     my $res = wiki_get_all_pages($self, 14);
     return $res;
 }
 
 sub wiki_get_images {
     my $self = shift;
+    INFO "Wiki get all images 1.\n";
     my $res = wiki_get_all_pages($self, 6);
     return $res;
 }
 
 sub wiki_get_all_categories {
     my $self = shift;
+    INFO "Wiki get categories 2.\n";
     $array = ();
-
     $mw->list ( { action => 'query',
 	    list => 'allcategories', aclimit=>'5000',},
 	{ max => 1000, hook => \&wiki_add_url } )
@@ -116,8 +120,8 @@ sub wiki_get_all_categories {
 
 sub wiki_get_all_images {
     my $self = shift;
+    INFO "Wiki get all images 2.\n";
     $array = ();
-
     $mw->list ( { action => 'query',
 	    list => 'allimages', ailimit=>'5000',},
 	{ max => 1000, hook => \&wiki_add_url } )
@@ -127,18 +131,20 @@ sub wiki_get_all_images {
 
 sub wiki_get_page {
   my $self = shift;
+  INFO "Wiki get page.\n";
   my $page = $mw->get_page( { title => @_ } );
   return $page;
 }
 
 sub wiki_get_page_section {
   my ($self, $title, $section) = @_;
+  INFO "Wiki get page section.\n";
   my $page = $mw->get_page( { title => "$title#$section" } );
   return $page;
 }
 
 sub wiki_delete_page {
-  my ($self, $title) = @_;
+    my ($self, $title) = @_;
 
     my @img = ();
     if (ref($title) eq "ARRAY") {
@@ -187,7 +193,7 @@ sub wiki_edit_page {
   my ($self, $title, $text) = @_;
   INFO "\t-Uploading page for url $title. ". (WikiCommons::get_time_diff) ."\n";
   my $page = $mw->get_page( { title => $title } );
-  INFO "\tCreating a new page for url $title.\n" if ($page->{missing});
+  INFO "\t Creating a new page for url $title.\n" if ($page->{missing});
   my $timestamp = $page->{timestamp};
 
   $mw->edit( { action => 'edit', title => $title, text => Encode::decode('utf8', $text) } )
@@ -236,6 +242,7 @@ sub wiki_upload_file {
 
 sub wiki_exists_page {
     my ($self, $title) = @_;
+    INFO "Wiki check if page $title exists.\n";
     my $page = $mw->get_page( { title => $title } );
 # INFO Dumper($page->{'timestamp'});
     return 0 unless ( $page->{'*'} ) ;
@@ -247,12 +254,14 @@ sub wiki_get_page_timestamp {
     my $page = $mw->get_page( { title => $title } );
     return $page->{'timestamp'};
 }
+
 sub wiki_geturl {
     return $wiki_url;
 }
 
 sub wiki_move_page {
     my ($self, $title, $new_title) = @_;
+    INFO "Wiki move page $title to $new_title.\n";
     $mw->edit( {
     action => 'move', from => "$title", to => "$new_title" } )
     || LOGDIE "Could not move url $title to $new_title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff)."\n";
@@ -260,6 +269,7 @@ sub wiki_move_page {
 
 sub wiki_get_nonredirects {
     my ($self, $ns) = @_;
+    INFO "Wiki get non redirects.\n";
     $array = ();
     $mw->list ( { action => 'query',
 	    list => 'allpages', aplimit=>'5000',
@@ -271,6 +281,7 @@ sub wiki_get_nonredirects {
 
 sub wiki_get_redirects {
     my ($self, $ns) = @_;
+    INFO "Wiki get redirects.\n";
     $array = ();
     $mw->list ( { action => 'query',
 	    list => 'allpages', aplimit=>'5000',
@@ -282,6 +293,7 @@ sub wiki_get_redirects {
 
 sub wiki_get_all_pages {
     my ($self, $ns) = @_;
+    INFO "Wiki get all pages.\n";
     $array = ();
     $mw->list ( { action => 'query',
 	    list => 'allpages', aplimit=>'5000',
@@ -293,6 +305,8 @@ sub wiki_get_all_pages {
 
 sub wiki_get_unused_images {
     my $self = shift;
+    INFO "Wiki get unused images.\n";
+
     my $arr = wiki_get_all_pages($self, 6);
     my $unused_img = ();
     my $nr_all = 0; my $nr_ok = 0; my $total = scalar @$arr;
@@ -311,6 +325,8 @@ sub wiki_get_unused_images {
 
 sub wiki_get_pages_using {
     my ($self, $file, $nr) = @_;
+    INFO "Wiki get pages using file $file.\n";
+
     my $limit = 5000; my $max = 1000;
     if (defined $nr ) {
 	$limit = $nr; $max = 1;
@@ -326,6 +342,7 @@ sub wiki_get_pages_using {
 
 sub wiki_get_pages_linking_to {
     my ($self, $url) = @_;
+    INFO "Wiki pages linking to $url.\n";
     $array = ();
     $mw->list ( { action => 'query',
 	    list => 'backlinks', bllimit => "5000",
@@ -337,6 +354,7 @@ sub wiki_get_pages_linking_to {
 
 sub wiki_get_pages_in_category {
     my ($self, $cat, $nr) = @_;
+    INFO "Wiki pages in category $cat.\n";
     my $limit = 5000; my $max = 1000;
     if (defined $nr ) {
 	$limit = $nr; $max = 1;

@@ -89,9 +89,9 @@ case "$1" in
   ;;
 "update_all")
     ##update_crm
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/crm/crm_iphonex/   -n crm_iphonex &> "$LOG_PATH"import_crm_iphonex &
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/crm/crm_phonexone/ -n crm_phonexone &> "$LOG_PATH"import_crm_phonexone &
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/crm/crm_sentori/   -n crm_sentori &> "$LOG_PATH"import_crm_sentori &
+    $CMD "$SCRIPT_PATH"/update_CRM.pl "$WIKI_DIR_PATH"/Documentation/crm/crm_iphonex/   m &> "$LOG_PATH"update_crm_iphonex &
+    $CMD "$SCRIPT_PATH"/update_CRM.pl "$WIKI_DIR_PATH"/Documentation/crm/crm_phonexone/ p &> "$LOG_PATH"update_crm_phonexone &
+    $CMD "$SCRIPT_PATH"/update_CRM.pl "$WIKI_DIR_PATH"/Documentation/crm/crm_sentori/   s &> "$LOG_PATH"update_crm_sentori &
 
     ##update_sc
     $CMD "$SCRIPT_PATH"/update_SC.pl /tmp/wiki_update/b1 "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_5.3/	b1 &> "$LOG_PATH"update_sc_5.3 &
@@ -121,12 +121,11 @@ case "$1" in
     $CMD "$SCRIPT_PATH"/update_service_packs.pl  &> "$LOG_PATH"update_service_packs &
 
     ##update_ppt
-    $CMD "$SCRIPT_PATH"/update_PPT.pl "$WIKI_DIR_PATH/ftp_mirror/" "$WIKI_DIR_PATH/ppt_as_flash/" u  &> "$LOG_PATH"update_ppt &
+#     $CMD "$SCRIPT_PATH"/update_PPT.pl "$WIKI_DIR_PATH/ftp_mirror/" "$WIKI_DIR_PATH/ppt_as_flash/" u  &> "$LOG_PATH"update_ppt &
   ;;
 "import_all")
-#$CMD "$SCRIPT_PATH"/maintenance.pl q &> "$LOG_PATH"maintenance_q
     ##update_customers
-#    $CMD "$SCRIPT_PATH"/update_customers.pl "$SCRIPT_PATH"/ &> "$LOG_PATH"update_customers
+    $CMD "$SCRIPT_PATH"/update_customers.pl "$SCRIPT_PATH"/ &> "$LOG_PATH"update_customers
     ##import_crm
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/crm/crm_iphonex/   -n crm_iphonex &> "$LOG_PATH"import_crm_iphonex &
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/crm/crm_phonexone/ -n crm_phonexone &> "$LOG_PATH"import_crm_phonexone &

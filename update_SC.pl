@@ -35,6 +35,7 @@ use Net::FTP;
 use File::Path qw(make_path remove_tree);
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
+use Log::Log4perl qw(:easy);
 Log::Log4perl->easy_init({ level   => $DEBUG,
 #                            file    => ">>test.log" 
 # 			   layout   => "%d [%5p] (%6P) [%rms] [%M] - %m{chomp}\t%x\n",
@@ -866,25 +867,6 @@ sub svn_list {
     return $res;
 }
 
-# sub write_control_file {
-#     my ($hash, $dir, $categories) = @_;
-#     my $text = "";
-#     INFO "\tWrite control file\n";
-#     for (my $i=0;$i<@doc_types;$i++) {
-# 	next if ! exists $hash->{$doc_types[$i]};
-# 	my $rev = $hash->{$doc_types[$i]}->{'revision'} || '';
-# 	my $name = $hash->{$doc_types[$i]}->{'name'} || '';
-# 	my $date = $hash->{$doc_types[$i]}->{'date'} || '';
-# 	my $size = $hash->{$doc_types[$i]}->{'size'} || '';
-# # 	$size = $hash->{$doc_types[$i]}->{'size'} if ( defined $hash->{$doc_types[$i]}->{'size'} );
-# 	$text .= (1000 + $i) ." $doc_types[$i];$name;$size;$rev;$date\n";
-#     }
-# 
-#     $text .= "SC_info;$hash->{'SC_info'}->{'name'};$hash->{'SC_info'}->{'size'};$hash->{'SC_info'}->{'revision'};$hash->{'SC_info'}->{'date'}\n";
-#     $text .= "Categories;". (join ';',@$categories). "\n" if defined $categories && scalar @$categories;
-#     write_file("$dir/$files_info", "$text");
-# }
-
 sub search_for_presentations {
     my ($ftp_ip, $ftp_def, $ftp_market, $ftp_test, $change_id) = @_;
     my $local_path = "$ppt_local_files_prefix/$ftp_ip";
@@ -897,7 +879,7 @@ sub search_for_presentations {
       my $w = "$apache_path/$ftp_dir/$change_id/";
       foreach my $file (sort <$q/*>){
 	$i++;
-	next if $file !~m/\.swf$/i;
+	next if $file !~ m/\.swf$/i;
 	my ($name, $dir, $suffix) = fileparse($file, qr/\.[^.]*/);
 	my $apache_file = "$w$name$suffix";
 	$apache_file =~ s/\/+/\//g;
@@ -909,7 +891,7 @@ sub search_for_presentations {
 To open the presentation in a new tab, click [http://$apache_file here]. The original document can be found [ftp://$ftp_file here].
 <swf width=\"800\" height=\"500\" >http://$apache_file</swf>
 </toggledisplay>\n";
-	$control .= "$name";
+	$control .= $name;
       }
     }
 #     $control .= "v1.5" if $control ne "";
