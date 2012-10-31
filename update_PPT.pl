@@ -136,24 +136,35 @@ sub clean_ftp_dir {
 
   opendir(DIR, "$dir") || die("Cannot open directory $dir.\n");
   my @files_in_dir = grep { (!/^\.\.?$/) } readdir(DIR);
-  closedir(DIR); 
+  closedir(DIR);
+#   my %hash_files_in_dir = @files_in_dir;
   open FILE, $list or die $!;
   my @files_in_listing = <FILE>;
   close FILE;
-
+  my $files_in_listing_str = join "\n", @files_in_listing;
+#   my %hash_files_in_listing = @files_in_listing;
   foreach my $file (@files_in_dir){
-    my $exists = 0;
-    foreach my $file_list (@files_in_listing) {
-	if ($file_list =~ m/$file\r?\n?$/gms) {
-	    $exists = 1; 
-	    last;
-	}
-    }
-    if (! $exists){
-	print "Removing file $file.\n";
-	unlink $file|| die "can't delete file.\n";
+print Dumper("file check $file");
+    if ($files_in_listing_str =~ m/$file\r?\n?$/gms) {
+	print Dumper("file exists $file");
+    } else {
+	print Dumper("file NOT exists $file");
     }
   }
+print Dumper(@files_in_dir);exit 1;
+#   foreach my $file (@files_in_dir){
+#     my $exists = 0;
+#     foreach my $file_list (@files_in_listing) {
+# 	if ($file_list =~ m/$file\r?\n?$/gms) {
+# 	    $exists = 1; 
+# 	    last;
+# 	}
+#     }
+#     if (! $exists){
+# 	print "Removing file $file.\n";
+# 	unlink $file|| die "can't delete file.\n";
+#     }
+#   }
 }
 
 if ($work_type eq "u") {

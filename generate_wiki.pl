@@ -688,7 +688,7 @@ sub crm_worker {
     INFO "done crm $url.\n";
     }; ## eval
     if ($@ && $@ !~ m/^Exiting eval via next at/) {
-	INFO "Error generating crm for $url: $@\n";
+	ERROR "Error generating crm for $url: $@\n";
 	exit 1;
     }
     exit 0;
@@ -728,7 +728,7 @@ sub link_worker {
     insertdata($url, $wiki);
     }; ## eval
     if ($@ && $@ !~ m/^Exiting eval via next at/) {
-	INFO "Error generating link for $url: $@\n";
+	ERROR "Error generating link for $url: $@\n";
 	exit 1;
     }
     exit 0;
@@ -765,7 +765,7 @@ sub real_worker {
       }
     }; ## eval
     if ($@ && $@ !~ m/^Exiting eval via next at/) {
-	INFO "Error generating crm for $url: $@\n";
+	ERROR "Error generating crm for $url: $@\n";
 	exit 1;
     }
     exit $exit;
