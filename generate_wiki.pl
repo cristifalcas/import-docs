@@ -9,7 +9,6 @@ $| = 1;
 # perl -e 'print sprintf("\\x{%x}", $_) foreach (unpack("C*", "Ó"));print"\n"' 
 
 $SIG{__WARN__} = sub { die @_ };
-chdir "/tmp/" || die "can't go to /tmp.\n";
 # categories:
 # $file_url -> $rest_dir[length], $ver, $cust
 # $rest_dir[length] -> $rest_dir[length-1]
@@ -69,6 +68,7 @@ my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 print "$path_prefix\n";
 # my $real_path = abs_path($0);
 use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."our_perl_lib/lib";
+chdir "/tmp/" || die "can't go to /tmp.\n";
 
 use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
 use Data::Dumper;
@@ -622,6 +622,7 @@ sub fork_function {
 	if (defined $crt_thread) {
 	    my $url = (sort keys %$pages_toimp_hash)[0];
 	    INFO "Got new thread to run $url\n";
+if ($url !~ m/B109856$/){push @thread, $crt_thread;delete $pages_toimp_hash->{$url};next;}
 	    my $val = $pages_toimp_hash->{$url};
 	    $crt_nr++;
 	    INFO "************************* $crt_nr of $total_nr\n";

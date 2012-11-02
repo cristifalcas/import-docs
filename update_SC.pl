@@ -78,7 +78,7 @@ my $bulk_svn_update = "no";
 my $update_only_wiki_db = "no";
 
 my $ppt_local_files_prefix="/mnt/wiki_files/wiki_files/ppt_as_flash/";
-my $ppt_apache_files_prefix="10.0.0.99/presentations/";
+my $ppt_apache_files_prefix="10.0.0.99/ppt_as_flash/";
 
 LOGDIE "Template file missing.\n" if ! -e $general_template_file;
 
@@ -867,34 +867,67 @@ sub svn_list {
     return $res;
 }
 
+# sub search_for_presentations {
+#     my ($ftp_ip, $ftp_def, $ftp_market, $ftp_test, $change_id) = @_;
+#     my $local_path = "$ppt_local_files_prefix/$ftp_ip";
+#     my $apache_path = "$ppt_apache_files_prefix/$ftp_ip";
+#     my $i = 0;
+#     my $control = "";
+#     my $text = ();
+#     foreach my $ftp_dir ($ftp_def, $ftp_market, $ftp_test) {
+#       my $q = "$local_path/$ftp_dir/$change_id/";
+#       my $w = "$apache_path/$ftp_dir/$change_id/";
+#       foreach my $file (sort <$q/*>){
+# 	$i++;
+# 	next if $file !~ m/\.swf$/i;
+# 	my ($name, $dir, $suffix) = fileparse($file, qr/\.[^.]*/);
+# 	my $apache_file = "$w$name$suffix";
+# 	$apache_file =~ s/\/+/\//g;
+# 	$apache_file = uri_escape( $apache_file,"^A-Za-z\/:0-9\-\._~%" );
+# 	my $ftp_file = "$ftp_ip/$ftp_dir/$change_id/$name.ppt";
+# 	$ftp_file = uri_escape( $ftp_file,"^A-Za-z\/:0-9\-\._~%" );
+# 	$text .= "
+# \n<toggledisplay status=\"hide\" showtext=\"$name\" hidetext=\"Close presentation\">
+# To open the presentation in a new tab, click [http://$apache_file here]. The original document can be found [ftp://$ftp_file here].
+# <swf width=\"800\" height=\"500\" >http://$apache_file</swf>
+# </toggledisplay>\n";
+# 	$control .= $name;
+#       }
+#     }
+# #     $control .= "v1.5" if $control ne "";
+#     return ($text, $control);
+# }
 sub search_for_presentations {
-    my ($ftp_ip, $ftp_def, $ftp_market, $ftp_test, $change_id) = @_;
-    my $local_path = "$ppt_local_files_prefix/$ftp_ip";
-    my $apache_path = "$ppt_apache_files_prefix/$ftp_ip";
-    my $i = 0;
+    my ($change_id) = @_;
+    my $local_path = "$ppt_local_files_prefix/$change_id";
+#     my $apache_path = "$ppt_apache_files_prefix/$change_id";
+#     my $i = 0;
     my $control = "";
     my $text = ();
-    foreach my $ftp_dir ($ftp_def, $ftp_market, $ftp_test) {
-      my $q = "$local_path/$ftp_dir/$change_id/";
-      my $w = "$apache_path/$ftp_dir/$change_id/";
-      foreach my $file (sort <$q/*>){
-	$i++;
+#     foreach my $ftp_dir ($ftp_def, $ftp_market, $ftp_test) {
+#       my $q = "$local_path/$ftp_dir/$change_id/";
+#       my $w = "$apache_path/$ftp_dir/$change_id/";
+# print Dumper($local_path);
+      foreach my $file (sort <$local_path/*>){
+# print Dumper($file);
+# 	$i++;
 	next if $file !~ m/\.swf$/i;
 	my ($name, $dir, $suffix) = fileparse($file, qr/\.[^.]*/);
-	my $apache_file = "$w$name$suffix";
+	my $apache_file = "$ppt_apache_files_prefix/$change_id/$name$suffix";
 	$apache_file =~ s/\/+/\//g;
 	$apache_file = uri_escape( $apache_file,"^A-Za-z\/:0-9\-\._~%" );
-	my $ftp_file = "$ftp_ip/$ftp_dir/$change_id/$name.ppt";
-	$ftp_file = uri_escape( $ftp_file,"^A-Za-z\/:0-9\-\._~%" );
+# 	my $ftp_file = "$ftp_ip/$ftp_dir/$change_id/$name.ppt";
+# 	$ftp_file = uri_escape( $ftp_file,"^A-Za-z\/:0-9\-\._~%" );
 	$text .= "
 \n<toggledisplay status=\"hide\" showtext=\"$name\" hidetext=\"Close presentation\">
-To open the presentation in a new tab, click [http://$apache_file here]. The original document can be found [ftp://$ftp_file here].
+To open the presentation in a new tab, click [http://$apache_file here].
 <swf width=\"800\" height=\"500\" >http://$apache_file</swf>
 </toggledisplay>\n";
 	$control .= $name;
       }
-    }
-#     $control .= "v1.5" if $control ne "";
+#     }
+    $control .= "v1.5" if $control ne "";
+# print Dumper($control);
     return ($text, $control);
 }
 
@@ -1019,7 +1052,7 @@ if ($bulk_svn_update eq "yes"){
 ## problem: after the first run we can have missing documents, but the general_info will not be updated
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
-# next if $change_id ne "I00540";
+next if $change_id ne "B109856";
 ## special chars: B06390
 ## docs B71488
 # my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
@@ -1070,7 +1103,8 @@ foreach my $change_id (sort keys %$crt_hash){
 	}
     }
 
-    my ($presentations, $control) = search_for_presentations(@$info_comm[$index_comm->{'FTP_IP'}], @$info_comm[$index_comm->{'FTP_def_attach'}], @$info_comm[$index_comm->{'FTP_market_attach'}], @$info_comm[$index_comm->{'FTP_test_attach'}], $change_id);
+#     my ($presentations, $control) = search_for_presentations(@$info_comm[$index_comm->{'FTP_IP'}], @$info_comm[$index_comm->{'FTP_def_attach'}], @$info_comm[$index_comm->{'FTP_market_attach'}], @$info_comm[$index_comm->{'FTP_test_attach'}], $change_id);
+    my ($presentations, $control) = search_for_presentations($change_id);
     ## db update
     my $arr = $crt_hash->{$change_id};
 

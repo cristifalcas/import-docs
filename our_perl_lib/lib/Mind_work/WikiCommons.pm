@@ -274,7 +274,7 @@ sub normalize_text {
 
 sub get_file_md5 {
     my $doc_file = shift;
-    INFO "\tGetting md5 for $doc_file\n";
+    DEBUG "\tGetting md5 for $doc_file\n";
     my $doc_md5;
     eval{
     open(FILE, $doc_file) or LOGDIE "Can't open '$doc_file' for md5: $!\n";
@@ -283,7 +283,7 @@ sub get_file_md5 {
     close(FILE);
     };
     if ($@) {
-	INFO "\tError in getting md5:".Dumper($@);
+	ERROR "\tError in getting md5:".Dumper($@);
 	$doc_md5 = get_file_sha($doc_file);
     }
     return $doc_md5;
@@ -458,7 +458,7 @@ sub generate_html_file {
 	  "9. our office old " => [@change_user, "/opt/libreoffice3.4/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
 	};
 
-    INFO "\t-Generating html file from $name$suffix.\t". (get_time_diff) ."\n\t\t$doc_file\n";
+    INFO "\t-Generating $type file from $name$suffix.\t". (get_time_diff) ."\n\t\t$doc_file\n";
     system("Xvfb :10235 -screen 0 1024x768x16 &> /dev/null &"); ## if we don't use headless
 #     system("python $real_path/convertors/unoconv -l &"); ## start a listener
     my $max_wait_time = 150;
@@ -477,14 +477,14 @@ sub generate_html_file {
 
 # 	`$sudo_user find \"$dir\" -user $user -type f -exec chgrp nobody {} \\;` if defined $user_exists;
 # 	`$sudo_user find \"$dir\" -user $user -type f -exec chmod g+rw   {} \\;` if defined $user_exists;
-	last if ! $status && -f "$dir/$name.html";
+	last if ! $status && -f "$dir/$name.$type";
 	$max_wait_time = $max_wait_time <= 60 ? 300 : $max_wait_time * 2;
 # 	$max_wait_time = $max_wait_time * 2;
-	INFO "\t\tError: $status. Try again with next command.\t". (get_time_diff) ."\n";
+	ERROR "\t\tError: $status. Try again with next command.\t". (get_time_diff) ."\n";
     }
 
-    INFO "\t+Generating html file from $name$suffix.\t". (get_time_diff) ."\n";
-    return $status;
+    INFO "\t+Generating $type file from $name$suffix.\t". (get_time_diff) ."\n";
+#     return $status;
 }
 
 sub reset_time {
