@@ -110,6 +110,11 @@ case "$1" in
     $CMD "$SCRIPT_PATH"/update_CRM.pl "$WIKI_DIR_PATH"/Documentation/crm/crm_iphonex/   m &> "$LOG_PATH"update_crm_iphonex &
     $CMD "$SCRIPT_PATH"/update_CRM.pl "$WIKI_DIR_PATH"/Documentation/crm/crm_phonexone/ p &> "$LOG_PATH"update_crm_phonexone &
     $CMD "$SCRIPT_PATH"/update_CRM.pl "$WIKI_DIR_PATH"/Documentation/crm/crm_sentori/   s &> "$LOG_PATH"update_crm_sentori &
+    sleep 60
+
+    ##update_ppt
+    $CMD "$SCRIPT_PATH"/update_PPT.pl "$WIKI_DIR_PATH/ftp_mirror/" &> "$LOG_PATH"update_ppt &
+    sleep 120
 
     ##update_sc
     $CMD "$SCRIPT_PATH"/update_SC.pl /tmp/wiki_update/b1 "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_5.3/	b1 &> "$LOG_PATH"update_sc_5.3 &
@@ -137,9 +142,6 @@ case "$1" in
 
     ##update_sp
     $CMD "$SCRIPT_PATH"/update_service_packs.pl  &> "$LOG_PATH"update_service_packs &
-
-    ##update_ppt
-#     $CMD "$SCRIPT_PATH"/update_PPT.pl "$WIKI_DIR_PATH/ftp_mirror/" "$WIKI_DIR_PATH/ppt_as_flash/" u  &> "$LOG_PATH"update_ppt &
   ;;
 "import_all")
     ##update_customers
@@ -152,9 +154,6 @@ case "$1" in
     ##import_svn
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/svn/svn_mind_docs/ -n mind_svn &> "$LOG_PATH"import_svn_mind
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/svn/svn_cms_docs/ -n cms_svn &> "$LOG_PATH"import_svn_cms
-
-    ##import_ppt
-#     $CMD "$SCRIPT_PATH"/update_PPT.pl "$WIKI_DIR_PATH/ftp_mirror/" "$WIKI_DIR_PATH/ppt_as_flash/" i  &> "$LOG_PATH"import_ppt
 
     ##import_sc
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_5.3/	-n sc_docs &> "$LOG_PATH"import_sc_5.3
