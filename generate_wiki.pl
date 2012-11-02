@@ -622,7 +622,7 @@ sub fork_function {
 	if (defined $crt_thread) {
 	    my $url = (sort keys %$pages_toimp_hash)[0];
 	    INFO "Got new thread to run $url\n";
-if ($url !~ m/B109856$/){push @thread, $crt_thread;delete $pages_toimp_hash->{$url};next;}
+# if ($url !~ m/B109856$/){push @thread, $crt_thread;delete $pages_toimp_hash->{$url};next;}
 	    my $val = $pages_toimp_hash->{$url};
 	    $crt_nr++;
 	    INFO "************************* $crt_nr of $total_nr\n";

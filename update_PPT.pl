@@ -182,11 +182,14 @@ system("find", "$to_path", "-depth", "-type", "d", "-empty", "-exec", "rmdir", "
 INFO "Done cleaning.\n";
 
 get_work();
-my $crt = 0;
+my ($crt, $total) = (0,0);
+foreach (keys %$hash_ftp){foreach (keys %{$hash_ftp->{$_}}){$total++;}}
+
 foreach my $ftp_sc_id (sort keys %$hash_ftp) {
     my $names = $hash_ftp->{$ftp_sc_id};
     foreach my $file_name (sort keys %$names) {
 	$crt++;
+	INFO "\tStart working for $file_name ($crt out of $total).\n";
 	make_path ("$to_path/$ftp_sc_id");
 	my $doc_file = $names->{$file_name};
 	my ($name_1,$dir_1,$suffix_1) = fileparse($doc_file, qr/\.[^.]*/);
@@ -194,16 +197,17 @@ foreach my $ftp_sc_id (sort keys %$hash_ftp) {
 	LOGDIE "coco\n" if $suffix_1 ne $suffix_2;
 	my $clean_file_name = "$name_2$suffix_2";
 	$clean_file_name =~ s/^(.*?)(_[0-9]+)($suffix_1)$/$1$3/;
+	my ($name,$dir,$suffix) = fileparse($clean_file_name, qr/\.[^.]*/);
 	copy($doc_file, "$to_path/$ftp_sc_id/$clean_file_name");
 	WikiCommons::generate_html_file("$to_path/$ftp_sc_id/$clean_file_name", 'swf');
 	next if ! -s "$to_path/$ftp_sc_id/$name.swf";
 	WikiCommons::generate_html_file("$to_path/$ftp_sc_id/$clean_file_name", 'pdf');
-	my ($name,$dir,$suffix) = fileparse($clean_file_name, qr/\.[^.]*/);
+	next if ! -s "$to_path/$ftp_sc_id/$name.pdf";
 	`pdftotext "$to_path/$ftp_sc_id/$name.pdf"`;
 	next if ($?) || ! -s "$to_path/$ftp_sc_id/$name.txt" || ! -s "$to_path/$ftp_sc_id/$name.pdf" || ! -s "$to_path/$ftp_sc_id/$name.swf";
 	unlink "$to_path/$ftp_sc_id/$name.pdf";
 	delete $hash_ftp->{$ftp_sc_id}->{$file_name};
-	INFO "\tDone for $name.\t". (WikiCommons::get_time_diff) ."\n";
+	INFO "\tDone for $file_name.\n";
     }
 }
 
