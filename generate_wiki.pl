@@ -831,7 +831,7 @@ sub sc_worker {
 		    $date = $info_crt_h->{$key}->{'date'} if defined $info_crt_h->{$key}->{'date'};
 		    $date =~ s/T/\t/;
 		    $date =~ s/.[0-9]{1,}Z$//i;
-		    $header = "<center>\'\'\'This file was automatically imported from the following document: [[Media:$url $name.zip]]\'\'\'\n\n";
+		    $header = "<center>\'\'\'This file was automatically imported from the following document: [[Media:$url $name.zip|$url $name.zip]]\'\'\'\n\n";
 		    $header .= "The original document can be found at [$info_h->{$name}/$info_crt_h->{$key}->{'name'} this address]\n\nThe last update on this document was performed at $date.\n";
 		    $header .= "</center>\n----\n\n";
 		    last;
@@ -852,7 +852,7 @@ sub sc_worker {
 	    last;
 	}
 	INFO "\tWork for $file.\n";
-	my $wiki_txt = create_wiki("$url/$url $name", "$file", "$url $name");
+	my $wiki_txt = create_wiki("$url/$url $name", $file, "$url $name");
 	if (! defined $wiki_txt ){
 # 		$to_keep->{$url} = $pages_toimp_hash->{$url};
 	    delete $pages_toimp_hash->{$url};
@@ -913,10 +913,6 @@ sub sc_worker {
 	$wrong_hash->{$url} = 1;
 	exit 20;
     }
-    my $full_wiki = "";
-    $full_wiki .= $wiki->{$_} foreach (sort {$a<=>$b} keys %$wiki);
-
-    WikiCommons::write_file("$wiki_dir/$url/$url.wiki", "$full_wiki");
 
     my $dir = "$wiki_dir/$url/$wiki_result";
     opendir(DIR, $dir);
@@ -945,6 +941,11 @@ sub sc_worker {
       $txt =~ s/\n(=+)(.*?)(=+)\n/\n<b>$2<\/b>\n/gms;
       $deployment_txt .= "$txt\n\n";
     }
+
+    my $full_wiki = "";
+    $wiki->{0} =~ s/('''Parent ID''')/You can find auto generated deployment considerations '''[[$url_deployment|here]]'''\n\n$1/ms if (defined $deployment_txt && ! $is_canceled && ! defined $deployment_general_txt);
+    $full_wiki .= $wiki->{$_} foreach (sort {$a<=>$b} keys %$wiki);
+    WikiCommons::write_file("$wiki_dir/$url/$url.wiki", "$full_wiki");
     insertdata($url, $full_wiki);
 
     if (defined $deployment_txt && ! $is_canceled ) {

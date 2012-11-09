@@ -568,15 +568,15 @@ sub fix_missing_files {
 #     $missing_files->{$elem} = 1;
     my $arr = $our_wiki->wiki_get_pages_using($elem);
     foreach my $page (@$arr) {
-	print "Get page $page for file $elem.\n";
+	INFO "Get page $page for file $elem.\n";
 	$missing->{$page} = 1;
     }
   }
 
-  print "We got ".(scalar keys %$missing)." pages to delete.\n";
+  INFO "We got ".(scalar keys %$missing)." pages to delete.\n";
   foreach my $page (sort keys %$missing) {
       next if $page eq "CMS:MIND-IPhonEX CMS 80.00.020" && $page !~ m/[a-b _]+:/i;
-      print "should we rm page $page.\n";
+      INFO "should we rm page $page.\n";
       eval{$our_wiki->wiki_delete_page($page)} if ! $view_only;# $our_wiki->wiki_exists_page("$page") &&
   }
 #   return $missing_files;

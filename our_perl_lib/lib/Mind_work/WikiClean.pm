@@ -2,6 +2,8 @@ package WikiClean;
 
 use warnings;
 use strict;
+$| = 1; 
+$SIG{__WARN__} = sub { die @_ };
 
 use File::Basename;
 use URI::Escape;
@@ -24,6 +26,7 @@ our $debug = "no";
 
 sub tree_remove_strike {
     my $tree = shift;
+    INFO " Remove strikes.\n";
     foreach my $a_tag ($tree->guts->look_down(_tag => "strike")) {
 	$a_tag->detach;
     }
@@ -32,6 +35,7 @@ sub tree_remove_strike {
 
 sub tree_clean_empty_p {
     my $tree = shift;
+    INFO " Clean empty p.\n";
     foreach my $a_tag ($tree->guts->look_down(_tag => "p")) {
 	$a_tag->detach, next if ($a_tag->is_empty);
 	my $h = HTML::Element->new('br');
@@ -50,6 +54,7 @@ sub tree_is_empty_p {
 
 sub tree_clean_div {
     my $tree = shift;
+    INFO " Clean div.\n";
     foreach my $a_tag ($tree->guts->look_down(_tag => "div")) {
 	my $tag_name = $a_tag->tag;
 	my $id = 0;
@@ -178,6 +183,7 @@ WikiCommons::write_file("$dir/".++$i.". tree_clean_div.$name.html", tree_to_html
 WikiCommons::write_file("$dir/".++$i.". tree_clean_font.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
     $tree = tree_clean_span($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_clean_span.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
+    $tree = tree_clean_bold($tree);
 
     $tree = tree_clean_tables($tree) || return undef;
 WikiCommons::write_file("$dir/".++$i.". tree_clean_tables.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
@@ -239,6 +245,7 @@ WikiCommons::write_file("$dir/$name.fixed.html", $html_res, 1) if $debug eq "yes
 
 sub tree_fix_numbers_in_headings {
     my $tree = shift;
+    INFO " Remove numbers in headings.\n";
     foreach my $a_tag ($tree->descendants()) {
 	if ($a_tag->tag =~ m/^h[0-9]{1,2}$/){
 	    foreach my $b_tag ($a_tag->content_refs_list){
@@ -268,7 +275,8 @@ sub tree_to_html {
 }
 
 sub tree_clean_font {
-    my ($tree, $tag) = @_;
+    my ($tree) = @_;
+    INFO " Clean font.\n";
     foreach my $a_tag ($tree->guts->look_down(_tag => "font")) {
 	$a_tag->detach, next if $a_tag->is_empty();
 	foreach my $attr_name ($a_tag->all_external_attr_names){
@@ -286,8 +294,23 @@ sub tree_clean_font {
     return $tree;
 }
 
+sub tree_clean_bold {
+    my $tree = shift;
+    INFO " Fix bold tags\n";
+    foreach my $a_tag ($tree->guts->look_down(_tag => "b")) {
+	TRACE "Found bold tag.\n".Dumper($a_tag->as_text);
+	foreach my $attr_name ($a_tag->all_external_attr_names){
+	    INFO "\tremove element $attr_name from bold\n";
+	    $a_tag->attr($attr_name, undef);
+	}
+	tree_remove_empty_element($a_tag);
+    }
+    return $tree;
+}
+
 sub tree_remove_empty_element {
     my $a_tag = shift;
+    TRACE " Try to remove empty tags ".$a_tag->tag.".\n";
     my $has_content = 0;
     foreach my $b_tag ($a_tag->content_list()){
 	if (ref $b_tag){
@@ -297,12 +320,14 @@ sub tree_remove_empty_element {
     }
 
     if ( $a_tag->as_text =~ m/^\s*$/ && ! $has_content ) {
+	DEBUG "\tFound empty tag ".$a_tag->tag.".\n".Dumper($a_tag->as_text);
 	$a_tag->replace_with_content;
     }
 }
 
 sub tree_clean_span_to_div {
     my ($tree, $tag) = @_;
+    INFO " Clean span/div.\n";
     ## multiline span
     foreach my $a_tag ($tree->guts->look_down(_tag => "span")) {
 	my $multi = 0;
@@ -321,6 +346,7 @@ sub tree_clean_span_to_div {
 
 sub tree_clean_span {
     my ($tree, $tag) = @_;
+    INFO " Clean span.\n";
     foreach my $a_tag ($tree->guts->look_down(_tag => "span")) {
 # 	$a_tag->detach, next if $a_tag->is_empty();
 	my $imgs = "";
@@ -379,7 +405,6 @@ sub tree_clean_span {
 
 sub tree_clean_headings {
     my $tree = shift;
-
     INFO "\t-Fix headings.\t". (WikiCommons::get_time_diff) ."\n";
 
     foreach my $a_tag ($tree->descendants()) {
@@ -409,7 +434,7 @@ sub tree_clean_headings {
 	    if ( ($dad->tag eq "body" && $grandpa->tag eq "html" && not($grandgrandpa)) ||
 		    (($dad->tag eq "div" | $dad->tag eq "a") && $grandpa->tag eq "body" && $grandgrandpa->tag eq "html") ) {
 		## we're cool
-	    } elsif ($dad->tag =~ m/(li|ol|ul)/) {
+	    } elsif ($dad->tag =~ m/(li|ol|ul|td|tr)/) {
 		tree_headings_in_lists($a_tag);
 	    }
 
@@ -423,6 +448,7 @@ sub tree_clean_headings {
 
 sub tree_headings_clean_images {
     my $a_tag = shift;
+    INFO " Clean images in heading.\n";
     $a_tag->preinsert(['br']);
     foreach my $b_tag ($a_tag->content_refs_list){
 	next if ! ref $$b_tag;
@@ -443,6 +469,7 @@ sub tree_headings_clean_images {
 
 sub tree_headings_clean_content {
     my $a_tag = shift;
+    INFO " Clean content in headings.\n";
 ## extract images from heading and put it before it. Remove other attr
     foreach my $b_tag ($a_tag->content_refs_list){
 	next if ! ref $$b_tag;
@@ -468,8 +495,8 @@ sub tree_headings_clean_content {
 }
 
 sub tree_headings_clean_attr {
-## clean up attributes
     my $a_tag = shift;
+    INFO " Clean up heading attributes.\n";
     foreach my $attr_name ($a_tag->all_external_attr_names){
 	my $attr_value = $a_tag->attr($attr_name);
 	if ( $attr_name eq "style"
@@ -488,6 +515,9 @@ sub tree_headings_clean_attr {
 
 sub tree_headings_in_lists {
     my $a_tag = shift;
+    INFO " Found a heading inside a list. Cleaning...\n";
+    $a_tag->attr( 'class', undef );
+    $a_tag->attr( 'style', undef );
     my @ancestors = ();
 my @q=();
     foreach my $parent ($a_tag->lineage()){
@@ -499,6 +529,7 @@ my @q=();
 	    last
 	}
     }
+
     if ( scalar @ancestors ) {
 # 	INFO "all lists here: ".Encode::encode('utf8', $a_tag->as_text)."\n\t";
 	foreach my $parent (@ancestors) {
@@ -509,13 +540,14 @@ my @q=();
 # 	INFO "\n";
     } else {
 	LOGDIE "not all lists here: ".Encode::encode('utf8', $a_tag->as_text)."\n".Dumper(@q) if ! scalar @q;
+	INFO "Replace ".$a_tag->tag."with bold.\n";
 	$a_tag->tag("b");
     }
 }
 
 sub tree_clean_tables_attributes {
     my $a_tag = shift;
-    ### clean table attributes
+    TRACE " Clean table attributes.\n";
     foreach my $attr_name ($a_tag->all_external_attr_names){
 	my $attr_value = $a_tag->attr($attr_name);
 	if ( $attr_name eq "border"
@@ -543,12 +575,14 @@ sub tree_clean_tables_attributes {
 
 sub tree_clean_tables {
     my $tree = shift;
-
+    INFO " Clean tables.\n";
     foreach my $a_tag ($tree->guts->look_down(_tag => "table")) {
 	### replace all headings with bold
 	foreach my $b_tag ($a_tag->descendants()) {
 	    if ($b_tag->tag =~ m/^h[0-9]{1,2}$/) {
 		$b_tag->tag('b');
+		$b_tag->attr( 'class', undef );
+		$b_tag->attr( 'style', undef );
 	    }
 	}
 	$a_tag->postinsert(['br']);
@@ -632,6 +666,7 @@ sub tree_clean_tables {
 
 sub tree_clean_lists_ol_ul {
     my $tree = shift;
+    INFO " Clean lists ol ul.\n";
     foreach my $a_tag ($tree->guts->look_down(_tag => "ol")) {
 	foreach my $attr_name ($a_tag->all_external_attr_names){
 	    my $attr_value = $a_tag->attr($attr_name);
@@ -649,6 +684,7 @@ LOGDIE "Unknown attributes for ol/ul:\n".Dumper($attr_name,$attr_value);
 
 sub tree_clean_lists {
     my $tree = shift;
+    INFO " Clean lists.\n";
     ### remove empty lists from body (don't, because we remove numbering lists)
 #     foreach my $a_tag ($tree->guts->look_down(_tag => "li")) {
 # 	$a_tag->detach() if ! scalar $a_tag->content_list();

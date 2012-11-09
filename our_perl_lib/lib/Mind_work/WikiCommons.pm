@@ -274,7 +274,7 @@ sub normalize_text {
 
 sub get_file_md5 {
     my $doc_file = shift;
-    DEBUG "\tGetting md5 for $doc_file\n";
+    TRACE "\tGetting md5 for $doc_file\n";
     my $doc_md5;
     eval{
     open(FILE, $doc_file) or LOGDIE "Can't open '$doc_file' for md5: $!\n";
