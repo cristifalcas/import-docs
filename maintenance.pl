@@ -26,6 +26,12 @@ BEGIN {
     }
 }
 
+use Log::Log4perl qw(:easy);
+Log::Log4perl->easy_init({ level   => $DEBUG,
+#                            file    => ">>test.log" 
+# 			   layout   => "%d [%5p] (%6P) [%rms] [%M] - %m{chomp}\t%x\n",
+			   layout   => "%5p (%6P) %m{chomp}\n",
+});
 use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."./our_perl_lib/lib";
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
@@ -43,10 +49,9 @@ use Mind_work::WikiCommons;
 my ($dbh,$dbh_mysql);
 my $workdir = "/media/share/Documentation/cfalcas/q/import_docs/work/";
 my $images_dir = "/var/www/html/wiki/images/";
-my $our_wiki;
-$our_wiki = new WikiWork();
-my $view_only = shift;
-$view_only = 1 if ! defined $view_only;
+my $our_wiki = new WikiWork();
+my $view_only = shift || 1;
+# $view_only = 1 if ! defined $view_only;
 my $max_elements = 2000;
 my $max_to_delete = 2000;
 
@@ -114,6 +119,7 @@ sub sql_connect_oracle {
 
 sub sql_connect_mysql {
     my ($wikidb_server, $wikidb_name, $wikidb_user, $wikidb_pass) = ();
+    INFO "Try to connect to mysql.\n";
     open(FH, "/var/www/html/wiki/LocalSettings.php") or die "Can't open file for read: $!.\n";
     while (<FH>) {
       $wikidb_server = $2 if $_ =~ m/^(\s*\$wgDBserver\s*=\s*\")(.+)(\"\s*;\s*)$/;
@@ -123,6 +129,7 @@ sub sql_connect_mysql {
     }
     close(FH);
     $dbh_mysql = DBI->connect("DBI:mysql:database=$wikidb_name;host=$wikidb_server", "$wikidb_user", "$wikidb_pass"); 
+    INFO "Connected to mysql.\n";
 }
 
 sub sql_get_crm_info_for_user {
@@ -554,21 +561,40 @@ sub fix_missing_files {
   my $link = "http://localhost/wiki/index.php?title=Special:WantedFiles&limit=$max_elements&offset=0";
   my $res = get_results($link);
   my $missing = {};
+#   my $missing_files = ();
   foreach my $elem (@$res){
     next if $elem =~ m/^Special:WhatLinksHere/i;
     $elem =~ s/ \(page does not exist\)//;
-    my $arr = $our_wiki->wiki_get_pages_using("$elem");
+#     $missing_files->{$elem} = 1;
+    my $arr = $our_wiki->wiki_get_pages_using($elem);
     foreach my $page (@$arr) {
 	print "Get page $page for file $elem.\n";
 	$missing->{$page} = 1;
     }
   }
 
+  print "We got ".(scalar keys %$missing)." pages to delete.\n";
   foreach my $page (sort keys %$missing) {
       next if $page eq "CMS:MIND-IPhonEX CMS 80.00.020" && $page !~ m/[a-b _]+:/i;
       print "should we rm page $page.\n";
       eval{$our_wiki->wiki_delete_page($page)} if ! $view_only;# $our_wiki->wiki_exists_page("$page") &&
   }
+#   return $missing_files;
+}
+
+sub fix_wanted_files {
+    ## this will delete pages if the user forgot to add an image
+  my $link = "http://localhost/wiki/index.php?title=Special:WantedFiles&limit=$max_elements&offset=0";
+  my $res = get_results($link);
+#   my $missing = {};
+  my $missing_files = ();
+  foreach my $elem (@$res){
+    next if $elem =~ m/^Special:WhatLinksHere/i;
+    $elem =~ s/ \(page does not exist\)//;
+    $missing_files->{$elem} = 1;
+  }
+
+  return $missing_files;
 }
 
 sub getlocalimages {
@@ -907,33 +933,67 @@ sub check_deployment_pages {
 sql_connect_mysql();
 
 if ($view_only eq "q") {
-my $sth = $dbh_mysql->prepare("select CONCAT(page_namespace,':',page_title) from wikidb.page q, wikidb.text w, wikidb.revision e
-where ((page_namespace>=100 and page_namespace<200) or page_namespace=400 or page_namespace=450)
-and e.rev_timestamp>'20121004000000' and e.rev_timestamp<'20121015100000' 
-and e.rev_text_id =w.old_id
-and q.page_latest=e.rev_id limit 0,1000");
-    $sth->execute();
-    while (my @row = $sth->fetchrow_array()){
-	if ($row[0] =~ m/^([0-9]+):(.+)$/i){
-	    my $nr = $1;
-	    my $name = $2;
-	    $row[0] = "SC:$2" if ($nr<200 && $nr !=196);
-	    $row[0] = "SC_Deployment:$2" if ($nr ==196);
-	    $row[0] = "SVN:$2" if ($nr==400);
-	    $row[0] = "SVN_SC:$2" if ($nr==450);
-	} else {
-	    die "not goood\n";
-	}
-# 	print "$row[0]\n";
-	$our_wiki->wiki_delete_page($row[0]);
-    }
+
+#### delete all pages created in this interval
+# my $sth = $dbh_mysql->prepare("select CONCAT(page_namespace,':',page_title) from wikidb.page q, wikidb.text w, wikidb.revision e
+# where ((page_namespace>=100 and page_namespace<200) or page_namespace=400 or page_namespace=450)
+# and e.rev_timestamp>'20121004000000' and e.rev_timestamp<'20121015100000' 
+# and e.rev_text_id =w.old_id
+# and q.page_latest=e.rev_id limit 0,1000");
+#     $sth->execute();
+#     while (my @row = $sth->fetchrow_array()){
+# 	if ($row[0] =~ m/^([0-9]+):(.+)$/i){
+# 	    my $nr = $1;
+# 	    my $name = $2;
+# 	    $row[0] = "SC:$2" if ($nr<200 && $nr !=196);
+# 	    $row[0] = "SC_Deployment:$2" if ($nr ==196);
+# 	    $row[0] = "SVN:$2" if ($nr==400);
+# 	    $row[0] = "SVN_SC:$2" if ($nr==450);
+# 	} else {
+# 	    die "not goood\n";
+# 	}
+# # 	print "$row[0]\n";
+# 	$our_wiki->wiki_delete_page($row[0]);
+#     }
+
+
+### replace in all pages string
+# my $sth = $dbh_mysql->prepare("select w.old_id,q.page_title from wikidb.page q, wikidb.text w, wikidb.revision e
+# where  e.rev_text_id =w.old_id
+# and q.page_latest=e.rev_id and page_namespace>0
+# and old_text LIKE '%[[File:%'");
+# $sth->execute();
+# while (my @row = $sth->fetchrow_array()){
+#   print Dumper(@row);
+#   my $q = $dbh_mysql->do("update wikidb.text set old_text=replace(old_text, '[[File:', '[[Media:') where old_id='$row[0]'");
+# }
+
+
+### undelete all files
+# my $all_files;
+# do {
+#   $all_files = fix_wanted_files();
+#   foreach (sort keys %$all_files){
+#     $our_wiki->undelete_image($_);
+#   }
+# } while (defined $all_files);
     exit 0;
 }
 
 my $namespaces = $our_wiki->wiki_get_namespaces;
 $namespaces = fixnamespaces($namespaces);
 
+# print Dumper($namespaces);
+# foreach (sort keys %{$namespaces->{private}}){
+# next if $_ eq "Category" or $_ eq "File";
+# print Dumper($_);
+# my $pages = $our_wiki->wiki_get_all_pages($namespaces->{private}->{$_}) if $namespaces->{private}->{$_}>-1;
+# print Dumper($pages);
+# }exit 1;
+
 if ($view_only ne "user_sr") {
+    print "##### Fix missing files:\n";
+    fix_missing_files();
     print "##### Fix deployment pages:\n";
     check_deployment_pages($namespaces);
     print "##### Fix wiki sc type:\n";
@@ -951,9 +1011,7 @@ if ($view_only ne "user_sr") {
     print "##### Syncronize:\n";
     syncronize_local_wiki($namespaces);
     print "##### Remove unused images:\n";
-     while (unused_images_dirty()){};
-    print "##### Fix missing files:\n";
-    fix_missing_files();
+    while (unused_images_dirty()){};
     print "##### Syncronize wiki files with fs files.\n";
     fix_images();
 }

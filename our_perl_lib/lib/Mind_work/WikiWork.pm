@@ -8,7 +8,7 @@ use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 use Log::Log4perl qw(:easy);
 use MediaWiki::API;
-# use MediaWiki::Bot;
+use MediaWiki::Bot;
 # get_last($page, $user)
 # get_history($pagename[,$limit])
 # get_namespace_names()
@@ -18,7 +18,7 @@ use MediaWiki::API;
 our $wiki_site_path = "/var/www/html/wiki/";
 # our $wiki_url = "http://10.0.0.99/wiki";
 our $wiki_url = "http://10.0.0.99/wiki";
-our $wiki_url_path = "/wiki";
+# our $wiki_url_path = "/wiki";
 # our $wiki_url = "http://localhost:1900/wiki";
 our $wiki_user = 'wiki_auto_import';
 our $wiki_pass = '!0wiki_auto_import@9';
@@ -32,18 +32,20 @@ our $hash = ();
 my $nr_pages = 0;
 
 sub wiki_on_error {
-    INFO "1. Error code: " . $mw->{error}->{code} . "\n";
-    INFO "2. Error details: " . Dumper($mw->{error}->{details})."\n";
+    INFO "Error:\n";
+    print "1. Error code: " . $mw->{error}->{code} . "\n";
+    print "2. Error details: " . Dumper($mw->{error}->{details})."\n";
     $mw->{response}->{_request}->{_content}="*** deleted ***";
-    INFO "3. Error response: " . Dumper($mw->{response})."\n";
-    INFO "4. Error stacktrace: " . $mw->{error}->{stacktrace}."\n";
-    INFO "time elapsed"."\t". (WikiCommons::get_time_diff) ."\n";
-    LOGDIE;
+    print "3. Error response: " . Dumper($mw->{response})."\n";
+    print "4. Error stacktrace: " . $mw->{error}->{stacktrace}."\n";
+    print "time elapsed"."\t". (WikiCommons::get_time_diff) ."\n";
+    die;
 }
 
 sub new {
     my $class = shift;
     my $self = { user_type => shift};
+    INFO "Logging in.\n";
     if (WikiCommons::is_remote ne "yes" ) {
 	my ($user, $pass) = ($wiki_user, $wiki_pass);
 	($user, $pass) = ($robot_user, $robot_pass) if defined $self->{'user_type'} && $self->{'user_type'} eq "robot";
@@ -51,7 +53,20 @@ sub new {
 	$mw->{config}->{on_error} = \&wiki_on_error;
 	$mw->login( {lgname => $user, lgpassword => $pass } )
 	    || LOGDIE $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+
+
+	$bmw = MediaWiki::Bot->new();
+	$bmw->set_wiki({
+	    protocol    => 'http',
+	    host        => '10.0.0.99',
+	    path        => 'wiki/',
+	});
+	$bmw->login({
+	    username => $wiki_user,
+	    password => $wiki_pass,
+	});
     }
+
     bless($self, $class);
     return $self;
 }
@@ -90,6 +105,13 @@ sub delete_archived_image {
         oldimage => $archive,
     });
     }
+    return $res;
+}
+
+sub undelete_image {
+    my ($self, $archive) = @_;
+    INFO "Wiki undelete file $archive.\n";
+    my $res = $bmw->undelete($archive);
     return $res;
 }
 

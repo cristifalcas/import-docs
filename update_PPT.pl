@@ -194,7 +194,7 @@ foreach my $ftp_sc_id (sort keys %$hash_ftp) {
 	my $doc_file = $names->{$file_name};
 	my ($name_1,$dir_1,$suffix_1) = fileparse($doc_file, qr/\.[^.]*/);
 	my ($name_2,$dir_2,$suffix_2) = fileparse($file_name, qr/\.[^.]*/);
-	LOGDIE "coco\n" if $suffix_1 ne $suffix_2;
+	LOGDIE "coco\n".Dumper($suffix_1, $suffix_2) if lc($suffix_1) ne $suffix_2;
 	my $clean_file_name = "$name_2$suffix_2";
 	$clean_file_name =~ s/^(.*?)(_[0-9]+)($suffix_1)$/$1$3/;
 	my ($name,$dir,$suffix) = fileparse($clean_file_name, qr/\.[^.]*/);

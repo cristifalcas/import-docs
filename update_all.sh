@@ -20,7 +20,7 @@ case "$1" in
     if [[ $i == "B" ]]; then
       for j in {0..9};do
 	sleep 10
-	wget $OPTS -P $OUTPUT_PATH ftp://10.10.1.10/SC/DefAttach/$i$j* -A.$PATTERN -o "$LOG_PATH"update_ftp_mirror_def_$i.log &
+	wget $OPTS -P $OUTPUT_PATH ftp://10.10.1.10/SC/DefAttach/$i$j* -A.$PATTERN -o "$LOG_PATH"update_ftp_mirror_def_$i$j.log &
       done
     else
       sleep 10
@@ -177,7 +177,7 @@ case "$1" in
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/sccanceled_docs/ 	-n sc_docs &> "$LOG_PATH"import_sc_cancel
 
     ##maintenance 0
-    $CMD "$SCRIPT_PATH"/maintenance.pl 0 &> "$LOG_PATH"maintenance
+#     $CMD "$SCRIPT_PATH"/maintenance.pl 0 &> "$LOG_PATH"maintenance
   ;;
 *)
     echo "Incorrect parameter"

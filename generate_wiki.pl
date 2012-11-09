@@ -68,7 +68,6 @@ my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 print "$path_prefix\n";
 # my $real_path = abs_path($0);
 use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."our_perl_lib/lib";
-chdir "/tmp/" || die "can't go to /tmp.\n";
 
 use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
 use Data::Dumper;
@@ -170,6 +169,7 @@ my $count_files;
 our $coco;
 WikiCommons::is_remote("$remote_work");
 WikiCommons::set_real_path($path_prefix);
+chdir "/tmp/" || die "can't go to /tmp.\n";
 
 sub create_wiki {
     my ($page_url, $doc_file, $zip_name) = @_;
@@ -749,7 +749,7 @@ sub real_worker {
 	  WikiCommons::move_dir("$wiki_dir/$url","$bad_dir/$url");
 	  return 1;
       }
-      my $head_text = "<center>\'\'\'This file was automatically imported from the following document: [[File:$url.zip|$url.zip]]\'\'\'\n\n";
+      my $head_text = "<center>\'\'\'This file was automatically imported from the following document: [[Media:$url.zip|$url.zip]]\'\'\'\n\n";
       $head_text .= "The original document can be found at [$svn_url this address]\n" if ($svn_url ne "");
       $head_text .= "</center>\n----\n\n\n\n\n\n".$wiki."\n----\n\n";
       $wiki = $head_text;
@@ -831,7 +831,7 @@ sub sc_worker {
 		    $date = $info_crt_h->{$key}->{'date'} if defined $info_crt_h->{$key}->{'date'};
 		    $date =~ s/T/\t/;
 		    $date =~ s/.[0-9]{1,}Z$//i;
-		    $header = "<center>\'\'\'This file was automatically imported from the following document: [[File:$url $name.zip]]\'\'\'\n\n";
+		    $header = "<center>\'\'\'This file was automatically imported from the following document: [[Media:$url $name.zip]]\'\'\'\n\n";
 		    $header .= "The original document can be found at [$info_h->{$name}/$info_crt_h->{$key}->{'name'} this address]\n\nThe last update on this document was performed at $date.\n";
 		    $header .= "</center>\n----\n\n";
 		    last;
