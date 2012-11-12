@@ -50,10 +50,10 @@ my ($dbh,$dbh_mysql);
 my $workdir = "/media/share/Documentation/cfalcas/q/import_docs/work/";
 my $images_dir = "/var/www/html/wiki/images/";
 my $our_wiki = new WikiWork();
-my $view_only = shift || 1;
-# $view_only = 1 if ! defined $view_only;
-my $max_elements = 2000;
-my $max_to_delete = 2000;
+my $view_only = shift;
+$view_only = 1 if ! defined $view_only;
+my $max_elements = 3000;
+my $max_to_delete = 3000;
 
 sub fixnamespaces {
   my $namespaces = shift;
