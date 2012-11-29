@@ -156,11 +156,12 @@ case "$1" in
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/svn/svn_cms_docs/ -n cms_svn &> "$LOG_PATH"import_svn_cms
 
     ##import_sc
+    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_10.0/	-n sc_docs &> "$LOG_PATH"import_sc_10.0
+    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_7.0/	-n sc_docs &> "$LOG_PATH"import_sc_7.0
+    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/sccanceled_docs/ 	-n sc_docs &> "$LOG_PATH"import_sc_cancel
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_5.3/	-n sc_docs &> "$LOG_PATH"import_sc_5.3
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_6.0/	-n sc_docs &> "$LOG_PATH"import_sc_6.0
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_6.5/	-n sc_docs &> "$LOG_PATH"import_sc_6.5
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_7.0/	-n sc_docs &> "$LOG_PATH"import_sc_7.0
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_10.0/	-n sc_docs &> "$LOG_PATH"import_sc_10.0
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scsip_docs/	-n sc_docs &> "$LOG_PATH"import_sc_f
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scsentori_docs/	-n sc_docs &> "$LOG_PATH"import_sc_i
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scinfrastructure_docs/ -n sc_docs &> "$LOG_PATH"import_sc_h
@@ -174,10 +175,9 @@ case "$1" in
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scother_docs/ 	-n sc_docs &> "$LOG_PATH"import_sc_z
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scphonex_docs/ 	-n sc_docs &> "$LOG_PATH"import_sc_a
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scplugins_docs/ 	-n sc_docs &> "$LOG_PATH"import_sc_p
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/sccanceled_docs/ 	-n sc_docs &> "$LOG_PATH"import_sc_cancel
 
     ##maintenance 0
-#     $CMD "$SCRIPT_PATH"/maintenance.pl 0 &> "$LOG_PATH"maintenance
+    $CMD "$SCRIPT_PATH"/maintenance.pl 0 &> "$LOG_PATH"maintenance
   ;;
 *)
     echo "Incorrect parameter"

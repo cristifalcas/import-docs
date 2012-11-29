@@ -96,7 +96,7 @@ bkp_fullos
 clean_wiki
 
 mysqlcheck -uwikiuser -p\!0wikiuser\@9 --databases wikidb --optimize
-#sudo -u apache php /var/www/html/wiki/maintenance/rebuildall.php
+sudo -u apache php /var/www/html/wiki/maintenance/rebuildall.php
 sudo -u apache php /var/www/html/wiki/maintenance/refreshLinks.php
 
 

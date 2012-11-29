@@ -27,7 +27,7 @@ BEGIN {
 }
 
 use Log::Log4perl qw(:easy);
-Log::Log4perl->easy_init({ level   => $DEBUG,
+Log::Log4perl->easy_init({ level   => $INFO,
 #                            file    => ">>test.log" 
 # 			   layout   => "%d [%5p] (%6P) [%rms] [%M] - %m{chomp}\t%x\n",
 			   layout   => "%5p (%6P) %m{chomp}\n",
@@ -895,6 +895,10 @@ sub check_deployment_pages {
 
     print "## Get all wiki sc deployment urls\n";
     my @arr3 = @{ $our_wiki->wiki_get_all_pages($namespaces->{deploy}->{SC_Deployment}) };
+    my @arr4 = @{ $our_wiki->wiki_get_all_pages($namespaces->{deploy}->{SC_Canceled}) };
+# return (\@arr1, \@arr3, \@arr4);
+#     foreach ()
+    
     ## check with time from redirect
     print "##Check that in wiki the time difference between SC and SC_Deployment is small.\n";
     my @to_delete;

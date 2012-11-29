@@ -448,7 +448,7 @@ sub tree_clean_headings {
 
 sub tree_headings_clean_images {
     my $a_tag = shift;
-    INFO " Clean images in heading.\n";
+    DEBUG " Clean images in heading.\n";
     $a_tag->preinsert(['br']);
     foreach my $b_tag ($a_tag->content_refs_list){
 	next if ! ref $$b_tag;
@@ -469,7 +469,7 @@ sub tree_headings_clean_images {
 
 sub tree_headings_clean_content {
     my $a_tag = shift;
-    INFO " Clean content in headings.\n";
+    DEBUG " Clean content in headings.\n";
 ## extract images from heading and put it before it. Remove other attr
     foreach my $b_tag ($a_tag->content_refs_list){
 	next if ! ref $$b_tag;
@@ -496,7 +496,7 @@ sub tree_headings_clean_content {
 
 sub tree_headings_clean_attr {
     my $a_tag = shift;
-    INFO " Clean up heading attributes.\n";
+    DEBUG " Clean up heading attributes.\n";
     foreach my $attr_name ($a_tag->all_external_attr_names){
 	my $attr_value = $a_tag->attr($attr_name);
 	if ( $attr_name eq "style"

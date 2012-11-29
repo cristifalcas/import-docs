@@ -75,9 +75,10 @@ sub add_document_local {
 	$q = "_".(-s $doc_file) if $suffix =~ m/^\.pptx?$/i;
 	$hash_swf->{$sc_id}->{"$name$q".lc($suffix)} = $doc_file;
     } else {
+	return if $doc_file =~ m/^\/mnt\/wiki_files\/wiki_files\/ppt_as_flash\/__presentations\//;
 	LOGDIE "\tFile $doc_file is not in the correct dir:\n".Dumper($to_path, $name, $suffix);
-	unlink $doc_file || LOGDIE "can't delete file.\n";
-	return;
+# 	unlink $doc_file || LOGDIE "can't delete file.\n";
+# 	return;
     }
 }
 
@@ -88,7 +89,12 @@ sub add_document_ftp {
     my $cleaned_doc_file = clean_file_name($doc_file);
     my ($name, $dir, $suffix) = fileparse($cleaned_doc_file, qr/\.[^.]*/);
     if ($doc_file =~ m/^(.*?)(Def|Market|Test)Attach\/([A-Z][0-9]+)\/(.*)$/i) {
+	if ($doc_file =~ m/\/.listing$/i) {
+	    unlink $doc_file;
+	    return;
+	}
 	my $size = -s $doc_file;
+# LOGDIE Dumper($doc_file,$name,$size,$suffix) if ! defined $3;
 	$hash_ftp->{$3}->{"$name\_$size".lc($suffix)} = $doc_file;
     } else {
 	LOGDIE "What to do with you, doc file $doc_file\n";
@@ -111,7 +117,9 @@ sub get_work {
 	if (defined $hash_swf->{$ftp_sc_id}) {
 	    my $all_files = $hash_ftp->{$ftp_sc_id};
 	    foreach my $file (keys %$all_files) {
+# print Dumper($hash_ftp->{$ftp_sc_id}, $hash_swf->{$ftp_sc_id}, $file) if $file =~ m/B27354 - Amend the Tibco protocol on the RTS/i;
 		if (defined $hash_swf->{$ftp_sc_id}->{$file}) {
+# print Dumper($hash_ftp->{$ftp_sc_id}, $hash_swf->{$ftp_sc_id}, $file) if $file =~ m/B27354 - Amend the Tibco protocol on the RTS/i;
 		    my $file_path = abs_path($hash_swf->{$ftp_sc_id}->{$file});
 		    my ($name, $dir, $suffix) = fileparse($file_path, qr/\.[^.]*/);
 		    if (defined $hash_swf->{$ftp_sc_id}->{"$name.txt"} && -s "$dir$name.txt" 
@@ -131,9 +139,9 @@ sub get_work {
 	}
 	delete $hash_ftp->{$ftp_sc_id} if defined $hash_swf->{$ftp_sc_id} && ! scalar keys %{$hash_swf->{$ftp_sc_id}};
     }
-    foreach (keys %$hash_swf){
+    foreach (sort keys %$hash_swf){
 	my $q = $hash_swf->{$_};
-	foreach (keys %$q){
+	foreach (sort keys %$q){
 	    ERROR "Delete file $q->{$_}\n";
 	    unlink $q->{$_} || LOGDIE "can't delete \n";
 	}
@@ -188,6 +196,8 @@ foreach (keys %$hash_ftp){foreach (keys %{$hash_ftp->{$_}}){$total++;}}
 foreach my $ftp_sc_id (sort keys %$hash_ftp) {
     my $names = $hash_ftp->{$ftp_sc_id};
     foreach my $file_name (sort keys %$names) {
+# print Dumper($hash_ftp->{$ftp_sc_id}, $hash_swf->{$ftp_sc_id}, $file_name) if $file_name =~ m/B27354 - Amend the Tibco protocol on the RTS/i;
+# next if $file_name !~ m/B27354 - Amend the Tibco protocol on the RTS/i;
 	$crt++;
 	INFO "\tStart working for $file_name ($crt out of $total).\n";
 	make_path ("$to_path/$ftp_sc_id");
@@ -196,7 +206,8 @@ foreach my $ftp_sc_id (sort keys %$hash_ftp) {
 	my ($name_2,$dir_2,$suffix_2) = fileparse($file_name, qr/\.[^.]*/);
 	LOGDIE "coco\n".Dumper($suffix_1, $suffix_2) if lc($suffix_1) ne $suffix_2;
 	my $clean_file_name = "$name_2$suffix_2";
-	$clean_file_name =~ s/^(.*?)(_[0-9]+)($suffix_1)$/$1$3/;
+	$clean_file_name =~ s/^(.*?)(_[0-9]+)($suffix_2)$/$1$3/;
+	LOGDIE Dumper($clean_file_name, "$name_2$suffix_2", $suffix_1) if $clean_file_name eq "$name_2$suffix_2";
 	my ($name,$dir,$suffix) = fileparse($clean_file_name, qr/\.[^.]*/);
 	copy($doc_file, "$to_path/$ftp_sc_id/$clean_file_name");
 	WikiCommons::generate_html_file("$to_path/$ftp_sc_id/$clean_file_name", 'swf');

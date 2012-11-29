@@ -434,6 +434,7 @@ sub generate_html_file {
     my $user_crt = `id -u`;chomp($user_crt);
     my $user_exists;
     my @change_user;
+# soffice -env:UserInstallation=file:///tmp/foobar
     if (defined $user) {
 	my $user_exists = `id -u $user`; chomp($user_exists);
 	if ($user_exists =~ m/^[0-9]+$/ && $user_exists != $user_crt) {
@@ -584,6 +585,7 @@ sub get_correct_customer{
     return "Pelephone" if $name =~ m/^Pelephone$/i;
     return "Eastlink" if $name =~ m/^Eastlink$/i;
     return "Alon" if $name =~ m/^(alon|AlonCellular|Alon Cellular)/i;
+    return "United" if $name =~ m/^(united)$/i;
 
     if ( ! scalar keys %$customers ){
 	$customers = WikiCommons::xmlfile_to_hash ("$real_path/customers.xml");

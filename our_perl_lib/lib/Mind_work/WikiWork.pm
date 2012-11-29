@@ -17,7 +17,7 @@ use MediaWiki::Bot;
 
 our $wiki_site_path = "/var/www/html/wiki/";
 # our $wiki_url = "http://10.0.0.99/wiki";
-our $wiki_url = "http://10.0.0.99/wiki";
+our $wiki_url = "http://wikitiki.mindsoft.com/wiki";
 # our $wiki_url_path = "/wiki";
 # our $wiki_url = "http://localhost:1900/wiki";
 our $wiki_user = 'wiki_auto_import';
@@ -58,7 +58,7 @@ sub new {
 	$bmw = MediaWiki::Bot->new();
 	$bmw->set_wiki({
 	    protocol    => 'http',
-	    host        => '10.0.0.99',
+	    host        => 'wikitiki.mindsoft.com',
 	    path        => 'wiki/',
 	});
 	$bmw->login({
@@ -264,7 +264,7 @@ sub wiki_upload_file {
 
 sub wiki_exists_page {
     my ($self, $title) = @_;
-    INFO "Wiki check if page $title exists.\n";
+    DEBUG "Wiki check if page $title exists.\n";
     my $page = $mw->get_page( { title => $title } );
 # INFO Dumper($page->{'timestamp'});
     return 0 unless ( $page->{'*'} ) ;
@@ -291,7 +291,7 @@ sub wiki_move_page {
 
 sub wiki_get_nonredirects {
     my ($self, $ns) = @_;
-    INFO "Wiki get non redirects.\n";
+    DEBUG "Wiki get non redirects.\n";
     $array = ();
     $mw->list ( { action => 'query',
 	    list => 'allpages', aplimit=>'5000',
@@ -303,7 +303,7 @@ sub wiki_get_nonredirects {
 
 sub wiki_get_redirects {
     my ($self, $ns) = @_;
-    INFO "Wiki get redirects.\n";
+    DEBUG "Wiki get redirects.\n";
     $array = ();
     $mw->list ( { action => 'query',
 	    list => 'allpages', aplimit=>'5000',
@@ -376,7 +376,7 @@ sub wiki_get_pages_linking_to {
 
 sub wiki_get_pages_in_category {
     my ($self, $cat, $nr) = @_;
-    INFO "Wiki pages in category $cat.\n";
+    DEBUG "Wiki pages in category $cat.\n";
     my $limit = 5000; my $max = 1000;
     if (defined $nr ) {
 	$limit = $nr; $max = 1;

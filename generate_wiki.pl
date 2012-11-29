@@ -925,7 +925,8 @@ sub sc_worker {
 	WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
     }
     my $is_canceled = 0;
-    $is_canceled++ if $pages_toimp_hash->{$url}[$svn_url_pos]->{'SC_info'}->{'revision'} =~ m/^Cancel$/i;
+    $is_canceled++ if $pages_toimp_hash->{$url}[$svn_url_pos]->{'SC_info'}->{'revision'} =~ m/Cancel/i;
+# print Dumper($pages_toimp_hash->{$url}, $is_canceled,$pages_toimp_hash->{$url}[$svn_url_pos]->{'SC_info'}->{'revision'});exit 1;
 
     my $url_deployment = $url;
     $url_deployment =~ s/^SC:/SC_Deployment:/;
