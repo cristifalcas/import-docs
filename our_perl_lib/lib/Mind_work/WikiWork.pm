@@ -315,7 +315,7 @@ sub wiki_get_redirects {
 
 sub wiki_get_all_pages {
     my ($self, $ns) = @_;
-    INFO "Wiki get all pages.\n";
+    INFO "Wiki get all pages with ns $ns.\n";
     $array = ();
     $mw->list ( { action => 'query',
 	    list => 'allpages', aplimit=>'5000',
