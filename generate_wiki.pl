@@ -171,14 +171,41 @@ WikiCommons::is_remote("$remote_work");
 WikiCommons::set_real_path($path_prefix);
 chdir "/tmp/" || die "can't go to /tmp.\n";
 
+sub add_swf_users {
+    my ($doc_file, $work_dir, $new_file, $suffix, $zip_name) = @_;
+    WikiCommons::generate_html_file( $doc_file, "swf", $lo_user );
+    WikiCommons::generate_html_file( $doc_file, "pdf", $lo_user );
+    LOGDIE "no pdf created in $work_dir/$new_file.pdf" if ! -s "$work_dir/$new_file.pdf";
+    `pdftotext "$work_dir/$new_file.pdf"`;
+    LOGDIE "no good" if ($?) || ! -s "$work_dir/$new_file.txt" || ! -s "$work_dir/$new_file.pdf" || ! -s "$work_dir/$new_file.swf";
+    unlink "$work_dir/$new_file.pdf"; 
+    copy("$work_dir/$new_file.swf","/var/www/html/ppt_as_flash/users_imports/") or LOGDIE "Copy swf failed.\n";
+
+    open (FILEHANDLE, "$work_dir/$new_file.txt") or LOGDIE "can't read txt file: ".$!."\n";
+    my $wiki = do { local $/; <FILEHANDLE> };
+    close (FILEHANDLE);
+    $wiki =~ s/\n/\n\n/gm;
+    $wiki = "<swf width=\"800\" height=\"500\" >http://10.0.0.99/ppt_as_flash/users_imports/$new_file.swf</swf> \n\n<!-- <nowiki>\n$wiki\n</nowiki> -->";
+
+    my $zip = Archive::Zip->new();
+    $zip->addFile( "$work_dir/$new_file$suffix", "$new_file$suffix") or LOGDIE "Error adding file $new_file$suffix to zip.\n";
+    $zip->writeToFileNamed( "$work_dir/$wiki_result/$zip_name.zip" ) == AZ_OK or LOGDIE "Write error for zip file.\n";
+#     open (FILE, ">>$work_dir/$wiki_files_uploaded") or LOGDIE "at create wiki can't open file $work_dir/$wiki_files_uploaded for writing: $!\t". (WikiCommons::get_time_diff) ."\n";
+#     print FILE "File:$new_file.swf\n";
+#     print FILE "File:$zip_name.zip\n";
+#     close (FILE);
+
+    return $wiki;
+}
+
 sub create_wiki {
     my ($page_url, $doc_file, $zip_name) = @_;
     LOGDIE "Page url is empty.\n" if $page_url eq '';
     $zip_name = $page_url if ! defined $zip_name;
     my $work_dir = "$wiki_dir/$page_url";
 
-    my ($name_url,$dir_url,$suffix_url) = fileparse($page_url, qr/\.[^.]*/);
-    my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
+    my ($name_url, $dir_url, $suffix_url) = fileparse($page_url, qr/\.[^.]*/);
+    my ($name, $dir, $suffix) = fileparse($doc_file, qr/\.[^.]*/);
     if ( -d $work_dir) {
 	INFO "Path $work_dir already exists. Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
 	my $name_bad = "$bad_dir/$page_url".time();
@@ -192,8 +219,13 @@ sub create_wiki {
     my $new_file = "$name_url$suffix_url";
     copy("$doc_file","$work_dir/$new_file$suffix") or LOGDIE "Copy failed for $page_url at create_wiki: $doc_file to $work_dir: $!\t". (WikiCommons::get_time_diff) ."\n";
     $doc_file = "$work_dir/$new_file$suffix";
+    my $dest = "$work_dir/$wiki_result";
+    WikiCommons::makedir ($dest);
 
     if ( -f $doc_file ) {
+	if ($suffix =~ m/^\.pptx?$/i) {
+	    return add_swf_users($doc_file, $work_dir, $new_file, $suffix, $zip_name);
+	}
 	WikiCommons::generate_html_file( $doc_file, "html", $lo_user );
 	my $html_file = "$work_dir/$new_file.html";
 
@@ -201,15 +233,13 @@ sub create_wiki {
 	    my ($wiki, $image_files) = WikiClean::make_wiki_from_html ( $html_file );
 	    return undef if (! defined $wiki );
 
-	    my $dest = "$work_dir/$wiki_result";
 	    WikiCommons::add_to_remove ("$work_dir/$wiki_result", "dir");
-	    WikiCommons::makedir ("$dest");
 
 	    my %seen = ();
 	    open (FILE, ">>$work_dir/$wiki_files_uploaded") or LOGDIE "at create wiki can't open file $work_dir/$wiki_files_uploaded for writing: $!\t". (WikiCommons::get_time_diff) ."\n";
 	    INFO "\t-Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
 	    foreach my $img (@$image_files){
-		move ("$img", "$dest") or LOGDIE "Moving file \"$img\" failed: $!\t". (WikiCommons::get_time_diff) ."\n" unless $seen{$img}++;
+		move ($img, $dest) or LOGDIE "Moving file \"$img\" failed: $!\t". (WikiCommons::get_time_diff) ."\n" unless $seen{$img}++;
 		my ($img_name,$img_dir,$img_suffix) = fileparse($img, qr/\.[^.]*/);
 		print FILE "File:$img_name$img_suffix\n";
 	    }
@@ -697,7 +727,7 @@ sub crm_worker {
 
 sub link_worker {
     my ($url, $val, $thread, $md5_map) = @_;
-
+    my $sth_mysql = $dbh_mysql->do("DELETE FROM mind_wiki_info where WIKI_NAME=".$dbh_mysql->quote($url));
     eval{
     WikiCommons::reset_time();
     my $link_to = $md5_map->{$val->[$md5_pos]}->{"real"}[0];
@@ -730,6 +760,7 @@ sub link_worker {
     }; ## eval
     if ($@ && $@ !~ m/^Exiting eval via next at/) {
 	ERROR "Error generating link for $url: $@\n";
+	$sth_mysql = $dbh_mysql->do("DELETE FROM mind_wiki_info where WIKI_NAME=".$dbh_mysql->quote($url));
 	exit 1;
     }
     exit 0;
@@ -737,10 +768,11 @@ sub link_worker {
 
 sub real_worker {
     my ($url, $val, $thread) = @_;
+    my $sth_mysql = $dbh_mysql->do("DELETE FROM mind_wiki_info where WIKI_NAME=".$dbh_mysql->quote($url));
     $lo_user = $lo_user."_$thread";
     exit 10 if $val->[$link_type_pos] eq "link" || WikiCommons::shouldSkipFile($url, "$path_files/$val->[$rel_path_pos]");
-    my $exit = 0;
-    $exit = eval {
+#     my $exit = 0;
+    my $exit = eval {
       my $svn_url = $val->[$svn_url_pos];
       $svn_url = uri_escape( $svn_url,"^A-Za-z\/:0-9\-\._~%" );
       my $wiki = create_wiki($url, "$path_files/$val->[$rel_path_pos]");
@@ -749,8 +781,8 @@ sub real_worker {
 	  WikiCommons::move_dir("$wiki_dir/$url","$bad_dir/$url");
 	  return 1;
       }
-      my $head_text = "<center>\'\'\'This file was automatically imported from the following document: [[Media:$url.zip|$url.zip]]\'\'\'\n\n";
-      $head_text .= "The original document can be found at [$svn_url this address]\n" if ($svn_url ne "");
+      my $head_text = "<center>\'\'\'This file was automatically imported from the following document: [[Media:$url.zip|$url.zip]]\'\'\'\n";
+      $head_text .= "\nThe original document can be found at [$svn_url this address]\n" if ($svn_url ne "");
       $head_text .= "</center>\n----\n\n\n\n\n\n".$wiki."\n----\n\n";
       $wiki = $head_text;
       my $cat = $val->[$categories_pos];
@@ -764,9 +796,11 @@ sub real_worker {
 	  my $text_url = "[InternetShortcut]\nURL=". $our_wiki->wiki_geturl ."/index.php/$url";
 	  WikiCommons::write_file ("$dir/$name.url", $text_url);
       }
+      return 0;
     }; ## eval
     if ($@ && $@ !~ m/^Exiting eval via next at/) {
-	ERROR "Error generating crm for $url: $@\n";
+	ERROR "Error generating real for $url: $@\n";
+	$sth_mysql = $dbh_mysql->do("DELETE FROM mind_wiki_info where WIKI_NAME=".$dbh_mysql->quote($url));
 	exit 1;
     }
     exit $exit;
@@ -1089,9 +1123,13 @@ if ($path_type eq "mind_svn") {
     fork_function($sc_nr_forks, \&sc_worker, getCommonInfoSC());
 }
 
-$dbh_mysql->disconnect() if defined($dbh_mysql);
 @tmp = (sort keys %$failed);
-ERROR "Failed:\n".Dumper(@tmp) if @tmp;
+# ERROR "Failed:\n".Dumper(@tmp) if @tmp;
+foreach (@tmp) {
+    my $sth_mysql = $dbh_mysql->do("DELETE FROM mind_wiki_info where WIKI_NAME=".$dbh_mysql->quote($_));
+    ERROR "Failed: $_\n"
+}
+$dbh_mysql->disconnect() if defined($dbh_mysql);
 @crt_timeData = localtime(time);
 foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
 INFO "End ". ($crt_timeData[5]+1900) ."-$crt_timeData[4]-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";

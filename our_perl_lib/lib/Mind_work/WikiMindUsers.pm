@@ -119,7 +119,7 @@ sub add_document {
 sub get_documents {
     my $self  = shift;
     my $url_sep = WikiCommons::get_urlsep;
-    find sub { add_document ($File::Find::name, "$self->{path_files}", "$url_sep") if -f && (/(\.doc|\.docx|\.rtf|\.xls|\.xlsx|\.odt)$/i) }, "$self->{path_files}";
+    find sub { add_document ($File::Find::name, "$self->{path_files}", "$url_sep") if -f && (/(\.docx?|\.rtf|\.xlsx?|\.odt|\.pptx?)$/i) }, "$self->{path_files}";
 
     foreach my $url (sort keys %$duplicates) {
 	my $first_path = "$self->{path_files}/$pages_toimp_hash->{$url}[1]";
