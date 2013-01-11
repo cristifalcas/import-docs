@@ -16,12 +16,11 @@ use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."our_perl_lib/lib";
 use File::Path qw(make_path remove_tree);
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
+
+my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 use Log::Log4perl qw(:easy);
-Log::Log4perl->easy_init({ level   => $DEBUG,
-#                            file    => ">>test.log" 
-# 			   layout   => "%d [%5p] (%6P) [%rms] [%M] - %m{chomp}\t%x\n",
-			   layout   => "%5p (%6P) %m{chomp}\n",
-});
+Log::Log4perl->init("$path_prefix/log4perl.config");
+
 use File::Listing qw(parse_dir);
 use File::Find;
 use File::Copy;

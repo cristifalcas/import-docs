@@ -64,8 +64,6 @@ use File::Copy;
 use File::Find;
 use Getopt::Std;
 
-my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
-print "$path_prefix\n";
 # my $real_path = abs_path($0);
 use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."our_perl_lib/lib";
 
@@ -77,12 +75,12 @@ use Text::Balanced;
 # use Encode;
 use URI::Escape;
 use File::Path qw(make_path remove_tree);
+
+my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 use Log::Log4perl qw(:easy);
-Log::Log4perl->easy_init({ level   => $DEBUG,
-#                            file    => ">>test.log" 
-# 			   layout   => "%d [%5p] (%6P) [%rms] [%M] - %m{chomp}\t%x\n",
-			   layout   => "%5p (%6P) %m{chomp}\n",
-});
+Log::Log4perl->init("$path_prefix/log4perl.config");
+
+INFO "$path_prefix\n";
 
 use Mind_work::WikiWork;
 use Mind_work::WikiCommons;

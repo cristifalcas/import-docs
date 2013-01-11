@@ -27,11 +27,15 @@ use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."./our_perl_lib/lib";
 use Mind_work::WikiWork;
 my $our_wiki = new WikiWork();
 
+my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
+use Log::Log4perl qw(:easy);
+Log::Log4perl->init("$path_prefix/log4perl.config");
+
 my $wiki_page = '<div style="text-align: right;">'."\n";
 # <div style=";font-size:80%">updated by [[User:Wiki auto import]]<br>on 20110218123142  </div>';
-print "Connecting...\n";
+INFO "Connecting...\n";
 my $db = DBI->connect('DBI:mysql:wikidb', 'wikiuser', '!0wikiuser@9') || die "Could not connect to database: $DBI::errstr"; 
-print "Connected.\n";
+INFO "Connected.\n";
 # $db->selectdb($database);
 my $sql_query="select rc_timestamp, rc_user_text, rc_title
   from recentchanges rc, page p
@@ -51,7 +55,7 @@ my $sql_query="select rc_timestamp, rc_user_text, rc_title
                           and rc_user_text <> '10.0.4.128') or rc_new=1)*/)
  group by rc_title
  order by rc_timestamp desc limit 10;";
-print "Query...\n";
+INFO "Query...\n";
 my $query = $db->prepare($sql_query); 
 $query->execute();
 my $max_size = 45;
@@ -75,5 +79,5 @@ while (my ($time, $user, $page) = $query->fetchrow_array ){
 $wiki_page .= '</div>'."\n";
 # print "$wiki_page";
 $our_wiki->wiki_edit_page("Template:RecentlyModified", $wiki_page); 
-print "Done.\n";
+INFO "Done.\n";
 
