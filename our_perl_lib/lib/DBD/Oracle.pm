@@ -7,12 +7,17 @@
 
 require 5.006;
 
-$DBD::Oracle::VERSION = '1.34';
-
 my $ORACLE_ENV  = ($^O eq 'VMS') ? 'ORA_ROOT' : 'ORACLE_HOME';
 
 {
-    package DBD::Oracle;
+package DBD::Oracle;
+{
+  $DBD::Oracle::VERSION = '1.56';
+}
+BEGIN {
+  $DBD::Oracle::AUTHORITY = 'cpan:PYTHIAN';
+}
+# ABSTRACT: Oracle database driver for the DBI module
 
     use DBI ();
     use DynaLoader ();
@@ -27,14 +32,14 @@ my $ORACLE_ENV  = ($^O eq 'VMS') ? 'ORA_ROOT' : 'ORACLE_HOME';
 	    ORA_CLOB ORA_BLOB ORA_RSET ORA_VARCHAR2_TABLE ORA_NUMBER_TABLE
 	    SQLT_INT SQLT_FLT ORA_OCI SQLT_CHR SQLT_BIN
 	) ],
-        ora_session_modes => [ qw( ORA_SYSDBA ORA_SYSOPER ) ],
+        ora_session_modes => [ qw( ORA_SYSDBA ORA_SYSOPER ORA_SYSASM) ],
         ora_fetch_orient  => [ qw( OCI_FETCH_NEXT OCI_FETCH_CURRENT OCI_FETCH_FIRST
         			   OCI_FETCH_LAST OCI_FETCH_PRIOR OCI_FETCH_ABSOLUTE
         			   OCI_FETCH_RELATIVE)],
     	ora_exe_modes     => [ qw( OCI_STMT_SCROLLABLE_READONLY)],
     	ora_fail_over     => [ qw( OCI_FO_END OCI_FO_ABORT OCI_FO_REAUTH OCI_FO_BEGIN
     				   OCI_FO_ERROR OCI_FO_NONE OCI_FO_SESSION OCI_FO_SELECT
-    				   OCI_FO_TXNAL)],
+    				   OCI_FO_TXNAL OCI_FO_RETRY)],
     );
     @EXPORT_OK = qw(OCI_FETCH_NEXT OCI_FETCH_CURRENT OCI_FETCH_FIRST OCI_FETCH_LAST OCI_FETCH_PRIOR
     		    OCI_FETCH_ABSOLUTE 	OCI_FETCH_RELATIVE ORA_OCI SQLCS_IMPLICIT SQLCS_NCHAR ora_env_var ora_cygwin_set_env );
@@ -54,42 +59,50 @@ my $ORACLE_ENV  = ($^O eq 'VMS') ? 'ORA_ROOT' : 'ORACLE_HOME';
     }
 
     sub driver{
-	return $drh if $drh;
-	my($class, $attr) = @_;
-	my $oci = DBD::Oracle::ORA_OCI();
+        return $drh if $drh;
 
-	$class .= "::dr";
+        my($class, $attr) = @_;
+        my $oci = DBD::Oracle::ORA_OCI();
 
-	# not a 'my' since we use it above to prevent multiple drivers
+        $class .= "::dr";
 
-	$drh = DBI::_new_drh($class, {
-	    'Name' => 'Oracle',
-	    'Version' => $VERSION,
-	    'Err'    => \my $err,
-	    'Errstr' => \my $errstr,
-	    'Attribution' => "DBD::Oracle $VERSION using OCI$oci by Tim Bunce",
-	    });
-	DBD::Oracle::dr::init_oci($drh) ;
-	$drh->STORE('ShowErrorStatement', 1);
-	DBD::Oracle::db->install_method("ora_lob_read");
-	DBD::Oracle::db->install_method("ora_lob_write");
-	DBD::Oracle::db->install_method("ora_lob_append");
-	DBD::Oracle::db->install_method("ora_lob_trim");
-	DBD::Oracle::db->install_method("ora_lob_length");
-	DBD::Oracle::db->install_method("ora_lob_chunk_size");
-	DBD::Oracle::db->install_method("ora_lob_is_init");
-	DBD::Oracle::db->install_method("ora_nls_parameters");
-	DBD::Oracle::db->install_method("ora_can_unicode");
-	DBD::Oracle::db->install_method("ora_can_taf");
-	DBD::Oracle::db->install_method("ora_db_startup");
-        DBD::Oracle::db->install_method("ora_db_shutdown");
-        DBD::Oracle::st->install_method("ora_fetch_scroll");
-	DBD::Oracle::st->install_method("ora_scroll_position");
-	DBD::Oracle::st->install_method("ora_ping");
-	DBD::Oracle::st->install_method("ora_stmt_type_name");
-	DBD::Oracle::st->install_method("ora_stmt_type");
-	$drh;
+        # not a 'my' since we use it above to prevent multiple drivers
 
+        $drh = DBI::_new_drh($class, {
+            'Name' => 'Oracle',
+            'Version' => $VERSION,
+            'Err'    => \my $err,
+            'Errstr' => \my $errstr,
+            'Attribution' => "DBD::Oracle $VERSION using OCI$oci by Tim Bunce",
+        });
+
+        DBD::Oracle::dr::init_oci($drh) ;
+        $drh->STORE('ShowErrorStatement', 1);
+
+        DBD::Oracle::db->install_method($_) for qw/
+            ora_lob_read
+            ora_lob_write
+            ora_lob_append
+            ora_lob_trim
+            ora_lob_length
+            ora_lob_chunk_size
+            ora_lob_is_init
+            ora_nls_parameters
+            ora_can_unicode
+            ora_can_taf
+            ora_db_startup
+            ora_db_shutdown
+        /;
+
+        DBD::Oracle::st->install_method($_) for qw/
+            ora_fetch_scroll
+            ora_scroll_position
+            ora_ping
+            ora_stmt_type_name
+            ora_stmt_type
+        /;
+
+        $drh;
     }
 
 
@@ -110,7 +123,8 @@ my $ORACLE_ENV  = ($^O eq 'VMS') ? 'ORA_ROOT' : 'ORACLE_HOME';
 }
 
 
-{   package DBD::Oracle::dr; # ====== DRIVER ======
+{   package                     # hide from PAUSE
+    DBD::Oracle::dr;            # ====== DRIVER ======
     use strict;
 
     my %dbnames = ();	# holds list of known databases (oratab + tnsnames)
@@ -148,15 +162,14 @@ my $ORACLE_ENV  = ($^O eq 'VMS') ? 'ORA_ROOT' : 'ORACLE_HOME';
 
 	# get list of 'remote' database connection identifiers
 	my @tns_admin = ( DBD::Oracle::ora_env_var("TNS_ADMIN"), '.' );
-	push @tns_admin, map { join '/', $oracle_home, $_ }     
+	push @tns_admin, map { join '/', $oracle_home, $_ }
                          'network/admin',	# OCI 7 and 8.1
                          'net80/admin',	    # OCI 8.0
 	    if $oracle_home;
 	push @tns_admin, '/var/opt/oracle', '/etc';
 
     TNS_ADMIN:
-	foreach $d ( @tns_admin  ) {
-        next TNS_ADMIN unless $d and -f $d;
+	foreach $d ( grep { $_ and -d $_ } @tns_admin  ) {
 	    open FH, '<', "$d/tnsnames.ora" or next TNS_ADMIN;
 
 	    $drh->trace_msg("Loading $d/tnsnames.ora\n") if $debug;
@@ -310,7 +323,8 @@ my $ORACLE_ENV  = ($^O eq 'VMS') ? 'ORA_ROOT' : 'ORACLE_HOME';
 }
 
 
-{   package DBD::Oracle::db; # ====== DATABASE ======
+{   package                     # hide from PAUSE
+    DBD::Oracle::db;            # ====== DATABASE ======
     use strict;
     use DBI qw(:sql_types);
 
@@ -387,10 +401,7 @@ my $ORACLE_ENV  = ($^O eq 'VMS') ? 'ORA_ROOT' : 'ORACLE_HOME';
                  ora_client_info	=> undef,
                  ora_client_identifier	=> undef,
                  ora_action		=> undef,
-                 ora_taf		=> undef,
                  ora_taf_function	=> undef,
-                 ora_taf_sleep		=> undef,
-
                  };
     }
 
@@ -595,8 +606,9 @@ SQL
 	my $dbh  = shift;
 	my $attr = ( ref $_[0] eq 'HASH') ? $_[0] : {
 	    'TABLE_SCHEM' => $_[1],'TABLE_NAME' => $_[2],'COLUMN_NAME' => $_[3] };
+	my $ora_server_version = ora_server_version($dbh);
 	my($typecase,$typecaseend) = ('','');
-	if (ora_server_version($dbh)->[0] >= 8) {
+	if ($ora_server_version->[0] >= 8) {
 	    $typecase = <<'SQL';
 CASE WHEN tc.DATA_TYPE LIKE 'TIMESTAMP% WITH% TIME ZONE' THEN 95
      WHEN tc.DATA_TYPE LIKE 'TIMESTAMP%'                 THEN 93
@@ -606,6 +618,7 @@ ELSE
 SQL
 	    $typecaseend = 'END';
 	}
+  my $char_length = $ora_server_version->[0] < 9 ? 'DATA_LENGTH':'CHAR_LENGTH';
 	my $SQL = <<"SQL";
 SELECT *
   FROM
@@ -650,7 +663,10 @@ SELECT *
                         )
          , 'FLOAT'    , tc.DATA_PRECISION
          , 'DATE'     , 19
-         , 'VARCHAR2' , tc.CHAR_LENGTH 
+         , 'VARCHAR2' , tc.$char_length
+         , 'CHAR'     , tc.$char_length
+         , 'NVARCHAR2', tc.$char_length
+         , 'NCHAR'    , tc.$char_length
          , tc.DATA_LENGTH
          )                   COLUMN_SIZE
        , decode( tc.DATA_TYPE
@@ -729,7 +745,38 @@ SQL
 	    }
 	}
 	$SQL .= " ORDER BY TABLE_SCHEM, TABLE_NAME, ORDINAL_POSITION\n";
-	my $sth = $dbh->prepare( $SQL ) or return undef;
+
+
+        # Since DATA_DEFAULT is a LONG, DEFAULT values longer than 80 chars will
+        # throw an ORA-24345 by default; so we check if LongReadLen is set at
+        # the default value, and if so, set it to something less likely to fail
+        # in common usage.
+        #
+        # We do not set LongTruncOk however as that would make COLUMN_DEF
+        # incorrect, in those (extreme!) cases it would be better if the user
+        # sets LongReadLen herself.
+
+        my $long_read_len = $dbh->FETCH('LongReadLen');
+
+        my ($sth, $exc);
+
+        {
+            local $@;
+            eval {
+                $dbh->STORE(LongReadLen => 1024*1024) if $long_read_len == 80;
+                $sth = $dbh->prepare( $SQL );
+            };
+            $exc = $@;
+        }
+        if ($exc) {
+            $dbh->STORE(LongReadLen => 80) if $long_read_len == 80;
+            die $exc;
+        }
+
+        $dbh->STORE(LongReadLen => 80) if $long_read_len == 80;
+
+        return undef if not $sth;
+
 	$sth->execute( @BindVals ) or return undef;
 	$sth;
     }
@@ -937,27 +984,29 @@ SQL
     }
 
     sub dbms_msgpipe_ack {
-	my $dbh = shift;
-	my $msg = shift;
-	my $sth = $dbh->prepare_cached(q{
-	    begin dbms_msgpipe.acknowledge(:returnpipe, :errormsg, :param); end;
-	}) or return;
-	$sth->bind_param_inout(":returnpipe", \$msg->[0],   30);
-	$sth->bind_param_inout(":proc",       \$msg->[1],   30);
-	$sth->bind_param_inout(":param",      \$msg->[2], 4000);
-	$sth->execute or return undef;
-	return 1;
+        my $dbh = shift;
+        my $msg = shift;
+        my $sth = $dbh->prepare_cached(q{
+	    begin dbms_msgpipe.acknowledge(:returnpipe, :errormsg, :param); end;}) or return;
+        $sth->bind_param_inout(":returnpipe", \$msg->[0],   30);
+        $sth->bind_param_inout(":proc",       \$msg->[1],   30);
+        $sth->bind_param_inout(":param",      \$msg->[2], 4000);
+        $sth->execute or return undef;
+        return 1;
     }
 
     sub ora_server_version {
-	my $dbh = shift;
-	return $dbh->{ora_server_version} if defined $dbh->{ora_server_version};
-	$dbh->{ora_server_version} =
-	   [ split /\./, $dbh->selectrow_array(<<'SQL', undef, 'Oracle%', 'Personal Oracle%') .''];
-SELECT version
-  FROM product_component_version
- WHERE product LIKE ? or product LIKE ?
+        my $dbh = shift;
+        return $dbh->{ora_server_version} if defined $dbh->{ora_server_version};
+        my $banner = $dbh->selectrow_array(<<'SQL', undef, 'Oracle%', 'Personal Oracle%');
+SELECT banner
+  FROM v$version
+  WHERE banner LIKE ? OR banner LIKE ?
 SQL
+        if (defined $banner) {
+            my @version = $banner =~ /(?:^|\s)(\d+)\.(\d+)\.(\d+)\.(\d+)\.(\d+)(?:\s|$)/;
+            $dbh->{ora_server_version} = \@version if @version;
+        }
     }
 
     sub ora_nls_parameters {
@@ -999,7 +1048,8 @@ SQL
 }   # end of package DBD::Oracle::db
 
 
-{   package DBD::Oracle::st; # ====== STATEMENT ======
+{   package                     # hide from PAUSE
+    DBD::Oracle::st;            # ====== STATEMENT ======
 
 
    sub bind_param_inout_array {
@@ -1027,7 +1077,7 @@ SQL
     sub execute_for_fetch {
        my ($sth, $fetch_tuple_sub, $tuple_status) = @_;
        my $row_count = 0;
-       my $err_count = 0;
+       my $err_total = 0;
        my $tuple_count="0E0";
        my $tuple_batch_status;
        my $dbh = $sth->{Database};
@@ -1047,6 +1097,7 @@ SQL
            }
            last unless @tuple_batch;
 
+           my $err_count = 0;
            my $res = ora_execute_array($sth,
                                            \@tuple_batch,
                                            scalar(@tuple_batch),
@@ -1059,7 +1110,9 @@ SQL
                 $row_count = undef;
            }
 
-           $tuple_count+=@$tuple_batch_status;
+           $err_total += $err_count;
+
+           $tuple_count+=@tuple_batch;
            push @$tuple_status, @$tuple_batch_status
                 if defined($tuple_status);
 
@@ -1067,27 +1120,24 @@ SQL
 
        }
        #error check here
-       return $sth->set_err($DBI::stderr, "executing $tuple_count generated $err_count errors")
-       	   if $err_count;
+       return $sth->set_err($DBI::stderr, "executing $tuple_count generated $err_total errors")
+       	   if $err_total;
 
-       if (!wantarray) {
-	   return $tuple_count;
-       }
-
-       return ($tuple_count, defined $row_count ? $row_count : undef);
-
-
+       return wantarray
+                ? ($tuple_count, defined $row_count ? $row_count : undef)
+                : $tuple_count;
 
     }
 
     sub private_attribute_info {
-	return {ora_lengths		=> undef,
-		ora_types		=> undef,
-		ora_rowid		=> undef,
-		ora_est_row_width	=> undef,
-		ora_type		=> undef,
-		ora_fail_over		=> undef,
-    };
+        return { map { $_ => undef } qw/
+            ora_lengths
+            ora_types
+            ora_rowid
+            ora_est_row_width
+            ora_type
+            ora_fail_over
+        / };
    }
 }
 
@@ -1095,9 +1145,15 @@ SQL
 
 __END__
 
+=pod
+
 =head1 NAME
 
 DBD::Oracle - Oracle database driver for the DBI module
+
+=head1 VERSION
+
+version 1.56
 
 =head1 SYNOPSIS
 
@@ -1112,78 +1168,22 @@ DBD::Oracle - Oracle database driver for the DBI module
   # for some advanced uses you may need Oracle type values:
   use DBD::Oracle qw(:ora_types);
 
-
 =head1 DESCRIPTION
 
 DBD::Oracle is a Perl module which works with the DBI module to provide
 access to Oracle databases.
 
-=head1 Module Documentation
-
-
 This documentation describes driver specific behaviour and restrictions. It is
 not supposed to be used as the only reference for the user. In any case
-consult the B<DBI> documentation first!
+consult the L<DBI> documentation first!
 
-=for html <a href="http://search.cpan.org/~timb/DBI/DBI.pm">Latest DBI documentation.</a>
-
-=head1 Which version DBD::Oracle is for me?
-
-From version 1.25 onwards DBD::Oracle will only support Oracle clients
-9.2 or greater. Support for ProC connections was dropped in 1.29.
-
-If you are still stuck with an older version of Oracle or its client you might want to look at the table below.
-
-  +---------------------+-----------------------------------------------------+
-  |                     |                   Oracle Version                    |
-  +---------------------+----+-------------+---------+------+--------+--------+
-  | DBD::Oracle Version | <8 | 8.0.3~8.0.6 | 8iR1~R2 | 8iR3 |   9i   | 9.2~11 |
-  +---------------------+----+-------------+---------+------+--------+--------+
-  |      0.1~16         | Y  |      Y      |    Y    |  Y   |    Y   |    Y   |
-  +---------------------+----+-------------+---------+------+--------+--------+
-  |      1.17           | Y  |      Y      |    Y    |  Y   |    Y   |    Y   |
-  +---------------------+----+-------------+---------+------+--------+--------+
-  |      1.18           | N  |      N      |    N    |  Y   |    Y   |    Y   |
-  +---------------------+----+-------------+---------+------+--------+--------+
-  |      1.19           | N  |      N      |    N    |  Y   |    Y   |    Y   |
-  +---------------------+----+-------------+---------+------+--------+--------+
-  |      1.20           | N  |      N      |    N    |  Y   |    Y   |    Y   |
-  +---------------------+----+-------------+---------+------+--------+--------+
-  |      1.21~1.24      | N  |      N      |    N    |  N   |    Y   |    Y   |
-  +---------------------+----+-------------+---------+------+--------+--------+
-  |      1.25+          | N  |      N      |    N    |  N   |    N   |    Y   |
-  +---------------------+----+-------------+---------+------+--------+--------+
-
-As there are dozens of different versions of Oracle's clients this
-list does not include all of them, just the major released versions of
-Oracle.
-
-Note that one can still connect to any Oracle version with the older
-DBD::Oracle versions the only problem you will have is that some of
-the newer OCI and Oracle features available in later DBD::Oracle
-releases will not be available to you.
-
-So to make a short story a little longer;
-
-  1) If you are using Oracle 7 or early 8 DB and you can manage to get a 9 client and you can use
-     any DBD::Oracle version.
-  2) If you have to use an Oracle 7 client then DBD::Oracle 1.17 should work
-  3) Same thing for 8 up to R2, use 1.17, if you are lucky and have the right patch-set you might
-     go with 1.18.
-  4) For 8iR3 you can use any of the DBD::Oracle versions up to 1.21. Again this depends on your
-     patch-set, If you run into trouble go with 1.19
-  5) After 9.2 you can use any version you want.
-  6) For you Luddites out there ORAPERL still works and is still included but not updated or supported anymore and was removed in 1.29.
-  7) It seems that the 10g client can only connect to 9 and 11 DBs while the 9 can go back to 7
-     and even get to 10. I am not sure what the 11g client can connect to.
-
-=head1 Constants
+=head1 CONSTANTS
 
 =over 4
 
 =item :ora_session_modes
 
-ORA_SYSDBA ORA_SYSOPER
+ORA_SYSDBA ORA_SYSOPER ORA_SYSASM
 
 =item :ora_types
 
@@ -1240,147 +1240,52 @@ These constants are used to set the orientation of a fetch on a scrollable curso
 =item :ora_fail_over
 
   OCI_FO_END OCI_FO_ABORT OCI_FO_REAUTH OCI_FO_BEGIN OCI_FO_ERROR
-  OCI_FO_NONE OCI_FO_SESSION OCI_FO_SELECT OCI_FO_TXNAL
+  OCI_FO_NONE OCI_FO_SESSION OCI_FO_SELECT OCI_FO_TXNAL OCI_FO_RETRY
 
 =back
 
-=head1 The DBI Class
+=head1 DBI CLASS METHODS
 
-=head2 DBI Class Methods
+=head2 B<connect>
 
-=head3 B<connect>
+This method creates a database handle by connecting to a database, and is the DBI equivalent of the "new" method.
+To open a connection to an Oracle database you need to specify a database connection string (URL), username and password.
 
-This method creates a database handle by connecting to a database, and is the DBI
-equivalent of the "new" method.
+The connection string is always of the form: "dbi:Oracle:<db identifier>"
+There are several ways to identify a database:
 
-This is a topic which often causes problems. Mainly due to Oracle's many
-and sometimes complex ways of specifying and connecting to databases.
-James Taylor and Lane Sharman have contributed much of the text in
-this section. Unfortunately it is only really relative for connecting into older Oracle (<9) versions.
-Most of this stuff is well out of date  but it will be left in for now.
-See the next section L</Connecting To Oracle> for some more up to date connection hints.
+=over
 
-=head4 Connecting without environment variables or tnsnames.ora file
+=item 1
 
-If you use the C<host=$host;sid=$sid> style syntax, for example:
+If the database is local, specifying the SID or service name will be enough.
 
-  $dbh = DBI->connect("dbi:Oracle:host=myhost.com;sid=ORCL", $user, $passwd);
+=item 2
 
-then DBD::Oracle will construct a full connection descriptor string
-for you and Oracle will not need to consult the tnsnames.ora file.
+If the database is defined in a TNSNAMES.ORA file, you can use the service name given in the file
 
-If a C<port> number is not specified then the descriptor will try both
-1526 and 1521 in that order (e.g., new then old).  You can check which
-port(s) are in use by typing "$ORACLE_HOME/bin/lsnrctl stat" on the server.
+=item 3
 
-=head4 Oracle Environment Variables
+To connect without TNSNAMES.ORA file, you can use an EZCONNECT url, of the form:
+//host[:port][/service_name]
 
-Oracle typically no longer needs two environment variables to specify default
-connections: ORACLE_SID and TWO_TASK.
+=back
 
-ORACLE_SID is really unnecessary to set since TWO_TASK provides the
-same functionality in addition to allowing remote connections.
+If port name is not specified, 1521 is the default. If service name is not specified, the hostname will be used as a service name.
 
-  % setenv //xxx.yyy.zzz:1521/ORACLE_SID           # for csh shell
-  $ TWO_TASK=T:hostname:ORACLE_SID export TWO_TASK   # for sh shell
+The following examples show several ways a connection can be created:
 
-  % sqlplus username/password
+  $dbh = DBI->connect('dbi:Oracle:DB','username','password');
 
-Note that if you have *both* local and remote databases, and you
-have ORACLE_SID *and* TWO_TASK set, and you don't specify a fully
-qualified connect string on the command line, TWO_TASK takes precedence
-over ORACLE_SID (i.e. you get connected to remote system).
+  $dbh = DBI->connect('dbi:Oracle:DB','username/password','');
 
-  TWO_TASK=P:sid
+  $dbh = DBI->connect('dbi:Oracle:','username@DB','password');
 
-will use the pipe driver for local connections using SQL*Net v1.
+  $dbh = DBI->connect('dbi:Oracle:host=foobar;sid=DB;port=1521', 'scott/tiger', '');
 
-  TWO_TASK=T:machine:sid
+  $dbh = DBI->connect("dbi:Oracle://myhost:1522/ORCL",'username', 'password');
 
-will use TCP/IP (or D for DECNET, etc.) for remote SQL*Net v1 connection.
-
-  TWO_TASK=dbname
-
-will use the info stored in the SQL*Net v2 F<tnsnames.ora>
-configuration file for local or remote connections.
-
-Support for 'T:' syntax of Oracle SQL*Net V1 is only supported on older 7 clients and
-I have my doubts it will even work if the DB or client has been patched and I know it
-will not work on any later clients.
-
-The ORACLE_HOME environment variable should be set correctly.
-In general, the value used should match the version of Oracle that
-was used to build DBD::Oracle.  If using dynamic linking then
-ORACLE_HOME should match the version of Oracle that will be used
-to load in the Oracle client libraries (via LD_LIBRARY_PATH, ldconfig,
-or similar on Unix).
-
-ORACLE_HOME can be left unset if you aren't using any of Oracle's
-executables, but it is I<not> recommended and error messages may not display.
-It should be set to the ORACLE_HOME directory of the version of Oracle
-that DBD::Oracle was compiled with.
-
-Discouraging the use of ORACLE_SID makes it easier on the users to see
-what is going on. (It's unfortunate that TWO_TASK couldn't be renamed,
-since it makes no sense to the end user, and doesn't have the ORACLE prefix).
-
-Also remember that depending on the operating system you are using
-the differing "ORACLE" environment variables may be case sensitive, so if you are not connecting
-as you should double check the case of both the variable and its value.
-
-=head4 Connection Examples Using DBD::Oracle
-
-First, how to connect to a local database I<without> using a Listener:
-
-  $dbh = DBI->connect('dbi:Oracle:SID','scott', 'tiger');
-
-you can also leave the SID empty:
-
-  $dbh = DBI->connect('dbi:Oracle:','scott', 'tiger');
-
-in which case Oracle client code will use the ORACLE_SID environment
-variable (if the TWO_TASK environment varariable is not defined).
-
-Below are various ways of connecting to an Oracle database using
-SQL*Net 1.x and SQL*Net 2.x.  "Machine" is the computer the database is
-running on, "SID" is the SID of the database, "DB" is the SQL*Net 2.x
-connection descriptor for the database.
-
-B<Note:> Some of these formats may not work with Oracle 9+.
-
-  BEGIN {
-     $ENV{ORACLE_HOME} = '/home/oracle/product/10.x.x';
-     $ENV{TWO_TASK}    = 'DB';
-  }
-  $dbh = DBI->connect('dbi:Oracle:','scott', 'tiger');
-  #  - or -
-  $dbh = DBI->connect('dbi:Oracle:','scott/tiger');
-
-Refer to your Oracle documentation for valid values of TWO_TASK.
-
-Here are some variations (not setting TWO_TASK) in order of preference:
-
-  $dbh = DBI->connect('dbi:Oracle:DB','username','password')
-
-  $dbh = DBI->connect('dbi:Oracle:DB','username/password','')
-
-  $dbh = DBI->connect('dbi:Oracle:','username@DB','password')
-
-  $dbh = DBI->connect('dbi:Oracle:host=foobar;sid=ORCL;port=1521', 'scott/tiger', '')
-
-  $dbh = DBI->connect('dbi:Oracle:', q{scott/tiger@(DESCRIPTION=
-  (ADDRESS=(PROTOCOL=TCP)(HOST= foobar)(PORT=1521))
-  (CONNECT_DATA=(SID=ORCL)))}, "")
-
-If you are having problems with login taking a long time (>10 seconds say)
-then you might have tripped up on an Oracle bug. You can try using one
-of the ...@DB variants as a workaround. e.g.,
-
-  $dbh = DBI->connect('','username/password@DB','');
-
-On the other hand, that may cause you to trip up on another Oracle bug
-that causes alternating connection attempts to fail! (in reality only
-a small proportion of people experience these problems)
+=head3 OS authentication
 
 To connect to a local database with a user which has been set up to
 authenticate via the OS ("ALTER USER username IDENTIFIED EXTERNALLY"):
@@ -1394,121 +1299,37 @@ That only works for local databases. (Authentication to remote Oracle
 databases using your Unix login name without a password is possible
 but it is not secure and not recommended so not documented here.
 
+=head3 Oracle Environment Variables
 
-=head4 Connecting To Oracle
+To use DBD::ORACLE to connect to an Oracle database, ORACLE_HOME environment variable should be set correctly.
+In general, the value used should match the version of Oracle that was used to build DBD::Oracle.  If using dynamic linking then ORACLE_HOME should match the version of Oracle that will be used to load in the Oracle client libraries (via LD_LIBRARY_PATH, ldconfig, or similar on Unix).
 
-If you are reading this it is assumed that you have successfully
-installed DBD::Oracle and you are having some problems connecting to
-Oracle.
+Oracle can use two environment variables to specify default connections: ORACLE_SID and TWO_TASK.
 
-First off you will have to tell DBD::Oracle where the binaries reside
-for the Oracle client it was compiled against.  This is the case when
-you encounter a
+To use them, specify either a local SID or service name, or a service name that is specified in the TNSNAMES.ORA file.
 
- DBI connect('','system',...) failed: ERROR OCIEnvNlsCreate.
+Note that if you have *both* local and remote databases, and you have ORACLE_SID *and* TWO_TASK set, and you don't specify a fully
+qualified connect string on the command line, TWO_TASK takes precedence over ORACLE_SID (i.e. you get connected to remote system).
 
-error in Linux or in Windows when you get
+It is highly recommended not to rely on environment variables and to always explicitly specify the SID in the connection string. This can prevent serious mistakes such as dropping a schema in the wrong database, and generally makes debugging and troubleshooting easier.
 
-  OCI.DLL not found
+Also remember that depending on the operating system you are using the differing "ORACLE" environment variables may be case sensitive, so if you are not connecting as you should double check the case of both the variable and its value.
 
-The solution to this problem in the case of Linux is to ensure your
-'ORACLE_HOME' (or LD_LIBRARY_PATH for InstantClient) environment
-variable points to the correct directory.
+=head3 Timezones
 
-  export ORACLE_HOME=/app/oracle/product/xx.x.x
+If the query is run through SQL*Net (mostly queries that are executed on remote servers), Oracle will return the time zone based on the setting of the UNIX environment variable "TZ" for the user who started the listener.
 
-For Windows the solution is to add this value to you PATH
+If the query is run locally, Oracle will return the time zone based on the "TZ" environment variable setting of the user running
+the query.
 
-  PATH=c:\app\oracle\product\xx.x.x;%PATH%
+With local queries, you can change the time zone for a particular user by simply changing the setting of "TZ". To check the current setting,
+issue the UNIX "date" command.
 
+=head3 Oracle DRCP
 
-If you get past this stage and get a
-
-  ORA-12154: TNS:could not resolve the connect identifier specified
-
-error then the most likely cause is DBD::ORACLE cannot find your .ORA
-(F<TNSNAMES.ORA>, F<LISTENER.ORA>, F<SQLNET.ORA>) files. This can be
-solved by setting the TNS_ADMIN environment variable to the directory
-where these files can be found.
-
-If you get to this stage and you have either one of the following
-errors;
-
-  ORA-12560: TNS:protocol adapter error
-  ORA-12162: TNS:net service name is incorrectly specified
-
-usually means that DBD::Oracle can find the listener but the it cannot connect to the DB because the listener cannot find the DB you asked for.
-
-=head4 Connection Examples Using DBD::Oracle
-
-It is best to not use ORACLE_SID or TWO_TASK as both of these are rather out of date. You are better off keeping it simple like the following examples
-
-  $dbh = DBI->connect('dbi:Oracle:DB','username','password');
-
-  $dbh = DBI->connect('dbi:Oracle:DB','username/password','');
-
-  $dbh = DBI->connect('dbi:Oracle:','username@DB','password');
-
-  $dbh = DBI->connect('dbi:Oracle:host=foobar;sid=DB;port=1521', 'scott/tiger', '');
-
-
-For those who really want to use ORACLE_SID and TWO_TASK here are examples of it in use;
-
-Given this TNS entry;
-
- DB.TEST =
-    (DESCRIPTION =
-         (ADDRESS =
-            (PROTOCOL = TCP)
-            (HOST = xxx.xxx.xxx.xx)
-            (PORT = 1523))
-         (CONNECT_DATA =      (SID = DB)    )
-)
-
-and this code
-
-  BEGIN {
-     $ENV{ORACLE_SID} = 'DB';
-  }
-
-  $dbh = DBI->connect('dbi:Oracle:','username/password','');
-
-you will be able to connect to DB. Note this may not work for Windows.
-
-TWO_TASK works the same way except it should override the value in ORACLE_SID so this
-
-  BEGIN {
-     $ENV{ORACLE_SID} = 'DB';
-     $ENV{TWO_TASK}  = 'DB.TEST';
-
-  }
-
-  $dbh = DBI->connect('dbi:Oracle:','username/password','');
-
-will work as well. Note this may not work for Windows.
-
-=head4 Timezones
-
-If TWO_TASK isn't set, Oracle uses the TZ variable from the local environment.
-
-If TWO_TASK IS set, Oracle uses the TZ variable of the listener process
-running on the server.
-
-You could have multiple listeners, each with their own TZ, and assign
-users to the appropriate listener by setting TNS_ADMIN to a directory
-that contains a tnsnames.ora file that points to the port that their
-listener is on.
-
-[Brad Howerter, who supplied this info said: "I've done this to simulate
-running a Perl script at the end of the previous month even though it
-was the 6th of the new month.  I had the dba start up a listener with
-TZ=X+144.  (144 hours = 6 days)"]
-
-=head4 Oracle DRCP
-
-DBD::Oracle now supports DRCP (Database Resident Connection Pool) so
-if you have an 11.2 database and DRCP is enabled you can now direct
-all of your connections to it by simply adding ':POOLED' to the SID or
+DBD::Oracle supports DRCP (Database Resident Connection Pool) so
+if you have an 11.2 database and DRCP is enabled you can direct
+all of your connections to it by adding ':POOLED' to the SID or
 setting a connection attribute of ora_drcp, or set the SERVER=POOLED
 when using a TNSENTRY style connection or even by setting an
 environment variable ORA_DRCP.  All of which are demonstrated below;
@@ -1538,16 +1359,16 @@ You can find a white paper on setting up DRCP and its advantages at L<http://www
 Please note that DRCP support in DBD::Oracle is relatively new so the
 mechanics or its implementation are subject to change.
 
-=head4 TAF (Transparent Application Failover)
+=head3 TAF (Transparent Application Failover)
 
 Transparent Application Failover (TAF) is the feature in OCI that
 allows for clients to automatically reconnect to an instance in the
 event of a failure of the instance. The reconnect happens
 automatically from within the OCI (Oracle Call Interface) library.
 DBD::Oracle now supports a callback function that will fire when a TAF
-event takes place. The main use of the callback is to give your
-program the opportunity to inform the user that a failover is taking
-place.
+event takes place. You may use the callback to inform the
+user a failover is taking place or to setup the session again
+once the failover has succeeded.
 
 You will have to set up TAF on your instance before you can use this
 callback.  You can test your instance to see if you can use TAF
@@ -1555,9 +1376,13 @@ callback with
 
   $dbh->ora_can_taf();
 
-If you try to set up a callback without it being enabled DBD::Oracle will croak.
+If you try to set up a callback without it being enabled DBD::Oracle
+will croak.
 
-It is outside the scope of this documents to go through all of the
+NOTE: Currently, you must enable TAF during DBI's connect. However
+once enabled you can change the TAF settings.
+
+It is outside the scope of this document to go through all of the
 possible TAF situations you might want to set up but here is a simple
 example:
 
@@ -1581,12 +1406,18 @@ attempts another event.
   #import the ora fail over constants
 
   #set up TAF on the connection
-  my $dbh = DBI->connect('dbi:Oracle:XE','hr','hr',{ora_taf=>1,taf_sleep=>5,ora_taf_function=>'handle_taf'});
+  # NOTE since DBD::Oracle uses call_pv you may need to pass a full
+  # name space as the function e.g., 'main::handle_taf'
+  # NOTE from 1.49_00 ora_taf_function can accept a code ref as well
+  #      as a sub name as it now uses call_sv
+  my $dbh = DBI->connect('dbi:Oracle:XE', 'hr', 'hr',
+                         {ora_taf_function => 'main::handle_taf'});
 
   #create the perl TAF event function
 
   sub handle_taf {
-    my ($fo_event,$fo_type) = @_;
+    # NOTE from 1.49_00 the $dbh handle was passed to your callback
+    my ($fo_event,$fo_type, $dbh) = @_;
     if ($fo_event == OCI_FO_BEGIN){
 
       print " Instance Unavailable Please stand by!! \n";
@@ -1609,7 +1440,9 @@ attempts another event.
        print " Failed over user. Resuming services\n";
     }
     elsif ($fo_event == OCI_FO_ERROR){
-       print " Failover error Sleeping...\n";
+       print " Failover error ...\n";
+       sleep 5;                 # sleep before having another go
+       return OCI_FO_RETRY;
     }
     else {
        printf(" Bad Failover Event: %d.\n",  $fo_event);
@@ -1633,95 +1466,12 @@ The TAF events are as follows
   OCI_FO_ERROR also indicates that failover was unsuccessful, but it gives the application the opportunity to handle the error and retry failover.
   OCI_FO_REAUTH indicates that you have multiple authentication handles and failover has occurred after the original authentication. It indicates that a user handle has been re-authenticated. To find out which, the application checks the OCI_ATTR_SESSION attribute of the service context handle (which is the first parameter).
 
-
-=head4 Optimizing Oracle's listener
-
-[By Lane Sharman <lane@bienlogic.com>] I spent a lot of time optimizing
-listener.ora and I am including it here for anyone to benefit from. My
-connections over tnslistener on the same humble Netra 1 take an average
-of 10-20 milli seconds according to tnsping. If anyone knows how to
-make it better, please let me know!
-
-  LISTENER =
-   (ADDRESS_LIST =
-    (ADDRESS =
-      (PROTOCOL = TCP)
-      (Host = aa.bbb.cc.d)
-      (Port = 1521)
-      (QUEUESIZE=10)
-    )
-   )
-
-  STARTUP_WAIT_TIME_LISTENER = 0
-  CONNECT_TIMEOUT_LISTENER = 10
-  TRACE_LEVEL_LISTENER = OFF
-  SID_LIST_LISTENER =
-   (SID_LIST =
-    (SID_DESC =
-      (SID_NAME = xxxx)
-      (ORACLE_HOME = /xxx/local/oracle7-3)
-        (PRESPAWN_MAX = 40)
-        (PRESPAWN_LIST=
-        (PRESPAWN_DESC=(PROTOCOL=tcp) (POOL_SIZE=40) (TIMEOUT=120))
-      )
-     )
-   )
-
-1) When the application is co-located on the host and there is no need for
-outside SQLNet connectivity, stop the listener. You do not need it. Get
-your application/cgi/whatever working using pipes and shared memory. I am
-convinced that this is one of the connection bugs (sockets over the same
-machine). Note the $ENV{ORAPIPES} env var.  The essential code to do
-this at the end of this section.
-
-2) Be careful in how you implement the multi-threaded server. Currently I
-am not using it in the initxxxx.ora file but will be doing some more testing.
-
-3) Be sure to create user rollback segments and use them; do not use the
-system rollback segments; however, you must also create a small rollback
-space for the system as well.
-
-5) Use large tuning settings and get lots of RAM. Check out all the
-parameters you can set in v$parameters because there are quite a few not
-documented you may to set in your initxxx.ora file.
-
-6) Use svrmgrl to control oracle from the command line. Write lots of small
-SQL scripts to get at V$ info.
-
-  use DBI;
-  # Environmental variables used by Oracle
-  $ENV{ORACLE_SID}   = "xxx";
-  $ENV{ORACLE_HOME}  = "/opt/oracle7";
-  $ENV{EPC_DISABLED} = "TRUE";
-  $ENV{ORAPIPES} = "V2";
-  my $dbname = "xxx";
-  my $dbuser = "xxx";
-  my $dbpass = "xxx";
-  my $dbh = DBI->connect("dbi:Oracle:$dbname", $dbuser, $dbpass)
-             || die "Unable to connect to $dbname: $DBI::errstr\n";
-
-=head4 Oracle utilities
-
-If you are still having problems connecting then the Oracle adapters
-utility may offer some help. Run these two commands:
-
-  $ORACLE_HOME/bin/adapters
-  $ORACLE_HOME/bin/adapters $ORACLE_HOME/bin/sqlplus
-
-and check the output. The "Protocol Adapters" section should be the
-same.  It should include at least "IPC Protocol Adapter" and "TCP/IP
-Protocol Adapter".
-
-If it generates any errors which look relevant then please talk to your
-Oracle technical support (and not the dbi-users mailing list). Thanks.
-Thanks to Mark Dedlow for this information.
-
-=head3 Private Connect Attributes
+=head3 Connect Attributes
 
 =head4 ora_ncs_buff_mtpl
 
-You can now customize the size of the buffer when selecting LOBs with
-the built in AUTO Lob.  The default value is 4 which is probably
+You can customize the size of the buffer when selecting LOBs with
+the built-in AUTO Lob.  The default value is 4 which is probably
 excessive for most situations but is needed for backward
 compatibility.  If you not converting between a NCS on the DB and the
 Client then you might want to set this to 1 to reduce memory usage.
@@ -1730,14 +1480,11 @@ This value can also be specified with the C<ORA_DBD_NCS_BUFFER>
 environment variable in which case it sets the value at the connect
 stage.
 
-See more details in the LOB section of the POD
-
 =head4 ora_drcp
 
-If you have an 11.2 or greater database your can utilize the DRCP by setting
-this attribute to 1 at connect time.
+For Oracle 11.2 or greater.
 
-This value can also be set with the C<ORA_DRCP> environment variable.
+Set to I<1> to enable DRCP. Can also be set via the C<ORA_DRCP> environment variable.
 
 =head4 ora_drcp_class
 
@@ -1791,35 +1538,44 @@ variable.
 
 =head4 ora_taf
 
-If your Oracle instance has been configured to use TAF events you can
-enable the TAF callback by setting this value to anything other than 0.
+This attribute was removed in 1.49_00 as it was redundant. To
+enable TAF simply set L</ora_taf_function>.
 
 =head4 ora_taf_function
 
-The name of the Perl subroutine that will be called from OCI when a
-TAF event occurs. You must supply a perl function to use the callback
-and it will always receive two parameters, the failover event value
-and the failover type. Below is an example of a TAF function
+If your Oracle instance has been configured to use TAF events you can
+enable the TAF callback by setting this option.
+
+The name of the Perl subroutine (or a code ref from 1.49_00) that will
+be called from OCI when a TAF event occurs. You must supply a perl
+function to use the callback and it will always receive at least two
+parameters; the failover event value and the failover type. From
+1.49_00 the dbh is passed as the third argument. Below is an example
+of a TAF function
 
   sub taf_event{
-     my ($event, $type) = @_;
+     # NOTE from 1.49_00 the $dbh handle is passed to the callback
+     my ($event, $type, $dbh) = @_;
 
      print "My TAF event=$event\n";
      print "My TAF type=$type\n";
      return;
   }
 
+Note if passing a sub name you will probably have to use the full name
+space when setting the TAF function e.g., 'main::my_taf_function' and
+not just 'my_taf_function'.
+
 =head4 ora_taf_sleep
 
-The amount of time in seconds the OCI client will sleep between attempting
-successive failover events when the event is OCI_FO_ERROR.
-
+This attribute was removed in 1.49_00 as it was redundant. If you want
+to sleep between retries simple add a sleep to your callback sub.
 
 =head4 ora_session_mode
 
-The ora_session_mode attribute can be used to connect with SYSDBA
-authorization and SYSOPER authorization.
-The ORA_SYSDBA and ORA_SYSOPER constants can be imported using
+The ora_session_mode attribute can be used to connect with SYSDBA,
+SYSOPER and ORA_SYSASM authorization.
+The ORA_SYSDBA, ORA_SYSOPER and ORA_SYSASM constants can be imported using
 
   use DBD::Oracle qw(:ora_session_modes);
 
@@ -1862,6 +1618,8 @@ monitoring and performance tuning purposes. For example:
 
 The maximum size is 48 bytes.
 
+NOTE: You will need an Oracle client 10.1 or later to use this.
+
 =head4 ora_driver_name
 
 For 11g and later you can now set the name of the driver layer using OCI.
@@ -1870,7 +1628,6 @@ can enter up to 8 characters.  If none is enter then this will default to
 DBDOxxxx where xxxx is the current version number. This value can be
 retrieved on the server side using V$SESSION_CONNECT_INFO or
 GV$SESSION_CONNECT_INFO
-
 
   my $dbh = DBI->connect($dsn, $user, $passwd, { ora_driver_name => 'ModPerl_1' });
 
@@ -1884,6 +1641,8 @@ retrieved on the server side from the C<V$SESSION>a view.
   my $dbh = DBI->connect($dsn, $user, $passwd, { ora_client_info => 'Remote2' });
 
   $dbh->{ora_client_info} = "Remote2";
+
+NOTE: You will need an Oracle client 10.1 or later to use this.
 
 =head4 ora_client_identifier
 
@@ -1909,9 +1668,13 @@ on the server side using C<V$SESSION> view.
 
    $dbh->{ora_action} = "New Long Query 22";
 
+NOTE: You will need an Oracle client 10.1 or later to use this.
+
 =head4 ora_dbh_share
 
-Requires at least Perl 5.8.0 compiled with ithreads. Allows you to share
+Requires at least Perl 5.8.0 compiled with ithreads.
+
+Allows you to share
 database connections between threads. The first connect will make the
 connection, all following calls to connect with the same ora_dbh_share
 attribute will use the same database connection. The value must be a
@@ -1963,6 +1726,12 @@ or set it directly on the DB handle like this;
 
 In both cases the DBD::Oracle trace level is set to 6, which is the highest
 level tracing most of the calls to OCI.
+
+NOTE: In future versions of DBD::Oracle ora_verbose will be changed so
+that it is simply a switch to turn DBI's DBD tracing on or off.  A
+true value will turn it on and a false value will turn it off.  DBI's
+"DBD" tracing was not available when ora_verbose was created and
+ora_verbose adds an additional test to every trace test.
 
 =head4 ora_oci_success_warn
 
@@ -2040,7 +1809,6 @@ If the previous error was from a failed C<prepare> due to a syntax error,
 this attribute gives the offset into the C<Statement> attribute where the
 error was found.
 
-
 =head4 ora_array_chunk_size
 
 Due to OCI limitations, DBD::Oracle needs to buffer up rows of
@@ -2074,11 +1842,24 @@ For example:
 NOTE disabling the signal handlers the OCI library sets up may affect
 functionality in the OCI library.
 
-=head3 B<connect_cached>
+NOTE If you are using connect_cached then the above example will lead
+to DBI thinking each connection is different as an anonymous array reference
+is being used. To avoid this when using connect_cached you are advised
+to use:
 
-Implemented by DBI, no driver-specific impact. Please note that connect_cached as not been tested with DRCP.
+  my @ora_default_signals = (...);
+  $dbh = DBI->connect($dsn, $user, $passwd,
+      {ora_connect_with_default_signals => \@ora_default_signals});
 
-=head3 B<data_sources>
+In more recent Perl versions you could possibly make use of new state
+variables.
+
+=head2 B<connect_cached>
+
+Implemented by DBI, no driver-specific impact.
+Please note that connect_cached as not been tested with DRCP.
+
+=head2 B<data_sources>
 
   @data_sources = DBI->data_sources('Oracle');
   @data_sources = $dbh->data_sources();
@@ -2087,29 +1868,26 @@ Returns a list of available databases. You will have to set either the 'ORACLE_H
 'TNS_ADMIN' environment value to retrieve this list.  It will read these values from
 TNSNAMES.ORA file entries.
 
-
-
-
-=head2 Methods Common To All Handles
+=head1 METHODS COMMON TO ALL HANDLES
 
 For all of the methods below, B<$h> can be either a database handle (B<$dbh>)
 or a statement handle (B<$sth>). Note that I<$dbh> and I<$sth> can be replaced with
 any variable name you choose: these are just the names most often used. Another
 common variable used in this documentation is $I<rv>, which stands for "return value".
 
-=head3 B<err>
+=head2 B<err>
 
   $rv = $h->err;
 
 Returns the error code from the last method called.
 
-=head3 B<errstr>
+=head2 B<errstr>
 
   $str = $h->errstr;
 
 Returns the last error that was reported by Oracle. Starting with "ORA-00000" code followed by the error message.
 
-=head3 B<state>
+=head2 B<state>
 
   $str = $h->state;
 
@@ -2119,29 +1897,29 @@ Oracle hasn't supported SQLSTATE since the early versions OCI. It will return em
 While this method can be called as either C<< $sth->state >> or C<< $dbh->state >>, it
 is usually clearer to always use C<< $dbh->state >>.
 
-=head3 B<trace>
+=head2 B<trace>
 
 Implemented by DBI, no driver-specific impact.
 
-=head3 B<trace_msg>
+=head2 B<trace_msg>
 
 Implemented by DBI, no driver-specific impact.
 
-=head3 B<parse_trace_flag> and B<parse_trace_flags>
+=head2 B<parse_trace_flag> and B<parse_trace_flags>
 
 Implemented by DBI, no driver-specific impact.
 
-=head3 B<func>
+=head2 B<func>
 
 DBD::Oracle uses the C<func> method to support a variety of functions.
 
-=head3 B<Private database handle functions>
+=head2 B<Private database handle functions>
 
 Some of these functions are called through the method func()
 which is described in the DBI documentation. Any function that begins with ora_
 can be called directly.
 
-=head3 B<plsql_errstr>
+=head2 B<plsql_errstr>
 
 This function returns a string which describes the errors
 from the most recent PL/SQL function, procedure, package,
@@ -2171,7 +1949,7 @@ Example:
         die $msg if $msg;
     }
 
-=head3 B<dbms_output_enable / dbms_output_put / dbms_output_get>
+=head2 B<dbms_output_enable / dbms_output_put / dbms_output_get>
 
 These functions use the PL/SQL DBMS_OUTPUT package to store and
 retrieve text using the DBMS_OUTPUT buffer.  Text stored in this buffer
@@ -2210,7 +1988,7 @@ Example 2:
   # retrieve the string
   $date_string = $dbh->func( 'dbms_output_get' );
 
-=head3 B<dbms_output_enable ( [ buffer_size ] )>
+=head2 B<dbms_output_enable ( [ buffer_size ] )>
 
 This function calls DBMS_OUTPUT.ENABLE to enable calls to package
 DBMS_OUTPUT procedures GET, GET_LINE, PUT, and PUT_LINE.  Calls to
@@ -2221,7 +1999,7 @@ The buffer_size is the maximum amount of text that can be saved in the
 buffer and must be between 2000 and 1,000,000.  If buffer_size is not
 given, the default is 20,000 bytes.
 
-=head3 B<dbms_output_put ( [ @lines ] )>
+=head2 B<dbms_output_put ( [ @lines ] )>
 
 This function calls DBMS_OUTPUT.PUT_LINE to add lines to the buffer.
 
@@ -2232,7 +2010,7 @@ If any line causes buffer_size to be exceeded, a buffer overflow error
 is raised and the function call fails.  Some of the text might be in
 the buffer.
 
-=head3 B<dbms_output_get>
+=head2 B<dbms_output_get>
 
 This function calls DBMS_OUTPUT.GET_LINE to retrieve lines of text from
 the buffer.
@@ -2248,13 +2026,12 @@ Any text in the buffer after a call to DBMS_OUTPUT.GET_LINE or
 DBMS_OUTPUT.GET is discarded by the next call to DBMS_OUTPUT.PUT_LINE,
 DBMS_OUTPUT.PUT, or DBMS_OUTPUT.NEW_LINE.
 
-=head3 B<reauthenticate ( $username, $password )>
+=head2 B<reauthenticate ( $username, $password )>
 
 Starts a new session against the current database using the credentials
 supplied.
 
-
-=head3 B<private_attribute_info>
+=head2 B<private_attribute_info>
 
   $hashref = $dbh->private_attribute_info();
   $hashref = $sth->private_attribute_info();
@@ -2262,127 +2039,131 @@ supplied.
 Returns a hash of all private attributes used by DBD::Oracle, for either
 a database or a statement handle. Currently, all the hash values are undef.
 
-=head2 Attributes Common To All Handles
+=head1 ATTRIBUTES COMMON TO ALL HANDLES
 
-=head3 B<InactiveDestroy> (boolean)
+=head2 B<InactiveDestroy> (boolean)
 
 Implemented by DBI, no driver-specific impact.
 
-=head3 B<RaiseError> (boolean, inherited)
+=head2 B<RaiseError> (boolean, inherited)
 
 Forces errors to always raise an exception. Although it defaults to off, it is recommended that this
 be turned on, as the alternative is to check the return value of every method (prepare, execute, fetch, etc.)
 manually, which is easy to forget to do.
 
-=head3 B<PrintError> (boolean, inherited)
+=head2 B<PrintError> (boolean, inherited)
 
 Forces database errors to also generate warnings, which can then be filtered with methods such as
 locally redefining I<$SIG{__WARN__}> or using modules such as C<CGI::Carp>. This attribute is on
 by default.
 
-=head3 B<ShowErrorStatement> (boolean, inherited)
+=head2 B<ShowErrorStatement> (boolean, inherited)
 
 Appends information about the current statement to error messages. If placeholder information
 is available, adds that as well. Defaults to true.
 
-=head3 B<Warn> (boolean, inherited)
+=head2 B<Warn> (boolean, inherited)
 
 Enables warnings. This is on by default, and should only be turned off in a local block
 for a short a time only when absolutely needed.
 
-=head3 B<Executed> (boolean, read-only)
+=head2 B<Executed> (boolean, read-only)
 
 Indicates if a handle has been executed. For database handles, this value is true after the L</do> method has been called, or
 when one of the child statement handles has issued an L</execute>. Issuing a L</commit> or L</rollback> always resets the
 attribute to false for database handles. For statement handles, any call to L</execute> or its variants will flip the value to
 true for the lifetime of the statement handle.
 
-=head3 B<TraceLevel> (integer, inherited)
+=head2 B<TraceLevel> (integer, inherited)
 
 Sets the trace level, similar to the L</trace> method. See the sections on
 L</trace> and L</parse_trace_flag> for more details.
 
-=head3 B<Active> (boolean, read-only)
+=head2 B<Active> (boolean, read-only)
 
 Indicates if a handle is active or not. For database handles, this indicates if the database has
 been disconnected or not. For statement handles, it indicates if all the data has been fetched yet
 or not. Use of this attribute is not encouraged.
 
-=head3 B<Kids> (integer, read-only)
+=head2 B<Kids> (integer, read-only)
 
 Returns the number of child processes created for each handle type. For a driver handle, indicates the number
 of database handles created. For a database handle, indicates the number of statement handles created. For
 statement handles, it always returns zero, because statement handles do not create kids.
 
-=head3 B<ActiveKids> (integer, read-only)
+=head2 B<ActiveKids> (integer, read-only)
 
 Same as C<Kids>, but only returns those that are active.
 
-=head3 B<CachedKids> (hash ref)
+=head2 B<CachedKids> (hash ref)
 
 Returns a hashref of handles. If called on a database handle, returns all statement handles created by use of the
 C<prepare_cached> method. If called on a driver handle, returns all database handles created by the L</connect_cached>
 method.
 
-=head3 B<ChildHandles> (array ref)
+=head2 B<ChildHandles> (array ref)
 
 Implemented by DBI, no driver-specific impact.
 
-=head3 B<PrintWarn> (boolean, inherited)
+=head2 B<PrintWarn> (boolean, inherited)
 
 Implemented by DBI, no driver-specific impact.
 
-=head3 B<HandleError> (boolean, inherited)
+=head2 B<HandleError> (boolean, inherited)
 
 Implemented by DBI, no driver-specific impact.
 
-=head3 B<HandleSetErr> (code ref, inherited)
+=head2 B<HandleSetErr> (code ref, inherited)
 
 Implemented by DBI, no driver-specific impact.
 
-=head3 B<ErrCount> (unsigned integer)
+=head2 B<ErrCount> (unsigned integer)
 
 Implemented by DBI, no driver-specific impact.
 
-=head3 B<FetchHashKeyName> (string, inherited)
+=head2 B<FetchHashKeyName> (string, inherited)
 
 Implemented by DBI, no driver-specific impact.
 
-=head3 B<ChopBlanks> (boolean, inherited)
+=head2 B<ChopBlanks> (boolean, inherited)
 
 Implemented by DBI, no driver-specific impact.
 
-=head3 B<Taint> (boolean, inherited)
+=head2 B<Taint> (boolean, inherited)
 
 Implemented by DBI, no driver-specific impact.
 
-=head3 B<TaintIn> (boolean, inherited)
+=head2 B<TaintIn> (boolean, inherited)
 
 Implemented by DBI, no driver-specific impact.
 
-=head3 B<TaintOut> (boolean, inherited)
+=head2 B<TaintOut> (boolean, inherited)
 
 Implemented by DBI, no driver-specific impact.
 
-=head3 B<Profile> (inherited)
+=head2 B<Profile> (inherited)
 
 Implemented by DBI, no driver-specific impact.
 
-=head3 B<Type> (scalar)
+=head2 B<Type> (scalar)
 
 Returns C<dr> for a driver handle, C<db> for a database handle, and C<st> for a statement handle.
 Should be rarely needed.
 
-=head3 B<LongReadLen>
+=head2 B<LongReadLen>
+
+The maximum size of long or longraw columns to retrieve. If one of
+these columns is longer than LongReadLen then either a data truncation
+error will be raised (LongTrunkOk is false) or the column will be
+silently truncated (LongTruncOk is true).
+
+DBI currently defaults this to 80.
+
+=head2 B<LongTruncOk>
 
 Implemented by DBI, no driver-specific impact.
 
-=head3 B<LongTruncOk>
-
-Implemented by DBI, no driver-specific impact.
-
-
-=head3 B<CompatMode>
+=head2 B<CompatMode>
 
 Type: boolean, inherited
 
@@ -2390,12 +2171,45 @@ The CompatMode attribute is used by emulation layers (such as Oraperl) to enable
 
 It also has the effect of disabling the 'quick FETCH' of attribute values from the handles attribute cache. So all attribute values are handled by the drivers own FETCH method. This makes them slightly slower but is useful for special-purpose drivers like DBD::Multiplex.
 
+=head1 ORACLE-SPECIFIC DATABASE HANDLE METHODS
 
-=head1 DBI Database Handle Object
+=head2 B<ora_can_unicode ( [ $refresh ] )>
 
-=head2 Database Handle Methods
+Returns a number indicating whether either of the database character sets
+is a Unicode encoding. Calls ora_nls_parameters() and passes the optional
+$refresh parameter to it.
 
-=head3 B<selectall_arrayref>
+0 = Neither character set is a Unicode encoding.
+
+1 = National character set is a Unicode encoding.
+
+2 = Database character set is a Unicode encoding.
+
+3 = Both character sets are Unicode encodings.
+
+=head2 B<ora_can_taf>
+
+Returns true if the current connection supports TAF events. False if otherise.
+
+=head2 B<ora_nls_parameters ( [ $refresh ] )>
+
+Returns a hash reference containing the current NLS parameters, as given
+by the v$nls_parameters view. The values fetched are cached between calls.
+To cause the latest values to be fetched, pass a true value to the function.
+
+=head1 ORACLE-SPECIFIC DATABASE FUNCTIONS
+
+=head2 B<ora_server_version>
+
+  $versions = $dbh->func('ora_server_version');
+
+Returns an array reference of server version strings e.g.,
+
+  [11,2,0,2,0]
+
+=head1 DATABASE HANDLE METHODS
+
+=head2 B<selectall_arrayref>
 
   $ary_ref = $dbh->selectall_arrayref($sql);
   $ary_ref = $dbh->selectall_arrayref($sql, \%attr);
@@ -2404,14 +2218,14 @@ It also has the effect of disabling the 'quick FETCH' of attribute values from t
 Returns a reference to an array containing the rows returned by preparing and executing the SQL string.
 See the DBI documentation for full details.
 
-=head3 B<selectall_hashref>
+=head2 B<selectall_hashref>
 
   $hash_ref = $dbh->selectall_hashref($sql, $key_field);
 
 Returns a reference to a hash containing the rows returned by preparing and executing the SQL string.
 See the DBI documentation for full details.
 
-=head3 B<selectcol_arrayref>
+=head2 B<selectcol_arrayref>
 
   $ary_ref = $dbh->selectcol_arrayref($sql, \%attr, @bind_values);
 
@@ -2419,13 +2233,13 @@ Returns a reference to an array containing the first column
 from each rows returned by preparing and executing the SQL string. It is possible to specify exactly
 which columns to return. See the DBI documentation for full details.
 
-=head3 B<prepare>
+=head2 B<prepare>
 
   $sth = $dbh->prepare($statement, \%attr);
 
 Prepares a statement for later execution by the database engine and returns a reference to a statement handle object.
 
-=head4 B<Prepare Attributes>
+=head3 B<Prepare Attributes>
 
 These attributes may be used in the C<\%attr> parameter of the
 L<DBI/prepare> database handle method.
@@ -2443,7 +2257,7 @@ If true (the default), fetching retrieves the contents of the CLOB or
 BLOB column in most circumstances.  If false, fetching retrieves the
 Oracle "LOB Locator" of the CLOB or BLOB value.
 
-See L</LOBs and LONGs> for more details.
+See L</LOBS AND LONGS> for more details.
 
 See also the LOB tests in 05dbi.t of Oracle::OCI for examples
 of how to use LOB Locators.
@@ -2483,7 +2297,7 @@ only one mode is supported;
 
   OCI_STMT_SCROLLABLE_READONLY - make result set scrollable
 
-See L</Scrollable Cursors> for more details.
+See L</SCROLLABLE CURSORS> for more details.
 
 =item ora_prefetch_rows
 
@@ -2506,15 +2320,19 @@ See L</Row Prefetching> for more details.
 
 =back
 
-=head4 B<Placeholders>
+=head3 B<Placeholders>
 
-There are two types of placeholders that can be used in DBD::Oracle. The first is
-the "question mark" type, in which each placeholder is represented by a single
-question mark character. This is the method recommended by the DBI specs and is the most
-portable. Each question mark is internally replaced by a "dollar sign number" in the order
-in which they appear in the query (important when using L</bind_param>).
+There are three types of placeholders that can be used in
+DBD::Oracle.
 
-The other placeholder type is "named parameters" in the format ":foo" which is the one Oralce prefers.
+The first is the "question mark" type, in which each placeholder is
+represented by a single question mark character. This is the method
+recommended by the DBI and is the most portable. Each question
+mark is internally replaced by a "dollar sign number" in the order in
+which they appear in the query (important when using L</bind_param>).
+
+The second type of placeholder is "named parameters" in the format
+":foo" which is the one Oracle prefers.
 
    $dbh->{RaiseError} = 1;        # save having to check each method call
    $sth = $dbh->prepare("SELECT name, age FROM people WHERE name LIKE :name");
@@ -2522,19 +2340,29 @@ The other placeholder type is "named parameters" in the format ":foo" which is t
    $sth->execute;
    DBI::dump_results($sth);
 
+Note when calling bind_param with named parameters you must include
+the leading colon. The advantage of this placeholder type is that you
+can use the same placeholder more than once in the same SQL statement
+but you only need to bind it once.
+
+The last placeholder type is a variation of the two above where you
+name each placeholder :N (where N is a number). Like the named
+placeholders above you can use the same placeholder multiple times in
+the SQL but when you call bind_param you only need to pass the N
+(e.g., for :1 you use bind_param(1,...) and not bind_param(':1',...).
+
 The different types of placeholders cannot be mixed within a statement, but you may
 use different ones for each statement handle you have. This is confusing at best, so
 stick to one style within your program.
 
-
-=head3 B<prepare_cached>
+=head2 B<prepare_cached>
 
   $sth = $dbh->prepare_cached($statement, \%attr);
 
 Implemented by DBI, no driver-specific impact. This method is most useful
 if the same query is used over and over as it will cut down round trips to the server.
 
-=head3 B<do>
+=head2 B<do>
 
   $rv = $dbh->do($statement);
   $rv = $dbh->do($statement, \%attr);
@@ -2545,8 +2373,7 @@ query was successful, returns undef if an error occurred, and returns -1 if the
 number of rows is unknown or not available. Note that this method will return B<0E0> instead
 of 0 for 'no rows were affected', in order to always return a true value if no error occurred.
 
-
-=head3 B<last_insert_id>
+=head2 B<last_insert_id>
 
 Oracle does not implement auto_increment of serial type columns it uses predefined
 sequences where the id numbers are either selected before insert, at insert time with a trigger,
@@ -2567,7 +2394,7 @@ on insert with the bind_param_inout method.
   $sth->execute();
   $db->commit();
 
-=head3 B<commit>
+=head2 B<commit>
 
   $rv = $dbh->commit;
 
@@ -2575,21 +2402,21 @@ Issues a COMMIT to the server, indicating that the current transaction is finish
 all changes made will be visible to other processes. If AutoCommit is enabled, then
 a warning is given and no COMMIT is issued. Returns true on success, false on error.
 
-=head3 B<rollback>
+=head2 B<rollback>
 
   $rv = $dbh->rollback;
 
 Issues a ROLLBACK to the server, which discards any changes made in the current transaction. If AutoCommit
 is enabled, then a warning is given and no ROLLBACK is issued. Returns true on success, and
-false on error. 
+false on error.
 
-=head3 B<begin_work>
+=head2 B<begin_work>
 
 This method turns on transactions until the next call to L</commit> or L</rollback>, if L</AutoCommit> is
 currently enabled. If it is not enabled, calling begin_work will issue an error. Note that the
 transaction will not actually begin until the first statement after begin_work is called.
 
-=head3 B<disconnect>
+=head2 B<disconnect>
 
   $rv = $dbh->disconnect;
 
@@ -2601,8 +2428,7 @@ If the script exits before disconnect is called (or, more precisely, if the data
 referenced by anything), then the database handle's DESTROY method will call the rollback() and disconnect()
 methods automatically. It is best to explicitly disconnect rather than rely on this behavior.
 
-
-=head3 B<ping>
+=head2 B<ping>
 
   $rv = $dbh->ping;
 
@@ -2610,13 +2436,13 @@ This C<ping> method is used to check the validity of a database handle. The valu
 either 0, indicating that the connection is no longer valid, or 1, indicating the connection is valid.
 This function does 1 round trip to the Oracle Server.
 
-=head3 B<get_info()>
+=head2 B<get_info()>
 
  $value = $dbh->get_info($info_type);
 
 DBD::Oracle supports C<get_info()>, but (currently) only a few info types.
 
-=head3 B<table_info()>
+=head2 B<table_info()>
 
 DBD::Oracle supports attributes for C<table_info()>.
 
@@ -2653,7 +2479,7 @@ upper case). Oracle stores and returns it as given.
 C<table_info()> has no special quote handling, neither adds nor
 removes quotes.
 
-=head3 B<primary_key_info()>
+=head2 B<primary_key_info()>
 
 Oracle does not support catalogues so TABLE_CAT is ignored as
 selection criterion.
@@ -2669,7 +2495,7 @@ An identifier is passed I<as is>, i.e. as the user provides or
 Oracle returns it.
 See L</table_info()> for more detailed information.
 
-=head3 B<foreign_key_info()>
+=head2 B<foreign_key_info()>
 
 This method (currently) supports the extended behaviour of SQL/CLI, i.e. the
 result set contains foreign keys that refer to primary B<and> alternate keys.
@@ -2702,7 +2528,7 @@ An identifier is passed I<as is>, i.e. as the user provides or
 Oracle returns it.
 See L</table_info()> for more detailed information.
 
-=head3 B<column_info()>
+=head2 B<column_info()>
 
 Oracle does not support catalogues so TABLE_CAT is ignored as
 selection criterion.
@@ -2716,7 +2542,11 @@ Especially the length of FLOATs may be wrong.
 
 Datatype codes for non-standard types are subject to change.
 
-Attention! The DATA_DEFAULT (COLUMN_DEF) column is of type LONG.
+Attention! The DATA_DEFAULT (COLUMN_DEF) column is of type LONG so you
+may have to set LongReadLen on the connection handle before calling
+column_info if you have a large default column. After DBD::Oracle 1.40
+LongReadLen is set automatically to 1Mb when calling column_info and
+reset aftwerwards.
 
 The result set is ordered by TABLE_SCHEM, TABLE_NAME, ORDINAL_POSITION.
 
@@ -2735,7 +2565,7 @@ So in the example the exact case "Bla_BLA" must be used to get it info on the co
 
 any case can be used to get info on the column.
 
-=head3 B<selectrow_array>
+=head2 B<selectrow_array>
 
   @row_ary = $dbh->selectrow_array($sql);
   @row_ary = $dbh->selectrow_array($sql, \%attr);
@@ -2746,7 +2576,7 @@ by calling L</fetchrow_array>. The string can also be a statement handle generat
 only the first row of data is returned. If called in a scalar context, only the first column of the first row is
 returned. Because this is not portable, it is not recommended that you use this method in that way.
 
-=head3 B<selectrow_arrayref>
+=head2 B<selectrow_arrayref>
 
   $ary_ref = $dbh->selectrow_arrayref($statement);
   $ary_ref = $dbh->selectrow_arrayref($statement, \%attr);
@@ -2755,7 +2585,7 @@ returned. Because this is not portable, it is not recommended that you use this 
 Exactly the same as L</selectrow_array>, except that it returns a reference to an array, by internal use of
 the L</fetchrow_arrayref> method.
 
-=head3 B<selectrow_hashref>
+=head2 B<selectrow_hashref>
 
   $hash_ref = $dbh->selectrow_hashref($sql);
   $hash_ref = $dbh->selectrow_hashref($sql, \%attr);
@@ -2764,49 +2594,22 @@ the L</fetchrow_arrayref> method.
 Exactly the same as L</selectrow_array>, except that it returns a reference to an hash, by internal use of
 the L</fetchrow_hashref> method.
 
-=head3 B<clone>
+=head2 B<clone>
 
   $other_dbh = $dbh->clone();
 
 Creates a copy of the database handle by connecting with the same parameters as the original
 handle, then trying to merge the attributes. See the DBI documentation for complete usage.
 
-=head2 Private Database Handle Methods
+=head1 DATABASE HANDLE ATTRIBUTES
 
-=head3 B<ora_can_unicode ( [ $refresh ] )>
-
-Returns a number indicating whether either of the database character sets
-is a Unicode encoding. Calls ora_nls_parameters() and passes the optional
-$refresh parameter to it.
-
-0 = Neither character set is a Unicode encoding.
-
-1 = National character set is a Unicode encoding.
-
-2 = Database character set is a Unicode encoding.
-
-3 = Both character sets are Unicode encodings.
-
-=head3 B<ora_can_taf>
-
-Returns true if the current connection supports TAF events. False if otherise.
-
-=head3 B<ora_nls_parameters ( [ $refresh ] )>
-
-Returns a hash reference containing the current NLS parameters, as given
-by the v$nls_parameters view. The values fetched are cached between calls.
-To cause the latest values to be fetched, pass a true value to the function.
-
-
-=head2 Database Handle Attributes
-
-=head3 B<AutoCommit> (boolean)
+=head2 B<AutoCommit> (boolean)
 
 Supported by DBD::Oracle as proposed by DBI.The default of AutoCommit is on, but this may change
 in the future, so it is highly recommended that you explicitly set it when
-calling L</connect>. 
+calling L</connect>.
 
-=head3 B<ReadOnly> (boolean)
+=head2 B<ReadOnly> (boolean)
 
   $dbh->{ReadOnly} = 1;
 
@@ -2818,29 +2621,29 @@ issuing commands such as INSERT, UPDATE, or DELETE.
 
 This method method requires DBI version 1.55 or better.
 
-=head3 B<Name> (string, read-only)
+=head2 B<Name> (string, read-only)
 
 Returns the name of the current database. This is the same as the DSN, without the
 "dbi:Oracle:" part.
 
-=head3 B<Username> (string, read-only)
+=head2 B<Username> (string, read-only)
 
 Returns the name of the user connected to the database.
 
-=head3 B<Driver> (handle, read-only)
+=head2 B<Driver> (handle, read-only)
 
 Holds the handle of the parent driver. The only recommended use for this is to find the name
 of the driver using:
 
   $dbh->{Driver}->{Name}
 
-=head3 B<RowCacheSize>
+=head2 B<RowCacheSize>
 
 DBD::Oracle supports both Server pre-fetch and Client side row caching. By default both
 are turned on to give optimum performance. Most of the time one can just let DBD::Oracle
 figure out the best optimization.
 
-=head4 B<Row Caching>
+=head3 B<Row Caching>
 
 Row caching occurs on the client side and the object of it is to cut down the number of round
 trips made to the server when fetching rows. At each fetch a set number of rows will be retrieved
@@ -2858,7 +2661,7 @@ By default C<RowCacheSize> is automatically set. If you want to totally turn off
 For any SQL statement that contains a LOB, Long or Object Type Row Caching will be turned off. However server side
 caching still works.  If you are only selecting a LOB Locator then Row Caching will still work.
 
-=head4 Row Prefetching
+=head3 Row Prefetching
 
 Row prefetching occurs on the server side and uses the DBI database handle attribute C<RowCacheSize> and or the
 Prepare Attribute 'ora_prefetch_memory'. Tweaking these values may yield improved performance.
@@ -2866,7 +2669,7 @@ Prepare Attribute 'ora_prefetch_memory'. Tweaking these values may yield improve
   $dbh->{RowCacheSize} = 100;
   $sth=$dbh->prepare($SQL,{ora_exe_mode=>OCI_STMT_SCROLLABLE_READONLY,ora_prefetch_memory=>10000});
 
-In the above example 10 rows will be prefetched up to a maximum of 10000 bytes of data.  The Oracle® Call Interface Programmer's Guide,
+In the above example 10 rows will be prefetched up to a maximum of 10000 bytes of data.  The Oracle Call Interface Programmer's Guide,
 suggests a good row cache value for a scrollable cursor is about 20% of expected size of the record set.
 
 The prefetch settings tell the DBD::Oracle to grab x rows (or x-bytes) when it needs to get new rows. This happens on the first
@@ -2884,12 +2687,19 @@ If the ora_prefetch_memory less than 1 or not present then memory size is not in
 number of rows to prefetch otherwise the number of rows will be limited to memory size. Likewise if the RowCacheSize is less than 1 it
 is not included in the computing of the prefetch rows.
 
+=head1 ORACLE-SPECIFIC STATEMENT HANDLE METHODS
 
-=head1 DBI Statement Handle Object
+=head2 B<ora_stmt_type>
 
-=head2 Statement Handle Methods
+Returns the OCI Statement Type number for the SQL of a statement handle.
 
-=head3 B<bind_param>
+=head2 B<ora_stmt_type_name>
+
+Returns the OCI Statement Type name for the SQL of a statement handle.
+
+=head1 DBI STATEMENT HANDLE OBJECT METHODS
+
+=head2 B<bind_param>
 
   $rv = $sth->bind_param($param_num, $bind_value);
   $rv = $sth->bind_param($param_num, $bind_value, $bind_type);
@@ -2970,7 +2780,6 @@ Examples:
   ## This executes the statement with 567 (integer) and "Zool" (varchar)
   $sth->execute();
 
-
 These attributes may be used in the C<\%attr> parameter of the
 L<DBI/bind_param> or L<DBI/bind_param_inout> statement handle methods.
 
@@ -3002,13 +2811,13 @@ Additional values when DBD::Oracle was built using OCI 9.2 and later:
 
 See L</Binding Cursors> for the correct way to use ORA_RSET.
 
-See L</LOBs and LONGs> for how to use ORA_CLOB and ORA_BLOB.
+See L</LOBS AND LONGS> for how to use ORA_CLOB and ORA_BLOB.
 
 See L</SYS.DBMS_SQL datatypes> for ORA_VARCHAR2_TABLE, ORA_NUMBER_TABLE.
 
 See L</Data Interface for Persistent LOBs> for the correct way to use SQLT_CHR and SQLT_BIN.
 
-See L</Other Data Types> for more information.
+See L</OTHER DATA TYPES> for more information.
 
 See also L<DBI/Placeholders and Bind Values>.
 
@@ -3061,636 +2870,13 @@ I<an exception is thrown> even if C<RaiseError> is false!
 
 Set L</ora_check_sql> to 0 in prepare() to enable this behaviour.
 
-=head3 Spaces & Padding
-
-=head4 Trailing Spaces
-
-Please note that only the Oracle OCI 8 strips trailing spaces from VARCHAR placeholder
-values and uses Nonpadded Comparison Semantics with the result.
-This causes trouble if the spaces are needed for
-comparison with a CHAR value or to prevent the value from
-becoming '' which Oracle treats as NULL.
-Look for Blank-padded Comparison Semantics and Nonpadded
-Comparison Semantics in Oracle's SQL Reference or Server
-SQL Reference for more details.
-
-To preserve trailing spaces in placeholder values for Oracle clients that use OCI 8,
-either change the default placeholder type with L</ora_ph_type> or the placeholder
-type for a particular call to L<DBI/bind> or L<DBI/bind_param_inout>
-with L</ora_type> or C<TYPE>.
-Using L<ORA_CHAR> with L<ora_type> or C<SQL_CHAR> with C<TYPE>
-allows the placeholder to be used with Padded Comparison Semantics
-if the value it is being compared to is a CHAR, NCHAR, or literal.
-
-Please remember that using spaces as a value or at the end of
-a value makes visually distinguishing values with different
-numbers of spaces difficult and should be avoided.
-
-Oracle Clients that use OCI 9.2 do not strip trailing spaces.
-
-=head4 Padded Char Fields
-
-Oracle Clients after OCI 9.2 will automatically pad CHAR placeholder values to the size of the CHAR.
-As the default placeholder type value in DBD::Oracle is ORA_VARCHAR2 to access this behaviour you will
-have to change the default placeholder type with L</ora_ph_type> or placeholder
-type for a particular call with L<DBI/bind> or L<DBI/bind_param_inout>
-with L</ORA_CHAR>.
-
-=head4 Unicode
-
-DBD::Oracle now supports Unicode UTF-8. There are, however, a number
-of issues you should be aware of, so please read all this section
-carefully.
-
-In this section we'll discuss "Perl and Unicode", then "Oracle and
-Unicode", and finally "DBD::Oracle and Unicode".
-
-Information about Unicode in general can be found at:
-L<http://www.unicode.org/>. It is well worth reading because there are
-many misconceptions about Unicode and you may be holding some of them.
-
-=head4 Perl and Unicode
-
-Perl began implementing Unicode with version 5.6, but the implementation
-did not mature until version 5.8 and later. If you plan to use Unicode
-you are I<strongly> urged to use Perl 5.8.2 or later and to I<carefully> read
-the Perl documentation on Unicode:
-
-   perldoc perluniintro    # in Perl 5.8 or later
-   perldoc perlunicode
-
-And then read it again.
-
-Perl's internal Unicode format is UTF-8
-which corresponds to the Oracle character set called AL32UTF8.
-
-=head4 Oracle and Unicode
-
-Oracle supports many characters sets, including several different forms
-of Unicode.  These include:
-
-  AL16UTF16  =>  valid for NCHAR columns (CSID=2000)
-  UTF8       =>  valid for NCHAR columns (CSID=871), deprecated
-  AL32UTF8   =>  valid for NCHAR and CHAR columns (CSID=873)
-
-When you create an Oracle database, you must specify the DATABASE
-character set (used for DDL, DML and CHAR datatypes) and the NATIONAL
-character set (used for NCHAR and NCLOB types).
-The character sets used in your database can be found using:
-
-  $hash_ref = $dbh->ora_nls_parameters()
-  $database_charset = $hash_ref->{NLS_CHARACTERSET};
-  $national_charset = $hash_ref->{NLS_NCHAR_CHARACTERSET};
-
-The Oracle 9.2 and later default for the national character set is AL16UTF16.
-The default for the database character set is often US7ASCII.
-Although many experienced DBAs will consider an 8bit character set like
-WE8ISO8859P1 or WE8MSWIN1252.  To use any character set with Oracle
-other than US7ASCII, requires that the NLS_LANG environment variable be set.
-See the L<"Oracle UTF8 is not UTF-8"> section below.
-
-
-You are strongly urged to read the Oracle Internationalization documentation
-specifically with respect the choices and trade offs for creating
-a databases for use with international character sets.
-
-Oracle uses the NLS_LANG environment variable to indicate what
-character set is being used on the client.  When fetching data Oracle
-will convert from whatever the database character set is to the client
-character set specified by NLS_LANG. Similarly, when sending data to
-the database Oracle will convert from the character set specified by
-NLS_LANG to the database character set.
-
-The NLS_NCHAR environment variable can be used to define a different
-character set for 'national' (NCHAR) character types.
-
-Both UTF8 and AL32UTF8 can be used in NLS_LANG and NLS_NCHAR.
-For example:
-
-   NLS_LANG=AMERICAN_AMERICA.UTF8
-   NLS_LANG=AMERICAN_AMERICA.AL32UTF8
-   NLS_NCHAR=UTF8
-   NLS_NCHAR=AL32UTF8
-
-=head4 Oracle UTF8 is not UTF-8
-
-AL32UTF8 should be used in preference to UTF8 if it works for you,
-which it should for Oracle 9.2 or later. If you're using an old
-version of Oracle that doesn't support AL32UTF8 then you should
-avoid using any Unicode characters that require surrogates, in other
-words characters beyond the Unicode BMP (Basic Multilingual Plane).
-
-That's because the character set that Oracle calls "UTF8" doesn't
-conform to the UTF-8 standard in its handling of surrogate characters.
-Technically the encoding that Oracle calls "UTF8" is known as "CESU-8".
-Here are a couple of extracts from L<http://www.unicode.org/reports/tr26/>:
-
-  CESU-8 is useful in 8-bit processing environments where binary
-  collation with UTF-16 is required. It is designed and recommended
-  for use only within products requiring this UTF-16 binary collation
-  equivalence. It is not intended nor recommended for open interchange.
-
-  As a very small percentage of characters in a typical data stream
-  are expected to be supplementary characters, there is a strong
-  possibility that CESU-8 data may be misinterpreted as UTF-8.
-  Therefore, all use of CESU-8 outside closed implementations is
-  strongly discouraged, such as the emittance of CESU-8 in output
-  files, markup language or other open transmission forms.
-
-Oracle uses this internally because it collates (sorts) in the same order
-as UTF16, which is the basis of Oracle's internal collation definitions.
-
-Rather than change UTF8 for clients Oracle chose to define a new character
-set called "AL32UTF8" which does conform to the UTF-8 standard.
-(The AL32UTF8 character set can't be used on the server because it
-would break collation.)
-
-Because of that, for the rest of this document we'll use "AL32UTF8".
-If you're using an Oracle version below 9.2 you'll need to use "UTF8"
-until you upgrade.
-
-=head4 DBD::Oracle and Unicode
-
-DBD::Oracle Unicode support has been implemented for Oracle versions 9
-or greater, and Perl version 5.6 or greater (though we I<strongly>
-suggest that you use Perl 5.8.2 or later).
-
-You can check which Oracle version your DBD::Oracle was built with by
-importing the C<ORA_OCI> constant from DBD::Oracle.
-
-B<Fetching Data>
-
-Any data returned from Oracle to DBD::Oracle in the AL32UTF8
-character set will be marked as UTF-8 to ensure correct handling by Perl.
-
-For Oracle to return data in the AL32UTF8 character set the
-NLS_LANG or NLS_NCHAR environment variable I<must> be set as described
-in the previous section.
-
-When fetching NCHAR, NVARCHAR, or NCLOB data from Oracle, DBD::Oracle
-will set the Perl UTF-8 flag on the returned data if either NLS_NCHAR
-is AL32UTF8, or NLS_NCHAR is not set and NLS_LANG is AL32UTF8.
-
-When fetching other character data from Oracle, DBD::Oracle
-will set the Perl UTF-8 flag on the returned data if NLS_LANG is AL32UTF8.
-
-B<Sending Data using Placeholders>
-
-Data bound to a placeholder is assumed to be in the default client
-character set (specified by NLS_LANG) except for a few special
-cases. These are listed here with the highest precedence first:
-
-If the C<ora_csid> attribute is given to bind_param() then that
-is passed to Oracle and takes precedence.
-
-If the value is a Perl Unicode string (UTF-8) then DBD::Oracle
-ensures that Oracle uses the Unicode character set, regardless of
-the NLS_LANG and NLS_NCHAR settings.
-
-If the placeholder is for inserting an NCLOB then the client NLS_NCHAR
-character set is used. (That's useful but inconsistent with the other behaviour
-so may change. Best to be explicit by using the C<ora_csform>
-attribute.)
-
-If the C<ora_csform> attribute is given to bind_param() then that
-determines if the value should be assumed to be in the default
-(NLS_LANG) or NCHAR (NLS_NCHAR) client character set.
-
-
-   use DBD::Oracle qw( SQLCS_IMPLICIT SQLCS_NCHAR );
-   ...
-   $sth->bind_param(1, $value, { ora_csform => SQLCS_NCHAR });
-
-or
-
-   $dbh->{ora_ph_csform} = SQLCS_NCHAR; # default for all future placeholders
-
-Binding with bind_param_array and execute_array is also UTF-8 compatible in the same way.  If you attempt to
-insert UTF-8 data into a non UTF-8 Oracle instance or with an non UTF-8 NCHAR or NVARCHAR the insert
-will still happen but a error code of 0 will be returned with the following warning;
-
-  DBD Oracle Warning: You have mixed utf8 and non-utf8 in an array bind in parameter#1. This may result in corrupt data.
-  The Query charset id=1, name=US7ASCII
-
-The warning will report the parameter number and the NCHAR setting that the query is running.
-
-B<Sending Data using SQL>
-
-Oracle assumes the SQL statement is in the default client character
-set (as specified by NLS_LANG). So Unicode strings containing
-non-ASCII characters should not be used unless the default client
-character set is AL32UTF8.
-
-=head4 DBD::Oracle and Other Character Sets and Encodings
-
-The only multi-byte Oracle character set supported by DBD::Oracle is
-"AL32UTF8" (and "UTF8"). Single-byte character sets should work well.
-
-=head4 Other Data Types
-
-DBD::Oracle does not I<explicitly> support most Oracle datatypes.
-It simply asks Oracle to return them as strings and Oracle does so.
-Mostly.  Similarly when binding placeholder values DBD::Oracle binds
-them as strings and Oracle converts them to the appropriate type,
-such as DATE, when used.
-
-Some of these automatic conversions to and from strings use NLS
-settings to control the formatting for output and the parsing for
-input. The most common example is the DATE type. The default NLS
-format for DATE might be DD-MON-YYYY and so when a DATE type is
-fetched that's how Oracle will format the date. NLS settings also
-control the default parsing of strings into DATE values. An error
-will be generated if the contents of the string don't match the
-NLS format. If you're dealing in dates which don't match the default
-NLS format then you can either change the default NLS format or, more
-commonly, use TO_CHAR(field, "format") and TO_DATE(?, "format")
-to explicitly specify formats for converting to and from strings.
-
-A slightly more subtle problem can occur with NUMBER types. The
-default NLS settings might format numbers with a fullstop ("C<.>")
-to separate thousands and a comma ("C<,>") as the decimal point.
-Perl will generate warnings and use incorrect values when numbers,
-returned and formatted as strings in this way by Oracle, are used
-in a numeric context.  You could explicitly convert each numeric
-value using the TO_CHAR(...) function but that gets tedious very
-quickly. The best fix is to change the NLS settings. That can be
-done for an individual connection by doing:
-
-  $dbh->do("ALTER SESSION SET NLS_NUMERIC_CHARACTERS = '.,'");
-
-There are some types, like BOOLEAN, that Oracle does not automatically
-convert to or from strings (pity).  These need to be converted
-explicitly using SQL or PL/SQL functions.
-
-
-Examples:
-
-  # DATE values
-  my $sth0 = $dbh->prepare( <<SQL_END );
-  SELECT username, TO_CHAR( created, ? )
-      FROM all_users
-      WHERE created >= TO_DATE( ?, ? )
-   SQL_END
-  $sth0->execute( 'YYYY-MM-DD HH24:MI:SS', "2003", 'YYYY' );
-
-  # BOOLEAN values
-  my $sth2 = $dbh->prepare( <<PLSQL_END );
-  DECLARE
-      b0 BOOLEAN;
-      b1 BOOLEAN;
-      o0 VARCHAR2(32);
-      o1 VARCHAR2(32);
-
-      FUNCTION to_bool( i VARCHAR2 ) RETURN BOOLEAN IS
-      BEGIN
-         IF    i IS NULL          THEN RETURN NULL;
-         ELSIF i = 'F' OR i = '0' THEN RETURN FALSE;
-         ELSE                          RETURN TRUE;
-         END IF;
-      END;
-      FUNCTION from_bool( i BOOLEAN ) RETURN NUMBER IS
-      BEGIN
-         IF    i IS NULL THEN RETURN NULL;
-         ELSIF i         THEN RETURN 1;
-         ELSE                 RETURN 0;
-         END IF;
-      END;
-  BEGIN
-      -- Converting values to BOOLEAN
-      b0 := to_bool( :i0 );
-      b1 := to_bool( :i1 );
-
-      -- Converting values from BOOLEAN
-      :o0 := from_bool( b0 );
-      :o1 := from_bool( b1 );
-  END;
-  PLSQL_END
-  my ( $i0, $i1, $o0, $o1 ) = ( "", "Something else" );
-  $sth2->bind_param( ":i0", $i0 );
-  $sth2->bind_param( ":i1", $i1 );
-  $sth2->bind_param_inout( ":o0", \$o0, 32 );
-  $sth2->bind_param_inout( ":o1", \$o1, 32 );
-  $sth2->execute();
-  foreach ( $i0, $b0, $o0, $i1, $b1, $o1 ) {
-      $_ = "(undef)" if ! defined $_;
-  }
-  print "$i0 to $o0, $i1 to $o1\n";
-  # Result is : "'' to '(undef)', 'Something else' to '1'"
-
-
-=head4 Object & Collection Data Types
-
-Oracle databases allow for the creation of object oriented like user-defined types.
-There are two types of objects, Embedded--an object stored in a column of a regular table
-and REF--an object that uses the REF retrieval mechanism.
-
-DBD::Oracle supports only the 'selection' of embedded objects of the following types OBJECT, VARRAY
-and TABLE in any combination. Support is seamless and recursive, meaning you
-need only supply a simple SQL statement to get all the values in an embedded object.
-You can either get the values as an array of scalars or they can be returned into a DBD::Oracle::Object.
-
-
-Array example, given this type and table;
-
-  CREATE OR REPLACE TYPE  "PHONE_NUMBERS" as varray(10) of varchar(30);
-
-  CREATE TABLE  "CONTACT"
-     (	"COMPANYNAME" VARCHAR2(40),
-  	"ADDRESS" VARCHAR2(100),
-  	"PHONE_NUMBERS"  "PHONE_NUMBERS"
-   )
-
-The code to access all the data in the table could be something like this;
-
-   my $sth = $dbh->prepare('SELECT * FROM CONTACT');
-   $sth->execute;
-   while ( my ($company, $address, $phone) = $sth->fetchrow()) {
-        print "Company: ".$company."\n";
-        print "Address: ".$address."\n";
-        print "Phone #: ";
-
-        foreach my $items (@$phone){
-           print $items.", ";
-        }
-        print "\n";
-   }
-
-Note that values in PHONE_NUMBERS are returned as an array reference '@$phone'.
-
-As stated before DBD::Oracle will automatically drill into the embedded object and extract
-all of the data as reference arrays of scalars. The example below has OBJECT type embedded in a TABLE type embedded in an
-SQL TABLE;
-
-   CREATE OR REPLACE TYPE GRADELIST AS TABLE OF NUMBER;
-
-   CREATE OR REPLACE TYPE STUDENT AS OBJECT(
-       NAME          VARCHAR2(60),
-       SOME_GRADES   GRADELIST);
-
-   CREATE OR REPLACE TYPE STUDENTS_T AS TABLE OF STUDENT;
-
-   CREATE TABLE GROUPS(
-       GRP_ID        NUMBER(4),
-       GRP_NAME      VARCHAR2(10),
-       STUDENTS      STUDENTS_T)
-     NESTED TABLE STUDENTS STORE AS GROUP_STUDENTS_TAB
-      (NESTED TABLE SOME_GRADES STORE AS GROUP_STUDENT_GRADES_TAB);
-
-The following code will access all of the embedded data;
-
-   $SQL='select grp_id,grp_name,students as my_students_test from groups';
-   $sth=$dbh->prepare($SQL);
-   $sth->execute();
-   while (my ($grp_id,$grp_name,$students)=$sth->fetchrow()){
-      print "Group ID#".$grp_id." Group Name =".$grp_name."\n";
-      foreach my $student (@$students){
-         print "Name:".$student->[0]."\n";
-         print "Marks:";
-         foreach my $grades (@$student->[1]){
-            foreach my $marks (@$grades){
-               print $marks.",";
-            }
-         }
-         print "\n";
-      }
-      print "\n";
-   }
-
-Object example, given this object and table;
-
-   CREATE OR REPLACE TYPE Person AS OBJECT (
-     name    VARCHAR2(20),
-     age     INTEGER)
-   ) NOT FINAL;
-
-   CREATE TYPE Employee UNDER Person (
-     salary  NUMERIC(8,2)
-   );
-
-   CREATE TABLE people (id INTEGER, obj Person);
-
-   INSERT INTO people VALUES (1, Person('Black', 25));
-   INSERT INTO people VALUES (2, Employee('Smith', 44, 5000));
-
-The following code will access the data;
-
-   $dbh{'ora_objects'} =>1;
-
-   $sth = $dbh->prepare("select * from people order by id");
-   $sth->execute();
-
-   # object are fetched as instance of DBD::Oracle::Object
-   my ($id1, $obj1) = $sth->fetchrow();
-   my ($id2, $obj2) = $sth->fetchrow();
-
-   # get full type-name of object
-   print $obj1->type_name."44\n";     # 'TEST.PERSON' is printed
-   print $obj2->type_name."4\n";      # 'TEST.EMPLOYEE' is printed
-
-   # get attribute NAME from object
-   print $obj1->attr('NAME')."3\n";   # 'Black' is printed
-   print $obj2->attr('NAME')."3\n";   # 'Smith' is printed
-
-   # get all atributes as hash reference
-   my $h1 = $obj1->attr;        # returns {'NAME' => 'Black', 'AGE' => 25}
-   my $h2 = $obj2->attr;        # returns {'NAME' => 'Smith', 'AGE' => 44,
-                                #          'SALARY' => 5000 }
-
-   # get all attributes (names and values) as array
-   my @a1 = $obj1->attributes;  # returns ('NAME', 'Black', 'AGE', 25)
-   my @a2 = $obj2->attributes;  # returns ('NAME', 'Smith', 'AGE', 44,
-                                #          'SALARY', 5000 )
-
-So far DBD::Oracle has been tested on a table with 20 embedded Objects, Varrays and Tables
-nested to 10 levels.
-
-Any NULL values found in the embedded object will be returned as 'undef'.
-
-=head4 Support for Insert of XMLType (ORA_XMLTYPE)
-
-Inserting large XML data sets into tables with XMLType fields is now supported by DBD::Oracle. The only special
-requirement is the use of bind_param() with an attribute hash parameter that specifies ora_type as ORA_XMLTYPE. For
-example with a table like this;
-
-   create table books (book_id number, book_xml XMLType);
-
-one can insert data using this code
-
-   $SQL='insert into books values (1,:p_xml)';
-   $xml= '<Books>
-	  	<Book id=1>
-	  		<Title>Programming the Perl DBI</Title>
-	                <Subtitle>The Cheetah Book</Subtitle>
-	                <Authors>
-	                	<Author>T. Bunce</Author>
-	                	<Author>Alligator Descartes</Author>
-	                </Authors>
-
-	        </Book>
-	        <Book id=10000>...
-	    </Books>';
-   my $sth =$dbh-> prepare($SQL);
-   $sth-> bind_param("p_xml", $xml, { ora_type => ORA_XMLTYPE });
-   $sth-> execute();
-
-In the above case we will assume that $xml has 10000 Book nodes and is over 32k in size and is well formed XML.
-This will also work for XML that is smaller than 32k as well. Attempting to insert malformed XML will cause an error.
-
-=head4 Binding Cursors
-
-Cursors can be returned from PL/SQL blocks, either from stored
-functions (or procedures with OUT parameters) or
-from direct C<OPEN> statements, as shown below:
-
-  use DBI;
-  use DBD::Oracle qw(:ora_types);
-  my $dbh = DBI->connect(...);
-  my $sth1 = $dbh->prepare(q{
-      BEGIN OPEN :cursor FOR
-          SELECT table_name, tablespace_name
-          FROM user_tables WHERE tablespace_name = :space;
-      END;
-  });
-  $sth1->bind_param(":space", "USERS");
-  my $sth2;
-  $sth1->bind_param_inout(":cursor", \$sth2, 0, { ora_type => ORA_RSET } );
-  $sth1->execute;
-  # $sth2 is now a valid DBI statement handle for the cursor
-  while ( my @row = $sth2->fetchrow_array ) { ... }
-
-The only special requirement is the use of C<bind_param_inout()> with an
-attribute hash parameter that specifies C<ora_type> as C<ORA_RSET>.
-If you don't do that you'll get an error from the C<execute()> like:
-"ORA-06550: line X, column Y: PLS-00306: wrong number or types of
-arguments in call to ...".
-
-Here's an alternative form using a function that returns a cursor.
-This example uses the pre-defined weak (or generic) REF CURSOR type
-SYS_REFCURSOR. This is an Oracle 9 feature.
-
-  # Create the function that returns a cursor
-  $dbh->do(q{
-      CREATE OR REPLACE FUNCTION sp_ListEmp RETURN SYS_REFCURSOR
-      AS l_cursor SYS_REFCURSOR;
-      BEGIN
-          OPEN l_cursor FOR select ename, empno from emp
-              ORDER BY ename;
-          RETURN l_cursor;
-      END;
-  });
-
-  # Use the function that returns a cursor
-  my $sth1 = $dbh->prepare(q{BEGIN :cursor := sp_ListEmp; END;});
-  my $sth2;
-  $sth1->bind_param_inout(":cursor", \$sth2, 0, { ora_type => ORA_RSET } );
-  $sth1->execute;
-  # $sth2 is now a valid DBI statement handle for the cursor
-  while ( my @row = $sth2->fetchrow_array ) { ... }
-
-A cursor obtained from PL/SQL as above may be passed back to PL/SQL
-by binding for input, as shown in this example, which explicitly
-closes a cursor:
-
-  my $sth3 = $dbh->prepare("BEGIN CLOSE :cursor; END;");
-  $sth3->bind_param(":cursor", $sth2, { ora_type => ORA_RSET } );
-  $sth3->execute;
-
-It is not normally necessary to close a cursor
-explicitly in this way. Oracle will close the cursor automatically
-at the first client-server interaction after the cursor statement handle is
-destroyed. An explicit close may be desirable if the reference to
-the cursor handle from the PL/SQL statement handle delays the destruction
-of the cursor handle for too long. This reference remains until the
-PL/SQL handle is re-bound, re-executed or destroyed.
-
-See the C<curref.pl> script in the Oracle.ex directory in the DBD::Oracle
-source distribution for a complete working example.
-
-=head4 Fetching Nested Cursors
-
-Oracle supports the use of select list expressions of type REF CURSOR.
-These may be explicit cursor expressions - C<CURSOR(SELECT ...)>, or
-calls to PL/SQL functions which return REF CURSOR values. The values
-of these expressions are known as nested cursors.
-
-The value returned to a Perl program when a nested cursor is fetched
-is a statement handle. This statement handle is ready to be fetched from.
-It should not (indeed, must not) be executed.
-
-Oracle imposes a restriction on the order of fetching when nested
-cursors are used. Suppose C<$sth1> is a handle for a select statement
-involving nested cursors, and C<$sth2> is a nested cursor handle fetched
-from C<$sth1>. C<$sth2> can only be fetched from while C<$sth1> is
-still active, and the row containing C<$sth2> is still current in C<$sth1>.
-Any attempt to fetch another row from C<$sth1> renders all nested cursor
-handles previously fetched from C<$sth1> defunct.
-
-Fetching from such a defunct handle results in an error with the message
-C<ERROR nested cursor is defunct (parent row is no longer current)>.
-
-This means that the C<fetchall...> or C<selectall...> methods are not useful
-for queries returning nested cursors. By the time such a method returns,
-all the nested cursor handles it has fetched will be defunct.
-
-It is necessary to use an explicit fetch loop, and to do all the
-fetching of nested cursors within the loop, as the following example
-shows:
-
-    use DBI;
-    my $dbh = DBI->connect(...);
-    my $sth = $dbh->prepare(q{
-        SELECT dname, CURSOR(
-            SELECT ename FROM emp
-                WHERE emp.deptno = dept.deptno
-                ORDER BY ename
-        ) FROM dept ORDER BY dname
-    });
-    $sth->execute;
-    while ( my ($dname, $nested) = $sth->fetchrow_array ) {
-        print "$dname\n";
-        while ( my ($ename) = $nested->fetchrow_array ) {
-            print "        $ename\n";
-        }
-    }
-
-
-The cursor returned by the function C<sp_ListEmp> defined in the
-previous section can be fetched as a nested cursor as follows:
-
-    my $sth = $dbh->prepare(q{SELECT sp_ListEmp FROM dual});
-    $sth->execute;
-    my ($nested) = $sth->fetchrow_array;
-    while ( my @row = $nested->fetchrow_array ) { ... }
-
-=head4 Pre-fetching Nested Cursors
-
-By default, DBD::Oracle pre-fetches rows in order to reduce the number of
-round trips to the server. For queries which do not involve nested cursors,
-the number of pre-fetched rows is controlled by the DBI database handle
-attribute C<RowCacheSize> (q.v.).
-
-In Oracle, server side open cursors are a controlled resource, limited in
-number, on a per session basis, to the value of the initialization
-parameter C<OPEN_CURSORS>. Nested cursors count towards this limit.
-Each nested cursor in the current row counts 1, as does
-each nested cursor in a pre-fetched row. Defunct nested cursors do not count.
-
-An Oracle specific database handle attribute, C<ora_max_nested_cursors>,
-further controls pre-fetching for queries involving nested cursors. For
-each statement handle, the total number of nested cursors in pre-fetched
-rows is limited to the value of this parameter. The default value
-is 0, which disables pre-fetching for queries involving nested cursors.
-
-
-=head3 B<bind_param_inout>
+=head2 B<bind_param_inout>
 
   $rv = $sth->bind_param_inout($param_num, \$scalar, 0);
 
-
 DBD::Oracle fully supports bind_param_inout below are some uses for this method.
 
-
-=head4 B<Returning A Value from an INSERT>
+=head3 B<Returning A Value from an INSERT>
 
 Oracle supports an extended SQL insert syntax which will return one
 or more of the values inserted. This can be particularly useful for
@@ -3746,7 +2932,7 @@ Which will return all the ids into @out_values.
 
 =back
 
-=head4 Returning A Recordset
+=head3 Returning A Recordset
 
 DBD::Oracle does not currently support binding a PL/SQL table (aka array)
 as an IN OUT parameter to any Perl data structure.  You cannot therefore call
@@ -3863,11 +3049,7 @@ the above example, the code would look something like this :
     ...
   }
 
-
-
-
-
-=head4 B<SYS.DBMS_SQL datatypes>
+=head3 B<SYS.DBMS_SQL datatypes>
 
 DBD::Oracle has built-in support for B<SYS.DBMS_SQL.VARCHAR2_TABLE>
 and B<SYS.DBMS_SQL.NUMBER_TABLE> datatypes. The simple example is here:
@@ -3901,14 +3083,12 @@ and B<SYS.DBMS_SQL.NUMBER_TABLE> datatypes. The simple example is here:
 
 =item B<Note:>
 
-=item   Take careful note that we use '\\@arr' here because  the 'bind_param_inout'
+=item Take careful note that we use '\\@arr' here because  the 'bind_param_inout'
    will only take a reference to a scalar.
 
 =back
 
-
-
-=head4 B<ORA_VARCHAR2_TABLE>
+=head3 B<ORA_VARCHAR2_TABLE>
 
 SYS.DBMS_SQL.VARCHAR2_TABLE object is always bound to array reference.
 ( in bind_param() and bind_param_inout() ). When you bind array, you need
@@ -3928,7 +3108,7 @@ If you set I<ora_maxarray_numentries> to zero, current (at bind time) bound
 array length is used as maximum. If 0 < I<ora_maxarray_numentries> < scalar(@array),
 not all array entries are bound.
 
-=head4 B<ORA_NUMBER_TABLE>
+=head3 B<ORA_NUMBER_TABLE>
 
 SYS.DBMS_SQL.NUMBER_TABLE object handling is much alike ORA_VARCHAR2_TABLE.
 The main difference is internal data representation. Currently 2 types of
@@ -4012,12 +3192,11 @@ you get:
               -2
             ];
 
-=head3 B<bind_param_inout_array>
+=head2 B<bind_param_inout_array>
 
 DBD::Oracle supports this undocumented feature of DBI. See L</Returning A Value from an INSERT> for an example.
 
-
-=head3 B<bind_param_array>
+=head2 B<bind_param_array>
 
   $rv = $sth->bind_param_array($param_num, $array_ref_or_value)
   $rv = $sth->bind_param_array($param_num, $array_ref_or_value, $bind_type)
@@ -4026,15 +3205,13 @@ DBD::Oracle supports this undocumented feature of DBI. See L</Returning A Value 
 Binds an array of values to a placeholder, so that each is used in turn by a call
 to the L</execute_array> method.
 
-
-
-=head3 B<execute>
+=head2 B<execute>
 
   $rv = $sth->execute(@bind_values);
 
 Perform whatever processing is necessary to execute the prepared statement.
 
-=head3 B<execute_array>
+=head2 B<execute_array>
 
   $tuples = $sth->execute_array() or die $sth->errstr;
   $tuples = $sth->execute_array(\%attr) or die $sth->errstr;
@@ -4050,7 +3227,7 @@ for more details.
 DBD::Oracle takes full advantage of OCI's array interface so inserts and updates using this interface will run very
 quickly.
 
-=head3 B<execute_for_fetch>
+=head2 B<execute_for_fetch>
 
   $tuples = $sth->execute_for_fetch($fetch_tuple_sub);
   $tuples = $sth->execute_for_fetch($fetch_tuple_sub, \@tuple_status);
@@ -4061,7 +3238,7 @@ quickly.
 Used internally by the L</execute_array> method, and rarely used directly. See the
 DBI documentation for more details.
 
-=head3 B<fetchrow_arrayref>
+=head2 B<fetchrow_arrayref>
 
   $ary_ref = $sth->fetchrow_arrayref;
 
@@ -4076,14 +3253,14 @@ Note that the same array reference is returned for each fetch, so don't store th
 then use it after a later fetch. Also, the elements of the array are also reused for each row,
 so take care if you want to take a reference to an element. See also L</bind_columns>.
 
-=head3 B<fetchrow_array>
+=head2 B<fetchrow_array>
 
   @ary = $sth->fetchrow_array;
 
 Similar to the L</fetchrow_arrayref> method, but returns a list of column information rather than
 a reference to a list. Do not use this in a scalar context.
 
-=head3 B<fetchrow_hashref>
+=head2 B<fetchrow_hashref>
 
   $hash_ref = $sth->fetchrow_hashref;
   $hash_ref = $sth->fetchrow_hashref($name);
@@ -4098,7 +3275,7 @@ was due to an error.
 The optional C<$name> argument should be either C<NAME>, C<NAME_lc> or C<NAME_uc>, and indicates
 what sort of transformation to make to the keys in the hash. By default Oracle uses upper case.
 
-=head3 B<fetchall_arrayref>
+=head2 B<fetchall_arrayref>
 
   $tbl_ary_ref = $sth->fetchall_arrayref();
   $tbl_ary_ref = $sth->fetchall_arrayref( $slice );
@@ -4119,27 +3296,27 @@ If C<$slice> is a hash reference, fetchall_arrayref uses L</fetchrow_hashref> to
 
 See the DBI documentation for a complete discussion.
 
-=head3 B<fetchall_hashref>
+=head2 B<fetchall_hashref>
 
   $hash_ref = $sth->fetchall_hashref( $key_field );
 
 Returns a hashref containing all rows to be fetched from the statement handle. See the DBI documentation for
 a full discussion.
 
-=head3 B<finish>
+=head2 B<finish>
 
   $rv = $sth->finish;
 
 Indicates to DBI that you are finished with the statement handle and are not going to use it again. Only needed
 when you have not fetched all the possible rows.
 
-=head3 B<rows>
+=head2 B<rows>
 
   $rv = $sth->rows;
 
 Returns the number of rows affected for updates, deletes and inserts and -1 for selects.
 
-=head3 B<bind_col>
+=head2 B<bind_col>
 
   $rv = $sth->bind_col($column_number, \$var_to_bind);
   $rv = $sth->bind_col($column_number, \$var_to_bind, \%attr );
@@ -4148,15 +3325,21 @@ Returns the number of rows affected for updates, deletes and inserts and -1 for 
 Binds a Perl variable and/or some attributes to an output column of a SELECT statement.
 Column numbers count up from 1. You do not need to bind output columns in order to fetch data.
 
+NOTE: DBD::Oracle does not use the C<$bind_type> to determine how to
+bind the column; it uses what Oracle says the data type is. You can
+however set the StrictlyTyped/DiscardString attributes and these will
+take effect as these attributes are applied after the column is
+retrieved.
+
 See the DBI documentation for a discussion of the optional parameters C<\%attr> and C<$bind_type>
 
-=head3 B<bind_columns>
+=head2 B<bind_columns>
 
   $rv = $sth->bind_columns(@list_of_refs_to_vars_to_bind);
 
 Calls the L</bind_col> method for each column in the SELECT statement, using the supplied list.
 
-=head3 B<dump_results>
+=head2 B<dump_results>
 
   $rows = $sth->dump_results($maxlen, $lsep, $fsep, $fh);
 
@@ -4169,65 +3352,54 @@ This method is designed as a handy utility for prototyping and testing queries. 
 "neat_list" to format and edit the string for reading by humans, it is not recommended
 for data transfer applications.
 
+=head1 STATEMENT HANDLE ATTRIBUTES
 
-=head2 Private Statement Handle Methods
-
-=head3 B<ora_stmt_type>
-
-Returns the OCI Statement Type number for the SQL of a statement handle.
-
-=head3 B<ora_stmt_type_name>
-
-Returns the OCI Statement Type name for the SQL of a statement handle.
-
-=head2 Statement Handle Attributes
-
-=head3 B<NUM_OF_FIELDS> (integer, read-only)
+=head2 B<NUM_OF_FIELDS> (integer, read-only)
 
 Returns the number of columns returned by the current statement. A number will only be returned for
 SELECT statements for INSERT,
 UPDATE, and DELETE statements which contain a RETURNING clause.
 This method returns undef if called before C<execute()>.
 
-=head3 B<NUM_OF_PARAMS> (integer, read-only)
+=head2 B<NUM_OF_PARAMS> (integer, read-only)
 
 Returns the number of placeholders in the current statement.
 
-=head3 B<NAME> (arrayref, read-only)
+=head2 B<NAME> (arrayref, read-only)
 
 Returns an arrayref of column names for the current statement. This
 method will only work for SELECT statements, for SHOW statements, and for
 INSERT, UPDATE, and DELETE statements which contain a RETURNING clause.
 This method returns undef if called before C<execute()>.
 
-=head3 B<NAME_lc> (arrayref, read-only)
+=head2 B<NAME_lc> (arrayref, read-only)
 
 The same as the C<NAME> attribute, except that all column names are forced to lower case.
 
-=head3 B<NAME_uc>  (arrayref, read-only)
+=head2 B<NAME_uc>  (arrayref, read-only)
 
 The same as the C<NAME> attribute, except that all column names are forced to upper case.
 
-=head3 B<NAME_hash> (hashref, read-only)
+=head2 B<NAME_hash> (hashref, read-only)
 
 Similar to the C<NAME> attribute, but returns a hashref of column names instead of an arrayref. The names of the columns
 are the keys of the hash, and the values represent the order in which the columns are returned, starting at 0.
 This method returns undef if called before C<execute()>.
 
-=head3 B<NAME_lc_hash> (hashref, read-only)
+=head2 B<NAME_lc_hash> (hashref, read-only)
 
 The same as the C<NAME_hash> attribute, except that all column names are forced to lower case.
 
-=head3 B<NAME_uc_hash> (hashref, read-only)
+=head2 B<NAME_uc_hash> (hashref, read-only)
 
 The same as the C<NAME_hash> attribute, except that all column names are forced to lower case.
 
-=head3 B<TYPE> (arrayref, read-only)
+=head2 B<TYPE> (arrayref, read-only)
 
 Returns an arrayref indicating the data type for each column in the statement.
 This method returns undef if called before C<execute()>.
 
-=head3 B<PRECISION> (arrayref, read-only)
+=head2 B<PRECISION> (arrayref, read-only)
 
 Returns an arrayref of integer values for each column returned by the statement.
 The number indicates the precision for C<NUMERIC> columns, the size in number of
@@ -4235,23 +3407,23 @@ characters for C<CHAR> and C<VARCHAR> columns, and for all other types of column
 it returns the number of I<bytes>.
 This method returns undef if called before C<execute()>.
 
-=head3 B<SCALE> (arrayref, read-only)
+=head2 B<SCALE> (arrayref, read-only)
 
 Returns an arrayref of integer values for each column returned by the statement. The number
 indicates the scale of the that column. The only type that will return a value is C<NUMERIC>.
 This method returns undef if called before C<execute()>.
 
-=head3 B<NULLABLE> (arrayref, read-only)
+=head2 B<NULLABLE> (arrayref, read-only)
 
 Returns an arrayref of integer values for each column returned by the statement. The number
 indicates if the column is nullable or not. 0 = not nullable, 1 = nullable, 2 = unknown.
 This method returns undef if called before C<execute()>.
 
-=head3 B<Database> (dbh, read-only)
+=head2 B<Database> (dbh, read-only)
 
 Returns the database handle this statement handle was created from.
 
-=head3 B<ParamValues> (hash ref, read-only)
+=head2 B<ParamValues> (hash ref, read-only)
 
 Returns a reference to a hash containing the values currently bound to placeholders. If the "named parameters"
 type of placeholders are being used (such as ":foo"), then the keys of the hash will be the names of the
@@ -4262,7 +3434,7 @@ starting at one and increasing for every placeholder.
 If this method is called before L</execute>, the literal values passed in are returned. If called after
 L</execute>, then the quoted versions of the values are returned.
 
-=head3 B<ParamTypes> (hash ref, read-only)
+=head2 B<ParamTypes> (hash ref, read-only)
 
 Returns a reference to a hash containing the type names currently bound to placeholders. The keys
 are the same as returned by the ParamValues method. The values are hashrefs containing a single key value
@@ -4271,17 +3443,17 @@ only be expressed by a Postgres type. The value is the internal number correspon
 passed in. (Placeholders that have not yet been bound will return undef as the value). This allows the output of
 ParamTypes to be passed back to the L</bind_param> method.
 
-=head3 B<Statement> (string, read-only)
+=head2 B<Statement> (string, read-only)
 
 Returns the statement string passed to the most recent "prepare" method called in this database handle, even if that method
 failed. This is especially useful where "RaiseError" is enabled and the exception handler checks $@ and sees that a C<prepare>
 method call failed.
 
-=head3 B<RowsInCache>
+=head2 B<RowsInCache>
 
 Returns the number of un-fetched rows in the cache for selects.
 
-=head2 Scrollable Cursors
+=head1 SCROLLABLE CURSORS
 
 Oracle supports the concept of a 'Scrollable Cursor' which is defined as a 'Result Set' where
 the rows can be fetched either sequentially or non-sequentially. One can fetch rows forward,
@@ -4299,8 +3471,7 @@ However, LOBSs, CLOBSs, and BLOBs do work as do all the regular bind, and fetch 
 Only use scrollable cursors if you really have a good reason to. They do use up considerable
 more server and client resources and have poorer response times than non-scrolling cursors.
 
-
-=head3 B<Enabling Scrollable Cursors>
+=head2 Enabling Scrollable Cursors
 
 To enable this functionality you must first import the 'Fetch Orientation' and the 'Execution Mode' constants by using;
 
@@ -4315,8 +3486,7 @@ When the statement is executed you will then be able to use 'ora_fetch_scroll' m
 or you can still use any of the other fetch methods but with a poorer response time than if you used a
 non-scrolling cursor. As well scrollable cursors are compatible with any applicable bind methods.
 
-
-=head3 B<Scrollable Cursor Methods>
+=head2 Scrollable Cursor Methods
 
 The following driver-specific methods are used with scrollable cursors.
 
@@ -4332,11 +3502,11 @@ The minimum value will always be 1 after the first fetch. The maximum value will
 
 =item ora_fetch_scroll
 
-  @ary =  $sth->ora_fetch_scroll($fetch_orient,$fetch_offset);
+  $ary_ref = $sth->ora_fetch_scroll($fetch_orient,$fetch_offset);
 
-Works the same as fetchrow_array method however, one passes in a 'Fetch Orientation' constant and a fetch_offset
+Works the same as C<fetchrow_arrayref>, excepts one passes in a 'Fetch Orientation' constant and a fetch_offset
 value which will then determine the row that will be fetched. It returns the row as a list containing the field values.
-Null fields are returned as undef values in the list.
+Null fields are returned as I<undef> values in the list.
 
 The valid orientation constant and fetch offset values combination are detailed below
 
@@ -4347,12 +3517,14 @@ The valid orientation constant and fetch offset values combination are detailed 
   OCI_FETCH_LAST,     fetches the last row, the fetch offset value is ignored.
   OCI_FETCH_PRIOR,    fetches the previous row from the current position, the fetch offset
                       value is ignored.
+
   OCI_FETCH_ABSOLUTE, fetches the row that is specified by the fetch offset value.
-  OCI_FETCH_RELATIVE, fetches the row relative from the current position as specified by the
-                      fetch offset value.
 
   OCI_FETCH_ABSOLUTE, and a fetch offset value of 1 is equivalent to a OCI_FETCH_FIRST.
   OCI_FETCH_ABSOLUTE, and a fetch offset value of 0 is equivalent to a OCI_FETCH_CURRENT.
+
+  OCI_FETCH_RELATIVE, fetches the row relative from the current position as specified by the
+                      fetch offset value.
 
   OCI_FETCH_RELATIVE, and a fetch offset value of 0 is equivalent to a OCI_FETCH_CURRENT.
   OCI_FETCH_RELATIVE, and a fetch offset value of 1 is equivalent to a OCI_FETCH_NEXT.
@@ -4405,7 +3577,7 @@ The effects of the differing orientation constants on the first fetch (current_p
 
 =back
 
-=head3 B<Scrollable Cursor Usage>
+=head2 Scrollable Cursor Usage
 
 Given a simple code like this:
 
@@ -4523,7 +3695,7 @@ cursor has to be explicitly cancelled on the server. If you do not do this you m
 
 =back
 
-=head2 LOBs and LONGs
+=head1 LOBS AND LONGS
 
 The key to working with LOBs (CLOB, BLOBs) is to remember the value of an Oracle LOB column is not the content of the LOB. It's a
 'LOB Locator' which, after being selected or inserted needs extra processing to read or write the content of the LOB. There are also legacy LONG types (LONG, LONG RAW, VARCHAR2)
@@ -4581,14 +3753,14 @@ A LOB instance with a locator and a value exists in the cell. You actually get t
 
 =back
 
-=head3 B<Data Interface for Persistent LOBs>
+=head2 Data Interface for Persistent LOBs
 
 This is the original interface for LONG and LONG RAW datatypes and from Oracle 9iR1 and later the OCI API was extended to work directly with the other LOB datatypes.
 In other words you can treat all LOB type data (BLOB, CLOB) as if it was a LONG, LONG RAW, or VARCHAR2. So you can perform INSERT, UPDATE, fetch, bind, and define operations on LOBs using the same techniques
 you would use on other datatypes that store character or binary data. In some cases there are fewer round trips to the server as no 'LOB Locators' are
 used, normally one can get an entire LOB is a single round trip.
 
-=head4 Simple Fetch for LONGs and LONG RAWs
+=head3 Simple Fetch for LONGs and LONG RAWs
 
 As the name implies this is the simplest way to use this interface. DBD::Oracle just attempts to get your LONG datatypes as a single large piece.
 There are no special settings, simply set the database handle's 'LongReadLen' attribute to a value that will be the larger than the expected size of the LONG or LONG RAW.
@@ -4619,7 +3791,7 @@ Will select out all of the long1 fields in the table as long as they are all und
 
 before the execute will return all the long1 fields but they will be truncated at 2MBs.
 
-=head4 Using ora_ncs_buff_mtpl
+=head3 Using ora_ncs_buff_mtpl
 
 When getting CLOBs and NCLOBs in or out of Oracle, the Server will translate from the Server's NCharSet to the
 Client's. If they happen to be the same or at least compatible then all of these actions are a 1 char to 1 char bases.
@@ -4653,8 +3825,7 @@ You can tune this value by setting ora_oci_success_warn which will display the f
 
 In the case above the query Got 28 characters (well really only 20 characters of 28 bytes) so we could use ora_ncs_buff_mtpl=>2 (20*2=40) thus saving 40bytes of memory.
 
-
-=head4 Simple Fetch for CLOBs and BLOBs
+=head3 Simple Fetch for CLOBs and BLOBs
 
 To use this interface for CLOBs and LOBs datatypes set the 'ora_pers_lob' attribute of the statement handle to '1' with the prepare method, as well
 set the database handle's 'LongReadLen' attribute to a value that will be the larger than the expected size of the LOB. If the size of the LOB exceeds
@@ -4694,7 +3865,7 @@ Will select out all of the LOBs in the table as long as they are all under 2MB i
 
 before the execute will return all the lobs but they will be truncated at 2MBs.
 
-=head4 Piecewise Fetch with Callback
+=head3 Piecewise Fetch with Callback
 
 With a piecewise callback fetch DBD::Oracle sets up a function that will 'callback' to the DB during the fetch and gets your LOB (LONG, LONG RAW, CLOB, BLOB) piece by piece.
 To use this interface set the 'ora_clbk_lob' attribute of the statement handle to '1' with the prepare method. Next set the 'ora_piece_size' to the size of the piece that
@@ -4776,7 +3947,7 @@ Finally with this code;
 Will select all of the long1 fields from table as long as they are is under 20MB in length. If the long1 field is longer than 5MB (ora_piece_size) DBD::Oracle will fetch it in at least 2 pieces to a
 maximum of 4 pieces (4*5MB=20MB). Like the other examples long1 fields longer than 20MB will throw an error.
 
-=head4 Binding for Updates and Inserts for CLOBs and  BLOBs
+=head3 Binding for Updates and Inserts for CLOBs and  BLOBs
 
 To bind for updates and inserts all that is required to use this interface is to set the statement handle's prepare method
 'ora_type' attribute to 'SQLT_CHR' in the case of CLOBs and NCLOBs or 'SQLT_BIN' in the case of BLOBs as in this example for an insert;
@@ -4797,7 +3968,7 @@ To bind for updates and inserts all that is required to use this interface is to
 
 So far the only limit reached with this form of insert is the LOBs must be under 2GB in size.
 
-=head4 Support for Remote LOBs;
+=head3 Support for Remote LOBs;
 
 Starting with Oracle 10gR2 the interface for Persistent LOBs was expanded to support remote LOBs (access over a dblink). Given a database called 'lob_test' that has a 'LINK' defined like this;
 
@@ -4879,9 +4050,9 @@ so the following returns an error:
 
 =back
 
-=head3 B<Locator Data Interface>
+=head2 Locator Data Interface
 
-=head4 Simple Usage
+=head3 Simple Usage
 
 When fetching LOBs with this interface a 'LOB Locator' is created then used to get the lob with the LongReadLen and LongTruncOk attributes.
 The value for 'LongReadLen' is dependent on the version and settings of the Oracle DB you are using. In theory it ranges from 8GBs
@@ -4925,7 +4096,7 @@ If L</ora_auto_lob> is 0 in prepare(), you can fetch the LOB Locators and
 do all the work yourself using the ora_lob_*() methods.
 See the L</Data Interface for LOB Locators> section below.
 
-=head4 LOB support in PL/SQL
+=head3 LOB support in PL/SQL
 
 LOB Locators can be passed to PL/SQL calls by binding them to placeholders
 with the proper C<ora_type>.  If L</ora_auto_lob> is true, output LOB
@@ -4975,7 +4146,7 @@ If you ever get an
 error, while attempting to insert a LOB, this means the Oracle user has insufficient space for LOB you are trying to insert.
 One solution it to use "alter database datafile 'sss.ggg' resize Mnnn" to increase the available memory for LOBs.
 
-=head3 B<Persistent & Locator Interface Caveats>
+=head2 Persistent & Locator Interface Caveats
 
 Now that one has the option of using the Persistent or the Locator interface for LOBs the questions arises
 which one to use. For starters, if you want to access LOBs over a dblink you will have to use the Persistent
@@ -5004,7 +4175,7 @@ Most of the time you should just use the L</Locator Data Interface> as this is i
 All this being said if you are doing some critical programming I would use the L</Data Interface for LOB Locators> as this gives you very
 fine grain control of your LOBs, of course the code for this will be somewhat more involved.
 
-=head3 B<Data Interface for LOB Locators>
+=head2 Data Interface for LOB Locators
 
 The following driver-specific methods let you manipulate "LOB Locators" directly.
 To select a LOB locator directly set the if the C<ora_auto_lob>
@@ -5027,6 +4198,12 @@ handle are lost, the handle is destroyed and the locators are freed.
 
 Read a portion of the LOB. $offset starts at 1.
 Uses the Oracle OCILobRead function.
+
+NOTE: DBD::Oracle post 1.46 will return undef for any read lob if the
+length specified in the ora_lob_read is 0. See RT 55028. This avoids
+the potential problem with empty lobs (created with empty_clob) which
+return a length of 0 from ora_lob_length and prior to 1.46 a call to
+ora_lob_read with a 0 length would segfault.
 
 =item ora_lob_write
 
@@ -5055,7 +4232,6 @@ Uses the Oracle OCILobTrim function.
 Returns the length of the LOB.
 Uses the Oracle OCILobGetLength function.
 
-
 =item ora_lob_is_init
 
   $is_init = $dbh->ora_lob_is_init($lob_locator);
@@ -5078,7 +4254,7 @@ chunk size defaults to 8k (8192).
 
 =back
 
-=head4 LOB Locator Method Examples
+=head3 LOB Locator Method Examples
 
 I<Note:> Make sure you first read the note in the section above about
 multi-byte character set issues with these methods.
@@ -5102,8 +4278,7 @@ lob_id field values, defined as follows:
 
    CREATE SEQUENCE lob_example_seq
 
-
-=head4 Example: Inserting a new row with large data
+=head3 Example: Inserting a new row with large data
 
 Unless enough memory is available to store and bind the
 entire LOB data for insert all at once, the LOB columns must
@@ -5168,7 +4343,6 @@ can't be used effectively if AutoCommit is enabled).
       $offset += $length;
    }
 
-
 In this example we demonstrate the use of ora_lob_write()
 interactively to append data to the columns 'bin_data' and
 'char_data'.  Had we used ora_lob_append(), we could have
@@ -5185,8 +4359,7 @@ The scalar variables $offset and $length are no longer
 needed, because ora_lob_append() keeps track of the offset
 for us.
 
-
-=head4 Example: Updating an existing row with large data
+=head3 Example: Updating an existing row with large data
 
 In this example, we demonstrate a technique for overwriting
 a portion of a blob field with new binary data.  The blob
@@ -5213,7 +4386,7 @@ After running this code, the row where lob_id = 5 will
 contain, starting at position 100234 in the bin_data column,
 the string "This string will overwrite a portion of the blob".
 
-=head4 Example: Streaming character data from the database
+=head3 Example: Streaming character data from the database
 
 In this example, we demonstrate a technique for streaming
 data from the database to a file handle, in this case
@@ -5257,7 +4430,7 @@ was used with a chunk size of 4096 against a blob that requires more than 1 chun
 the data and the last chunk is one byte long and contains a zero (ASCII 48) you will miss this last byte
 as $data will contain 0 which PERL will see as false and not print it out.
 
-=head4 Example: Truncating existing large data
+=head3 Example: Truncating existing large data
 
 In this example, we truncate the data already present in a
 large object column in the database.  Specifically, for each
@@ -5281,6 +4454,620 @@ select the LOB locators 'FOR UPDATE'.
          $dbh->ora_lob_trim( $bin_locator, $binlength/2 );
       }
    }
+
+=head1 SPACES AND PADDING
+
+=head2 Trailing Spaces
+
+Only the Oracle OCI 8 strips trailing spaces from VARCHAR placeholder
+values and uses Nonpadded Comparison Semantics with the result.
+This causes trouble if the spaces are needed for
+comparison with a CHAR value or to prevent the value from
+becoming '' which Oracle treats as NULL.
+Look for Blank-padded Comparison Semantics and Nonpadded
+Comparison Semantics in Oracle's SQL Reference or Server
+SQL Reference for more details.
+
+To preserve trailing spaces in placeholder values for Oracle clients that use OCI 8,
+either change the default placeholder type with L</ora_ph_type> or the placeholder
+type for a particular call to L<DBI/bind> or L<DBI/bind_param_inout>
+with L</ora_type> or C<TYPE>.
+Using L<ORA_CHAR> with L<ora_type> or C<SQL_CHAR> with C<TYPE>
+allows the placeholder to be used with Padded Comparison Semantics
+if the value it is being compared to is a CHAR, NCHAR, or literal.
+
+Please remember that using spaces as a value or at the end of
+a value makes visually distinguishing values with different
+numbers of spaces difficult and should be avoided.
+
+Oracle Clients that use OCI 9.2 do not strip trailing spaces.
+
+=head2 Padded Char Fields
+
+Oracle Clients after OCI 9.2 will automatically pad CHAR placeholder values to the size of the CHAR.
+As the default placeholder type value in DBD::Oracle is ORA_VARCHAR2 to access this behaviour you will
+have to change the default placeholder type with L</ora_ph_type> or placeholder
+type for a particular call with L<DBI/bind> or L<DBI/bind_param_inout>
+with L</ORA_CHAR>.
+
+=head1 UNICODE
+
+DBD::Oracle now supports Unicode UTF-8. There are, however, a number
+of issues you should be aware of, so please read all this section
+carefully.
+
+In this section we'll discuss "Perl and Unicode", then "Oracle and
+Unicode", and finally "DBD::Oracle and Unicode".
+
+Information about Unicode in general can be found at:
+L<http://www.unicode.org/>. It is well worth reading because there are
+many misconceptions about Unicode and you may be holding some of them.
+
+=head2 Perl and Unicode
+
+Perl began implementing Unicode with version 5.6, but the implementation
+did not mature until version 5.8 and later. If you plan to use Unicode
+you are I<strongly> urged to use Perl 5.8.2 or later and to I<carefully> read
+the Perl documentation on Unicode:
+
+   perldoc perluniintro    # in Perl 5.8 or later
+   perldoc perlunicode
+
+And then read it again.
+
+Perl's internal Unicode format is UTF-8
+which corresponds to the Oracle character set called AL32UTF8.
+
+=head2 Oracle and Unicode
+
+Oracle supports many characters sets, including several different forms
+of Unicode.  These include:
+
+  AL16UTF16  =>  valid for NCHAR columns (CSID=2000)
+  UTF8       =>  valid for NCHAR columns (CSID=871), deprecated
+  AL32UTF8   =>  valid for NCHAR and CHAR columns (CSID=873)
+
+When you create an Oracle database, you must specify the DATABASE
+character set (used for DDL, DML and CHAR datatypes) and the NATIONAL
+character set (used for NCHAR and NCLOB types).
+The character sets used in your database can be found using:
+
+  $hash_ref = $dbh->ora_nls_parameters()
+  $database_charset = $hash_ref->{NLS_CHARACTERSET};
+  $national_charset = $hash_ref->{NLS_NCHAR_CHARACTERSET};
+
+The Oracle 9.2 and later default for the national character set is AL16UTF16.
+The default for the database character set is often US7ASCII.
+Although many experienced DBAs will consider an 8bit character set like
+WE8ISO8859P1 or WE8MSWIN1252.  To use any character set with Oracle
+other than US7ASCII, requires that the NLS_LANG environment variable be set.
+See the L<"Oracle UTF8 is not UTF-8"> section below.
+
+You are strongly urged to read the Oracle Internationalization documentation
+specifically with respect the choices and trade offs for creating
+a databases for use with international character sets.
+
+Oracle uses the NLS_LANG environment variable to indicate what
+character set is being used on the client.  When fetching data Oracle
+will convert from whatever the database character set is to the client
+character set specified by NLS_LANG. Similarly, when sending data to
+the database Oracle will convert from the character set specified by
+NLS_LANG to the database character set.
+
+The NLS_NCHAR environment variable can be used to define a different
+character set for 'national' (NCHAR) character types.
+
+Both UTF8 and AL32UTF8 can be used in NLS_LANG and NLS_NCHAR.
+For example:
+
+   NLS_LANG=AMERICAN_AMERICA.UTF8
+   NLS_LANG=AMERICAN_AMERICA.AL32UTF8
+   NLS_NCHAR=UTF8
+   NLS_NCHAR=AL32UTF8
+
+=head2 Oracle UTF8 is not UTF-8
+
+AL32UTF8 should be used in preference to UTF8 if it works for you,
+which it should for Oracle 9.2 or later. If you're using an old
+version of Oracle that doesn't support AL32UTF8 then you should
+avoid using any Unicode characters that require surrogates, in other
+words characters beyond the Unicode BMP (Basic Multilingual Plane).
+
+That's because the character set that Oracle calls "UTF8" doesn't
+conform to the UTF-8 standard in its handling of surrogate characters.
+Technically the encoding that Oracle calls "UTF8" is known as "CESU-8".
+Here are a couple of extracts from L<http://www.unicode.org/reports/tr26/>:
+
+  CESU-8 is useful in 8-bit processing environments where binary
+  collation with UTF-16 is required. It is designed and recommended
+  for use only within products requiring this UTF-16 binary collation
+  equivalence. It is not intended nor recommended for open interchange.
+
+  As a very small percentage of characters in a typical data stream
+  are expected to be supplementary characters, there is a strong
+  possibility that CESU-8 data may be misinterpreted as UTF-8.
+  Therefore, all use of CESU-8 outside closed implementations is
+  strongly discouraged, such as the emittance of CESU-8 in output
+  files, markup language or other open transmission forms.
+
+Oracle uses this internally because it collates (sorts) in the same order
+as UTF16, which is the basis of Oracle's internal collation definitions.
+
+Rather than change UTF8 for clients Oracle chose to define a new character
+set called "AL32UTF8" which does conform to the UTF-8 standard.
+(The AL32UTF8 character set can't be used on the server because it
+would break collation.)
+
+Because of that, for the rest of this document we'll use "AL32UTF8".
+If you're using an Oracle version below 9.2 you'll need to use "UTF8"
+until you upgrade.
+
+=head2 DBD::Oracle and Unicode
+
+DBD::Oracle Unicode support has been implemented for Oracle versions 9
+or greater, and Perl version 5.6 or greater (though we I<strongly>
+suggest that you use Perl 5.8.2 or later).
+
+You can check which Oracle version your DBD::Oracle was built with by
+importing the C<ORA_OCI> constant from DBD::Oracle.
+
+B<Fetching Data>
+
+Any data returned from Oracle to DBD::Oracle in the AL32UTF8
+character set will be marked as UTF-8 to ensure correct handling by Perl.
+
+For Oracle to return data in the AL32UTF8 character set the
+NLS_LANG or NLS_NCHAR environment variable I<must> be set as described
+in the previous section.
+
+When fetching NCHAR, NVARCHAR, or NCLOB data from Oracle, DBD::Oracle
+will set the Perl UTF-8 flag on the returned data if either NLS_NCHAR
+is AL32UTF8, or NLS_NCHAR is not set and NLS_LANG is AL32UTF8.
+
+When fetching other character data from Oracle, DBD::Oracle
+will set the Perl UTF-8 flag on the returned data if NLS_LANG is AL32UTF8.
+
+B<Sending Data using Placeholders>
+
+Data bound to a placeholder is assumed to be in the default client
+character set (specified by NLS_LANG) except for a few special
+cases. These are listed here with the highest precedence first:
+
+If the C<ora_csid> attribute is given to bind_param() then that
+is passed to Oracle and takes precedence.
+
+If the value is a Perl Unicode string (UTF-8) then DBD::Oracle
+ensures that Oracle uses the Unicode character set, regardless of
+the NLS_LANG and NLS_NCHAR settings.
+
+If the placeholder is for inserting an NCLOB then the client NLS_NCHAR
+character set is used. (That's useful but inconsistent with the other behaviour
+so may change. Best to be explicit by using the C<ora_csform>
+attribute.)
+
+If the C<ora_csform> attribute is given to bind_param() then that
+determines if the value should be assumed to be in the default
+(NLS_LANG) or NCHAR (NLS_NCHAR) client character set.
+
+   use DBD::Oracle qw( SQLCS_IMPLICIT SQLCS_NCHAR );
+   ...
+   $sth->bind_param(1, $value, { ora_csform => SQLCS_NCHAR });
+
+or
+
+   $dbh->{ora_ph_csform} = SQLCS_NCHAR; # default for all future placeholders
+
+Binding with bind_param_array and execute_array is also UTF-8 compatible in the same way.  If you attempt to
+insert UTF-8 data into a non UTF-8 Oracle instance or with an non UTF-8 NCHAR or NVARCHAR the insert
+will still happen but a error code of 0 will be returned with the following warning;
+
+  DBD Oracle Warning: You have mixed utf8 and non-utf8 in an array bind in parameter#1. This may result in corrupt data.
+  The Query charset id=1, name=US7ASCII
+
+The warning will report the parameter number and the NCHAR setting that the query is running.
+
+B<Sending Data using SQL>
+
+Oracle assumes the SQL statement is in the default client character
+set (as specified by NLS_LANG). So Unicode strings containing
+non-ASCII characters should not be used unless the default client
+character set is AL32UTF8.
+
+=head2 DBD::Oracle and Other Character Sets and Encodings
+
+The only multi-byte Oracle character set supported by DBD::Oracle is
+"AL32UTF8" (and "UTF8"). Single-byte character sets should work well.
+
+=head1 OBJECT & COLLECTION DATA TYPES
+
+Oracle databases allow for the creation of object oriented like user-defined types.
+There are two types of objects, Embedded--an object stored in a column of a regular table
+and REF--an object that uses the REF retrieval mechanism.
+
+DBD::Oracle supports only the 'selection' of embedded objects of the following types OBJECT, VARRAY
+and TABLE in any combination. Support is seamless and recursive, meaning you
+need only supply a simple SQL statement to get all the values in an embedded object.
+You can either get the values as an array of scalars or they can be returned into a DBD::Oracle::Object.
+
+Array example, given this type and table;
+
+  CREATE OR REPLACE TYPE  "PHONE_NUMBERS" as varray(10) of varchar(30);
+
+  CREATE TABLE  "CONTACT"
+     (	"COMPANYNAME" VARCHAR2(40),
+  	"ADDRESS" VARCHAR2(100),
+  	"PHONE_NUMBERS"  "PHONE_NUMBERS"
+   )
+
+The code to access all the data in the table could be something like this;
+
+   my $sth = $dbh->prepare('SELECT * FROM CONTACT');
+   $sth->execute;
+   while ( my ($company, $address, $phone) = $sth->fetchrow()) {
+        print "Company: ".$company."\n";
+        print "Address: ".$address."\n";
+        print "Phone #: ";
+
+        foreach my $items (@$phone){
+           print $items.", ";
+        }
+        print "\n";
+   }
+
+Note that values in PHONE_NUMBERS are returned as an array reference '@$phone'.
+
+As stated before DBD::Oracle will automatically drill into the embedded object and extract
+all of the data as reference arrays of scalars. The example below has OBJECT type embedded in a TABLE type embedded in an
+SQL TABLE;
+
+   CREATE OR REPLACE TYPE GRADELIST AS TABLE OF NUMBER;
+
+   CREATE OR REPLACE TYPE STUDENT AS OBJECT(
+       NAME          VARCHAR2(60),
+       SOME_GRADES   GRADELIST);
+
+   CREATE OR REPLACE TYPE STUDENTS_T AS TABLE OF STUDENT;
+
+   CREATE TABLE GROUPS(
+       GRP_ID        NUMBER(4),
+       GRP_NAME      VARCHAR2(10),
+       STUDENTS      STUDENTS_T)
+     NESTED TABLE STUDENTS STORE AS GROUP_STUDENTS_TAB
+      (NESTED TABLE SOME_GRADES STORE AS GROUP_STUDENT_GRADES_TAB);
+
+The following code will access all of the embedded data;
+
+   $SQL='select grp_id,grp_name,students as my_students_test from groups';
+   $sth=$dbh->prepare($SQL);
+   $sth->execute();
+   while (my ($grp_id,$grp_name,$students)=$sth->fetchrow()){
+      print "Group ID#".$grp_id." Group Name =".$grp_name."\n";
+      foreach my $student (@$students){
+         print "Name:".$student->[0]."\n";
+         print "Marks:";
+         foreach my $grades (@$student->[1]){
+            foreach my $marks (@$grades){
+               print $marks.",";
+            }
+         }
+         print "\n";
+      }
+      print "\n";
+   }
+
+Object example, given this object and table;
+
+   CREATE OR REPLACE TYPE Person AS OBJECT (
+     name    VARCHAR2(20),
+     age     INTEGER)
+   ) NOT FINAL;
+
+   CREATE TYPE Employee UNDER Person (
+     salary  NUMERIC(8,2)
+   );
+
+   CREATE TABLE people (id INTEGER, obj Person);
+
+   INSERT INTO people VALUES (1, Person('Black', 25));
+   INSERT INTO people VALUES (2, Employee('Smith', 44, 5000));
+
+The following code will access the data;
+
+   $dbh{'ora_objects'} =>1;
+
+   $sth = $dbh->prepare("select * from people order by id");
+   $sth->execute();
+
+   # object are fetched as instance of DBD::Oracle::Object
+   my ($id1, $obj1) = $sth->fetchrow();
+   my ($id2, $obj2) = $sth->fetchrow();
+
+   # get full type-name of object
+   print $obj1->type_name."44\n";     # 'TEST.PERSON' is printed
+   print $obj2->type_name."4\n";      # 'TEST.EMPLOYEE' is printed
+
+   # get attribute NAME from object
+   print $obj1->attr('NAME')."3\n";   # 'Black' is printed
+   print $obj2->attr('NAME')."3\n";   # 'Smith' is printed
+
+   # get all atributes as hash reference
+   my $h1 = $obj1->attr;        # returns {'NAME' => 'Black', 'AGE' => 25}
+   my $h2 = $obj2->attr;        # returns {'NAME' => 'Smith', 'AGE' => 44,
+                                #          'SALARY' => 5000 }
+
+   # get all attributes (names and values) as array
+   my @a1 = $obj1->attributes;  # returns ('NAME', 'Black', 'AGE', 25)
+   my @a2 = $obj2->attributes;  # returns ('NAME', 'Smith', 'AGE', 44,
+                                #          'SALARY', 5000 )
+
+So far DBD::Oracle has been tested on a table with 20 embedded Objects, Varrays and Tables
+nested to 10 levels.
+
+Any NULL values found in the embedded object will be returned as 'undef'.
+
+=head1 OTHER DATA TYPES
+
+DBD::Oracle does not I<explicitly> support most Oracle datatypes.
+It simply asks Oracle to return them as strings and Oracle does so.
+Mostly.  Similarly when binding placeholder values DBD::Oracle binds
+them as strings and Oracle converts them to the appropriate type,
+such as DATE, when used.
+
+Some of these automatic conversions to and from strings use NLS
+settings to control the formatting for output and the parsing for
+input. The most common example is the DATE type. The default NLS
+format for DATE might be DD-MON-YYYY and so when a DATE type is
+fetched that's how Oracle will format the date. NLS settings also
+control the default parsing of strings into DATE values. An error
+will be generated if the contents of the string don't match the
+NLS format. If you're dealing in dates which don't match the default
+NLS format then you can either change the default NLS format or, more
+commonly, use TO_CHAR(field, "format") and TO_DATE(?, "format")
+to explicitly specify formats for converting to and from strings.
+
+A slightly more subtle problem can occur with NUMBER types. The
+default NLS settings might format numbers with a fullstop ("C<.>")
+to separate thousands and a comma ("C<,>") as the decimal point.
+Perl will generate warnings and use incorrect values when numbers,
+returned and formatted as strings in this way by Oracle, are used
+in a numeric context.  You could explicitly convert each numeric
+value using the TO_CHAR(...) function but that gets tedious very
+quickly. The best fix is to change the NLS settings. That can be
+done for an individual connection by doing:
+
+  $dbh->do("ALTER SESSION SET NLS_NUMERIC_CHARACTERS = '.,'");
+
+There are some types, like BOOLEAN, that Oracle does not automatically
+convert to or from strings (pity).  These need to be converted
+explicitly using SQL or PL/SQL functions.
+
+Examples:
+
+  # DATE values
+  my $sth0 = $dbh->prepare( <<SQL_END );
+  SELECT username, TO_CHAR( created, ? )
+      FROM all_users
+      WHERE created >= TO_DATE( ?, ? )
+   SQL_END
+  $sth0->execute( 'YYYY-MM-DD HH24:MI:SS', "2003", 'YYYY' );
+
+  # BOOLEAN values
+  my $sth2 = $dbh->prepare( <<PLSQL_END );
+  DECLARE
+      b0 BOOLEAN;
+      b1 BOOLEAN;
+      o0 VARCHAR2(32);
+      o1 VARCHAR2(32);
+
+      FUNCTION to_bool( i VARCHAR2 ) RETURN BOOLEAN IS
+      BEGIN
+         IF    i IS NULL          THEN RETURN NULL;
+         ELSIF i = 'F' OR i = '0' THEN RETURN FALSE;
+         ELSE                          RETURN TRUE;
+         END IF;
+      END;
+      FUNCTION from_bool( i BOOLEAN ) RETURN NUMBER IS
+      BEGIN
+         IF    i IS NULL THEN RETURN NULL;
+         ELSIF i         THEN RETURN 1;
+         ELSE                 RETURN 0;
+         END IF;
+      END;
+  BEGIN
+      -- Converting values to BOOLEAN
+      b0 := to_bool( :i0 );
+      b1 := to_bool( :i1 );
+
+      -- Converting values from BOOLEAN
+      :o0 := from_bool( b0 );
+      :o1 := from_bool( b1 );
+  END;
+  PLSQL_END
+  my ( $i0, $i1, $o0, $o1 ) = ( "", "Something else" );
+  $sth2->bind_param( ":i0", $i0 );
+  $sth2->bind_param( ":i1", $i1 );
+  $sth2->bind_param_inout( ":o0", \$o0, 32 );
+  $sth2->bind_param_inout( ":o1", \$o1, 32 );
+  $sth2->execute();
+  foreach ( $i0, $b0, $o0, $i1, $b1, $o1 ) {
+      $_ = "(undef)" if ! defined $_;
+  }
+  print "$i0 to $o0, $i1 to $o1\n";
+  # Result is : "'' to '(undef)', 'Something else' to '1'"
+
+=head2 Support for Insert of XMLType (ORA_XMLTYPE)
+
+Inserting large XML data sets into tables with XMLType fields is now supported by DBD::Oracle. The only special
+requirement is the use of bind_param() with an attribute hash parameter that specifies ora_type as ORA_XMLTYPE. For
+example with a table like this;
+
+   create table books (book_id number, book_xml XMLType);
+
+one can insert data using this code
+
+   $SQL='insert into books values (1,:p_xml)';
+   $xml= '<Books>
+	  	<Book id=1>
+	  		<Title>Programming the Perl DBI</Title>
+	                <Subtitle>The Cheetah Book</Subtitle>
+	                <Authors>
+	                	<Author>T. Bunce</Author>
+	                	<Author>Alligator Descartes</Author>
+	                </Authors>
+
+	        </Book>
+	        <Book id=10000>...
+	    </Books>';
+   my $sth =$dbh-> prepare($SQL);
+   $sth-> bind_param("p_xml", $xml, { ora_type => ORA_XMLTYPE });
+   $sth-> execute();
+
+In the above case we will assume that $xml has 10000 Book nodes and is over 32k in size and is well formed XML.
+This will also work for XML that is smaller than 32k as well. Attempting to insert malformed XML will cause an error.
+
+=head2 Binding Cursors
+
+Cursors can be returned from PL/SQL blocks, either from stored
+functions (or procedures with OUT parameters) or
+from direct C<OPEN> statements, as shown below:
+
+  use DBI;
+  use DBD::Oracle qw(:ora_types);
+  my $dbh = DBI->connect(...);
+  my $sth1 = $dbh->prepare(q{
+      BEGIN OPEN :cursor FOR
+          SELECT table_name, tablespace_name
+          FROM user_tables WHERE tablespace_name = :space;
+      END;
+  });
+  $sth1->bind_param(":space", "USERS");
+  my $sth2;
+  $sth1->bind_param_inout(":cursor", \$sth2, 0, { ora_type => ORA_RSET } );
+  $sth1->execute;
+  # $sth2 is now a valid DBI statement handle for the cursor
+  while ( my @row = $sth2->fetchrow_array ) { ... }
+
+The only special requirement is the use of C<bind_param_inout()> with an
+attribute hash parameter that specifies C<ora_type> as C<ORA_RSET>.
+If you don't do that you'll get an error from the C<execute()> like:
+"ORA-06550: line X, column Y: PLS-00306: wrong number or types of
+arguments in call to ...".
+
+Here's an alternative form using a function that returns a cursor.
+This example uses the pre-defined weak (or generic) REF CURSOR type
+SYS_REFCURSOR. This is an Oracle 9 feature.
+
+  # Create the function that returns a cursor
+  $dbh->do(q{
+      CREATE OR REPLACE FUNCTION sp_ListEmp RETURN SYS_REFCURSOR
+      AS l_cursor SYS_REFCURSOR;
+      BEGIN
+          OPEN l_cursor FOR select ename, empno from emp
+              ORDER BY ename;
+          RETURN l_cursor;
+      END;
+  });
+
+  # Use the function that returns a cursor
+  my $sth1 = $dbh->prepare(q{BEGIN :cursor := sp_ListEmp; END;});
+  my $sth2;
+  $sth1->bind_param_inout(":cursor", \$sth2, 0, { ora_type => ORA_RSET } );
+  $sth1->execute;
+  # $sth2 is now a valid DBI statement handle for the cursor
+  while ( my @row = $sth2->fetchrow_array ) { ... }
+
+A cursor obtained from PL/SQL as above may be passed back to PL/SQL
+by binding for input, as shown in this example, which explicitly
+closes a cursor:
+
+  my $sth3 = $dbh->prepare("BEGIN CLOSE :cursor; END;");
+  $sth3->bind_param(":cursor", $sth2, { ora_type => ORA_RSET } );
+  $sth3->execute;
+
+It is not normally necessary to close a cursor
+explicitly in this way. Oracle will close the cursor automatically
+at the first client-server interaction after the cursor statement handle is
+destroyed. An explicit close may be desirable if the reference to
+the cursor handle from the PL/SQL statement handle delays the destruction
+of the cursor handle for too long. This reference remains until the
+PL/SQL handle is re-bound, re-executed or destroyed.
+
+See the C<curref.pl> script in the Oracle.ex directory in the DBD::Oracle
+source distribution for a complete working example.
+
+=head2 Fetching Nested Cursors
+
+Oracle supports the use of select list expressions of type REF CURSOR.
+These may be explicit cursor expressions - C<CURSOR(SELECT ...)>, or
+calls to PL/SQL functions which return REF CURSOR values. The values
+of these expressions are known as nested cursors.
+
+The value returned to a Perl program when a nested cursor is fetched
+is a statement handle. This statement handle is ready to be fetched from.
+It should not (indeed, must not) be executed.
+
+Oracle imposes a restriction on the order of fetching when nested
+cursors are used. Suppose C<$sth1> is a handle for a select statement
+involving nested cursors, and C<$sth2> is a nested cursor handle fetched
+from C<$sth1>. C<$sth2> can only be fetched from while C<$sth1> is
+still active, and the row containing C<$sth2> is still current in C<$sth1>.
+Any attempt to fetch another row from C<$sth1> renders all nested cursor
+handles previously fetched from C<$sth1> defunct.
+
+Fetching from such a defunct handle results in an error with the message
+C<ERROR nested cursor is defunct (parent row is no longer current)>.
+
+This means that the C<fetchall...> or C<selectall...> methods are not useful
+for queries returning nested cursors. By the time such a method returns,
+all the nested cursor handles it has fetched will be defunct.
+
+It is necessary to use an explicit fetch loop, and to do all the
+fetching of nested cursors within the loop, as the following example
+shows:
+
+    use DBI;
+    my $dbh = DBI->connect(...);
+    my $sth = $dbh->prepare(q{
+        SELECT dname, CURSOR(
+            SELECT ename FROM emp
+                WHERE emp.deptno = dept.deptno
+                ORDER BY ename
+        ) FROM dept ORDER BY dname
+    });
+    $sth->execute;
+    while ( my ($dname, $nested) = $sth->fetchrow_array ) {
+        print "$dname\n";
+        while ( my ($ename) = $nested->fetchrow_array ) {
+            print "        $ename\n";
+        }
+    }
+
+The cursor returned by the function C<sp_ListEmp> defined in the
+previous section can be fetched as a nested cursor as follows:
+
+    my $sth = $dbh->prepare(q{SELECT sp_ListEmp FROM dual});
+    $sth->execute;
+    my ($nested) = $sth->fetchrow_array;
+    while ( my @row = $nested->fetchrow_array ) { ... }
+
+=head2 Pre-fetching Nested Cursors
+
+By default, DBD::Oracle pre-fetches rows in order to reduce the number of
+round trips to the server. For queries which do not involve nested cursors,
+the number of pre-fetched rows is controlled by the DBI database handle
+attribute C<RowCacheSize> (q.v.).
+
+In Oracle, server side open cursors are a controlled resource, limited in
+number, on a per session basis, to the value of the initialization
+parameter C<OPEN_CURSORS>. Nested cursors count towards this limit.
+Each nested cursor in the current row counts 1, as does
+each nested cursor in a pre-fetched row. Defunct nested cursors do not count.
+
+An Oracle specific database handle attribute, C<ora_max_nested_cursors>,
+further controls pre-fetching for queries involving nested cursors. For
+each statement handle, the total number of nested cursors in pre-fetched
+rows is limited to the value of this parameter. The default value
+is 0, which disables pre-fetching for queries involving nested cursors.
 
 =head1 PL/SQL Examples
 
@@ -5555,75 +5342,141 @@ you may not be aware of.
 =head2 GitHub repository
 
 A git mirror of the subversion is also available at
-`https://github.com/yanick/DBD-Oracle`. 
+`https://github.com/yanick/DBD-Oracle`.
 
-=head1 Oracle Related Links
+=head1 WHICH VERSION OF DBD::ORACLE IS FOR ME?
 
-=head2 DBD::Oracle Tutorial
+From version 1.25 onwards DBD::Oracle only support Oracle clients
+9.2 or greater. Support for ProC connections was dropped in 1.29.
 
-  http://www.pythian.com/blogs/wp-content/uploads/introduction-dbd-oracle.html
+If you are still stuck with an older version of Oracle or its client you might want to look at the table below.
 
-=head2 Oracle Instant Client
+  +---------------------+-----------------------------------------------------+
+  |                     |                   Oracle Version                    |
+  +---------------------+----+-------------+---------+------+--------+--------+
+  | DBD::Oracle Version | <8 | 8.0.3~8.0.6 | 8iR1~R2 | 8iR3 |   9i   | 9.2~11 |
+  +---------------------+----+-------------+---------+------+--------+--------+
+  |      0.1~16         | Y  |      Y      |    Y    |  Y   |    Y   |    Y   |
+  +---------------------+----+-------------+---------+------+--------+--------+
+  |      1.17           | Y  |      Y      |    Y    |  Y   |    Y   |    Y   |
+  +---------------------+----+-------------+---------+------+--------+--------+
+  |      1.18           | N  |      N      |    N    |  Y   |    Y   |    Y   |
+  +---------------------+----+-------------+---------+------+--------+--------+
+  |      1.19           | N  |      N      |    N    |  Y   |    Y   |    Y   |
+  +---------------------+----+-------------+---------+------+--------+--------+
+  |      1.20           | N  |      N      |    N    |  Y   |    Y   |    Y   |
+  +---------------------+----+-------------+---------+------+--------+--------+
+  |      1.21~1.24      | N  |      N      |    N    |  N   |    Y   |    Y   |
+  +---------------------+----+-------------+---------+------+--------+--------+
+  |      1.25+          | N  |      N      |    N    |  N   |    N   |    Y   |
+  +---------------------+----+-------------+---------+------+--------+--------+
 
-  http://www.oracle.com/technology/tech/oci/instantclient/index.html
+As there are dozens of different versions of Oracle's clients this
+list does not include all of them, just the major released versions of
+Oracle.
 
-=head2 Oracle on Linux
+Note that one can still connect to any Oracle version with the older
+DBD::Oracle versions the only problem you will have is that some of
+the newer OCI and Oracle features available in later DBD::Oracle
+releases will not be available to you.
 
-  http://www.ixora.com.au/
+So to make a short story a little longer:
 
-=head2 Free Oracle Tools and Links
+=over
 
-  ora_explain supplied and installed with DBD::Oracle.
+=item 1
 
-  http://www.orafaq.com/
+If you are using Oracle 7 or early 8 DB and you can manage to get a 9 client and you can use
+any DBD::Oracle version.
 
-  http://vonnieda.org/oracletool/
+=item 2
 
-=head2 Commercial Oracle Tools and Links
+If you have to use an Oracle 7 client then DBD::Oracle 1.17 should work
 
-Assorted tools and references for general information.
-No recommendation implied.
+=item 3
 
-  http://www.platinum.com
-  http://www.SoftTreeTech.com
+Same thing for 8 up to R2, use 1.17, if you are lucky and have the right patch-set you might
+go with 1.18.
 
-Also PL/Vision from RevealNet and Steven Feuerstein, and
-"Q" from Savant Corporation.
+=item 4
+
+For 8iR3 you can use any of the DBD::Oracle versions up to 1.21. Again this depends on your
+patch-set, If you run into trouble go with 1.19
+
+=item 5
+
+After 9.2 you can use any version you want.
+
+=item 6
+
+It seems that the 10g client can only connect to 9 and 11 DBs while the 9 can go back to 7
+and even get to 10. I am not sure what the 11g client can connect to.
+
+=back
 
 =head1 BUGS AND LIMITATIONS
 
-There is a known problem with the 11.2g Oracle client and the 
-C<DBMS_LOB.GETLENGTH()> PL/SQL function.  
+There is a known problem with the 11.2g Oracle client and the
+C<DBMS_LOB.GETLENGTH()> PL/SQL function.
 See L<https://rt.cpan.org/Public/Bug/Display.html?id=69350> for the details.
-
 
 =head1 SEE ALSO
 
-DBI
+=over
+
+=item L<DBI>
 
 http://search.cpan.org/~timb/DBD-Oracle/MANIFEST for all files in
 the DBD::Oracle source distribution including the examples in the
 Oracle.ex directory
 
-  http://search.cpan.org/search?query=Oracle&mode=dist
+=item DBD::Oracle Tutorial
 
-=head1 AUTHOR
+http://www.pythian.com/blogs/wp-content/uploads/introduction-dbd-oracle.html
 
-DBD::Oracle by Tim Bunce. DBI by Tim Bunce.
+=item Oracle Instant Client
+
+http://www.oracle.com/technology/tech/oci/instantclient/index.html
+
+=item Oracle on Linux
+
+http://www.ixora.com.au/
+
+=item Free Oracle Tools and Links
+
+ora_explain supplied and installed with DBD::Oracle.
+
+http://www.orafaq.com/
+
+http://vonnieda.org/oracletool/
+
+=item Commercial Oracle Tools and Links
+
+Assorted tools and references for general information.
+No recommendation implied.
+
+http://www.platinum.com
+
+http://www.SoftTreeTech.com
+
+Also PL/Vision from RevealNet and Steven Feuerstein, and
+"Q" from Savant Corporation.
+
+=back
+
+=head1 AUTHORS
+
+DBI by Tim Bunce L<http://www.tim.bunce.name>.
+
+The original C<DBD::Oracle> was by Tim Bunce.
+Maintained as of release 1.17 (February 2006) by John Scoles, then Yanick Champoux, under the
+auspice of the Pythian Group (L<http://www.pythian.com>).
 
 =head1 ACKNOWLEDGEMENTS
 
-A great many people have helped me with DBD::Oracle over the 17 years
-between 1994 and 2011.  Far too many to name, but I thank them all.
+A great many people have helped with DBD::Oracle over the 17 years
+between 1994 and 2011.  Far too many to name, but we thank them all.
 Many are named in the Changes file.
-
-See also L<DBI/ACKNOWLEDGEMENTS>.
-
-=head1 MAINTAINER
-
-As of release 1.17 in February 2006 The Pythian Group, Inc. (L<http://www.pythian.com>)
-are taking the lead in maintaining DBD::Oracle with my assistance and
-gratitude. That frees more of my time to work on DBI for Perl 5 and Perl 6.
 
 =head1 COPYRIGHT
 
@@ -5633,5 +5486,34 @@ The DBD::Oracle module is Copyright (c) 2011 John Scoles. Canada.
 
 The DBD::Oracle module is free open source software; you can
 redistribute it and/or modify it under the same terms as Perl 5.
+
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Tim Bunce <timb@cpan.org>
+
+=item *
+
+John Scoles
+
+=item *
+
+Yanick Champoux <yanick@cpan.org>
+
+=item *
+
+Martin J. Evans <mjevans@cpan.org>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 1994 by Tim Bunce.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
 
 =cut

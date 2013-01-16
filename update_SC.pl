@@ -60,7 +60,7 @@ WikiCommons::makedir ("$tmp_path", 1);
 WikiCommons::makedir ("$to_path", 1);
 $tmp_path = abs_path("$tmp_path");
 $to_path = abs_path("$to_path");
-my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
+# my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 WikiCommons::set_real_path($path_prefix);
 
 # my $sc_table = "mind_sc_ids_versions";

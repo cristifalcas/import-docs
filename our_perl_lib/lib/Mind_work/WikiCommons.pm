@@ -426,37 +426,29 @@ sub check_vers {
 }
 
 sub generate_html_file {
-    my ($doc_file, $type, $user) = @_;
-    INFO "\t## using user ".Dumper($user);
-#     my $max_wait_time = 300; # 1800 = .5 hours # 46800 = 13 hours
+    my ($doc_file, $type, $thread) = @_;
+    INFO "\t## using thread ".Dumper($thread);
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
     my $status;
-    my $user_crt = `id -u`;chomp($user_crt);
-    my $user_exists;
-    my @change_user;
-# soffice -env:UserInstallation=file:///tmp/foobar
-    if (defined $user) {
-	my $user_exists = `id -u $user`; chomp($user_exists);
-	if ($user_exists =~ m/^[0-9]+$/ && $user_exists != $user_crt) {
-	  @change_user = ("sudo", "-u", "$user");
-	  system("cp", $ENV{"HOME"}."/.Xauthority", "/home/$user/") == 0 || LOGDIE "can't copy Xauthority to user $user\n"; 
-	}
-    }
-    my $sudo_user = join (" ", @change_user);
     ## filters http://cgit.freedesktop.org/libreoffice/core/tree/filter/source/config/fragments/filters
     my $filters = { "html" => $suffix =~ m/xlsx?/i ? "html:HTML (StarCalc)" : "html:HTML (StarWriter)",
 		    "pdf"  => "pdf:impress_pdf_Export",
 		    "swf"  => "swf:impress_flash_Export",
 		    "txt"  => "txt:TEXT (StarWriter_Web)",
 		  };
+    my $lo_tmp_dir = "/tmp/wiki_libreoffice_$thread";
+    ## I removed libreoffice from the system.
+    my @lo_args = ("--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file", "-env:UserInstallation=file://$lo_tmp_dir");
     my $commands = {
-	  "3. our office with X" => [@change_user, "/opt/libreoffice3.6/program/soffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
-	  "4. our office" => [@change_user, "/opt/libreoffice3.6/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
-	  "5. unoconv" => [@change_user, "python", "$real_path/convertors/unoconv", "-f", "$type", "$doc_file"],
-	  "6. system office with X" => ["libreoffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
-	  "7. system office" => [@change_user, "libreoffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
-	  "8. our office old with X" => [@change_user, "/opt/libreoffice3.4/program/soffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
-	  "9. our office old " => [@change_user, "/opt/libreoffice3.4/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
+	  "1. latest office" 		=> ["/opt/libreoffice4.0/program/soffice", "--headless", @lo_args], 
+	  "2. latest office with X" 	=> ["/opt/libreoffice4.0/program/soffice", @lo_args], 
+	  "3. unoconv" 			=> ["python", "$real_path/convertors/unoconv", "-f", "$type", "$doc_file"],
+	  "4. our office" 		=> ["/opt/libreoffice3.6/program/soffice", "--headless", @lo_args], 
+	  "5. our office with X" 	=> ["/opt/libreoffice3.6/program/soffice", @lo_args], 
+# 	  "6. system office with X" => ["libreoffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
+# 	  "7. system office" => [@change_user, "libreoffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
+# 	  "8. our office old with X" => [@change_user, "/opt/libreoffice3.4/program/soffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
+# 	  "9. our office old " => [@change_user, "/opt/libreoffice3.4/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
 	};
 
     INFO "\t-Generating $type file from $name$suffix.\t". (get_time_diff) ."\n\t\t$doc_file\n";
@@ -466,7 +458,8 @@ sub generate_html_file {
     $max_wait_time = 30 if (-s $doc_file < 100000);
     foreach my $key (sort keys %$commands) {
 	INFO "\tTrying to use $key.\t". (get_time_diff) ."\n";
-	`$sudo_user kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | gawk '{print \$2}') &>/dev/null`;
+	`kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | grep "$lo_tmp_dir" | gawk '{print \$2}') &>/dev/null`;
+	remove_tree($lo_tmp_dir);
 	sleep 1;
 	eval {
 	  local $SIG{ALRM} = sub { die "alarm\n" };
@@ -476,11 +469,8 @@ sub generate_html_file {
 	};
 	$status = $@;
 
-# 	`$sudo_user find \"$dir\" -user $user -type f -exec chgrp nobody {} \\;` if defined $user_exists;
-# 	`$sudo_user find \"$dir\" -user $user -type f -exec chmod g+rw   {} \\;` if defined $user_exists;
 	last if ! $status && -f "$dir/$name.$type";
 	$max_wait_time = $max_wait_time <= 60 ? 300 : $max_wait_time * 2;
-# 	$max_wait_time = $max_wait_time * 2;
 	ERROR "\t\tError: $status. Try again with next command.\t". (get_time_diff) ."\n";
     }
 

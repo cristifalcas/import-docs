@@ -183,7 +183,8 @@ sub add_swf_users {
     my $wiki = do { local $/; <FILEHANDLE> };
     close (FILEHANDLE);
     $wiki =~ s/\n/\n\n/gm;
-    $wiki = "<swf width=\"800\" height=\"500\" >http://10.0.0.99/ppt_as_flash/users_imports/$new_file.swf</swf> \n\n<!-- <nowiki>\n$wiki\n</nowiki> -->";
+    $wiki = "<swf width=\"800\" height=\"500\" >http://10.0.0.99/ppt_as_flash/users_imports/$new_file.swf</swf> \n
+<toggledisplay status=\"hide\" showtext=\"full text (for search index only)\" hidetext=\"hide text\">  <nowiki>\n$wiki\n</nowiki> </toggledisplay >";
 
     my $zip = Archive::Zip->new();
     $zip->addFile( "$work_dir/$new_file$suffix", "$new_file$suffix") or LOGDIE "Error adding file $new_file$suffix to zip.\n";

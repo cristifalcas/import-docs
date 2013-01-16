@@ -11,8 +11,8 @@
 typedef struct taf_callback_st taf_callback_t;
 
 struct taf_callback_st {
-	char *function; /*User supplied TAF functiomn*/
-	int  sleep;
+	SV   *function; /*User supplied TAF functiomn*/
+    SV   *dbh_ref;
 };
 
 typedef struct imp_fbh_st imp_fbh_t;
@@ -26,7 +26,6 @@ struct imp_drh_st {
 	SV *ora_cache;
 	SV *ora_cache_o;		/* for ora_open() cache override */
 };
-
 
 /* Define dbh implementor data structure */
 struct imp_dbh_st {
@@ -56,12 +55,9 @@ struct imp_dbh_st {
 	ub4			pool_max;
 	ub4			pool_incr;
 	char		*driver_name;/*driver name user defined*/
-	ub4			driver_namel;
 #endif
-	taf_callback_t  *taf_callback;
-    bool		using_taf; /*TAF stuff*/
-    char		*taf_function; /*User supplied TAF functiomn*/
-    int			taf_sleep;
+    SV          *taf_function; /*User supplied TAF functiomn*/
+    taf_callback_t taf_ctx;
     char		*client_info;  /*user defined*/
     ub4			client_infol;
 	char		*module_name; /*module user defined */
@@ -320,8 +316,8 @@ extern ub2 al16utf16_csid;
 
 void dbd_init_oci _((dbistate_t *dbistate));
 void dbd_preparse _((imp_sth_t *imp_sth, char *statement));
-void dbd_fbh_dump(imp_fbh_t *fbh, int i, int aidx);
-void ora_free_fbh_contents _((imp_fbh_t *fbh));
+void dbd_fbh_dump(imp_sth_t *imp_sth, imp_fbh_t *fbh, int i, int aidx);
+void ora_free_fbh_contents _((SV *sth, imp_fbh_t *fbh));
 void ora_free_templob _((SV *sth, imp_sth_t *imp_sth, OCILobLocator *lobloc));
 int ora_dbtype_is_long _((int dbtype));
 fb_ary_t *fb_ary_alloc _((ub4 bufl, int size));
@@ -329,8 +325,8 @@ fb_ary_t *fb_ary_cb_alloc _((ub4 piece_size,ub4 max_len, int size));
 
 int ora_db_reauthenticate _((SV *dbh, imp_dbh_t *imp_dbh, char *uid, char *pwd));
 
-void dbd_phs_sv_complete _((phs_t *phs, SV *sv, I32 debug));
-void dbd_phs_avsv_complete _((phs_t *phs, I32 index, I32 debug));
+void dbd_phs_sv_complete _((imp_sth_t *imp_sth, phs_t *phs, SV *sv, I32 debug));
+void dbd_phs_avsv_complete _((imp_sth_t *imp_sth, phs_t *phs, I32 index, I32 debug));
 
 int pp_exec_rset _((SV *sth, imp_sth_t *imp_sth, phs_t *phs, int pre_exec));
 int pp_rebind_ph_rset_in _((SV *sth, imp_sth_t *imp_sth, phs_t *phs));
@@ -352,8 +348,8 @@ char *oci_exe_mode _((ub4 mode));
 char *dbd_yes_no _((int yes_no));
 char *oci_col_return_codes _((int rc));
 char *oci_csform_name _((ub4 attr));
-char *oci_sql_function_code_name _((int sqlfncode));
-char *oci_ptype_name _((int ptype));
+/*char *oci_sql_function_code_name _((int sqlfncode));
+  char *oci_ptype_name _((int ptype));*/
 
 int dbd_rebind_ph_lob _((SV *sth, imp_sth_t *imp_sth, phs_t *phs));
 
@@ -366,8 +362,8 @@ int ora_st_execute_array _((SV *sth, imp_sth_t *imp_sth, SV *tuples,
 SV * ora_create_xml _((SV *dbh, char *source));
 
 void ora_free_lob_refetch _((SV *sth, imp_sth_t *imp_sth));
-void dbd_phs_avsv_complete _((phs_t *phs, I32 index, I32 debug));
-void dbd_phs_sv_complete _((phs_t *phs, SV *sv, I32 debug));
+void dbd_phs_avsv_complete _((imp_sth_t *imp_sth, phs_t *phs, I32 index, I32 debug));
+void dbd_phs_sv_complete _((imp_sth_t *imp_sth, phs_t *phs, SV *sv, I32 debug));
 int post_execute_lobs _((SV *sth, imp_sth_t *imp_sth, ub4 row_count));
 ub4 ora_parse_uid _((imp_dbh_t *imp_dbh, char **uidp, char **pwdp));
 char *ora_sql_error _((imp_sth_t *imp_sth, char *msg));
@@ -393,7 +389,7 @@ void fb_ary_free(fb_ary_t *fb_ary);
 void rs_array_init(imp_sth_t *imp_sth);
 
 ub4 ora_db_version _((SV *dbh, imp_dbh_t *imp_dbh));
-sb4 reg_taf_callback _((imp_dbh_t *imp_dbh));
+sb4 reg_taf_callback _((SV *dbh, imp_dbh_t *imp_dbh));
 
 /* These defines avoid name clashes for multiple statically linked DBD's	*/
 

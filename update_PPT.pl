@@ -73,7 +73,8 @@ sub add_document_local {
 	$q = "_".(-s $doc_file) if $suffix =~ m/^\.pptx?$/i;
 	$hash_swf->{$sc_id}->{"$name$q".lc($suffix)} = $doc_file;
     } else {
-	return if $doc_file =~ m/^\/mnt\/wiki_files\/wiki_files\/ppt_as_flash\/__presentations\//;
+	return if $doc_file =~ m/^\/mnt\/wiki_files\/wiki_files\/ppt_as_flash\/__presentations\//
+		    || $doc_file =~ m/^\/mnt\/wiki_files\/wiki_files\/ppt_as_flash\/users_imports\//;
 	LOGDIE "\tFile $doc_file is not in the correct dir:\n".Dumper($to_path, $name, $suffix);
 # 	unlink $doc_file || LOGDIE "can't delete file.\n";
 # 	return;
