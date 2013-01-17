@@ -263,7 +263,7 @@ sub wiki_upload_file {
 
 sub wiki_exists_page {
     my ($self, $title) = @_;
-    DEBUG "Wiki check if page $title exists.\n";
+    TRACE "Wiki check if page $title exists.\n";
     my $page = $mw->get_page( { title => $title } );
 # INFO Dumper($page->{'timestamp'});
     return 0 unless ( $page->{'*'} ) ;
@@ -290,7 +290,7 @@ sub wiki_move_page {
 
 sub wiki_get_nonredirects {
     my ($self, $ns) = @_;
-    DEBUG "Wiki get non redirects.\n";
+    DEBUG "Wiki get non redirects for ns $ns.\n";
     $array = ();
     $mw->list ( { action => 'query',
 	    list => 'allpages', aplimit=>'5000',
@@ -302,7 +302,7 @@ sub wiki_get_nonredirects {
 
 sub wiki_get_redirects {
     my ($self, $ns) = @_;
-    DEBUG "Wiki get redirects.\n";
+    DEBUG "Wiki get redirects for ns $ns.\n";
     $array = ();
     $mw->list ( { action => 'query',
 	    list => 'allpages', aplimit=>'5000',
@@ -392,6 +392,7 @@ sub wiki_get_pages_in_category {
 sub wiki_add_url {
     my ( $ref) = @_;
 
+    INFO "Adding to list ".(scalar @$ref)." pages.\n";
     foreach (@$ref) {
 	my $info;
 	if ( (scalar keys %$_) && defined $_->{'*'}) {

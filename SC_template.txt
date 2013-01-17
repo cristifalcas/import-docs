@@ -79,11 +79,5 @@
 
 %affectedFeatures%
 
-'''Test remarks''':
-%needs_test_remark%
-
-%incharge_test_remark%
-
-%approve_test_remark%
-
+%testRemarks%
 

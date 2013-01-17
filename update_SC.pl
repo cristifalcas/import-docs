@@ -75,6 +75,7 @@ my $svn_update = "yes";
 my $force_db_update = "no";
 my $bulk_svn_update = "no";
 my $update_only_wiki_db = "no";
+my $update_ver = "1.0";
 
 my $ppt_local_files_prefix="/mnt/wiki_files/wiki_files/ppt_as_flash/";
 my $ppt_apache_files_prefix="10.0.0.99/ppt_as_flash/";
@@ -119,11 +120,12 @@ sub write_file {
 
 sub fix_sc_text {
   my $text = shift;
-  $text =~ s/\r?\n/ <br\/>\n/g;
-  $text =~ s/^(\*|\#|\;|\:|\=|\!|\||----|\{\|)/<nowiki>$1<\/nowiki>/gm;
+#   $text =~ s/\r?\n/ <br\/>\n/g;
+  $text =~ s/\r?\n/ \n/g;
+#   $text =~ s/^(\*|\#|\;|\:|\=|\!|\||----|\{\|)/<nowiki>$1<\/nowiki>/gm;
   $text =~ s/\$\$\@\@/\'/gs;
-  $text =~ s/\b([a-z][0-9]{4,})/[[SC:$1|$1]]/gmi;
-  return $text;
+#   $text =~ s/\b([a-z][0-9]{4,})/[[SC:$1|$1]]/gmi;
+  return "<source lang=\"text\" enclose=\"div\">".$text."</source>";
 }
 
 sub general_info {
@@ -269,26 +271,39 @@ sub general_info {
 	$general =~ s/%affectedFeatures%//;
     }
 
+    my $test_remarks = "";
+
     if (@$info[$index->{'needs test_remark'}] !~ m/^\s*$/) {
       $tmp = fix_sc_text(@$info[$index->{'needs test_remark'}]);
-      $general =~ s/%needs_test_remark%/\'\'\'Needs test remark\'\'\':\n\n$tmp/;
-    } else {
-      $general =~ s/%needs_test_remark%\n//;
-    }
+      $test_remarks .= "<li>\'\'\'Needs test remark\'\'\':\n\n$tmp</li>";
+#       $general =~ s/%needs_test_remark%/\'\'\'Needs test remark\'\'\':\n\n$tmp/;
+    } 
+# else {
+#       $general =~ s/%needs_test_remark%\n//;
+#     }
     if (@$info[$index->{'incharge test_remark'}] !~ m/^\s*$/) {
       $tmp = fix_sc_text(@$info[$index->{'incharge test_remark'}]);
-      $general =~ s/%incharge_test_remark%/\'\'\'Incharge test remark\'\'\':\n\n$tmp/;
-    } else {
-      $general =~ s/%incharge_test_remark%\n//;
+      $test_remarks .= "<li>\'\'\'Incharge test remark\'\'\':\n\n$tmp</li>";
+#       $general =~ s/%incharge_test_remark%/\'\'\'Incharge test remark\'\'\':\n\n$tmp/;
     }
+#  else {
+#       $general =~ s/%incharge_test_remark%\n//;
+#     }
     if (@$info[$index->{'approve test_remark'}] !~ m/^\s*$/) {
       $tmp = fix_sc_text(@$info[$index->{'approve test_remark'}]);
-      $general =~ s/%approve_test_remark%/\'\'\'Approve test remark\'\'\':\n\n$tmp/;
-    } else {
-      $general =~ s/%approve_test_remark%\n//;
+      $test_remarks .= "<li>\'\'\'Approve test remark\'\'\':\n\n$tmp</li>";
+#       $general =~ s/%approve_test_remark%/\'\'\'Approve test remark\'\'\':\n\n$tmp/;
     }
-    if (@$info[$index->{'needs test_remark'}] =~ m/^\s*$/ && @$info[$index->{'incharge test_remark'}] =~ m/^\s*$/ && @$info[$index->{'approve test_remark'}] =~ m/^\s*$/) {
-      $general =~ s/\'\'\'Test remarks\'\'\':\n//;
+#  else {
+#       $general =~ s/%approve_test_remark%\n//;
+#     }
+#     if (@$info[$index->{'needs test_remark'}] =~ m/^\s*$/ && @$info[$index->{'incharge test_remark'}] =~ m/^\s*$/ && @$info[$index->{'approve test_remark'}] =~ m/^\s*$/) {
+#       $general =~ s/\'\'\'Test remarks\'\'\':\n//;
+#     }
+    if ($test_remarks ne "") {
+	$general =~ s/%testRemarks%/\'\'\'Test remarks\'\'\':\n<ul>$test_remarks<\/ul>/;
+    } else {
+	$general =~ s/%testRemarks%//;
     }
 
     $general =~ s/%fix_version%/@$info[$index->{'fixversion'}]/g;
@@ -335,6 +350,105 @@ sub general_info {
     push @categories, "has_deployment ". @$info[$index->{'deployment'}] if @$info[$index->{'deployment'}] eq "Y";
 # INFO Dumper(@$info[$index->{'deployment'}]);
     return ($general, \@categories);
+}
+
+sub get_hotfixes {
+    my $change_id = shift;
+
+    my $SEL_INFO = "
+select to_char(a.request_date, 'yyyy-mm-dd hh:mi:ss '),
+       to_char(a.request_due_date, 'yyyy-mm-dd hh:mi:ss '),
+       f.description          status,
+       a.priority,
+       nvl(a.release_path, ' '),
+       nvl(g.fix_explanation, ' '),
+       nvl(g.deploy_consideration, ' '),
+       nvl(a.cm_remark, ' '),
+       nvl(a.ps_remark, ' '),
+       nvl(a.rd_remark, ' '),
+       nvl(a.test_remark, ' '),
+       d.productname,
+       c.projectname,
+       b.version,
+       b.service_pack,
+       e.name                 customer,
+       a.ps_requester,
+       a.ps_poc,
+       a.tester,
+       a.test_incharge,
+       to_char(a.modification_time, 'yyyy-mm-dd hh:mi:ss ')       
+  from sc_hot_fixes        a,
+       sc_build_manager    b,
+       scprojects          c,
+       scprods             d,
+       sccustomers         e,
+       sc_hot_fix_status   f,
+       sc_hot_fix_messages g
+ where a.change_id = :CHANGEID
+   and b.id = a.version_id
+   and d.productid = b.product
+   and c.projectcode = b.projectcode
+   and a.customer = e.id
+   and f.id = a.status
+   and g.hotfix_id = a.id";
+
+    my $hf_template = "<li>'''#projectname#-#d.productname# #b.version# #b.service_pack# - (#version_bla#) for #e.name#''' : #a.release_path#
+
+{| class=\"wikitable\"
+|-
+! Status !! Priority !! Request date !! Due date !! PS info !! Testers info
+|-
+| #f.description# || #a.priority# || #a.request_date# || #a.request_due_date# || #a.ps_requester# <br>POC: #a.ps_poc# || #a.tester# <br>#a.test_incharge#
+|}";
+
+    my $hf_crc = '';
+    my $txt = '';
+    my $sth = $dbh->prepare($SEL_INFO);
+    $sth->bind_param( ":CHANGEID", $change_id );
+    $sth->execute();
+    while ( my @row=$sth->fetchrow_array() ) {
+	chomp @row;
+	s{^\s+|\s+$}{}g foreach @row;
+	my $ver_bla = $row[13];
+	$ver_bla =~ s/^([0-9]+\.[0-9]+).*$/$1/;
+	$hf_crc .= $row[20];
+	my $hf_header = $hf_template;
+	$hf_header =~s/#projectname#/$row[11]/;
+	$hf_header =~s/#d.productname#/$row[12]/;
+	$hf_header =~s/#b.version#/$row[13]/;
+	$hf_header =~s/#b.service_pack#/$row[14]/;
+	$hf_header =~s/#version_bla#/"$ver_bla\/V$ver_bla"/;
+	$hf_header =~s/#e.name#/$row[15]/;
+	if ($row[4] ne '') {
+	    $hf_header =~s/#a.release_path#/\[$row[4] Release path is here\]/;
+	} else {
+	    $hf_header =~s/#a.release_path#//;
+	}
+	$hf_header =~s/#f.description#/$row[2]/;
+	$hf_header =~s/#a.priority#/$row[3]/;
+	$hf_header =~s/#a.request_date#/$row[0]/;
+	$hf_header =~s/#a.request_due_date#/$row[1]/;
+	my ($ps_req, $ps_poc, $tester, $test_ncharge) = (sql_get_workers_names($row[16]), sql_get_workers_names($row[17]), sql_get_workers_names($row[18]), sql_get_workers_names($row[19]));
+	$hf_header =~s/#a.ps_requester#/$ps_req->[0]/;
+	$hf_header =~s/#a.ps_poc#/$ps_poc->[0]/;
+	$hf_header =~s/#a.tester#/$tester->[0]/;
+	$hf_header =~s/#a.test_incharge#/$test_ncharge->[0]/;
+	my $remarks = "";
+	$remarks .= "&mdash; CM remark: $row[7]<br>\n" if $row[7] ne '';
+	$remarks .= "&mdash; PS remark: $row[8]<br>\n" if $row[8] ne '';
+	$remarks .= "&mdash; R&D remark: $row[9]<br>\n" if $row[9] ne '';
+	$remarks .= "&mdash; Test remark: $row[10]<br>\n" if $row[10] ne '';
+
+	$hf_header .= "\n\n$remarks" if $hf_header ne '';
+
+	$hf_header .= "\n\nFix explanation:\n".fix_sc_text($row[5]) if $row[5] ne '';
+	$hf_header .= "\n\nDeployment consideration:\n".fix_sc_text($row[6]) if $row[6] ne '';
+	$hf_header .= "\n\n\n</li>";
+	$txt .= $hf_header;
+    }
+    my $full_txt = '';
+    $full_txt = "=Hot fixes=\n<ul>$txt</ul>" if $txt !~ m/^\s*$/;
+    return ($full_txt, $hf_crc);
 }
 
 sub sql_connect {
@@ -541,7 +655,7 @@ sub sql_get_changeinfo {
 }
 
 sub sql_get_workers_names {
-    my @ids = shift;
+    my @ids = @_;
     chomp @ids;
     $_ = '\''.$_.'\'' foreach (@ids);
     my $tmp = join ',', @ids;
@@ -1047,18 +1161,19 @@ if ($bulk_svn_update eq "yes"){
 	LOGDIE if $retries == 3;
     };
 }
-
+my $qqq=0;
 ## problem: after the first run we can have missing documents, but the general_info will not be updated
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
-# next if $change_id ne "B109856";
+    $count++;
+# next if $change_id lt "B109204";
+# next if $change_id ne "B631076";
 ## special chars: B06390
 ## docs B71488
 # my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
 # INFO Dumper($info_ret, $SEL_INFO) if ! defined @$info_ret[$index->{'deployment'}];
 # INFO Dumper($change_id,@$info_ret[$index->{'deployment'}]);next if @$info_ret[$index->{'deployment'}] ne "Y";
 # @$info_ret[$index->{'deployment'}]
-    $count++;
     my $dif = time() - $time;
     my $work_dir = "$tmp_path/$change_id";
     WikiCommons::makedir("$work_dir");
@@ -1107,8 +1222,10 @@ foreach my $change_id (sort keys %$crt_hash){
     ## db update
     my $arr = $crt_hash->{$change_id};
 
+    my ($hf_txt, $hf_crc) = get_hotfixes($change_id);
+
     $crt_info->{'SC_info'}->{'name'} = @$arr[0];
-    $crt_info->{'SC_info'}->{'size'} = @$arr[1].$control.(@$arr[4] eq "Y" ? "Y" : "");
+    $crt_info->{'SC_info'}->{'size'} = @$arr[1].$control.(@$arr[4] eq "Y" ? "Y" : "").$hf_crc;
     $crt_info->{'SC_info'}->{'revision'} = @$arr[2];
     $crt_info->{'SC_info'}->{'date'} = "sc_date is not used";
 
@@ -1132,6 +1249,7 @@ foreach my $change_id (sort keys %$crt_hash){
 	my $initiator = sql_get_workers_names( split ',', @$info_ret[$index->{'initiator'}] );
 	my $dealer = sql_get_dealer_names( split ',', @$info_ret[$index->{'dealer'}] );
 	my ($txt, $categories) = general_info($info_ret, $index, $modules, $tester, $initiator, $dealer);
+
 	$cat = $categories;
 	foreach my $key (sort keys %$missing_documents) {
 	    my $link = $missing_documents->{$key};
@@ -1139,7 +1257,14 @@ foreach my $change_id (sort keys %$crt_hash){
 	    $txt .= "\nMissing \'\'\'$key\'\'\' from [$link this] svn address, but database says it should exist.\n";
 	}
 	$txt .= "\n'''Presentations'''\n\nThe following presentations were found for this ".lc(@$info_ret[$index->{'changetype'}])." (either made by Q&A or attached to it):".$presentations if defined $presentations && $presentations ne "";
-	write_file ("$work_dir/General_info.wiki" ,$txt);
+	my $crt_md5 = WikiCommons::get_file_md5("$to_path/$change_id/General_info.wiki", 1).
+		      WikiCommons::get_file_md5("$to_path/$change_id/1 Market_SC.rtf", 1).
+		      WikiCommons::get_file_md5("$to_path/$change_id/2 HLS_SC.rtf", 1).
+		      WikiCommons::get_file_md5("$to_path/$change_id/3 Description_SC.rtf", 1).
+		      WikiCommons::get_file_md5("$to_path/$change_id/4 HLD_SC.rtf", 1).
+		      WikiCommons::get_file_md5("$to_path/$change_id/5 Messages_SC.rtf", 1).
+		      WikiCommons::get_file_md5("$to_path/$change_id/6 Architecture_SC.rtf", 1);
+	write_file ("$work_dir/General_info.wiki" ,$txt."\n$hf_txt\n");
 	unlink glob ("$to_path/$change_id/*.rtf"); 
 	write_rtf ("$work_dir/1 Market_SC.rtf", @$info_ret[$index->{'Market_SC'}]);
 	write_rtf ("$work_dir/2 HLS_SC.rtf", @$info_ret[$index->{'HLS_SC'}]);
@@ -1147,11 +1272,20 @@ foreach my $change_id (sort keys %$crt_hash){
 	write_rtf ("$work_dir/4 HLD_SC.rtf", @$info_ret[$index->{'HLD_SC'}]);
 	write_rtf ("$work_dir/5 Messages_SC.rtf", @$info_ret[$index->{'Messages_SC'}]);
 	write_rtf ("$work_dir/6 Architecture_SC.rtf", @$info_ret[$index->{'Architecture_SC'}]);
-	$update_control_file++;
-	add_versions_to_wiki_db($change_id, $info_ret, $index, $crt_info, $cat);
+# 	$update_control_file++;
+	my $new_md5 = WikiCommons::get_file_md5("$work_dir/General_info.wiki", 1).
+		      WikiCommons::get_file_md5("$work_dir/1 Market_SC.rtf", 1).
+		      WikiCommons::get_file_md5("$work_dir/2 HLS_SC.rtf", 1).
+		      WikiCommons::get_file_md5("$work_dir/3 Description_SC.rtf", 1).
+		      WikiCommons::get_file_md5("$work_dir/4 HLD_SC.rtf", 1).
+		      WikiCommons::get_file_md5("$work_dir/5 Messages_SC.rtf", 1).
+		      WikiCommons::get_file_md5("$work_dir/6 Architecture_SC.rtf", 1);
+DEBUG Dumper($crt_md5, $new_md5);
+$qqq++ if $crt_md5 ne $new_md5;
+	$crt_info->{'SC_info'}->{'size'} .= $update_ver;
+next;
+	add_versions_to_wiki_db($change_id, $info_ret, $index, $crt_info, $cat) if $crt_md5 ne $new_md5;
     }
-#     write_control_file($crt_info, $work_dir, $cat) if $update_control_file;
-# die;
     WikiCommons::move_dir("$work_dir", "$to_path/$change_id/");
     INFO "+Finish working for $change_id: nr $count of $total.\t$dif\n";
 }
@@ -1159,4 +1293,4 @@ foreach my $change_id (sort keys %$crt_hash){
 $dbh->disconnect if defined($dbh);
 $dbh_mysql->disconnect() if defined($dbh_mysql);
 
-INFO "Done.\n";
+INFO "Done: $qqq.\n";
