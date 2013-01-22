@@ -75,6 +75,8 @@ sudo -u apache php /var/www/html/wiki/maintenance/namespaceDupes.php --fix
 
 function clean {
   echo "clean dirs"
+  rm -rf /tmp/systemd-private*
+  rm -rf /tmp/webdriver-rb*
   rm -rf /var/www/html/wiki/images/deleted/*
   rm -rf /var/www/html/wiki/images/archive/*
   rm -rf /var/www/html/wiki/images/thumb/*

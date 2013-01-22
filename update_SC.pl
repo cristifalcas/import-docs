@@ -357,7 +357,7 @@ sub get_hotfixes {
 
     my $SEL_INFO = "
 select to_char(a.request_date, 'yyyy-mm-dd hh:mi:ss '),
-       to_char(a.request_due_date, 'yyyy-mm-dd hh:mi:ss '),
+       nvl(to_char(a.request_due_date, 'yyyy-mm-dd hh:mi:ss '),' '),
        f.description          status,
        a.priority,
        nvl(a.release_path, ' '),
@@ -417,7 +417,7 @@ select to_char(a.request_date, 'yyyy-mm-dd hh:mi:ss '),
 	$hf_header =~s/#d.productname#/$row[12]/;
 	$hf_header =~s/#b.version#/$row[13]/;
 	$hf_header =~s/#b.service_pack#/$row[14]/;
-	$hf_header =~s/#version_bla#/"$ver_bla\/V$ver_bla"/;
+	$hf_header =~s/#version_bla#/$ver_bla\/V$ver_bla/;
 	$hf_header =~s/#e.name#/$row[15]/;
 	if ($row[4] ne '') {
 	    $hf_header =~s/#a.release_path#/\[$row[4] Release path is here\]/;
@@ -1086,7 +1086,7 @@ sub add_versions_to_wiki_db {
 	my $date = $hash->{$doc_types[$i]}->{'date'} || '';
 	my $size = $hash->{$doc_types[$i]}->{'size'} || '';
 # 	$size = $hash->{$doc_types[$i]}->{'size'} if ( defined $hash->{$doc_types[$i]}->{'size'} );
-	$text .= (1000 + $i) ." $doc_types[$i];$name;$size;$rev;$date\n";
+	$text .= (1000 + $i) . " $doc_types[$i];$name;$size;$rev;$date\n";
     }
 
     $text .= "SC_info;$hash->{'SC_info'}->{'name'};$hash->{'SC_info'}->{'size'};$hash->{'SC_info'}->{'revision'};$hash->{'SC_info'}->{'date'}\n";
@@ -1166,8 +1166,9 @@ my $qqq=0;
 my $count = 0;
 foreach my $change_id (sort keys %$crt_hash){
     $count++;
-# next if $change_id lt "B109204";
-# next if $change_id ne "B631076";
+# next if $change_id lt "B113842";
+# next if $change_id ne "B634626";
+# next if $change_id !~ m/(B113863|B114442|B114522|B114523|B114526|B114527|B114528|B114538|B114569|B114589|B634626|B113863|B114522|B114523|B114526|B114527|B114528|B114569|B114589|B634626|B114442|B114538)/;
 ## special chars: B06390
 ## docs B71488
 # my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
@@ -1280,10 +1281,9 @@ foreach my $change_id (sort keys %$crt_hash){
 		      WikiCommons::get_file_md5("$work_dir/4 HLD_SC.rtf", 1).
 		      WikiCommons::get_file_md5("$work_dir/5 Messages_SC.rtf", 1).
 		      WikiCommons::get_file_md5("$work_dir/6 Architecture_SC.rtf", 1);
-DEBUG Dumper($crt_md5, $new_md5);
-$qqq++ if $crt_md5 ne $new_md5;
-	$crt_info->{'SC_info'}->{'size'} .= $update_ver;
-next;
+# DEBUG Dumper($crt_md5, $new_md5);
+# if ($crt_md5 ne $new_md5){$qqq++; INFO "TO UPDATE"};
+# next;
 	add_versions_to_wiki_db($change_id, $info_ret, $index, $crt_info, $cat) if $crt_md5 ne $new_md5;
     }
     WikiCommons::move_dir("$work_dir", "$to_path/$change_id/");

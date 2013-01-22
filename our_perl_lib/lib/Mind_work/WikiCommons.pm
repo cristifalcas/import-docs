@@ -442,10 +442,10 @@ sub generate_html_file {
     my @lo_args = ("--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file", "-env:UserInstallation=file://$lo_tmp_dir");
     my $commands = {
 	  "1. latest office" 		=> ["/opt/libreoffice4.0/program/soffice", "--headless", @lo_args], 
-	  "2. latest office with X" 	=> ["/opt/libreoffice4.0/program/soffice", @lo_args], 
+	  "2. latest office with X" 	=> ["/opt/libreoffice4.0/program/soffice", "--display", ":10235", @lo_args], 
 	  "3. unoconv" 			=> ["python", "$real_path/convertors/unoconv", "-f", "$type", "$doc_file"],
 	  "4. our office" 		=> ["/opt/libreoffice3.6/program/soffice", "--headless", @lo_args], 
-	  "5. our office with X" 	=> ["/opt/libreoffice3.6/program/soffice", @lo_args], 
+	  "5. our office with X" 	=> ["/opt/libreoffice3.6/program/soffice", "--display", ":10235", @lo_args], 
 # 	  "6. system office with X" => ["libreoffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
 # 	  "7. system office" => [@change_user, "libreoffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
 # 	  "8. our office old with X" => [@change_user, "/opt/libreoffice3.4/program/soffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 

@@ -348,6 +348,7 @@ sub tree_clean_span {
     my ($tree, $tag) = @_;
     INFO " Clean span.\n";
     foreach my $a_tag ($tree->guts->look_down(_tag => "span")) {
+	my $delete_span = 0;
 # 	$a_tag->detach, next if $a_tag->is_empty();
 	my $imgs = "";
 	foreach my $attr_name ($a_tag->all_external_attr_names){
@@ -383,6 +384,8 @@ sub tree_clean_span {
 			} elsif ($att =~ m/^\s*font-variant: (small-caps|normal)\s*$/i
 				    || $att =~ m/^\s*text-transform: uppercase\s*$/i) {
 			    $res .= $att.";";
+			} elsif ($att =~ m/^\s*display: none\s*$/i) {
+			    $delete_span = 1;
 			} else {
 			    LOGDIE "Attr name for span_style = $att.\n";
 			}
@@ -398,7 +401,11 @@ sub tree_clean_span {
 		LOGDIE "Attr name for span: $attr_name = $attr_value.\n";
 	    }
 	}
-	tree_remove_empty_element($a_tag);
+	if ($delete_span) {
+	    $a_tag->detach;
+	} else {
+	    tree_remove_empty_element($a_tag);
+	}
     }
     return $tree;
 }

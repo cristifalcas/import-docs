@@ -146,7 +146,7 @@ case "$1" in
 "import_all")
     ##update_customers
     $CMD "$SCRIPT_PATH"/update_customers.pl "$SCRIPT_PATH"/ > "$LOG_PATH"update_customers
-    $CMD "$SCRIPT_PATH"/maintenance.pl 0 > "$LOG_PATH"maintenance
+#     $CMD "$SCRIPT_PATH"/maintenance.pl 0 > "$LOG_PATH"maintenance
     ##import_crm
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/crm/crm_iphonex/   -n crm_iphonex > "$LOG_PATH"import_crm_iphonex &
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/crm/crm_phonexone/ -n crm_phonexone > "$LOG_PATH"import_crm_phonexone &
@@ -177,7 +177,7 @@ case "$1" in
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scphonex_docs/ 	-n sc_docs > "$LOG_PATH"import_sc_a
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scplugins_docs/ 	-n sc_docs > "$LOG_PATH"import_sc_p
 
-    $CMD "$SCRIPT_PATH"/maintenance.pl 0 > "$LOG_PATH"maintenance
+#     $CMD "$SCRIPT_PATH"/maintenance.pl 0 > "$LOG_PATH"maintenance
   ;;
 *)
     echo "Incorrect parameter"

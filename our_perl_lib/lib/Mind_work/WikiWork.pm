@@ -226,7 +226,7 @@ sub wiki_import_files {
     my ($self, $file_path, $url) = @_;
     ## need in /etc/sudoers to have "wiki ALL=(apache) NOPASSWD: ALL"
     INFO "\t-Uploading files ($file_path) for url $url.\t". (WikiCommons::get_time_diff) ."\n";
-    my $cmd_output = `sudo -u apache php "$wiki_site_path/maintenance/importImages.php" --conf "$wiki_site_path/LocalSettings.php" --user="$wiki_user" --overwrite --check-userblock "$file_path"`;
+    my $cmd_output = `sudo -u apache php "$wiki_site_path/maintenance/importImages.php" --conf "$wiki_site_path/LocalSettings.php" --user="$wiki_user" --check-userblock "$file_path"`;
     LOGDIE "\tError $? for importImages.php: ".Dumper($cmd_output) if ($?);
     INFO "$cmd_output\n";
     INFO "\t+Uploading files for url $url.\t". (WikiCommons::get_time_diff) ."\n";
