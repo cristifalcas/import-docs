@@ -622,11 +622,11 @@ sub get_correct_customer{
 sub shouldSkipFile {
     my ($url, $file) = @_;
     my $ret = 0;
-    $ret = 1 if $url eq "CMS:PhonEX ONE 2.30 Installation Technical Guide" && -s $file == 10507264;
-    $ret = 1 if $url eq "CMS:PhonEX ONE 2.30 Installation Technical Guide For Red Box" && -s $file == 5887087;
-    $ret = 1 if $url eq "CMS:PhonEX ONE 2.31 FAQs" && -s $file == 7906304;
+#     $ret = 1 if $url eq "CMS:PhonEX ONE 2.30 Installation Technical Guide" && -s $file == 10507264;
+#     $ret = 1 if $url eq "CMS:PhonEX ONE 2.30 Installation Technical Guide For Red Box" && -s $file == 5887087;
+#     $ret = 1 if $url eq "CMS:PhonEX ONE 2.31 FAQs" && -s $file == 7906304;
 #     $ret = 1 if $url eq "CMS:PhonEX ONE 2.31 Installation Technical Guide" && -s $file == 9917952;
-    $ret = 1 if $url eq "CMS:PhonEX ONE 2.31 Installation Technical Guide For Red Box" && -s $file == 8760832;
+#     $ret = 1 if $url eq "CMS:PhonEX ONE 2.31 Installation Technical Guide For Red Box" && -s $file == 8760832;
     $ret = 1 if $url eq "XXX" && -s $file == 100;
     $ret = 1 if $url eq "XXX" && -s $file == 100;
     INFO "Skipping file $file with url $url. They should be saved in docx with Microsoft Word and copied instead of the original doc.\n" if $ret==1;

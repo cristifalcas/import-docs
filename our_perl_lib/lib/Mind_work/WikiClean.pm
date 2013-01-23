@@ -135,13 +135,15 @@ sub tree_fix_links_images {
 		INFO "Can't find file $dir/$name_img.\n";
 		next;
 	    }
-	    my $name_new = WikiCommons::get_file_md5("$dir/$name_img")."_conv.jpg";
-	    system("convert", "$dir/$name_img", "-background", "white", "-flatten", "$dir/$name_new") == 0 or LOGDIE "error runnig convert: $!.\n";
-# 	    unlink "$dir/$name_img" || LOGDIE "can't delete old image $dir/$name_img\n";
 	    $old_files_for_delete->{"$dir/$name_img"} = 1;
+	    my $name_new = "$name_img.conv.jpg";
+	    system("convert", "$dir/$name_img", "-background", "white", "-flatten", "$dir/$name_new") == 0 or LOGDIE "error runnig convert: $!.\n";
 	    ## importImages.php Segmentation fault
 	    system("mogrify", "-strip", "$dir/$name_new") == 0 or LOGDIE "error runnig mogrify: $!.\n"; 
-	    $element->attr($attr, uri_escape($name_new));
+	    ## get correct hash after convert/mogrify
+	    my $name_new_final = WikiCommons::get_file_md5("$dir/$name_new")."_conv.jpg";
+	    move("$dir/$name_new", "$dir/$name_new_final") or die "Copy failed: $!";
+	    $element->attr($attr, uri_escape($name_new_final));
 	}
     }
     unlink $_  foreach (keys %$old_files_for_delete);
@@ -455,7 +457,7 @@ sub tree_clean_headings {
 
 sub tree_headings_clean_images {
     my $a_tag = shift;
-    DEBUG " Clean images in heading.\n";
+    TRACE " Clean images in heading.\n";
     $a_tag->preinsert(['br']);
     foreach my $b_tag ($a_tag->content_refs_list){
 	next if ! ref $$b_tag;
@@ -476,7 +478,7 @@ sub tree_headings_clean_images {
 
 sub tree_headings_clean_content {
     my $a_tag = shift;
-    DEBUG " Clean content in headings.\n";
+    TRACE " Clean content in headings.\n";
 ## extract images from heading and put it before it. Remove other attr
     foreach my $b_tag ($a_tag->content_refs_list){
 	next if ! ref $$b_tag;
@@ -1021,7 +1023,7 @@ sub fix_wiki_url {
 sub fix_wiki_link_to_sc {
     my $wiki = shift;
     ## for every B1111 make it a link
-#     INFO "\tFix links to SC.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\tFix links to SC.\n";
     my $newwiki = $wiki;
     my $count = 0;
     while ($wiki =~ m/(\[\[Image:[[:print:]]*?(B|I|F|H|R|D|E|G|S|T|Z|K|A|P)[[:digit:]]{4,}[[:print:]]*?\]\])|(\b(B|I|F|H|R|D|E|G|S|T|Z|K|A|P)[[:digit:]]{4,}\b)/g ) {
@@ -1029,7 +1031,7 @@ sub fix_wiki_link_to_sc {
 	my $found_string_end_pos = pos($wiki);
 
 	next if ($found_string =~ /^\[\[Image:/);
-	INFO "\tSC link: $found_string\n";
+	DEBUG "\tSC link: $found_string\n";
 	my $new_string = " [[SC:$found_string|$found_string]] ";
 	substr($newwiki, $found_string_end_pos - length($found_string)+$count, length($found_string)) = $new_string;
 	$count += length($new_string) - length($found_string);

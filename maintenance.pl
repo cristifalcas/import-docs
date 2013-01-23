@@ -426,7 +426,7 @@ sub fix_wiki_sc_type {
   my $hash_real = ();
   $hash = $namespaces->{'real'};
   foreach my $ns (sort keys %$hash){
-    next if ! defined $our_wiki->wiki_get_nonredirects("$hash->{$ns}");
+#     next if ! defined $our_wiki->wiki_get_nonredirects("$hash->{$ns}");
     foreach (@{$our_wiki->wiki_get_nonredirects("$hash->{$ns}")}) {
       my $tmp = $_;
       $tmp =~ s/^(SC|CRM)(.*?)://i;
@@ -816,6 +816,7 @@ sub fix_images {
       my $second_part = substr($md5, 0, 2);
       my $file_name = "$images_dir/$first_part/$second_part/$file";
       if (! -f $file_name){
+	  DEBUG "Delete file $file_name.\n";
 	  eval{$our_wiki->wiki_delete_page($file)} if ( $our_wiki->wiki_exists_page($file) && ! $view_only);
 	  delete $db_imagelinks->{$file};
       } else {
@@ -1004,18 +1005,19 @@ if ($view_only ne "user_sr") {
     broken_redirects;
     INFO "##### Fix double redirects:\n";
     scdoubleredirects;
-#     # INFO "##### Wanted pages:\n";
-#     # my ($cat, $sc, $crm, $other) = fix_wanted_pages();
-#     # INFO "##### Get missing categories:\n";
-#     # my $wanted = wanted_categories();
     INFO "##### Get unused categories:\n";
-    my $unused = unused_categories();
+#     Dmy $unused = unused_categories();
     INFO "##### Syncronize:\n";
     syncronize_local_wiki($namespaces);
     INFO "##### Remove unused images:\n";
     while (unused_images_dirty()){};
     INFO "##### Syncronize wiki files with fs files.\n";
     fix_images();
+
+#     # INFO "##### Wanted pages:\n";
+#     # my ($cat, $sc, $crm, $other) = fix_wanted_pages();
+#     # INFO "##### Get missing categories:\n";
+#     # my $wanted = wanted_categories();
 }
 $dbh_mysql->disconnect() if defined($dbh_mysql);
 

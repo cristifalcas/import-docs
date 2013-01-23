@@ -842,23 +842,16 @@ sub sql_get_relpath {
 }
 
 sub get_previous {
-#     my $path = shift;
     my $change_id = shift;
     my $info_hash = {};
-    my @info = ();
-# open(FH, "$to_path/$change_id/files_info.txt") or LOGDIE "Can't open file .\n";
-# @info = <FH>;
-# close(FH);
     my $ret = $dbh_mysql->selectrow_array("select FILES_INFO_CRT from mind_sc_ids_versions where SC_ID='$change_id'");
-# INFO Dumper("$to_path/$change_id");die;
     return $info_hash if ! defined $ret || ! -d "$to_path/$change_id";
-    @info = split "\n", $ret;
+    my @info = split "\n", $ret;
     chomp @info;
     foreach my $line (@info) {
 	my @all = split(/;/, $line);
 	return if (@all < 1);
 	$all[0] =~ s/^[0-9]{1,} //;
-# 	next if $all[0] eq "Categories";
 	$info_hash->{$all[0]}->{'name'} = $all[1];
 	$info_hash->{$all[0]}->{'size'} = $all[2];
 	$info_hash->{$all[0]}->{'revision'} = $all[3];
@@ -1106,6 +1099,57 @@ sub add_versions_to_wiki_db {
     $sth_mysql->finish();
 }
 
+sub get_info_files_md5_crc {
+    my $change_id = shift;
+    my $crc = WikiCommons::get_file_md5("$to_path/$change_id/General_info.wiki", 1).
+    WikiCommons::get_file_md5("$to_path/$change_id/1 Market_SC.rtf", 1).
+    WikiCommons::get_file_md5("$to_path/$change_id/2 HLS_SC.rtf", 1).
+    WikiCommons::get_file_md5("$to_path/$change_id/3 Description_SC.rtf", 1).
+    WikiCommons::get_file_md5("$to_path/$change_id/4 HLD_SC.rtf", 1).
+    WikiCommons::get_file_md5("$to_path/$change_id/5 Messages_SC.rtf", 1).
+    WikiCommons::get_file_md5("$to_path/$change_id/6 Architecture_SC.rtf", 1);
+    return $crc;
+}
+
+sub work_svn {
+    my ($change_id, $info_comm, $prev_info, $index_comm, $work_dir) = @_;
+    my $missing_documents = {};
+    my $crt_info = {};
+    my $update_control_file = 0;
+
+    if ($svn_update ne "no" && $update_only_wiki_db ne "yes") {
+	my $svn_docs = sql_get_svn_docs($change_id);
+	clean_existing_dir($change_id, $svn_docs);
+
+	foreach my $key (sort keys %$svn_docs) {
+	    my $dir = @$info_comm[$index_comm->{$key}];
+# 	    $dir =~ s/$db_relpath/$svn_local_path/ if ($svn_type eq "local");
+	    my $file = $svn_docs->{$key};
+	    my $res = svn_list($dir, $file);
+
+	    my $doc_rev = $res->{'commit'}->{'revision'};
+	    my $doc_size = $res->{'size'};
+	    if ( ! defined $res || (! defined $doc_rev && ! defined $doc_size)) {
+		INFO "\tSC $change_id says we have document for $key, but we don't have anything on svn.\n";
+		$missing_documents->{$key} = "$dir/$file";
+		next;
+	    }
+	    delete $prev_info->{$key} if (!(-e "$to_path/$change_id/$key.doc" && -s "$to_path/$change_id/$key.doc" == $doc_size));
+	    $crt_info->{$key}->{'name'} = $svn_docs->{$key};
+	    $crt_info->{$key}->{'size'} = $doc_size;
+	    $crt_info->{$key}->{'revision'} = $doc_rev;
+	    $crt_info->{$key}->{'date'} =  $res->{'commit'}->{'date'};
+	    if ( ! Compare($crt_info->{$key}, $prev_info->{$key}) ) {
+		INFO "\tUpdate svn http for $key.\n";
+		my $file_res = WikiCommons::http_get("$dir/$file", "$work_dir", "$svn_user", "$svn_pass");
+		move($file_res, "$work_dir/$key.doc") || LOGDIE "can't move file $file_res to $work_dir/$key.doc: $!.\n";
+		$update_control_file++;
+	    }
+	}
+    }
+    return ($missing_documents, $crt_info, $update_control_file);
+}
+
 # 10.0.0.232 service25, service25
 
 # $ftp_uri = "ftp:\\\\@$info_comm[$index_comm->{'FTP_USER'}]:@$info_comm[$index_comm->{'FTP_PASS'}]\@@$info_comm[$index_comm->{'FTP_IP'}]";
@@ -1168,78 +1212,34 @@ foreach my $change_id (sort keys %$crt_hash){
     $count++;
 # next if $change_id lt "B113842";
 # next if $change_id ne "B634626";
-# next if $change_id !~ m/(B113863|B114442|B114522|B114523|B114526|B114527|B114528|B114538|B114569|B114589|B634626|B113863|B114522|B114523|B114526|B114527|B114528|B114569|B114589|B634626|B114442|B114538)/;
+# next if $change_id !~ m/(B113863|B114442|B114522|B114523|B114526|B114527|B114528|B114538|B114569|B114589|B634626|B113863|B114522|B114523|B114526|B114527|B114528|B114569|B114589|B634626|B114442|B114538|B113842)/;
 ## special chars: B06390
-## docs B71488
-# my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
-# INFO Dumper($info_ret, $SEL_INFO) if ! defined @$info_ret[$index->{'deployment'}];
-# INFO Dumper($change_id,@$info_ret[$index->{'deployment'}]);next if @$info_ret[$index->{'deployment'}] ne "Y";
-# @$info_ret[$index->{'deployment'}]
     my $dif = time() - $time;
     my $work_dir = "$tmp_path/$change_id";
     WikiCommons::makedir("$work_dir");
-    my $todo = {};
-    my $missing_documents = {};
-    my $crt_info = {};
     INFO "*************\n-Start working for $change_id: nr $count of $total.\t$dif\n";
-#     my $prev_info = get_previous("$to_path/$change_id/$files_info") if (-e "$to_path/$change_id/$files_info");
     my $prev_info = get_previous($change_id);
-
     ### svn updates (first svn, because we need missing documents)
-    my $update_control_file = 0;
-    if ($svn_update ne "no" && $update_only_wiki_db ne "yes") {
-	my $svn_docs = sql_get_svn_docs($change_id);
-	clean_existing_dir($change_id, $svn_docs);
-
-	foreach my $key (sort keys %$svn_docs) {
-	    my $dir = @$info_comm[$index_comm->{$key}];
-# 	    $dir =~ s/$db_relpath/$svn_local_path/ if ($svn_type eq "local");
-	    my $file = $svn_docs->{$key};
-	    my $res = svn_list($dir, $file);
-
-	    my $doc_rev = $res->{'commit'}->{'revision'};
-	    my $doc_size = $res->{'size'};
-	    if ( ! defined $res || (! defined $doc_rev && ! defined $doc_size)) {
-		INFO "\tSC $change_id says we have document for $key, but we don't have anything on svn.\n";
-		$missing_documents->{$key} = "$dir/$file";
-		next;
-	    }
-	    delete $prev_info->{$key} if (!(-e "$to_path/$change_id/$key.doc" && -s "$to_path/$change_id/$key.doc" == $doc_size));
-	    $crt_info->{$key}->{'name'} = $svn_docs->{$key};
-	    $crt_info->{$key}->{'size'} = $doc_size;
-	    $crt_info->{$key}->{'revision'} = $doc_rev;
-	    $crt_info->{$key}->{'date'} =  $res->{'commit'}->{'date'};
-	    if ( ! Compare($crt_info->{$key}, $prev_info->{$key}) ) {
-		INFO "\tUpdate svn http for $key.\n";
-		my $file_res = WikiCommons::http_get("$dir/$file", "$work_dir", "$svn_user", "$svn_pass");
-		move($file_res, "$work_dir/$key.doc") || LOGDIE "can't move file $file_res to $work_dir/$key.doc: $!.\n";
-		$update_control_file++;
-	    }
-	}
-    }
-
-#     my ($presentations, $control) = search_for_presentations(@$info_comm[$index_comm->{'FTP_IP'}], @$info_comm[$index_comm->{'FTP_def_attach'}], @$info_comm[$index_comm->{'FTP_market_attach'}], @$info_comm[$index_comm->{'FTP_test_attach'}], $change_id);
+    my ($missing_documents, $crt_info, $update_control_file) = work_svn($change_id, $info_comm, $prev_info, $index_comm, $work_dir);
     my ($presentations, $control) = search_for_presentations($change_id);
-    ## db update
-    my $arr = $crt_hash->{$change_id};
-
     my ($hf_txt, $hf_crc) = get_hotfixes($change_id);
 
+    ## db update
+    my $arr = $crt_hash->{$change_id};
     $crt_info->{'SC_info'}->{'name'} = @$arr[0];
     $crt_info->{'SC_info'}->{'size'} = @$arr[1].$control.(@$arr[4] eq "Y" ? "Y" : "").$hf_crc;
     $crt_info->{'SC_info'}->{'revision'} = @$arr[2];
     $crt_info->{'SC_info'}->{'date'} = "sc_date is not used";
 
     my $cat = ();
-    if (! Compare($crt_info->{'SC_info'}, $prev_info->{'SC_info'}) || $update_control_file || $force_db_update eq "yes" || $update_only_wiki_db eq "yes") {
+## docs are verified through $update_control_file
+    delete $prev_info->{'Categories'};
+    if (! Compare($crt_info, $prev_info) || $update_control_file || $force_db_update eq "yes" || $update_only_wiki_db eq "yes") {
  	INFO "\tUpdate SC info.\n";
 
-	my $prev = 'NULL';
-	$prev = $prev_info->{'SC_info'}->{'size'} if defined $prev_info->{'SC_info'}->{'size'};
+	my $prev = defined $prev_info->{'SC_info'}->{'size'} ? $prev_info->{'SC_info'}->{'size'} : 'NULL';
 	INFO "\tChanged CRC: $crt_info->{'SC_info'}->{'size'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'size'} && "$crt_info->{'SC_info'}->{'size'}" ne "$prev");
-
-	$prev = 'NULL';
-	$prev = $prev_info->{'SC_info'}->{'revision'} if defined $prev_info->{'SC_info'}->{'revision'};
+	$prev = defined $prev_info->{'SC_info'}->{'revision'} ? $prev_info->{'SC_info'}->{'revision'} : 'NULL';
 	INFO "\tChanged status: $crt_info->{'SC_info'}->{'revision'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'revision'} && "$crt_info->{'SC_info'}->{'revision'}" ne "$prev");
 
 	my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
@@ -1258,13 +1258,8 @@ foreach my $change_id (sort keys %$crt_hash){
 	    $txt .= "\nMissing \'\'\'$key\'\'\' from [$link this] svn address, but database says it should exist.\n";
 	}
 	$txt .= "\n'''Presentations'''\n\nThe following presentations were found for this ".lc(@$info_ret[$index->{'changetype'}])." (either made by Q&A or attached to it):".$presentations if defined $presentations && $presentations ne "";
-	my $crt_md5 = WikiCommons::get_file_md5("$to_path/$change_id/General_info.wiki", 1).
-		      WikiCommons::get_file_md5("$to_path/$change_id/1 Market_SC.rtf", 1).
-		      WikiCommons::get_file_md5("$to_path/$change_id/2 HLS_SC.rtf", 1).
-		      WikiCommons::get_file_md5("$to_path/$change_id/3 Description_SC.rtf", 1).
-		      WikiCommons::get_file_md5("$to_path/$change_id/4 HLD_SC.rtf", 1).
-		      WikiCommons::get_file_md5("$to_path/$change_id/5 Messages_SC.rtf", 1).
-		      WikiCommons::get_file_md5("$to_path/$change_id/6 Architecture_SC.rtf", 1);
+
+	my $crt_md5 = get_info_files_md5_crc($change_id);
 	write_file ("$work_dir/General_info.wiki" ,$txt."\n$hf_txt\n");
 	unlink glob ("$to_path/$change_id/*.rtf"); 
 	write_rtf ("$work_dir/1 Market_SC.rtf", @$info_ret[$index->{'Market_SC'}]);
@@ -1273,18 +1268,8 @@ foreach my $change_id (sort keys %$crt_hash){
 	write_rtf ("$work_dir/4 HLD_SC.rtf", @$info_ret[$index->{'HLD_SC'}]);
 	write_rtf ("$work_dir/5 Messages_SC.rtf", @$info_ret[$index->{'Messages_SC'}]);
 	write_rtf ("$work_dir/6 Architecture_SC.rtf", @$info_ret[$index->{'Architecture_SC'}]);
-# 	$update_control_file++;
-	my $new_md5 = WikiCommons::get_file_md5("$work_dir/General_info.wiki", 1).
-		      WikiCommons::get_file_md5("$work_dir/1 Market_SC.rtf", 1).
-		      WikiCommons::get_file_md5("$work_dir/2 HLS_SC.rtf", 1).
-		      WikiCommons::get_file_md5("$work_dir/3 Description_SC.rtf", 1).
-		      WikiCommons::get_file_md5("$work_dir/4 HLD_SC.rtf", 1).
-		      WikiCommons::get_file_md5("$work_dir/5 Messages_SC.rtf", 1).
-		      WikiCommons::get_file_md5("$work_dir/6 Architecture_SC.rtf", 1);
-# DEBUG Dumper($crt_md5, $new_md5);
-# if ($crt_md5 ne $new_md5){$qqq++; INFO "TO UPDATE"};
-# next;
-	add_versions_to_wiki_db($change_id, $info_ret, $index, $crt_info, $cat) if $crt_md5 ne $new_md5;
+	my $new_md5 = get_info_files_md5_crc($change_id);
+	add_versions_to_wiki_db($change_id, $info_ret, $index, $crt_info, $cat) if $crt_md5 ne $new_md5 || $update_control_file;
     }
     WikiCommons::move_dir("$work_dir", "$to_path/$change_id/");
     INFO "+Finish working for $change_id: nr $count of $total.\t$dif\n";
