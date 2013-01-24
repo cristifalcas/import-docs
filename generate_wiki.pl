@@ -834,7 +834,7 @@ sub sc_worker {
     $lo_user = $lo_user."_$thread";
     my $wrong_hash = {};
     eval {
-# return if "$url" !~ "B621568";
+# return if $url !~ m/B635709/;
     WikiCommons::makedir "$wiki_dir/$url/";
     WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
     WikiCommons::add_to_remove ("$wiki_dir/$url/$wiki_result", "dir");

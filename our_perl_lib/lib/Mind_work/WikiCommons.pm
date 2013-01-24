@@ -431,17 +431,17 @@ sub generate_html_file {
     INFO "\t## using thread ".Dumper($thread);
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
 
-if (!is_file_rtf($doc_file)){
-    use HTML::TextToHTML;
-    my $conv = new HTML::TextToHTML();
-    $conv->txt2html(infile=>[$doc_file],
-			outfile=>"$dir/$name.html",
-			title=>"$name",
-			mail=>1,
-	  ]);
-    return;
-}
-
+    if ($suffix eq ".rtf" && !is_file_rtf($doc_file)){
+	INFO "Presumebly file is text. Make html from it.\n";
+	use HTML::TextToHTML;
+	my $conv = new HTML::TextToHTML();
+	$conv->txt2html(infile=>[$doc_file],
+			    outfile=>"$dir/$name.html",
+			    title=>"$name",
+			    mail=>1,
+	      );
+	return;
+    }
 
     my $status;
     ## filters http://cgit.freedesktop.org/libreoffice/core/tree/filter/source/config/fragments/filters
@@ -510,7 +510,7 @@ sub is_file_rtf {
     my $five_bytes;
     my $len = sysread FOO, $five_bytes, 5;
     close FOO; 
-    return $four_bytes eq '{\rtf';
+    return $five_bytes eq '{\rtf';
 }
 
 sub reset_time {
