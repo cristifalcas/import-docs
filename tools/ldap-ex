@@ -1,0 +1,8 @@
+israel only:
+ldapsearch -H ldap://mindcti.com -b dc=mindcti,dc=com -D cristian.falcas@rom_domain -x -w qwaszx6 -v -LLL
+
+romania only:
+ldapsearch -H ldap://romania2003.mindsoft.com -b dc=mindsoft,dc=com -D cristian.falcas@rom_domain -x -w qwaszx6 -v -LLL
+ldapsearch -H ldap://mindsoft.com -b dc=mindsoft,dc=com -D cristian.falcas@rom_domain -x -w qwaszx6 -v -LLL
+
+engine-manage-domains -action=add -domain=mindsoft.com -provider=ActiveDirectory -user=cristian.falcas@mindsoft.com -passwordFile=/tmp/pass

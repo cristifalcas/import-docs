@@ -14,7 +14,8 @@ $Data::Dumper::Sortkeys = 1;
 use HTML::TreeBuilder;
 use HTML::WikiConverter;
 use Log::Log4perl qw(:easy);
-# use HTML::Tidy;
+use File::Path;
+use File::Copy;
 use Text::Balanced qw (
     extract_tagged
     extract_multiple

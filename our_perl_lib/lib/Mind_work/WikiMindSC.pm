@@ -7,6 +7,7 @@ use DBI;
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 use Log::Log4perl qw(:easy);
+use File::Path qw(make_path remove_tree);
 
 our $pages_toimp_hash = {};
 our $general_categories_hash = {};
@@ -45,8 +46,6 @@ sub get_documents {
     my @all = grep { (!/^\.\.?$/) && -d "$path_files/$_" } readdir(DIR);
     closedir(DIR);
 
-#     my $general_wiki_file = "General_info.wiki";
-#     my $files_info_file = "files_info.txt";
     my $total = @all;
     my $count = 0;
     my $url_sep = WikiCommons::get_urlsep;
@@ -54,9 +53,14 @@ sub get_documents {
     foreach my $node (sort @all) {
 	$count++;
 	INFO "\tDone $count from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($count%1000 == 0);
-# 	LOGDIE "Can't find files_info or General wiki: $path_files/$node.\n" if (! -e "$path_files/$node/$files_info_file" || ! -e "$path_files/$node/$general_wiki_file");
 	my $md5 = $node;
 	my $ret = $dbh_mysql->selectrow_array("select FILES_INFO_CRT from mind_sc_ids_versions where SC_ID='$node'");
+	if (! defined $ret) {
+	    ERROR "Could not find id=$node in mind_sc_ids_versions table. Delete $path_files/$node.\n";
+	    remove_tree("$path_files/$node"); 
+	    next;
+	}
+
 	my @data = split "\n", $ret;
 
 	my @categories = ();

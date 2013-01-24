@@ -430,6 +430,19 @@ sub generate_html_file {
     my ($doc_file, $type, $thread) = @_;
     INFO "\t## using thread ".Dumper($thread);
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
+
+if (!is_file_rtf($doc_file)){
+    use HTML::TextToHTML;
+    my $conv = new HTML::TextToHTML();
+    $conv->txt2html(infile=>[$doc_file],
+			outfile=>"$dir/$name.html",
+			title=>"$name",
+			mail=>1,
+	  ]);
+    return;
+}
+
+
     my $status;
     ## filters http://cgit.freedesktop.org/libreoffice/core/tree/filter/source/config/fragments/filters
     my $filters = { "html" => $suffix =~ m/xlsx?/i ? "html:HTML (StarCalc)" : "html:HTML (StarWriter)",
@@ -459,12 +472,24 @@ sub generate_html_file {
     $max_wait_time = 30 if (-s $doc_file < 100000);
     foreach my $key (sort keys %$commands) {
 	INFO "\tTrying to use $key.\t". (get_time_diff) ."\n";
-	`kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | grep "$lo_tmp_dir" | gawk '{print \$2}') &>/dev/null`;
+	my $pids_to_kill = `ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | grep "$lo_tmp_dir" | gawk '{print \$2}'`;
+	if ($pids_to_kill =~ m/^\s*$/) {
+	    INFO "No office to kill.\n";
+	} else {
+	    INFO "killing office processes $pids_to_kill.\n";
+	    if ($pids_to_kill !~ m/^[0-9 ]+$/) {
+		ERROR "Strange stuff to kill: $pids_to_kill.\n";
+	    } else {
+		`kill $pids_to_kill`;
+	    }
+	}
+# 	`kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | grep "$lo_tmp_dir" | gawk '{print \$2}') &>/dev/null`;
 	remove_tree($lo_tmp_dir);
 	sleep 1;
 	eval {
 	  local $SIG{ALRM} = sub { die "alarm\n" };
 	  alarm $max_wait_time;
+	  INFO "Running: ".(join ' ', @{$commands->{$key}}).".\n";
 	  system(@{$commands->{$key}});
 	  alarm 0;
 	};
@@ -477,6 +502,15 @@ sub generate_html_file {
 
     INFO "\t+Generating $type file from $name$suffix.\t". (get_time_diff) ."\n";
 #     return $status;
+}
+
+sub is_file_rtf {
+    my $file_name = shift;
+    open(FOO, $file_name) or die $!;
+    my $five_bytes;
+    my $len = sysread FOO, $five_bytes, 5;
+    close FOO; 
+    return $four_bytes eq '{\rtf';
 }
 
 sub reset_time {
