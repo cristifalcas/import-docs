@@ -566,7 +566,7 @@ sub fix_missing_files {
 #     $missing_files->{$elem} = 1;
     my $arr = $our_wiki->wiki_get_pages_using($elem);
     foreach my $page (@$arr) {
-	INFO "Get page $page for file $elem.\n";
+	DEBUG "Get page $page for file $elem.\n";
 	$missing->{$page} = 1;
     }
   }
