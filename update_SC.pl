@@ -47,6 +47,7 @@ use XML::Simple;
 use Encode;
 use URI::Escape;
 use Data::Compare;
+use Storable qw(dclone);
 use Mind_work::WikiCommons;
 
 LOGDIE "We need the temp path, the destination path and sc type:b1-5, f, i, h, r, d, e, g, s, t, k, z, a, p, cancel.\n" if ( $#ARGV != 2 );
@@ -73,9 +74,8 @@ my $svn_type = "remote";
 # my $svn_local_path = "/mnt/SC/";
 my $svn_update = "yes";
 my $force_db_update = "no";
-my $bulk_svn_update = "no";
 my $update_only_wiki_db = "no";
-my $update_ver = "1.0";
+my ($crt_hash, $failed, $index_comm, $info_comm, $index, $SEL_INFO);
 
 my $ppt_local_files_prefix="/mnt/wiki_files/wiki_files/ppt_as_flash/";
 my $ppt_apache_files_prefix="10.0.0.99/ppt_as_flash/";
@@ -451,17 +451,6 @@ select to_char(a.request_date, 'yyyy-mm-dd hh:mi:ss '),
     return ($full_txt, $hf_crc);
 }
 
-sub sql_connect {
-    my ($ip, $sid, $user, $pass) = @_;
-    $dbh=DBI->connect("dbi:Oracle:host=$ip;sid=$sid", "$user", "$pass")|| die( $DBI::errstr . "\n" );
-    $dbh->{AutoCommit}    = 0;
-    $dbh->{RaiseError}    = 1;
-    $dbh->{ora_check_sql} = 0;
-    $dbh->{RowCacheSize}  = 16;
-    $dbh->{LongReadLen}   = 52428800;
-    $dbh->{LongTruncOk}   = 0;
-}
-
 sub sql_get_common_info {
 # 	'STP_document'		=> 'svn.parametervalue || svn_doc.parametervalue || \'/Documents/\' ||        prj.svn_path || stp.folder || \'/\'',
     my $hash_fields = {
@@ -827,19 +816,19 @@ sub sql_get_modules {
     return \@modules;
 }
 
-sub sql_get_relpath {
-    my $SEL = "select svn.parametervalue
-  from (select parametervalue
-          from scparameters
-         where section = \'SVN\'
-           and parameterkey = \'SVN_DOC_REPOS\') svn";
-    my $sth = $dbh->prepare($SEL);
-    $sth->execute();
-    while ( my @row=$sth->fetchrow_array() ) {
-	LOGDIE "too many rows\n" if $#row>1;
-	return $row[0];
-    }
-}
+# sub sql_get_relpath {
+#     my $SEL = "select svn.parametervalue
+#   from (select parametervalue
+#           from scparameters
+#          where section = \'SVN\'
+#            and parameterkey = \'SVN_DOC_REPOS\') svn";
+#     my $sth = $dbh->prepare($SEL);
+#     $sth->execute();
+#     while ( my @row=$sth->fetchrow_array() ) {
+# 	LOGDIE "too many rows\n" if $#row>1;
+# 	return $row[0];
+#     }
+# }
 
 sub get_previous {
     my $change_id = shift;
@@ -1123,7 +1112,6 @@ sub work_svn {
 
 	foreach my $key (sort keys %$svn_docs) {
 	    my $dir = @$info_comm[$index_comm->{$key}];
-# 	    $dir =~ s/$db_relpath/$svn_local_path/ if ($svn_type eq "local");
 	    my $file = $svn_docs->{$key};
 	    my $res = svn_list($dir, $file);
 
@@ -1150,74 +1138,102 @@ sub work_svn {
     return ($missing_documents, $crt_info, $update_control_file);
 }
 
-# 10.0.0.232 service25, service25
+sub mysql_connect {
+    ### connect to mysql to use the wikidb
+    my ($wikidb_server, $wikidb_name, $wikidb_user, $wikidb_pass) = ();
+    open(FH, "/var/www/html/wiki/LocalSettings.php") or LOGDIE "Can't open file for read: $!.\n";
+    while (<FH>) {
+      $wikidb_server = $2 if $_ =~ m/^(\s*\$wgDBserver\s*=\s*\")(.+)(\"\s*;\s*)$/;
+      $wikidb_name = $2 if $_ =~ m/^(\s*\$wgDBname\s*=\s*\")(.+)(\"\s*;\s*)$/;
+      $wikidb_user = $2 if $_ =~ m/^(\s*\$wgDBuser\s*=\s*\")(.+)(\"\s*;\s*)$/;
+      $wikidb_pass = $2 if $_ =~ m/^(\s*\$wgDBpassword\s*=\s*\")(.+)(\"\s*;\s*)$/;
+    }
+    close(FH);
 
-# $ftp_uri = "ftp:\\\\@$info_comm[$index_comm->{'FTP_USER'}]:@$info_comm[$index_comm->{'FTP_PASS'}]\@@$info_comm[$index_comm->{'FTP_IP'}]";
-
-
-### connect to mysql to use the wikidb
-my ($wikidb_server, $wikidb_name, $wikidb_user, $wikidb_pass) = ();
-open(FH, "/var/www/html/wiki/LocalSettings.php") or LOGDIE "Can't open file for read: $!.\n";
-while (<FH>) {
-  $wikidb_server = $2 if $_ =~ m/^(\s*\$wgDBserver\s*=\s*\")(.+)(\"\s*;\s*)$/;
-  $wikidb_name = $2 if $_ =~ m/^(\s*\$wgDBname\s*=\s*\")(.+)(\"\s*;\s*)$/;
-  $wikidb_user = $2 if $_ =~ m/^(\s*\$wgDBuser\s*=\s*\")(.+)(\"\s*;\s*)$/;
-  $wikidb_pass = $2 if $_ =~ m/^(\s*\$wgDBpassword\s*=\s*\")(.+)(\"\s*;\s*)$/;
+    $dbh_mysql = DBI->connect("DBI:mysql:database=$wikidb_name;host=$wikidb_server", "$wikidb_user", "$wikidb_pass");
+    my $sth_mysql = $dbh_mysql->prepare("CREATE TABLE IF NOT EXISTS mind_sc_ids_versions (
+    SC_ID VARCHAR( 255 ) NOT NULL ,
+    FIXVERSION VARCHAR( 255 ) ,
+    BUILDVERSION VARCHAR( 255 ) ,
+    VERSION VARCHAR( 255 ) ,
+    PRODVERSION VARCHAR( 255 ) ,
+    FILES_INFO_CRT VARCHAR( 9000 ) ,
+    PRIMARY KEY ( SC_ID ) )");
+    $sth_mysql->execute();
+    $sth_mysql->finish();
 }
-close(FH);
+sub oracle_conenct {
+    ### connect to oracle
+    $ENV{NLS_LANG} = 'AMERICAN_AMERICA.AL32UTF8';
+    my ($ip, $sid, $user, $pass) = ('10.0.0.103', 'SCROM', 'scview', 'scview');
+    $dbh=DBI->connect("dbi:Oracle:host=$ip;sid=$sid", "$user", "$pass")|| die( $DBI::errstr . "\n" );
+    $dbh->{AutoCommit}    = 0;
+    $dbh->{RaiseError}    = 1;
+    $dbh->{ora_check_sql} = 0;
+    $dbh->{RowCacheSize}  = 16;
+    $dbh->{LongReadLen}   = 52428800;
+    $dbh->{LongTruncOk}   = 0;
+}
 
-$dbh_mysql = DBI->connect("DBI:mysql:database=$wikidb_name;host=$wikidb_server", "$wikidb_user", "$wikidb_pass");
-my $sth_mysql = $dbh_mysql->prepare("CREATE TABLE IF NOT EXISTS mind_sc_ids_versions (
-SC_ID VARCHAR( 255 ) NOT NULL ,
-FIXVERSION VARCHAR( 255 ) ,
-BUILDVERSION VARCHAR( 255 ) ,
-VERSION VARCHAR( 255 ) ,
-PRODVERSION VARCHAR( 255 ) ,
-FILES_INFO_CRT VARCHAR( 9000 ) ,
-PRIMARY KEY ( SC_ID ) )");
-$sth_mysql->execute();
-$sth_mysql->finish();
+sub fork_function {
+    my ($nr_threads, $function, @function_args) = @_;
+    use POSIX ":sys_wait_h";
+    INFO "Start forking.\n";
+    my $running;
+    my $total_nr = scalar (keys %$crt_hash);
+    my $crt_nr = 0;
+    my @thread = (1..$nr_threads);
 
-### connect to oracle
-$ENV{NLS_LANG} = 'AMERICAN_AMERICA.AL32UTF8';
-sql_connect('10.0.0.103', 'SCROM', 'scview', 'scview');
-my $db_relpath = sql_get_relpath();
-my ($index_comm, $info_comm) = sql_get_common_info();
-write_common_info ($index_comm, $info_comm);
-my $crt_hash = sql_get_all_changes();
-my ($index, $SEL_INFO) = sql_generate_select_changeinfo();
-
-my $total = scalar (keys %$crt_hash);
-# INFO "total $total\n"; exit 1;
-remove_old_dirs(keys %$crt_hash);
-
-if ($bulk_svn_update eq "yes"){
-    foreach my $key (sort keys %$index_comm) {
-	my $retries = 0;
-	my $tmp = @$info_comm[$index_comm->{$key}];
-	next if ($tmp !~ "^http://" || defined $svn_info_all->{$tmp});
-	while ( ! defined $svn_info_all->{$tmp} && $retries < 3){
-	    INFO "\tRetrieve svn list for $key.\t". (time() - $time) ."\n";
-	    my $res = svn_list($tmp);
-	    $svn_info_all->{$tmp} = $res if defined $res;
-	    $retries++;
+    while (1) {
+	my $crt_thread = shift @thread if scalar keys %$crt_hash;
+	if (defined $crt_thread) {
+	    my $change_id = (sort keys %$crt_hash)[0];
+	    INFO "Got new thread to run $change_id\n";
+# if ($change_id !~ m/B109856$/){push @thread, $crt_thread;delete $pages_toimp_hash->{$url};next;}
+	    my $val = $crt_hash->{$change_id};
+	    $crt_nr++;
+	    INFO "************* Start working for $change_id: nr $crt_nr of $total_nr.\n";
+	    my $pid = fork();
+	    if (! defined ($pid)){
+		LOGDIE  "Can't fork.\n";
+	    } elsif ($pid==0) {
+		INFO "Start fork for $change_id.\n";
+		mysql_connect();
+		oracle_conenct();
+		$function->($change_id, $val, $crt_thread, @function_args);
+		exit 100;
+	    }
+	    $running->{$pid}->{'thread'} = $crt_thread;
+	    $running->{$pid}->{'change_id'} = $change_id;
+	    $running->{$pid}->{'val'} = $val;
+	    delete $crt_hash->{$change_id};
 	}
-	LOGDIE if $retries == 3;
-    };
+
+	## clean done children
+	my $pid = waitpid(-1, WNOHANG);
+	my $exit_status = $? >> 8;
+	if ($pid > 0) {
+	    INFO "child $pid died, from id with status=$exit_status: reapead.\n";
+	    my $change_id = $running->{$pid}->{'change_id'};
+	    INFO "+Finish working for $change_id: nr $crt_nr of $total_nr.\n";
+	    push @thread, $running->{$pid}->{'thread'};
+	    delete $failed->{$change_id} if $exit_status == 0;
+	    delete $running->{$pid};
+	    $dbh->disconnect if defined($dbh);
+	    $dbh_mysql->disconnect() if defined($dbh_mysql);
+	}
+	## don't sleep if not all threads are running and we still have work to do
+	sleep 1 if !(scalar @thread && scalar keys %$crt_hash);
+	## if no threads are working and there is no more work to be done
+	last if scalar @thread == $nr_threads && scalar keys %$crt_hash == 0;
+    }
 }
-my $qqq=0;
+
 ## problem: after the first run we can have missing documents, but the general_info will not be updated
-my $count = 0;
-foreach my $change_id (sort keys %$crt_hash){
-    $count++;
-# next if $change_id lt "B113842";
-# next if $change_id ne "B635709";
-# next if $change_id !~ m/(B113863|B114442|B114522|B114523|B114526|B114527|B114528|B114538|B114569|B114589|B634626|B113863|B114522|B114523|B114526|B114527|B114528|B114569|B114589|B634626|B114442|B114538|B113842)/;
-## special chars: B06390
-    my $dif = time() - $time;
+sub update_scid {
+    my ($change_id, $arr) = @_;
     my $work_dir = "$tmp_path/$change_id";
     WikiCommons::makedir("$work_dir");
-    INFO "*************\n-Start working for $change_id: nr $count of $total.\t$dif\n";
     my $prev_info = get_previous($change_id);
     ### svn updates (first svn, because we need missing documents)
     my ($missing_documents, $crt_info, $update_control_file) = work_svn($change_id, $info_comm, $prev_info, $index_comm, $work_dir);
@@ -1225,7 +1241,6 @@ foreach my $change_id (sort keys %$crt_hash){
     my ($hf_txt, $hf_crc) = get_hotfixes($change_id);
 
     ## db update
-    my $arr = $crt_hash->{$change_id};
     $crt_info->{'SC_info'}->{'name'} = @$arr[0];
     $crt_info->{'SC_info'}->{'size'} = @$arr[1].$control.(@$arr[4] eq "Y" ? "Y" : "").$hf_crc;
     $crt_info->{'SC_info'}->{'revision'} = @$arr[2];
@@ -1269,13 +1284,33 @@ foreach my $change_id (sort keys %$crt_hash){
 	write_rtf ("$work_dir/5 Messages_SC.rtf", @$info_ret[$index->{'Messages_SC'}]);
 	write_rtf ("$work_dir/6 Architecture_SC.rtf", @$info_ret[$index->{'Architecture_SC'}]);
 	my $new_md5 = get_info_files_md5_crc($change_id);
+LOGDIE if $crt_md5 ne $new_md5 || $update_control_file;
 	add_versions_to_wiki_db($change_id, $info_ret, $index, $crt_info, $cat) if $crt_md5 ne $new_md5 || $update_control_file;
     }
-    WikiCommons::move_dir("$work_dir", "$to_path/$change_id/");
-    INFO "+Finish working for $change_id: nr $count of $total.\t$dif\n";
+    WikiCommons::move_dir($work_dir, "$to_path/$change_id/");
 }
 
+sub cleanAndExit {
+    WARN "Killing all child processes\n";
+    kill 9, map {s/\s//g; $_} split /\n/, `ps -o pid --no-headers --ppid $$`;
+    exit 1000;
+}
+
+use sigtrap 'handler' => \&cleanAndExit, 'INT', 'ABRT', 'QUIT', 'TERM';
+mysql_connect();
+oracle_conenct();
+$crt_hash = sql_get_all_changes();
+remove_old_dirs(keys %$crt_hash);
+$failed = dclone($crt_hash);
+($index_comm, $info_comm) = sql_get_common_info();
+write_common_info ($index_comm, $info_comm);
+($index, $SEL_INFO) = sql_generate_select_changeinfo();
 $dbh->disconnect if defined($dbh);
 $dbh_mysql->disconnect() if defined($dbh_mysql);
 
-INFO "Done: $qqq.\n";
+eval{fork_function(200, \&update_scid);};
+ERROR "Error in main thread: $@\n" if $@;
+# kill 9, map {s/\s//g; $_} split /\n/, `ps -o pid --no-headers --ppid $$`;
+
+ERROR "Failed: $_\n" foreach (sort keys %$failed);
+INFO "Done.\n";

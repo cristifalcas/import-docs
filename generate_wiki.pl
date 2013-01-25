@@ -1122,9 +1122,7 @@ if ($path_type eq "mind_svn") {
     fork_function($sc_nr_forks, \&sc_worker, getCommonInfoSC());
 }
 
-@tmp = (sort keys %$failed);
-# ERROR "Failed:\n".Dumper(@tmp) if @tmp;
-foreach (@tmp) {
+foreach (sort keys %$failed) {
     my $sth_mysql = $dbh_mysql->do("DELETE FROM mind_wiki_info where WIKI_NAME=".$dbh_mysql->quote($_));
     ERROR "Failed: $_\n"
 }
