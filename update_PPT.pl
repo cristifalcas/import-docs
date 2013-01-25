@@ -50,7 +50,6 @@ WikiCommons::makedir ($to_path) if ! -d $to_path;
 WikiCommons::makedir ($from_path) if ! -d $from_path;
 $to_path = abs_path($to_path);
 $from_path = abs_path($from_path);
-my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 WikiCommons::set_real_path($path_prefix);
 LOGDIE "We need the source and destination paths. We got :$from_path and $to_path.\n" if ( ! defined $to_path || ! defined $from_path);
 

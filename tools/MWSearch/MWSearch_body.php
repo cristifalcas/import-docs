@@ -155,7 +155,7 @@ class LuceneResult extends SearchResult {
 	 * @access private
 	 */
 	function __construct( $lines, $method ) {
-		global $wgContLang;
+		global $wgContLang, $wgRequest;
 		$dbw =& wfGetDB( DB_MASTER );
 		# $dbw->immediateBegin();
 		
@@ -215,7 +215,13 @@ class LuceneResult extends SearchResult {
 		list( $this->mHighlightText, $dummy ) = $this->extractSnippet($lines,'',"#h.text",true);
 
 		if (($namespace>=300 && $namespace<5300)){
-			$res = $dbw->query( "select substring_index(a.old_text,'\n',1) text from
+		    $title = Title::newFromText( $nsText.":".$title );
+		    $rev = Revision::newFromTitle( $title );
+		    $content = $rev->getContent( Revision::RAW);
+		    $appending = explode("\n", $rev->getContent( Revision::RAW)->serialize())[0];
+		    //error_log($res);
+
+			/*$res = $dbw->query( "select substring_index(a.old_text,'\n',1) text from
 				text a, revision b, page c
 				where a.old_id=b.rev_text_id
 				and b.rev_id=c.page_latest
@@ -224,14 +230,14 @@ class LuceneResult extends SearchResult {
 			$appending = "";
 			while( $row = $dbw->fetchObject( $res ) ) {
 				$cur[] = $row->text;
-				$appending .= $cur[0];
+				$appending .= $cur[0];*/
 				$appending = str_replace("<font size=\"4\">", "", $appending);
 				$appending = str_replace("</font>", "", $appending);
 				$appending = str_replace("<center>", "", $appending);
 				$appending = str_replace("</center>", "", $appending);
 				$appending = str_replace("</font>", "", $appending);
 				$appending = str_replace("'''", "", $appending);
-			}
+			//}
 			$res = $dbw->query( "select version from mind_sc_ids_versions where sc_id='$title';" );
 			$version = "";
 			while( $row = $dbw->fetchObject( $res ) ) {
