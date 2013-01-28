@@ -147,7 +147,7 @@ LOGDIE "no namespace here 1: $node.\n".Dumper(@data);
 			LOGDIE "Unknown category in $line: $q.\n";
 		    }
 		}
-		next;
+# 		next;
 	    } else {
 		$md5 .= "$tmp[2]" if defined $tmp[2];
 		LOGDIE "Wrong number of fields for line $line in $node.\n" if @tmp < 4 || @tmp > 5;

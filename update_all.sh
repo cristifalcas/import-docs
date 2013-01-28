@@ -39,8 +39,8 @@ case "$1" in
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/svn/svn_cms_docs/ -n cms_svn > "$LOG_PATH"import_svn_cms
   ;;
 "update_sc")
-#     $CMD "$SCRIPT_PATH"/update_SC.pl /tmp/wiki_update/b1 "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_until_7.0/	b1 > "$LOG_PATH"update_sc_until_7.0
-#     $CMD "$SCRIPT_PATH"/update_SC.pl /tmp/wiki_update/b2 "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_after_7.0/	b2 > "$LOG_PATH"update_sc_after_7.0
+    $CMD "$SCRIPT_PATH"/update_SC.pl /tmp/wiki_update/b1 "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_until_7.0/	b1 > "$LOG_PATH"update_sc_until_7.0
+    $CMD "$SCRIPT_PATH"/update_SC.pl /tmp/wiki_update/b2 "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_after_7.0/	b2 > "$LOG_PATH"update_sc_after_7.0
     $CMD "$SCRIPT_PATH"/update_SC.pl /tmp/wiki_update/cancel  "$WIKI_DIR_PATH"/Documentation/sc/sccanceled_docs/	cancel  > "$LOG_PATH"update_sc_cancel
     $CMD "$SCRIPT_PATH"/update_SC.pl /tmp/wiki_update/i  "$WIKI_DIR_PATH"/Documentation/sc/scsentori_docs/	i  > "$LOG_PATH"update_sc_i
     $CMD "$SCRIPT_PATH"/update_SC.pl /tmp/wiki_update/f  "$WIKI_DIR_PATH"/Documentation/sc/scsip_docs/		f  > "$LOG_PATH"update_sc_f 

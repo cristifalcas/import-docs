@@ -959,13 +959,11 @@ sub sc_worker {
     }
     my $is_canceled = 0;
     $is_canceled++ if $pages_toimp_hash->{$url}[$svn_url_pos]->{'SC_info'}->{'revision'} =~ m/Cancel/i;
-# print Dumper($pages_toimp_hash->{$url}, $is_canceled,$pages_toimp_hash->{$url}[$svn_url_pos]->{'SC_info'}->{'revision'});exit 1;
 
     my $url_deployment = $url;
     $url_deployment =~ s/^SC:/SC_Deployment:/;
     $our_wiki->wiki_delete_page ($url_deployment) if ( $our_wiki->wiki_exists_page($url_deployment) && $delete_previous_page ne "no");
     my $deployment_txt;
-# INFO Dumper($deployment);exit 1;
     foreach my $doc_type (sort keys %$deployment) {
       my $used_name = $doc_type;
       $used_name =~ s/^[0-9]+\s*//;

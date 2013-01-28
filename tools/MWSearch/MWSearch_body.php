@@ -215,6 +215,7 @@ class LuceneResult extends SearchResult {
 		list( $this->mHighlightText, $dummy ) = $this->extractSnippet($lines,'',"#h.text",true);
 
 		if (($namespace>=300 && $namespace<5300)){
+		    $orig_title = $title;
 		    $title = Title::newFromText( $nsText.":".$title );
 		    $rev = Revision::newFromTitle( $title );
 		    $content = $rev->getContent( Revision::RAW);
@@ -238,11 +239,13 @@ class LuceneResult extends SearchResult {
 				$appending = str_replace("</font>", "", $appending);
 				$appending = str_replace("'''", "", $appending);
 			//}
-			$res = $dbw->query( "select version from mind_sc_ids_versions where sc_id='$title';" );
+			$res = $dbw->query( "select version from mind_sc_ids_versions where sc_id='$orig_title';" );
 			$version = "";
+			    error_log("1 ".$orig_title);
 			while( $row = $dbw->fetchObject( $res ) ) {
 			    $cur1[] = $row->version;
 			    $version = $cur1[0];
+			    error_log($version." ".$orig_title);
 			}
 
 			if ( strcmp ($version, "") ){

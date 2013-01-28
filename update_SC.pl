@@ -1010,7 +1010,6 @@ sub remove_old_dirs {
 
 sub add_versions_to_wiki_db {
     my ($change_id, $info, $index, $hash, $categories) = @_;
-#     my ($hash, $dir, $categories) = @_;
     my $text = "";
     for (my $i=0;$i<@doc_types;$i++) {
 	next if ! exists $hash->{$doc_types[$i]};
@@ -1024,9 +1023,6 @@ sub add_versions_to_wiki_db {
 
     $text .= "SC_info;$hash->{'SC_info'}->{'name'};$hash->{'SC_info'}->{'size'};$hash->{'SC_info'}->{'revision'};$hash->{'SC_info'}->{'date'}\n";
     $text .= "Categories;". (join ';',@$categories). "\n" if defined $categories && scalar @$categories;
-    
-#     write_file("$dir/$files_info", "$text");
-
     my $sth_mysql = $dbh_mysql->prepare("REPLACE INTO $sc_table 
 		(SC_ID, FIXVERSION, BUILDVERSION, VERSION, PRODVERSION, FILES_INFO_CRT) 
 		VALUES 
@@ -1147,11 +1143,19 @@ sub fork_function {
 		LOGDIE  "Can't fork.\n";
 	    } elsif ($pid==0) {
 		INFO "Start fork for $change_id.\n";
-		mysql_connect();
-		oracle_conenct();
+my $child_dbh = $dbh_mysql->clone();
+$dbh_mysql->{InactiveDestroy} = 1;
+undef $dbh_mysql;
+$dbh_mysql = $child_dbh;
+$child_dbh = $dbh->clone();
+$dbh->{InactiveDestroy} = 1;
+undef $dbh;
+$dbh = $child_dbh;
+# 		mysql_connect();
+# 		oracle_conenct();
 		$function->($change_id, $val, $crt_thread, @function_args);
-		$dbh->disconnect if defined($dbh);
-		$dbh_mysql->disconnect() if defined($dbh_mysql);
+# 		$dbh->disconnect if defined($dbh);
+# 		$dbh_mysql->disconnect() if defined($dbh_mysql);
 		INFO "Done fork for $change_id.\n";
 		exit 0;
 	    }
