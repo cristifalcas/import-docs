@@ -50,10 +50,10 @@ use Data::Compare;
 use Storable qw(dclone);
 use Mind_work::WikiCommons;
 
-LOGDIE "We need the temp path, the destination path and sc type:b1-5, f, i, h, r, d, e, g, s, t, k, z, a, p, cancel.\n" if ( $#ARGV != 2 );
+LOGDIE "We need the temp path, the destination path and sc type:b1, b2, f, i, h, r, d, e, g, s, t, k, z, a, p, cancel.\n" if ( $#ARGV != 2 );
 our ($tmp_path, $to_path, $sc_type) = @ARGV;
 
-LOGDIE "sc type should be:b1-5, f, i, h, r, d, e, g, s, t, k, z, a, p, cancel.\n" if $sc_type !~ m/(^[fihrdtkzapseg]$)|(^b[1-5]$)|(^cancel$)/i;
+LOGDIE "sc type should be:b1, b2, f, i, h, r, d, e, g, s, t, k, z, a, p, cancel.\n" if $sc_type !~ m/(^[fihrdtkzapseg]$)|(^b[12]$)|(^cancel$)/i;
 $sc_type = uc $sc_type;
 
 remove_tree("$tmp_path");
@@ -64,17 +64,11 @@ $to_path = abs_path("$to_path");
 # my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 WikiCommons::set_real_path($path_prefix);
 
-# my $sc_table = "mind_sc_ids_versions";
+my $sc_table = "mind_sc_ids_versions";
 our $svn_pass = 'svncheckout';
 our $svn_user = 'svncheckout';
-# our $files_info = "files_info.txt";
 our $general_template_file = "$path_prefix/SC_template.txt";
-my $svn_type = "remote";
-# my $svn_type = "local";
-# my $svn_local_path = "/mnt/SC/";
-my $svn_update = "yes";
 my $force_db_update = "no";
-my $update_only_wiki_db = "no";
 my ($crt_hash, $failed, $index_comm, $info_comm, $index, $SEL_INFO);
 
 my $ppt_local_files_prefix="/mnt/wiki_files/wiki_files/ppt_as_flash/";
@@ -82,7 +76,6 @@ my $ppt_apache_files_prefix="10.0.0.99/ppt_as_flash/";
 
 LOGDIE "Template file missing.\n" if ! -e $general_template_file;
 
-our $time = time();
 my $svn_info_all = {};
 my $url_sep = WikiCommons::get_urlsep;
 
@@ -676,27 +669,28 @@ sub sql_get_dealer_names {
 }
 
 sub sql_get_all_changes {
-    INFO "-Get all db changes ". (time() - $time) .".\n";
+    INFO "-Get all db changes.\n";
     my $cond = "";
-    my $ver = "";
-    if ($sc_type eq 'B1') {
-	$ver = "version >= \'5.0\' and version < \'5.3\'";
-    } elsif ($sc_type eq 'B2') {
-	$ver = "version >= \'5.3\' and version < \'6.0\'";
-    } elsif ($sc_type eq 'B3') {
-	$ver = "version >= \'6.0\' and version < \'6.5\'";
-    } elsif ($sc_type eq 'B4') {
-	$ver = "version >= \'6.5\' and version < \'7.0\'";
-    } elsif ($sc_type eq 'B5') {
-	$ver = "(version >= \'7.0\' or
-	(nvl(version, 1) < \'5.0\' and nvl(fixversion, 6) > \'5.0\'))";
+    my $ver = "(version >= '5.0' or (nvl(version, 1) < '5.0' and nvl(fixversion,6) > '5.0')) and version <= \'7.0\'";
+    if ($sc_type eq 'B2') {
+	$ver = "version > \'7.0\'";
+# 	$ver = "version >= \'5.0\' and version < \'5.3\'";
+#     } elsif ($sc_type eq 'B2') {
+# 	$ver = "version >= \'5.3\' and version < \'6.0\'";
+#     } elsif ($sc_type eq 'B3') {
+# 	$ver = "version >= \'6.0\' and version < \'6.5\'";
+#     } elsif ($sc_type eq 'B4') {
+# 	$ver = "version >= \'6.5\' and version < \'7.0\'";
+#     } elsif ($sc_type eq 'B5') {
+# 	$ver = "(version >= \'7.0\' or
+# 	(nvl(version, 1) < \'5.0\' and nvl(fixversion, 6) > \'5.0\'))";
     }
 
     my $no_cancel = "and status <> 'Cancel'
 	and status <> 'Inform-Cancel'
 	and status <> 'Market-Cancel'";
 
-    if ($sc_type =~ m/B[0-5]/) {
+    if ($sc_type =~ m/B[12]/) {
 	$cond = "projectcode = 'B' and $ver";
     } elsif ($sc_type eq 'F') {
 	$cond = "projectcode = 'F'";
@@ -756,7 +750,7 @@ sub sql_get_all_changes {
     while ( my @row=$sth->fetchrow_array() ) {
 	$crt_hash->{$row[0]} = \@row;
     }
-    INFO "+Get all db changes ". (time() - $time) .".\n";
+    INFO "+Get all db changes.\n";
     return $crt_hash;
 }
 
@@ -833,7 +827,7 @@ sub sql_get_modules {
 sub get_previous {
     my $change_id = shift;
     my $info_hash = {};
-    my $ret = $dbh_mysql->selectrow_array("select FILES_INFO_CRT from mind_sc_ids_versions where SC_ID='$change_id'");
+    my $ret = $dbh_mysql->selectrow_array("select FILES_INFO_CRT from $sc_table where SC_ID='$change_id'");
     return $info_hash if ! defined $ret || ! -d "$to_path/$change_id";
     my @info = split "\n", $ret;
     chomp @info;
@@ -944,7 +938,7 @@ sub write_common_info {
 
 sub svn_list {
     my ($dir, $file) = @_;
-    INFO "\t-SVN list for $file.\t". (time() - $time)."\n" if defined $file;
+    INFO "\t-SVN list for $file.\n" if defined $file;
     my $res = "";;
     if (exists $svn_info_all->{$dir}) {
 	$res = $svn_info_all->{$dir}->{$file};
@@ -958,71 +952,29 @@ sub svn_list {
 	my $hash = XMLin($xml);
 	$res = $hash->{'list'}->{'entry'} if exists $hash->{'list'}->{'entry'};
     }
-    INFO "\t+SVN list for $file.\t". (time() - $time)."\n" if defined $file;
+    INFO "\t+SVN list for $file.\n" if defined $file;
     return $res;
 }
 
-# sub search_for_presentations {
-#     my ($ftp_ip, $ftp_def, $ftp_market, $ftp_test, $change_id) = @_;
-#     my $local_path = "$ppt_local_files_prefix/$ftp_ip";
-#     my $apache_path = "$ppt_apache_files_prefix/$ftp_ip";
-#     my $i = 0;
-#     my $control = "";
-#     my $text = ();
-#     foreach my $ftp_dir ($ftp_def, $ftp_market, $ftp_test) {
-#       my $q = "$local_path/$ftp_dir/$change_id/";
-#       my $w = "$apache_path/$ftp_dir/$change_id/";
-#       foreach my $file (sort <$q/*>){
-# 	$i++;
-# 	next if $file !~ m/\.swf$/i;
-# 	my ($name, $dir, $suffix) = fileparse($file, qr/\.[^.]*/);
-# 	my $apache_file = "$w$name$suffix";
-# 	$apache_file =~ s/\/+/\//g;
-# 	$apache_file = uri_escape( $apache_file,"^A-Za-z\/:0-9\-\._~%" );
-# 	my $ftp_file = "$ftp_ip/$ftp_dir/$change_id/$name.ppt";
-# 	$ftp_file = uri_escape( $ftp_file,"^A-Za-z\/:0-9\-\._~%" );
-# 	$text .= "
-# \n<toggledisplay status=\"hide\" showtext=\"$name\" hidetext=\"Close presentation\">
-# To open the presentation in a new tab, click [http://$apache_file here]. The original document can be found [ftp://$ftp_file here].
-# <swf width=\"800\" height=\"500\" >http://$apache_file</swf>
-# </toggledisplay>\n";
-# 	$control .= $name;
-#       }
-#     }
-# #     $control .= "v1.5" if $control ne "";
-#     return ($text, $control);
-# }
 sub search_for_presentations {
     my ($change_id) = @_;
     my $local_path = "$ppt_local_files_prefix/$change_id";
-#     my $apache_path = "$ppt_apache_files_prefix/$change_id";
-#     my $i = 0;
     my $control = "";
     my $text = ();
-#     foreach my $ftp_dir ($ftp_def, $ftp_market, $ftp_test) {
-#       my $q = "$local_path/$ftp_dir/$change_id/";
-#       my $w = "$apache_path/$ftp_dir/$change_id/";
-# print Dumper($local_path);
-      foreach my $file (sort <$local_path/*>){
-# print Dumper($file);
-# 	$i++;
+    foreach my $file (sort <$local_path/*>){
 	next if $file !~ m/\.swf$/i;
 	my ($name, $dir, $suffix) = fileparse($file, qr/\.[^.]*/);
 	my $apache_file = "$ppt_apache_files_prefix/$change_id/$name$suffix";
 	$apache_file =~ s/\/+/\//g;
 	$apache_file = uri_escape( $apache_file,"^A-Za-z\/:0-9\-\._~%" );
-# 	my $ftp_file = "$ftp_ip/$ftp_dir/$change_id/$name.ppt";
-# 	$ftp_file = uri_escape( $ftp_file,"^A-Za-z\/:0-9\-\._~%" );
 	$text .= "
 \n<toggledisplay status=\"hide\" showtext=\"$name\" hidetext=\"Close presentation\">
 To open the presentation in a new tab, click [http://$apache_file here].
 <swf width=\"800\" height=\"500\" >http://$apache_file</swf>
 </toggledisplay>\n";
 	$control .= $name;
-      }
-#     }
+    }
     $control .= "v1.5" if $control ne "";
-# print Dumper($control);
     return ($text, $control);
 }
 
@@ -1048,11 +1000,10 @@ sub remove_old_dirs {
     my @dirs = grep { (!/^\.\.?$/) && -d "$to_path/$_"} readdir(DIR);
     closedir(DIR);
     my ($only_in_sc, $only_in_dirs, $common) = WikiCommons::array_diff( \@scdirs, \@dirs);
+    INFO "Deleting ".(scalar @$only_in_dirs)." old changes.\n";
     foreach my $dir (@$only_in_dirs) {
-	INFO "Remove old dir $dir.\n";
-	my $sth_mysql = $dbh_mysql->do("delete from mind_sc_ids_versions where sc_id='$dir'");
-# 	$sth_mysql->execute();
-# 	$sth_mysql->finish();
+	INFO "Remove old dir $dir from db.\n";
+	my $sth_mysql = $dbh_mysql->do("delete from $sc_table where sc_id='$dir'");
 	remove_tree("$to_path/$dir");
     }
 }
@@ -1076,7 +1027,7 @@ sub add_versions_to_wiki_db {
     
 #     write_file("$dir/$files_info", "$text");
 
-    my $sth_mysql = $dbh_mysql->prepare("REPLACE INTO mind_sc_ids_versions 
+    my $sth_mysql = $dbh_mysql->prepare("REPLACE INTO $sc_table 
 		(SC_ID, FIXVERSION, BUILDVERSION, VERSION, PRODVERSION, FILES_INFO_CRT) 
 		VALUES 
 		('$change_id', '@$info[$index->{'fixversion'}]', 
@@ -1106,33 +1057,31 @@ sub work_svn {
     my $crt_info = {};
     my $update_control_file = 0;
 
-    if ($svn_update ne "no" && $update_only_wiki_db ne "yes") {
-	my $svn_docs = sql_get_svn_docs($change_id);
-	clean_existing_dir($change_id, $svn_docs);
+    my $svn_docs = sql_get_svn_docs($change_id);
+    clean_existing_dir($change_id, $svn_docs);
 
-	foreach my $key (sort keys %$svn_docs) {
-	    my $dir = @$info_comm[$index_comm->{$key}];
-	    my $file = $svn_docs->{$key};
-	    my $res = svn_list($dir, $file);
+    foreach my $key (sort keys %$svn_docs) {
+	my $dir = @$info_comm[$index_comm->{$key}];
+	my $file = $svn_docs->{$key};
+	my $res = svn_list($dir, $file);
 
-	    my $doc_rev = $res->{'commit'}->{'revision'};
-	    my $doc_size = $res->{'size'};
-	    if ( ! defined $res || (! defined $doc_rev && ! defined $doc_size)) {
-		INFO "\tSC $change_id says we have document for $key, but we don't have anything on svn.\n";
-		$missing_documents->{$key} = "$dir/$file";
-		next;
-	    }
-	    delete $prev_info->{$key} if (!(-e "$to_path/$change_id/$key.doc" && -s "$to_path/$change_id/$key.doc" == $doc_size));
-	    $crt_info->{$key}->{'name'} = $svn_docs->{$key};
-	    $crt_info->{$key}->{'size'} = $doc_size;
-	    $crt_info->{$key}->{'revision'} = $doc_rev;
-	    $crt_info->{$key}->{'date'} =  $res->{'commit'}->{'date'};
-	    if ( ! Compare($crt_info->{$key}, $prev_info->{$key}) ) {
-		INFO "\tUpdate svn http for $key.\n";
-		my $file_res = WikiCommons::http_get("$dir/$file", "$work_dir", "$svn_user", "$svn_pass");
-		move($file_res, "$work_dir/$key.doc") || LOGDIE "can't move file $file_res to $work_dir/$key.doc: $!.\n";
-		$update_control_file++;
-	    }
+	my $doc_rev = $res->{'commit'}->{'revision'};
+	my $doc_size = $res->{'size'};
+	if ( ! defined $res || (! defined $doc_rev && ! defined $doc_size)) {
+	    INFO "\tSC $change_id says we have document for $key, but we don't have anything on svn.\n";
+	    $missing_documents->{$key} = "$dir/$file";
+	    next;
+	}
+	delete $prev_info->{$key} if (!(-e "$to_path/$change_id/$key.doc" && -s "$to_path/$change_id/$key.doc" == $doc_size));
+	$crt_info->{$key}->{'name'} = $svn_docs->{$key};
+	$crt_info->{$key}->{'size'} = $doc_size;
+	$crt_info->{$key}->{'revision'} = $doc_rev;
+	$crt_info->{$key}->{'date'} =  $res->{'commit'}->{'date'};
+	if ( ! Compare($crt_info->{$key}, $prev_info->{$key}) ) {
+	    INFO "\tUpdate svn http for $key.\n";
+	    my $file_res = WikiCommons::http_get("$dir/$file", "$work_dir", "$svn_user", "$svn_pass");
+	    move($file_res, "$work_dir/$key.doc") || LOGDIE "can't move file $file_res to $work_dir/$key.doc: $!.\n";
+	    $update_control_file++;
 	}
     }
     return ($missing_documents, $crt_info, $update_control_file);
@@ -1151,7 +1100,7 @@ sub mysql_connect {
     close(FH);
 
     $dbh_mysql = DBI->connect("DBI:mysql:database=$wikidb_name;host=$wikidb_server", "$wikidb_user", "$wikidb_pass");
-    my $sth_mysql = $dbh_mysql->prepare("CREATE TABLE IF NOT EXISTS mind_sc_ids_versions (
+    my $sth_mysql = $dbh_mysql->prepare("CREATE TABLE IF NOT EXISTS $sc_table (
     SC_ID VARCHAR( 255 ) NOT NULL ,
     FIXVERSION VARCHAR( 255 ) ,
     BUILDVERSION VARCHAR( 255 ) ,
@@ -1188,11 +1137,11 @@ sub fork_function {
 	my $crt_thread = shift @thread if scalar keys %$crt_hash;
 	if (defined $crt_thread) {
 	    my $change_id = (sort keys %$crt_hash)[0];
-	    INFO "Got new thread to run $change_id\n";
-# if ($change_id !~ m/B109856$/){push @thread, $crt_thread;delete $pages_toimp_hash->{$url};next;}
+# 	    INFO "Got new thread to run $change_id\n";
+# if ($change_id !~ m/B109856$/){push @thread, $crt_thread;delete $crt_hash->{$change_id};next;}
 	    my $val = $crt_hash->{$change_id};
 	    $crt_nr++;
-	    INFO "************* Start working for $change_id: nr $crt_nr of $total_nr.\n";
+	    INFO "************* Start working for $change_id (nr $crt_nr of $total_nr).\n";
 	    my $pid = fork();
 	    if (! defined ($pid)){
 		LOGDIE  "Can't fork.\n";
@@ -1201,11 +1150,13 @@ sub fork_function {
 		mysql_connect();
 		oracle_conenct();
 		$function->($change_id, $val, $crt_thread, @function_args);
-		exit 100;
+		$dbh->disconnect if defined($dbh);
+		$dbh_mysql->disconnect() if defined($dbh_mysql);
+		INFO "Done fork for $change_id.\n";
+		exit 0;
 	    }
 	    $running->{$pid}->{'thread'} = $crt_thread;
 	    $running->{$pid}->{'change_id'} = $change_id;
-	    $running->{$pid}->{'val'} = $val;
 	    delete $crt_hash->{$change_id};
 	}
 
@@ -1213,14 +1164,11 @@ sub fork_function {
 	my $pid = waitpid(-1, WNOHANG);
 	my $exit_status = $? >> 8;
 	if ($pid > 0) {
-	    INFO "child $pid died, from id with status=$exit_status: reapead.\n";
 	    my $change_id = $running->{$pid}->{'change_id'};
-	    INFO "+Finish working for $change_id: nr $crt_nr of $total_nr.\n";
+	    INFO "************* Finish working for $change_id (pid=$pid, status=$exit_status).\n";
 	    push @thread, $running->{$pid}->{'thread'};
 	    delete $failed->{$change_id} if $exit_status == 0;
 	    delete $running->{$pid};
-	    $dbh->disconnect if defined($dbh);
-	    $dbh_mysql->disconnect() if defined($dbh_mysql);
 	}
 	## don't sleep if not all threads are running and we still have work to do
 	sleep 1 if !(scalar @thread && scalar keys %$crt_hash);
@@ -1233,7 +1181,7 @@ sub fork_function {
 sub update_scid {
     my ($change_id, $arr) = @_;
     my $work_dir = "$tmp_path/$change_id";
-    WikiCommons::makedir("$work_dir");
+    WikiCommons::makedir($work_dir);
     my $prev_info = get_previous($change_id);
     ### svn updates (first svn, because we need missing documents)
     my ($missing_documents, $crt_info, $update_control_file) = work_svn($change_id, $info_comm, $prev_info, $index_comm, $work_dir);
@@ -1249,7 +1197,7 @@ sub update_scid {
     my $cat = ();
 ## docs are verified through $update_control_file
     delete $prev_info->{'Categories'};
-    if (! Compare($crt_info, $prev_info) || $update_control_file || $force_db_update eq "yes" || $update_only_wiki_db eq "yes") {
+    if (! Compare($crt_info, $prev_info) || $update_control_file || $force_db_update eq "yes") {
  	INFO "\tUpdate SC info.\n";
 
 	my $prev = defined $prev_info->{'SC_info'}->{'size'} ? $prev_info->{'SC_info'}->{'size'} : 'NULL';
@@ -1259,7 +1207,7 @@ sub update_scid {
 
 	my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
 	## some SR's are completly empty, so ignore them
-	next if scalar @$info_ret == 0 || $update_only_wiki_db eq "yes";
+	return if scalar @$info_ret == 0;
 	my $modules = sql_get_modules( split ',', @$info_ret[$index->{'modules'}] ) if defined @$info_ret[$index->{'modules'}];
 	my $tester = sql_get_workers_names( split ',', @$info_ret[$index->{'tester'}] ) if defined @$info_ret[$index->{'tester'}];
 	my $initiator = sql_get_workers_names( split ',', @$info_ret[$index->{'initiator'}] );
@@ -1284,7 +1232,6 @@ sub update_scid {
 	write_rtf ("$work_dir/5 Messages_SC.rtf", @$info_ret[$index->{'Messages_SC'}]);
 	write_rtf ("$work_dir/6 Architecture_SC.rtf", @$info_ret[$index->{'Architecture_SC'}]);
 	my $new_md5 = get_info_files_md5_crc($change_id);
-LOGDIE if $crt_md5 ne $new_md5 || $update_control_file;
 	add_versions_to_wiki_db($change_id, $info_ret, $index, $crt_info, $cat) if $crt_md5 ne $new_md5 || $update_control_file;
     }
     WikiCommons::move_dir($work_dir, "$to_path/$change_id/");
@@ -1295,8 +1242,8 @@ sub cleanAndExit {
     kill 9, map {s/\s//g; $_} split /\n/, `ps -o pid --no-headers --ppid $$`;
     exit 1000;
 }
-
 use sigtrap 'handler' => \&cleanAndExit, 'INT', 'ABRT', 'QUIT', 'TERM';
+
 mysql_connect();
 oracle_conenct();
 $crt_hash = sql_get_all_changes();
@@ -1308,9 +1255,9 @@ write_common_info ($index_comm, $info_comm);
 $dbh->disconnect if defined($dbh);
 $dbh_mysql->disconnect() if defined($dbh_mysql);
 
-eval{fork_function(200, \&update_scid);};
-ERROR "Error in main thread: $@\n" if $@;
-# kill 9, map {s/\s//g; $_} split /\n/, `ps -o pid --no-headers --ppid $$`;
+fork_function(10, \&update_scid);
 
 ERROR "Failed: $_\n" foreach (sort keys %$failed);
-INFO "Done.\n";
+@crt_timeData = localtime(time);
+foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
+INFO "End ". ($crt_timeData[5]+1900) ."-$crt_timeData[4]-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
