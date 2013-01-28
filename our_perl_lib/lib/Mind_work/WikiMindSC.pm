@@ -42,7 +42,7 @@ sub generate_categories {
 sub get_documents {
     my $self = shift;
     my $path_files = $self->{path_files};
-    opendir(DIR, "$path_files") || die("Cannot open directory $path_files.\n");
+    opendir(DIR, "$path_files") || LOGDIE "Cannot open directory $path_files.\n";
     my @all = grep { (!/^\.\.?$/) && -d "$path_files/$_" } readdir(DIR);
     closedir(DIR);
 
@@ -77,7 +77,7 @@ sub get_documents {
 		    $q =~ s/(^\s*)|(\s*$)//g;
 		    if ($q =~ m/^has_deployment/i){
 			my $has_deployment = $q;$has_deployment =~ s/^has_deployment\s+//;
-			INFO "WTF is this: has_deployment = $has_deployment\n".Dumper(@data) if $has_deployment ne 'Y';
+			ERROR "WTF is this: has_deployment = $has_deployment\n".Dumper(@data) if $has_deployment ne 'Y';
 			push @categories, $q;
 # INFO "$has_deployment\n";
 		    }
@@ -86,7 +86,7 @@ sub get_documents {
 		    $sc_type =~ s/^ChangeType\s+//;
 		    push @categories, $q;
 		    if ($sc_type ne "Change" && $sc_type ne "Bug") {
-			INFO "\tSC type is unknown: $sc_type.\n";
+			ERROR "\tSC type is unknown: $sc_type.\n";
 			$sc_type = "Bug";
 		    }
 		    if ( $path_files =~ m/canceled/i ) {
@@ -148,13 +148,14 @@ LOGDIE "no namespace here 1: $node.\n".Dumper(@data);
 		    }
 		}
 		next;
+	    } else {
+		$md5 .= "$tmp[2]" if defined $tmp[2];
+		LOGDIE "Wrong number of fields for line $line in $node.\n" if @tmp < 4 || @tmp > 5;
+		$info_crt_h->{$tmp[0]}->{'name'} = "$tmp[1]";
+		$info_crt_h->{$tmp[0]}->{'size'} = "$tmp[2]";
+		$info_crt_h->{$tmp[0]}->{'revision'} = "$tmp[3]";
+		$info_crt_h->{$tmp[0]}->{'date'} = "$tmp[4]" if defined $tmp[4];
 	    }
-	    $md5 .= "$tmp[2]" if defined $tmp[2];
-	    LOGDIE "Wrong number of fields for line $line in $node.\n" if @tmp < 4 || @tmp > 5;
-	    $info_crt_h->{$tmp[0]}->{'name'} = "$tmp[1]";
-	    $info_crt_h->{$tmp[0]}->{'size'} = "$tmp[2]";
-	    $info_crt_h->{$tmp[0]}->{'revision'} = "$tmp[3]";
-	    $info_crt_h->{$tmp[0]}->{'date'} = "$tmp[4]" if defined $tmp[4];
 	}
 LOGDIE "no namespace here 2: $node.\n".Dumper(@data) if $url_namespace eq "";
 	$pages_toimp_hash->{"$url_namespace:$node"} = [$md5." redirect", "$node", $info_crt_h, "real", \@categories];
