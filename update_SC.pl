@@ -1120,6 +1120,14 @@ sub oracle_conenct {
     $dbh->{LongTruncOk}   = 0;
 }
 
+sub clone_dbh {
+  my $handler = shift;
+  my $child_dbh = $handler->clone();
+  $handler->{InactiveDestroy} = 1;
+  undef $handler;
+  return $child_dbh;
+}
+
 sub fork_function {
     my ($nr_threads, $function, @function_args) = @_;
     use POSIX ":sys_wait_h";
@@ -1128,34 +1136,24 @@ sub fork_function {
     my $total_nr = scalar (keys %$crt_hash);
     my $crt_nr = 0;
     my @thread = (1..$nr_threads);
-
+#  Remaining threads: ".(scalar @thread).", running threads: ".(scalar keys %$running)."
     while (1) {
 	my $crt_thread = shift @thread if scalar keys %$crt_hash;
 	if (defined $crt_thread) {
 	    my $change_id = (sort keys %$crt_hash)[0];
-# 	    INFO "Got new thread to run $change_id\n";
-# if ($change_id !~ m/B109856$/){push @thread, $crt_thread;delete $crt_hash->{$change_id};next;}
+# if ($change_id !~ m/F70150/){push @thread, $crt_thread;delete $crt_hash->{$change_id};delete $failed->{$change_id};next;}
 	    my $val = $crt_hash->{$change_id};
 	    $crt_nr++;
 	    INFO "************* Start working for $change_id (nr $crt_nr of $total_nr).\n";
 	    my $pid = fork();
 	    if (! defined ($pid)){
 		LOGDIE  "Can't fork.\n";
-	    } elsif ($pid==0) {
+	    } elsif ($pid == 0) {
 		INFO "Start fork for $change_id.\n";
-my $child_dbh = $dbh_mysql->clone();
-$dbh_mysql->{InactiveDestroy} = 1;
-undef $dbh_mysql;
-$dbh_mysql = $child_dbh;
-$child_dbh = $dbh->clone();
-$dbh->{InactiveDestroy} = 1;
-undef $dbh;
-$dbh = $child_dbh;
-# 		mysql_connect();
-# 		oracle_conenct();
+		$0 = "$0 $sc_type - $change_id";
+		$dbh_mysql = clone_dbh($dbh_mysql);
+		$dbh = clone_dbh($dbh);
 		$function->($change_id, $val, $crt_thread, @function_args);
-# 		$dbh->disconnect if defined($dbh);
-# 		$dbh_mysql->disconnect() if defined($dbh_mysql);
 		INFO "Done fork for $change_id.\n";
 		exit 0;
 	    }
@@ -1169,10 +1167,10 @@ $dbh = $child_dbh;
 	my $exit_status = $? >> 8;
 	if ($pid > 0) {
 	    my $change_id = $running->{$pid}->{'change_id'};
-	    INFO "************* Finish working for $change_id (pid=$pid, status=$exit_status).\n";
 	    push @thread, $running->{$pid}->{'thread'};
 	    delete $failed->{$change_id} if $exit_status == 0;
 	    delete $running->{$pid};
+	    INFO "************* Finish working for $change_id (pid=$pid, status=$exit_status).\n";
 	}
 	## don't sleep if not all threads are running and we still have work to do
 	sleep 1 if !(scalar @thread && scalar keys %$crt_hash);
