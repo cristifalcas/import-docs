@@ -1,0 +1,16 @@
+get latest zips for Instant Client Package - Basic, Instant Client Package - SDK
+
+get latest dbi oracle from http://search.cpan.org/~pythian/DBD-Oracle-1.57_00/
+
+install  perl-ExtUtils-MakeMaker perl-ExtUtils-Install perl-ExtUtils-Manifest perl-ExtUtils-ParseXS perl-Test-Harness perl-devel  systemtap-sdt-devel
+
+export ORACLE_HOME=/media/share/Documentation/cfalcas/q/import_docs/instantclient_11_2/
+
+perl Makefile.PL -V 11.2
+make
+
+/blib/lib/DBD to our_perl_lib/lib/DBD
+/blib/arch/auto/DBD/Oracle to our_perl_lib/lib/auto/DBD/Oracle
+
+remove perl-ExtUtils-MakeMaker perl-ExtUtils-Install perl-ExtUtils-Manifest perl-ExtUtils-ParseXS perl-Test-Harness perl-devel  systemtap-sdt-devel
+

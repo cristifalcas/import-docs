@@ -1,0 +1,17 @@
+get https://gerrit.wikimedia.org/r/gitweb?p=mediawiki/extensions/MWSearch.git;a=snapshot;h=refs/heads/master;sf=tgz
+
+install ant alsa-lib flac giflib gsm java-1.7.0-openjdk java-1.7.0-openjdk-devel javapackages-tools jline jpackage-utils libasyncns libogg libsndfile libvorbis pulseaudio-libs rhino tzdata-java xalan-j2 xerces-j2 xml-commons-apis xml-commons-resolver ant-commons-logging apache-commons-logging log4j ant-apache-log4j slf4j cal10n
+
+cp log4j
+cp /usr/share/java/slf4j/api.jar /usr/share/java/slf4j-api.jar
+cp /usr/share/java/slf4j/log4j12.jar /usr/share/java/slf4j-log4j12.jar
+
+ant
+
+remove ant alsa-lib flac giflib gsm java-1.7.0-openjdk java-1.7.0-openjdk-devel javapackages-tools jline jpackage-utils libasyncns libogg libsndfile libvorbis pulseaudio-libs rhino tzdata-java xalan-j2 xerces-j2 xml-commons-apis xml-commons-resolver ant-commons-logging apache-commons-logging log4j ant-apache-log4j slf4j cal10n
+
+rm /usr/share/java/slf4j-api.jar
+rm /usr/share/java/slf4j-log4j12.jar
+
+copy jar
+
