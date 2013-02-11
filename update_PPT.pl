@@ -45,7 +45,7 @@ Log::Log4perl->init("$path_prefix/log4perl.config");
 use Mind_work::WikiCommons;
 
 our $from_path = shift;
-my $to_path="/mnt/wiki_files/wiki_files/ppt_as_flash/";
+my $to_path="/media/wiki_files/ppt_as_flash/";
 WikiCommons::makedir ($to_path) if ! -d $to_path;
 WikiCommons::makedir ($from_path) if ! -d $from_path;
 $to_path = abs_path($to_path);
@@ -72,8 +72,8 @@ sub add_document_local {
 	$q = "_".(-s $doc_file) if $suffix =~ m/^\.pptx?$/i;
 	$hash_swf->{$sc_id}->{"$name$q".lc($suffix)} = $doc_file;
     } else {
-	return if $doc_file =~ m/^\/mnt\/wiki_files\/wiki_files\/ppt_as_flash\/__presentations\//
-		    || $doc_file =~ m/^\/mnt\/wiki_files\/wiki_files\/ppt_as_flash\/users_imports\//;
+	return if $doc_file =~ m/^\/media\/wiki_files\/ppt_as_flash\/__presentations\//
+		    || $doc_file =~ m/^\/media\/wiki_files\/ppt_as_flash\/users_imports\//;
 	LOGDIE "\tFile $doc_file is not in the correct dir:\n".Dumper($to_path, $name, $suffix);
 # 	unlink $doc_file || LOGDIE "can't delete file.\n";
 # 	return;

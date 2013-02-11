@@ -5,6 +5,7 @@ mkdir -p "$OUT_DIR"
 PREFIX="$OUT_DIR/$(date '+%d-%b-%Y')"
 
 if [[ $(echo $(df | grep "/mnt/svn" | gawk '{print $(NF-2)}')-20000000|bc) -gt 0 ]]; then 
+    #'
     echo "We have enough space for the backup"
 else 
     echo "Not enough space for the backup"
@@ -87,19 +88,20 @@ function clean {
   find /mnt/wiki_files/wiki_files/work/bad_dir/ -mtime +14 -exec rm {} \;
 }
 
+LOG_PREFIX="/var/log/mind/backup"
 /bin/cp -f /etc/hosts.good /etc/hosts
-clean
-bkp_scripts
-bkp_wikidir
-bkp_fullxmldump
-bkp_mysqldir
-bkp_mysqldump
-bkp_fullos
-clean_wiki
+clean > "$LOG_PREFIX"_clean.log 2>&1
+bkp_scripts > "$LOG_PREFIX"_bkp_scripts.log 2>&1
+bkp_wikidir > "$LOG_PREFIX"_bkp_wikidir.log 2>&1
+bkp_fullxmldump > "$LOG_PREFIX"_bkp_fullxmldump.log 2>&1
+bkp_mysqldir > "$LOG_PREFIX"_bkp_mysqldir.log 2>&1
+bkp_mysqldump > "$LOG_PREFIX"_bkp_mysqldump.log 2>&1
+bkp_fullos > "$LOG_PREFIX"_bkp_fullos.log 2>&1
+clean_wiki > "$LOG_PREFIX"_clean_wiki.log 2>&1
 
-mysqlcheck -uwikiuser -p\!0wikiuser\@9 --databases wikidb --optimize
-sudo -u apache php /var/www/html/wiki/maintenance/rebuildall.php
-sudo -u apache php /var/www/html/wiki/maintenance/refreshLinks.php
+mysqlcheck -uwikiuser -p\!0wikiuser\@9 --databases wikidb --optimize > "$LOG_PREFIX"_mysql_optimize.log 2>&1
+sudo -u apache php /var/www/html/wiki/maintenance/rebuildall.php > "$LOG_PREFIX"_rebuildall.log 2>&1
+sudo -u apache php /var/www/html/wiki/maintenance/refreshLinks.php > "$LOG_PREFIX"_refreshLinks.log 2>&1
 
 
 # rm `find /mnt/wiki_files/wiki_files/html/wiki/images/ -iname \*.jpg | grep "SVN:" | grep "_--_" | head -n 100 `

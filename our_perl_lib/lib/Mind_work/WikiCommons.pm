@@ -428,6 +428,7 @@ sub check_vers {
 
 sub generate_html_file {
     my ($doc_file, $type, $thread) = @_;
+    $thread = "no thread" if ! defined $thread;
     INFO "\t## using thread ".Dumper($thread);
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
 
@@ -459,10 +460,8 @@ sub generate_html_file {
 	  "3. unoconv" 			=> ["python", "$real_path/convertors/unoconv", "-f", "$type", "$doc_file"],
 	  "4. our office" 		=> ["/opt/libreoffice3.6/program/soffice", "--headless", @lo_args], 
 	  "5. our office with X" 	=> ["/opt/libreoffice3.6/program/soffice", "--display", ":10235", @lo_args], 
-# 	  "6. system office with X" => ["libreoffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
-# 	  "7. system office" => [@change_user, "libreoffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"],
-# 	  "8. our office old with X" => [@change_user, "/opt/libreoffice3.4/program/soffice", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
-# 	  "9. our office old " => [@change_user, "/opt/libreoffice3.4/program/soffice", "--headless", "--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file"], 
+	  "6. our office" 		=> ["/opt/libreoffice4.0/program/soffice", "--headless", @lo_args], 
+	  "7. our office with X" 	=> ["/opt/libreoffice4.0/program/soffice", "--display", ":10235", @lo_args], 
 	};
 
     INFO "\t-Generating $type file from $name$suffix.\t". (get_time_diff) ."\n\t\t$doc_file\n";

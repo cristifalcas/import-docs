@@ -1,19 +1,19 @@
 #!/bin/bash
 
 SCRIPT_PATH="$( cd "$( dirname "$0" )" && pwd )"
-WIKI_DIR_PATH="/mnt/wiki_files/wiki_files"
+WIKI_DIR_PATH="/media/wiki_files"
 mkdir -p "$WIKI_DIR_PATH"
 LOG_PATH="/var/log/mind/wiki_logs/wiki_"
 mkdir -p "/var/log/mind/wiki_logs/"
 export LC_ALL=en_US.UTF-8
-CMD="nice -n 20 perl"
-CMD="perl"
+# CMD="nice -n 20 perl"
+CMD=perl
 
 case "$1" in
 "update_ftp")
   PATTERN="ppt,PPT,PPt,PpT,pPT,Ppt,pPt,ppT,pptx,PPTx,PPtx,PpTx,pPTx,Pptx,pPtx,ppTx,pptX,PPTX,PPtX,PpTX,pPTX,PptX,pPtX,ppTX"
   OPTS="-N -r -l inf --no-remove-listing"
-  OUTPUT_PATH="/mnt/wiki_files/wiki_files/ftp_mirror/"
+  OUTPUT_PATH="/media/wiki_files/ftp_mirror/"
   wget $OPTS -P $OUTPUT_PATH ftp://10.10.1.10/SC/TestAttach -A.$PATTERN -o "$LOG_PATH"update_ftp_mirror_test.log &
   wget $OPTS -P $OUTPUT_PATH ftp://10.10.1.10/SC/MarketAttach -A.$PATTERN -o "$LOG_PATH"update_ftp_mirror_market.log &
   for i in {A..Z};do

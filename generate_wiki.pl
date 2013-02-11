@@ -79,7 +79,6 @@ use File::Path qw(make_path remove_tree);
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 use Log::Log4perl qw(:easy);
 Log::Log4perl->init("$path_prefix/log4perl.config");
-
 INFO "$path_prefix\n";
 
 use Mind_work::WikiWork;
@@ -93,17 +92,21 @@ use Mind_work::WikiMindCMS;
 
 use File::Slurp;
 use DBI;
-my ($wikidb_server, $wikidb_name, $wikidb_user, $wikidb_pass) = ();
-open(FH, "/var/www/html/wiki/LocalSettings.php") or LOGDIE "Can't open file for read: $!.\n";
-while (<FH>) {
-  $wikidb_server = $2 if $_ =~ m/^(\s*\$wgDBserver\s*=\s*\")(.+)(\"\s*;\s*)$/;
-  $wikidb_name = $2 if $_ =~ m/^(\s*\$wgDBname\s*=\s*\")(.+)(\"\s*;\s*)$/;
-  $wikidb_user = $2 if $_ =~ m/^(\s*\$wgDBuser\s*=\s*\")(.+)(\"\s*;\s*)$/;
-  $wikidb_pass = $2 if $_ =~ m/^(\s*\$wgDBpassword\s*=\s*\")(.+)(\"\s*;\s*)$/;
-}
-close(FH);
-my $dbh_mysql = DBI->connect("DBI:mysql:database=$wikidb_name;host=$wikidb_server", "$wikidb_user", "$wikidb_pass");
+my $dbh_mysql;
+
+sub connect_mysql {
+    my ($wikidb_server, $wikidb_name, $wikidb_user, $wikidb_pass) = ();
+    open(FH, "/var/www/html/wiki/LocalSettings.php") or LOGDIE "Can't open file for read: $!.\n";
+    while (<FH>) {
+      $wikidb_server = $2 if $_ =~ m/^(\s*\$wgDBserver\s*=\s*\")(.+)(\"\s*;\s*)$/;
+      $wikidb_name = $2 if $_ =~ m/^(\s*\$wgDBname\s*=\s*\")(.+)(\"\s*;\s*)$/;
+      $wikidb_user = $2 if $_ =~ m/^(\s*\$wgDBuser\s*=\s*\")(.+)(\"\s*;\s*)$/;
+      $wikidb_pass = $2 if $_ =~ m/^(\s*\$wgDBpassword\s*=\s*\")(.+)(\"\s*;\s*)$/;
+    }
+    close(FH);
+    $dbh_mysql = DBI->connect("DBI:mysql:database=$wikidb_name;host=$wikidb_server", "$wikidb_user", "$wikidb_pass");
 # my $sth_mysql = $dbh_mysql->do("CREATE TABLE IF NOT EXISTS mind_wiki_info (WIKI_NAME VARCHAR( 255 ) NOT NULL ,FILES_INFO_INSERTED VARCHAR( 9000 ) ,PRIMARY KEY ( WIKI_NAME ) )");
+}
 
 # declare the perl command line flags/options we want to allow
 my $options = {};
@@ -124,10 +127,10 @@ my $pid_old = "100000";
 my $max_to_delete = 1000;
 my $type_old = "";
 my $lo_user;
-my $docs_nr_forks = 2;
+my $docs_nr_forks = 8;
 my $links_nr_forks = 5;
 my $crm_nr_forks = 5;
-my $sc_nr_forks = 3;
+my $sc_nr_forks = 8;
 
 if (defined $options->{'c'}) {
     if ($options->{'c'} =~ m/^y$/i){
@@ -168,6 +171,8 @@ our $coco;
 WikiCommons::is_remote("$remote_work");
 WikiCommons::set_real_path($path_prefix);
 chdir "/tmp/" || die "can't go to /tmp.\n";
+use Env qw($JAVA_HOME);
+$JAVA_HOME="/opt/jdk1.7.0_13/";
 
 sub add_swf_users {
     my ($doc_file, $work_dir, $new_file, $suffix, $zip_name) = @_;
@@ -208,8 +213,8 @@ sub create_wiki {
     if ( -d $work_dir) {
 	INFO "Path $work_dir already exists. Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
 	my $name_bad = "$bad_dir/$page_url".time();
-	WikiCommons::makedir("$name_bad");
-	WikiCommons::move_dir("$work_dir", "$name_bad");
+	WikiCommons::makedir($name_bad);
+	WikiCommons::move_dir($work_dir, $name_bad);
 	LOGDIE "Directory still exists." if ( -d $work_dir);
     }
     WikiCommons::makedir ("$work_dir");
@@ -310,7 +315,7 @@ sub get_existing_pages {
 		$pages_local_hash->{$name} = [$md5, $rel_path, $svn_url, $url_type, []];
 		++$count_files;
 	    } else {
-		INFO "\tThis is not a correct wiki info: $name\n";
+		ERROR "\tThis is not a correct wiki info: $name\n";
 		my @q = split '/', $dir;
 		my $name_bad = "$bad_dir/$q[$#q]".time();
 # 		WikiCommons::makedir("$name_bad");
@@ -662,10 +667,11 @@ sub fork_function {
 	    } elsif ($pid==0) {
 		INFO "Start fork function $url.\n";
 		WikiCommons::reset_time();
-		my $child_dbh = $dbh_mysql->clone();
-		$dbh_mysql->{InactiveDestroy} = 1;
-		undef $dbh_mysql;
-		$dbh_mysql = $child_dbh;
+# 		my $child_dbh = $dbh_mysql->clone();
+# 		$dbh_mysql->{InactiveDestroy} = 1;
+# 		undef $dbh_mysql;
+# 		$dbh_mysql = $child_dbh;
+		$dbh_mysql->disconnect() if defined($dbh_mysql);connect_mysql();
 		$function->($url, $val, $crt_thread, @function_args);
 		exit 100;
 	    }
@@ -1085,6 +1091,7 @@ if (-f "$pid_file") {
 }
 WikiCommons::write_file($pid_file,"$$\n");
 
+connect_mysql();
 $our_wiki = new WikiWork();
 if ($path_type eq "mind_svn") {
     $lo_user = "wiki_svn";
@@ -1120,8 +1127,11 @@ if ($path_type eq "mind_svn") {
     fork_function($sc_nr_forks, \&sc_worker, getCommonInfoSC());
 }
 
+## connection is broken in threads
+$dbh_mysql->disconnect() if defined($dbh_mysql);
+connect_mysql();
 foreach (sort keys %$failed) {
-    my $sth_mysql = $dbh_mysql->do("DELETE FROM mind_wiki_info where WIKI_NAME=".$dbh_mysql->quote($_));
+    $dbh_mysql->do("DELETE FROM mind_wiki_info where WIKI_NAME=".$dbh_mysql->quote($_));
     ERROR "Failed: $_\n"
 }
 $dbh_mysql->disconnect() if defined($dbh_mysql);

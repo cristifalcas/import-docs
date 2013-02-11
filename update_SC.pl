@@ -71,13 +71,15 @@ our $general_template_file = "$path_prefix/SC_template.txt";
 my $force_db_update = "no";
 my ($crt_hash, $failed, $index_comm, $info_comm, $index, $SEL_INFO);
 
-my $ppt_local_files_prefix="/mnt/wiki_files/wiki_files/ppt_as_flash/";
+my $ppt_local_files_prefix="/media/wiki_files/ppt_as_flash/";
 my $ppt_apache_files_prefix="10.0.0.99/ppt_as_flash/";
 
 LOGDIE "Template file missing.\n" if ! -e $general_template_file;
 
 my $svn_info_all = {};
 my $url_sep = WikiCommons::get_urlsep;
+my $count_updated = 0;
+my $nr_threads = 30;
 
 our ($dbh, $dbh_mysql);
 
@@ -1010,6 +1012,8 @@ sub remove_old_dirs {
 
 sub add_versions_to_wiki_db {
     my ($change_id, $info, $index, $hash, $categories) = @_;
+    INFO "Update dn info about $change_id.";
+    $count_updated++;
     my $text = "";
     for (my $i=0;$i<@doc_types;$i++) {
 	next if ! exists $hash->{$doc_types[$i]};
@@ -1096,6 +1100,12 @@ sub mysql_connect {
     close(FH);
 
     $dbh_mysql = DBI->connect("DBI:mysql:database=$wikidb_name;host=$wikidb_server", "$wikidb_user", "$wikidb_pass");
+    $dbh_mysql->{AutoCommit}    = 1;
+    $dbh_mysql->{RaiseError}    = 1;
+    $dbh_mysql->{RowCacheSize}  = 16;
+    $dbh_mysql->{LongReadLen}   = 52428800;
+    $dbh_mysql->{LongTruncOk}   = 0;
+
     my $sth_mysql = $dbh_mysql->prepare("CREATE TABLE IF NOT EXISTS $sc_table (
     SC_ID VARCHAR( 255 ) NOT NULL ,
     FIXVERSION VARCHAR( 255 ) ,
@@ -1112,7 +1122,7 @@ sub oracle_conenct {
     $ENV{NLS_LANG} = 'AMERICAN_AMERICA.AL32UTF8';
     my ($ip, $sid, $user, $pass) = ('10.0.0.103', 'SCROM', 'scview', 'scview');
     $dbh=DBI->connect("dbi:Oracle:host=$ip;sid=$sid", "$user", "$pass")|| die( $DBI::errstr . "\n" );
-    $dbh->{AutoCommit}    = 0;
+    $dbh->{AutoCommit}    = 1;
     $dbh->{RaiseError}    = 1;
     $dbh->{ora_check_sql} = 0;
     $dbh->{RowCacheSize}  = 16;
@@ -1120,13 +1130,13 @@ sub oracle_conenct {
     $dbh->{LongTruncOk}   = 0;
 }
 
-sub clone_dbh {
-  my $handler = shift;
-  my $child_dbh = $handler->clone();
-  $handler->{InactiveDestroy} = 1;
-  undef $handler;
-  return $child_dbh;
-}
+# sub clone_dbh {
+#   my $handler = shift;
+#   my $child_dbh = $handler->clone();
+#   $handler->{InactiveDestroy} = 1;
+#   undef $handler;
+#   return $child_dbh;
+# }
 
 sub fork_function {
     my ($nr_threads, $function, @function_args) = @_;
@@ -1141,20 +1151,25 @@ sub fork_function {
 	my $crt_thread = shift @thread if scalar keys %$crt_hash;
 	if (defined $crt_thread) {
 	    my $change_id = (sort keys %$crt_hash)[0];
-# if ($change_id !~ m/F70150/){push @thread, $crt_thread;delete $crt_hash->{$change_id};delete $failed->{$change_id};next;}
+# if ($change_id !~ m/F00050/){push @thread, $crt_thread;delete $crt_hash->{$change_id};delete $failed->{$change_id};next;}
 	    my $val = $crt_hash->{$change_id};
 	    $crt_nr++;
-	    INFO "************* Start working for $change_id (nr $crt_nr of $total_nr).\n";
+	    INFO "************* Start working in thread nr $crt_thread for $change_id (nr $crt_nr of $total_nr). Free threads: ".(scalar @thread)." out of $nr_threads.\n";
 	    my $pid = fork();
 	    if (! defined ($pid)){
 		LOGDIE  "Can't fork.\n";
 	    } elsif ($pid == 0) {
 		INFO "Start fork for $change_id.\n";
-		$0 = "$0 $sc_type - $change_id";
-		$dbh_mysql = clone_dbh($dbh_mysql);
-		$dbh = clone_dbh($dbh);
+		$0 = "update_SC $sc_type - $change_id";
+		$dbh_mysql->disconnect() if defined($dbh_mysql);mysql_connect();
+# 		my $child_dbh_mysql = clone_dbh($dbh_mysql);undef $dbh_mysql;$dbh_mysql=$child_dbh_mysql;
+		$dbh->disconnect if defined($dbh);oracle_conenct();
+# 		my $child_dbh = clone_dbh($dbh);undef $dbh;$dbh=$child_dbh;
 		$function->($change_id, $val, $crt_thread, @function_args);
+		$dbh_mysql->disconnect() if defined($dbh_mysql);
+		$dbh->disconnect if defined($dbh);
 		INFO "Done fork for $change_id.\n";
+		exit 255 if $count_updated;
 		exit 0;
 	    }
 	    $running->{$pid}->{'thread'} = $crt_thread;
@@ -1168,7 +1183,8 @@ sub fork_function {
 	if ($pid > 0) {
 	    my $change_id = $running->{$pid}->{'change_id'};
 	    push @thread, $running->{$pid}->{'thread'};
-	    delete $failed->{$change_id} if $exit_status == 0;
+	    delete $failed->{$change_id} if $exit_status == 0 || $exit_status == 255;
+	    $count_updated++ if $exit_status == 255;
 	    delete $running->{$pid};
 	    INFO "************* Finish working for $change_id (pid=$pid, status=$exit_status).\n";
 	}
@@ -1206,6 +1222,7 @@ sub update_scid {
 	INFO "\tChanged CRC: $crt_info->{'SC_info'}->{'size'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'size'} && "$crt_info->{'SC_info'}->{'size'}" ne "$prev");
 	$prev = defined $prev_info->{'SC_info'}->{'revision'} ? $prev_info->{'SC_info'}->{'revision'} : 'NULL';
 	INFO "\tChanged status: $crt_info->{'SC_info'}->{'revision'} from $prev.\n" if ( defined $crt_info->{'SC_info'}->{'revision'} && "$crt_info->{'SC_info'}->{'revision'}" ne "$prev");
+	INFO "\tChanged svn files.\n" if $update_control_file;
 
 	my $info_ret = sql_get_changeinfo($change_id, $SEL_INFO);
 	## some SR's are completly empty, so ignore them
@@ -1234,7 +1251,7 @@ sub update_scid {
 	write_rtf ("$work_dir/5 Messages_SC.rtf", @$info_ret[$index->{'Messages_SC'}]);
 	write_rtf ("$work_dir/6 Architecture_SC.rtf", @$info_ret[$index->{'Architecture_SC'}]);
 	my $new_md5 = get_info_files_md5_crc($change_id);
-	add_versions_to_wiki_db($change_id, $info_ret, $index, $crt_info, $cat) if $crt_md5 ne $new_md5 || $update_control_file;
+	add_versions_to_wiki_db($change_id, $info_ret, $index, $crt_info, $cat) if $crt_md5 ne $new_md5 || $update_control_file || ! defined $prev_info->{'SC_info'}->{'revision'};
     }
     WikiCommons::move_dir($work_dir, "$to_path/$change_id/");
 }
@@ -1257,9 +1274,9 @@ write_common_info ($index_comm, $info_comm);
 $dbh->disconnect if defined($dbh);
 $dbh_mysql->disconnect() if defined($dbh_mysql);
 
-fork_function(10, \&update_scid);
+fork_function($nr_threads, \&update_scid);
 
 ERROR "Failed: $_\n" foreach (sort keys %$failed);
 @crt_timeData = localtime(time);
 foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
-INFO "End ". ($crt_timeData[5]+1900) ."-$crt_timeData[4]-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
+INFO "End ". ($crt_timeData[5]+1900) ."-$crt_timeData[4]-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0]: $count_updated updates.\n";

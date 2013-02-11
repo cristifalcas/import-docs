@@ -49,6 +49,16 @@ class Office:
     def __repr__(self):
         return self.basepath
 
+### Implement a path normalizer in order to make unoconv work on MacOS X
+### (on which 'program' is a symlink to 'MacOSX' which seems to break unoconv)
+def realpath(*args):
+    ''' Implement a combination of os.path.join(), os.path.abspath() and
+        os.path.realpath() in order to normalize path constructions '''
+    ret = ''
+    for arg in args:
+        ret = os.path.join(ret, arg)
+    return os.path.realpath(os.path.abspath(ret))
+
 ### The first thing we ought to do is find a suitable Office installation
 ### with a compatible pyuno library that we can import.
 ###
@@ -81,10 +91,10 @@ def find_offices():
                             '/Applications/OpenOffice.org.app/Contents' ]
 
         else:
-            extrapaths += glob.glob('/usr/lib*/libreoffice1*') + \
-                          glob.glob('/opt/libreoffice*') + \
+            extrapaths += glob.glob('/usr/lib*/libreoffice*') + \
                           glob.glob('/usr/lib*/openoffice*') + \
                           glob.glob('/usr/lib*/ooo*') + \
+                          glob.glob('/opt/libreoffice*') + \
                           glob.glob('/opt/openoffice*') + \
                           glob.glob('/opt/ooo*') + \
                           glob.glob('/usr/local/libreoffice*') + \
@@ -100,7 +110,7 @@ def find_offices():
             pythonbinaries = ( 'python.exe', )
             pythonhomes = ()
         elif os.name in ( 'mac', ) or sys.platform in ( 'darwin', ):
-            officelibraries = ( 'pyuno.so', 'pyuno.dylib' )
+            officelibraries = ( 'pyuno.so', 'libpyuno.dylib' )
             officebinaries = ( 'soffice.bin', )
             pythonbinaries = ( 'python.bin', 'python' )
             pythonhomes = ( 'OOoPython.framework/Versions/*/lib/python*', )
@@ -114,9 +124,9 @@ def find_offices():
         libpath = 'error'
         for basis in ( 'basis-link', 'basis', '' ):
             for lib in officelibraries:
-                if os.path.isfile(os.path.join(basepath, basis, 'program', lib)):
-                    libpath = os.path.join(basepath, basis, 'program')
-                    officelibrary = os.path.join(libpath, lib)
+                if os.path.isfile(realpath(basepath, basis, 'program', lib)):
+                    libpath = realpath(basepath, basis, 'program')
+                    officelibrary = realpath(libpath, lib)
                     info(3, "Found %s in %s" % (lib, libpath))
                     # Break the inner loop...
                     break
@@ -132,9 +142,9 @@ def find_offices():
         unopath = 'error'
         for basis in ( 'basis-link', 'basis', '' ):
             for bin in officebinaries:
-                if os.path.isfile(os.path.join(basepath, basis, 'program', bin)):
-                    unopath = os.path.join(basepath, basis, 'program')
-                    officebinary = os.path.join(unopath, bin)
+                if os.path.isfile(realpath(basepath, basis, 'program', bin)):
+                    unopath = realpath(basepath, basis, 'program')
+                    officebinary = realpath(unopath, bin)
                     info(3, "Found %s in %s" % (bin, unopath))
                     # Break the inner loop...
                     break
@@ -146,13 +156,13 @@ def find_offices():
         else:
             continue
 
-        ### Windows/MacOSX does not provide or need a URE/lib directory ?
+        ### Windows does not provide or need a URE/lib directory ?
         urepath = ''
         for basis in ( 'basis-link', 'basis', '' ):
             for ure in ( 'ure-link', 'ure', 'URE', '' ):
-                if os.path.isfile(os.path.join(basepath, basis, ure, 'lib', 'unorc')):
-                    urepath = os.path.join(basepath, basis, ure)
-                    info(3, "Found %s in %s" % ('unorc', os.path.join(urepath, 'lib')))
+                if os.path.isfile(realpath(basepath, basis, ure, 'lib', 'unorc')):
+                    urepath = realpath(basepath, basis, ure)
+                    info(3, "Found %s in %s" % ('unorc', realpath(urepath, 'lib')))
                     # Break the inner loop...
                     break
             # Continue if the inner loop wasn't broken.
@@ -163,23 +173,23 @@ def find_offices():
 
         pythonhome = None
         for home in pythonhomes:
-            if glob.glob(os.path.join(libpath, home)):
-                pythonhome = glob.glob(os.path.join(libpath, home))[0]
+            if glob.glob(realpath(libpath, home)):
+                pythonhome = glob.glob(realpath(libpath, home))[0]
                 info(3, "Found %s in %s" % (home, pythonhome))
                 break
 
-#        if not os.path.isfile(os.path.join(basepath, program, officebinary)):
+#        if not os.path.isfile(realpath(basepath, program, officebinary)):
 #            continue
-#        info(3, "Found %s in %s" % (officebinary, os.path.join(basepath, program)))
+#        info(3, "Found %s in %s" % (officebinary, realpath(basepath, program)))
 
-#        if not glob.glob(os.path.join(basepath, basis, program, 'python-core-*')):
+#        if not glob.glob(realpath(basepath, basis, program, 'python-core-*')):
 #            continue
 
         for pythonbinary in pythonbinaries:
-            if os.path.isfile(os.path.join(unopath, pythonbinary)):
+            if os.path.isfile(realpath(unopath, pythonbinary)):
                 info(3, "Found %s in %s" % (pythonbinary, unopath))
                 ret.append(Office(basepath, urepath, unopath, officelibrary, officebinary,
-                                  os.path.join(unopath, pythonbinary), pythonhome))
+                                  realpath(unopath, pythonbinary), pythonhome))
         else:
             info(3, "Considering %s" % basepath)
             ret.append(Office(basepath, urepath, unopath, officelibrary, officebinary,
@@ -188,7 +198,7 @@ def find_offices():
 
 def office_environ(office):
     ### Set PATH so that crash_report is found
-    os.environ['PATH'] = os.path.join(office.basepath, 'program') + os.pathsep + os.environ['PATH']
+    os.environ['PATH'] = realpath(office.basepath, 'program') + os.pathsep + os.environ['PATH']
 
     ### Set UNO_PATH so that "officehelper.bootstrap()" can find soffice executable:
     os.environ['UNO_PATH'] = office.unopath
@@ -196,24 +206,24 @@ def office_environ(office):
     ### Set URE_BOOTSTRAP so that "uno.getComponentContext()" bootstraps a complete
     ### UNO environment
     if os.name in ( 'nt', 'os2' ):
-        os.environ['URE_BOOTSTRAP'] = 'vnd.sun.star.pathname:' + os.path.join(office.basepath, 'program', 'fundamental.ini')
+        os.environ['URE_BOOTSTRAP'] = 'vnd.sun.star.pathname:' + realpath(office.basepath, 'program', 'fundamental.ini')
     else:
-        os.environ['URE_BOOTSTRAP'] = 'vnd.sun.star.pathname:' + os.path.join(office.basepath, 'program', 'fundamentalrc')
+        os.environ['URE_BOOTSTRAP'] = 'vnd.sun.star.pathname:' + realpath(office.basepath, 'program', 'fundamentalrc')
 
         ### Set LD_LIBRARY_PATH so that "import pyuno" finds libpyuno.so:
         if 'LD_LIBRARY_PATH' in os.environ:
             os.environ['LD_LIBRARY_PATH'] = office.unopath + os.pathsep + \
-                                            os.path.join(office.urepath, 'lib') + os.pathsep + \
+                                            realpath(office.urepath, 'lib') + os.pathsep + \
                                             os.environ['LD_LIBRARY_PATH']
         else:
             os.environ['LD_LIBRARY_PATH'] = office.unopath + os.pathsep + \
-                                            os.path.join(office.urepath, 'lib')
+                                            realpath(office.urepath, 'lib')
 
     if office.pythonhome:
-        for libpath in ( os.path.join(office.pythonhome, 'lib'),
-                         os.path.join(office.pythonhome, 'lib', 'lib-dynload'),
-                         os.path.join(office.pythonhome, 'lib', 'lib-tk'),
-                         os.path.join(office.pythonhome, 'lib', 'site-packages'),
+        for libpath in ( realpath(office.pythonhome, 'lib'),
+                         realpath(office.pythonhome, 'lib', 'lib-dynload'),
+                         realpath(office.pythonhome, 'lib', 'lib-tk'),
+                         realpath(office.pythonhome, 'lib', 'site-packages'),
                          office.unopath):
             sys.path.insert(0, libpath)
     else:
@@ -239,10 +249,10 @@ def debug_office():
 def python_switch(office):
     if office.pythonhome:
         os.environ['PYTHONHOME'] = office.pythonhome
-        os.environ['PYTHONPATH'] = os.path.join(office.pythonhome, 'lib') + os.pathsep + \
-                                   os.path.join(office.pythonhome, 'lib', 'lib-dynload') + os.pathsep + \
-                                   os.path.join(office.pythonhome, 'lib', 'lib-tk') + os.pathsep + \
-                                   os.path.join(office.pythonhome, 'lib', 'site-packages') + os.pathsep + \
+        os.environ['PYTHONPATH'] = realpath(office.pythonhome, 'lib') + os.pathsep + \
+                                   realpath(office.pythonhome, 'lib', 'lib-dynload') + os.pathsep + \
+                                   realpath(office.pythonhome, 'lib', 'lib-tk') + os.pathsep + \
+                                   realpath(office.pythonhome, 'lib', 'site-packages') + os.pathsep + \
                                    office.unopath
 
     os.environ['UNO_PATH'] = office.unopath
@@ -259,11 +269,11 @@ def python_switch(office):
         ### Set LD_LIBRARY_PATH so that "import pyuno" finds libpyuno.so:
         if 'LD_LIBRARY_PATH' in os.environ:
             os.environ['LD_LIBRARY_PATH'] = office.unopath + os.pathsep + \
-                                            os.path.join(office.urepath, 'lib') + os.pathsep + \
+                                            realpath(office.urepath, 'lib') + os.pathsep + \
                                             os.environ['LD_LIBRARY_PATH']
         else:
             os.environ['LD_LIBRARY_PATH'] = office.unopath + os.pathsep + \
-                                            os.path.join(office.urepath, 'lib')
+                                            realpath(office.urepath, 'lib')
 
         try:
             os.execvpe(office.python, [office.python, ] + sys.argv[0:], os.environ)
@@ -494,16 +504,18 @@ class Options:
         self.debug = False
         self.doctype = None
         self.exportfilter = []
+        self.exportfilteroptions = ""
         self.filenames = []
         self.format = None
-        self.importfilter = ""
+        self.importfilter = []
+        self.importfilteroptions = ""
         self.listener = False
         self.nolaunch = False
         self.output = None
         self.password = None
         self.pipe = None
         self.port = '2002'
-        self.server = 'localhost'
+        self.server = '127.0.0.1'
         self.showlist = False
         self.stdout = False
         self.template = None
@@ -512,8 +524,8 @@ class Options:
 
         ### Get options from the commandline
         try:
-            opts, args = getopt.getopt (args, 'c:Dd:e:f:hi:Llo:np:s:T:t:v',
-                ['connection=', 'debug', 'doctype=', 'export', 'format=',
+            opts, args = getopt.getopt (args, 'c:Dd:e:f:hi:Llo:np:s:T:t:vV',
+                ['connection=', 'debug', 'doctype=', 'export=', 'format=',
                  'help', 'import', 'listener', 'no-launch', 'output=',
                  'outputpath', 'password=', 'pipe=', 'port=', 'server=',
                  'timeout=', 'show', 'stdout', 'template', 'verbose',
@@ -538,7 +550,9 @@ class Options:
                 l = arg.split('=')
                 if len(l) == 2:
                     (name, value) = l
-                    if value in ('True', 'true'):
+                    if name in ('FilterOptions'):
+                        self.exportfilteroptions = value
+                    elif value in ('True', 'true'):
                         self.exportfilter.append( PropertyValue( name, 0, True, 0 ) )
                     elif value in ('False', 'false'):
                         self.exportfilter.append( PropertyValue( name, 0, False, 0 ) )
@@ -549,11 +563,25 @@ class Options:
                             self.exportfilter.append( PropertyValue( name, 0, value, 0 ) )
                 else:
                     print >>sys.stderr, 'Warning: Option %s cannot be parsed, ignoring.' % arg
-#                    self.exportfilter = arg
             elif opt in ['-f', '--format']:
                 self.format = arg
             elif opt in ['-i', '--import']:
-                self.importfilter = arg
+                l = arg.split('=')
+                if len(l) == 2:
+                    (name, value) = l
+                    if name in ('FilterOptions'):
+                        self.importfilteroptions = value
+                    elif value in ('True', 'true'):
+                        self.importfilter.append( PropertyValue( name, 0, True, 0 ) )
+                    elif value in ('False', 'false'):
+                        self.importfilter.append( PropertyValue( name, 0, False, 0 ) )
+                    else:
+                        try:
+                            self.importfilter.append( PropertyValue( name, 0, int(value), 0 ) )
+                        except ValueError:
+                            self.importfilter.append( PropertyValue( name, 0, value, 0 ) )
+                else:
+                    print >>sys.stderr, 'Warning: Option %s cannot be parsed, ignoring.' % arg
             elif opt in ['-l', '--listener']:
                 self.listener = True
             elif opt in ['-n', '--no-launch']:
@@ -581,7 +609,7 @@ class Options:
                 self.timeout = int(arg)
             elif opt in ['-v', '--verbose']:
                 self.verbose = self.verbose + 1
-            elif opt in ['--version']:
+            elif opt in ['-V', '--version']:
                 self.version()
                 sys.exit(255)
 
@@ -638,8 +666,8 @@ class Options:
         print 'platform %s/%s' % (os.name, sys.platform)
         print 'python %s' % sys.version
         print product.ooName, product.ooSetupVersion
-        print
-        print 'build revision $Rev$'
+#        print
+#        print 'build revision $Rev$'
 
     def usage(self):
         print >>sys.stderr, 'usage: unoconv [options] file [file2 ..]'
@@ -663,7 +691,7 @@ unoconv options:
   -p, --port=port          specify the port (default: 2002)
                              to be used by client or listener
       --password=string    provide a password to decrypt the document
-  -s, --server=server      specify the server address (default: localhost)
+  -s, --server=server      specify the server address (default: 127.0.0.1)
                              to be used by client or listener
       --show               list the available output formats
       --stdout             write output to stdout
@@ -796,13 +824,22 @@ class Convertor:
             phase = "import"
 
             ### Load inputfile
-            inputprops = UnoProps(Hidden=True, ReadOnly=True, UpdateDocMode=QUIET_UPDATE, FilterOptions=op.importfilter)
+            inputprops = UnoProps(Hidden=True, ReadOnly=True, UpdateDocMode=QUIET_UPDATE)
+
 #            if op.password:
 #                info = UnoProps(algorithm-name="PBKDF2", salt="salt", iteration-count=1024, hash="hash")
 #                inputprops += UnoProps(ModifyPasswordInfo=info)
 
+            ### Cannot use UnoProps for FilterData property
+            if op.importfilteroptions:
+#                print "Import filter options: %s" % op.importfilteroptions
+                inputprops += UnoProps(FilterOptions=op.importfilteroptions)
+
+            ### Cannot use UnoProps for FilterData property
+            if op.importfilter:
+                inputprops += ( PropertyValue( "FilterData", 0, uno.Any("[]com.sun.star.beans.PropertyValue", tuple( op.importfilter ), ), 0 ), )
+
             inputurl = unohelper.absolutize(self.cwd, unohelper.systemPathToFileUrl(inputfn))
-#            print dir(self.desktop)
             document = self.desktop.loadComponentFromURL( inputurl , "_blank", 0, inputprops )
 
             if not document:
@@ -847,28 +884,34 @@ class Convertor:
 
             ### Export phase
             phase = "export"
+
             outputprops = UnoProps(FilterName=outputfmt.filter, OutputStream=OutputStream(), Overwrite=True)
-#                PropertyValue( "FilterData" , 0, ( PropertyValue( "SelectPdfVersion" , 0, 1 , uno.getConstantByName( "com.sun.star.beans.PropertyState.DIRECT_VALUE" ) ) ), uno.getConstantByName( "com.sun.star.beans.PropertyState.DIRECT_VALUE" ) ),
+
+            ### Set default filter options
+            if op.exportfilteroptions:
+#                print "Export filter options: %s" % op.exportfilteroptions
+                outputprops += UnoProps(FilterOptions=op.exportfilteroptions)
+            else:
+                if outputfmt.filter == 'Text (encoded)':
+                    outputprops += UnoProps(FilterOptions="76,LF")
+
+                elif outputfmt.filter == 'Text':
+                    outputprops += UnoProps(FilterOptions="76")
+
+                elif outputfmt.filter == 'Text - txt - csv (StarCalc)':
+                    outputprops += UnoProps(FilterOptions="44,34,76")
+
 
             ### Cannot use UnoProps for FilterData property
             if op.exportfilter:
                 outputprops += ( PropertyValue( "FilterData", 0, uno.Any("[]com.sun.star.beans.PropertyValue", tuple( op.exportfilter ), ), 0 ), )
-
-            if outputfmt.filter == 'Text (encoded)':
-                outputprops += UnoProps(FilterOptions="UTF8, LF")
-
-            elif outputfmt.filter == 'Text':
-                outputprops += UnoProps(FilterOptions="UTF8")
-
-            elif outputfmt.filter == 'Text - txt - csv (StarCalc)':
-                outputprops += UnoProps(FilterOptions="44,34,0")
 
             if not op.stdout:
                 (outputfn, ext) = os.path.splitext(inputfn)
                 if not op.output:
                     outputfn = outputfn + os.extsep + outputfmt.extension
                 elif os.path.isdir(op.output):
-                    outputfn = os.path.join(op.output, os.path.basename(outputfn) + os.extsep + outputfmt.extension)
+                    outputfn = realpath(op.output, os.path.basename(outputfn) + os.extsep + outputfmt.extension)
                 elif len(op.filenames) > 1:
                     outputfn = op.output + os.extsep + outputfmt.extension
                 else:
@@ -882,36 +925,36 @@ class Convertor:
             try:
                 document.storeToURL(outputurl, tuple(outputprops) )
             except IOException, e:
-                raise UnoException("Unable to store document to %s with properties %s. Exception: %s" % (outputurl, outputprops, e), None)
+                raise UnoException("Unable to store document to %s (ErrCode %d)\n\nProperties: %s" % (outputurl, e.ErrCode, outputprops), None)
 
             phase = "dispose"
             document.dispose()
             document.close(True)
 
         except SystemError, e:
-            error("unoconv: SystemError during %s phase: %s" % (phase, e))
+            error("unoconv: SystemError during %s phase:\n%s" % (phase, e))
             exitcode = 1
 
         except RuntimeException, e:
-            error("unoconv: RuntimeException during %s phase: Office probably died. %s" % (phase, e))
+            error("unoconv: RuntimeException during %s phase:\nOffice probably died. %s" % (phase, e))
             exitcode = 6
 
         except DisposedException, e:
-            error("unoconv: DisposedException during %s phase: Office probably died. %s" % (phase, e))
+            error("unoconv: DisposedException during %s phase:\nOffice probably died. %s" % (phase, e))
             exitcode = 7
 
         except IllegalArgumentException, e:
-            error("UNO IllegalArgument during %s phase: Source file cannot be read. %s" % (phase, e))
+            error("UNO IllegalArgument during %s phase:\nSource file cannot be read. %s" % (phase, e))
             exitcode = 8
 
         except IOException, e:
 #            for attr in dir(e): print '%s: %s', (attr, getattr(e, attr))
-            error("unoconv: IOException during %s phase: %s" % (phase, e.Message))
+            error("unoconv: IOException during %s phase:\n%s" % (phase, e.Message))
             exitcode = 3
 
         except CannotConvertException, e:
 #            for attr in dir(e): print '%s: %s', (attr, getattr(e, attr))
-            error("unoconv: CannotConvertException during %s phase: %s" % (phase, e.Message))
+            error("unoconv: CannotConvertException during %s phase:\n%s" % (phase, e.Message))
             exitcode = 4
 
         except UnoException, e:
@@ -920,7 +963,7 @@ class Convertor:
                 exitcode = e.ErrCode
                 pass
             if hasattr(e, 'Message'):
-                error("unoconv: UnoException during %s phase: %s" % (phase, e.Message))
+                error("unoconv: UnoException during %s phase:\n%s" % (phase, e.Message))
                 exitcode = 5
             else:
                 error("unoconv: UnoException during %s phase in %s" % (phase, repr(e.__class__)))
@@ -1043,7 +1086,7 @@ def main():
             info(0, "Please start an LibreOffice instance on server '%s' by doing:\n\n    unoconv --listener --server %s --port %s\n\nor alternatively:\n\n    soffice -nologo -nodefault -accept=\"%s\"" % (op.server, op.server, op.port, op.connection))
         else:
             info(0, "Please start an LibreOffice instance on server '%s' by doing:\n\n    unoconv --listener --server %s --port %s\n\nor alternatively:\n\n    soffice -nologo -nodefault -accept=\"socket,host=%s,port=%s;urp;\"" % (op.server, op.server, op.port, op.server, op.port))
-            info(0, "Please start an soffice instance on server '%s' by doing:\n\n    soffice -nologo -nodefault -accept=\"socket,host=localhost,port=%s;urp;\"" % (op.server, op.port))
+            info(0, "Please start an soffice instance on server '%s' by doing:\n\n    soffice -nologo -nodefault -accept=\"socket,host=127.0.0.1,port=%s;urp;\"" % (op.server, op.port))
         exitcode = 1
 #    except UnboundLocalError:
 #        die(252, "Failed to connect to remote listener.")

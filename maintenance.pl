@@ -30,7 +30,7 @@ my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 use Log::Log4perl qw(:easy);
 Log::Log4perl->init("$path_prefix/log4perl.config");
 
-use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."./our_perl_lib/lib";
+use lib "$path_prefix/our_perl_lib/lib";
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 use File::Path qw(remove_tree);
@@ -45,7 +45,7 @@ use Mind_work::WikiWork;
 use Mind_work::WikiCommons;
 
 my ($dbh,$dbh_mysql);
-my $workdir = "/media/share/Documentation/cfalcas/q/import_docs/work/";
+my $workdir = "$path_prefix/work/";
 my $images_dir = "/var/www/html/wiki/images/";
 my $our_wiki = new WikiWork();
 my $view_only = shift;
@@ -573,7 +573,8 @@ sub fix_missing_files {
 
   INFO "We got ".(scalar keys %$missing)." pages to delete.\n";
   foreach my $page (sort keys %$missing) {
-      next if $page eq "CMS:MIND-IPhonEX CMS 80.00.020" && $page !~ m/[a-b _]+:/i;
+      next if ($page eq "CMS:MIND-IPhonEX CMS 80.00.020" || $page eq "CMS:Sentori_4.0_LDEdit_User_Manual") || $page !~ m/[a-b _]+:/i;
+
       INFO "should we rm page $page.\n";
       eval{$our_wiki->wiki_delete_page($page)} if ! $view_only;# $our_wiki->wiki_exists_page("$page") &&
   }
