@@ -29,8 +29,11 @@ BEGIN {
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 use Log::Log4perl qw(:easy);
 Log::Log4perl->init("$path_prefix/log4perl.config");
+sub logfile {
+  return "/var/log/mind/wiki_logs/wiki_maintenance";
+}
 
-use lib "$path_prefix/our_perl_lib/lib";
+use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."/our_perl_lib/lib";
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
 use File::Path qw(remove_tree);
@@ -382,7 +385,7 @@ sub update_user_pages {
       $new_txt .= $table_crm if $table_crm ne "";
       $new_txt .= $table_sc if $table_sc ne "";
 
-#       INFO "Writing page $user_page.\n";
+      INFO "Writing page $user_page.\n";
       $our_wiki->wiki_edit_page($user_page, $new_txt);
   }
 }
@@ -573,8 +576,7 @@ sub fix_missing_files {
 
   INFO "We got ".(scalar keys %$missing)." pages to delete.\n";
   foreach my $page (sort keys %$missing) {
-      next if ($page eq "CMS:MIND-IPhonEX CMS 80.00.020" || $page eq "CMS:Sentori_4.0_LDEdit_User_Manual") || $page !~ m/[a-b _]+:/i;
-
+      next if ($page eq "CMS:MIND-IPhonEX CMS 80.00.020" || $page eq "CMS:Sentori_4.0_LDEdit_User_Manual") || $page !~ m/^[a-z _]+:/i;
       INFO "should we rm page $page.\n";
       eval{$our_wiki->wiki_delete_page($page)} if ! $view_only;# $our_wiki->wiki_exists_page("$page") &&
   }
@@ -900,9 +902,11 @@ sub check_deployment_pages {
 #     foreach ()
     
     ## check with time from redirect
-    INFO "##Check that in wiki the time difference between SC and SC_Deployment is small.\n";
+    INFO "##Check that in wiki the time difference between SC and SC_Deployment is small (".(scalar @arr3).").\n";
     my @to_delete;
+    my $count = 0;
     foreach my $url (@arr3) {
+	INFO "\t Done $count.\n" if ++$count%100 == 0; 
 	my ($ns, $name) = $url =~ m/^(SC Deployment):(.*)$/i;
 	next if $name !~ m/^[a-z][0-9]+$/i;
 	if ((! $our_wiki->wiki_exists_page("SC:$name")) || $our_wiki->wiki_exists_page("SC_Cancel:$name")){

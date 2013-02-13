@@ -2,13 +2,8 @@
 #LD_LIBRARY_PATH=./instantclient_11_2/ perl ./oracle.pl
 use warnings;
 use strict;
-
 $SIG{__WARN__} = sub { die @_ };
 $| = 1;
-
-my @crt_timeData = localtime(time);
-foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
-print "Start: ". ($crt_timeData[5]+1900) ."-".($crt_timeData[4]+1)."-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
 
 use Cwd 'abs_path','chdir';
 use File::Basename;
@@ -35,10 +30,28 @@ use Net::FTP;
 use File::Path qw(make_path remove_tree);
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
+use Getopt::Std;
+my $options = {};
+getopts("d:n:t:", $options);
 
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 use Log::Log4perl qw(:easy);
 Log::Log4perl->init("$path_prefix/log4perl.config");
+
+sub logfile {
+  my @tmp1 = fileparse(abs_path($options->{'d'}), qr/\.[^.]*/);
+  my $name = $tmp1[0].$tmp1[2];
+  return "/var/log/mind/wiki_logs/wiki_update_$name";
+}
+
+my ($tmp_path, $to_path, $sc_type) = ($options->{t}, $options->{d}, $options->{n});
+$sc_type = uc $sc_type;
+LOGDIE "We need the temp path, the destination path and sc type:b1, b2, f, i, h, r, d, e, g, s, t, k, z, a, p, cancel.\n" if (! defined $tmp_path || ! defined  $to_path || ! defined $sc_type);
+LOGDIE "sc type should be:b1, b2, f, i, h, r, d, e, g, s, t, k, z, a, p, cancel.\n" if $sc_type !~ m/(^[fihrdtkzapseg]$)|(^b[12]$)|(^cancel$)/i;
+
+my @crt_timeData = localtime(time);
+foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
+INFO "Start: ". ($crt_timeData[5]+1900) ."-".($crt_timeData[4]+1)."-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
 
 use File::Listing qw(parse_dir);
 use File::Find;
@@ -50,18 +63,11 @@ use Data::Compare;
 use Storable qw(dclone);
 use Mind_work::WikiCommons;
 
-LOGDIE "We need the temp path, the destination path and sc type:b1, b2, f, i, h, r, d, e, g, s, t, k, z, a, p, cancel.\n" if ( $#ARGV != 2 );
-our ($tmp_path, $to_path, $sc_type) = @ARGV;
-
-LOGDIE "sc type should be:b1, b2, f, i, h, r, d, e, g, s, t, k, z, a, p, cancel.\n" if $sc_type !~ m/(^[fihrdtkzapseg]$)|(^b[12]$)|(^cancel$)/i;
-$sc_type = uc $sc_type;
-
-remove_tree("$tmp_path");
-WikiCommons::makedir ("$tmp_path", 1);
-WikiCommons::makedir ("$to_path", 1);
-$tmp_path = abs_path("$tmp_path");
-$to_path = abs_path("$to_path");
-# my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
+remove_tree($tmp_path);
+WikiCommons::makedir ($tmp_path, 1);
+WikiCommons::makedir ($to_path, 1);
+$tmp_path = abs_path($tmp_path);
+$to_path = abs_path($to_path);
 WikiCommons::set_real_path($path_prefix);
 
 my $sc_table = "mind_sc_ids_versions";
@@ -78,7 +84,7 @@ LOGDIE "Template file missing.\n" if ! -e $general_template_file;
 
 my $svn_info_all = {};
 my $url_sep = WikiCommons::get_urlsep;
-my $count_updated = 0;
+my ($count_updated, $to_update) = (0, 0);
 my $nr_threads = 30;
 
 our ($dbh, $dbh_mysql);
@@ -95,7 +101,6 @@ our @doc_types = (
 'Test document',
 'STP document'
 );
-
 
 sub write_rtf {
     my ($name, $data) = @_;
@@ -1013,7 +1018,7 @@ sub remove_old_dirs {
 sub add_versions_to_wiki_db {
     my ($change_id, $info, $index, $hash, $categories) = @_;
     INFO "Update dn info about $change_id.";
-    $count_updated++;
+    $to_update++;
     my $text = "";
     for (my $i=0;$i<@doc_types;$i++) {
 	next if ! exists $hash->{$doc_types[$i]};
@@ -1169,7 +1174,7 @@ sub fork_function {
 		$dbh_mysql->disconnect() if defined($dbh_mysql);
 		$dbh->disconnect if defined($dbh);
 		INFO "Done fork for $change_id.\n";
-		exit 255 if $count_updated;
+		exit 255 if $to_update;
 		exit 0;
 	    }
 	    $running->{$pid}->{'thread'} = $crt_thread;

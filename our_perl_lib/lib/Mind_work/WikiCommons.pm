@@ -14,6 +14,7 @@ use XML::Simple;
 use LWP::UserAgent;
 use Log::Log4perl qw(:easy);
 use Encode;
+use Capture::Tiny ':all';
 
 our $start_time = 0;
 our $clean_up = {};
@@ -458,10 +459,10 @@ sub generate_html_file {
 	  "1. latest office" 		=> ["/opt/libreoffice4.0/program/soffice", "--headless", @lo_args], 
 	  "2. latest office with X" 	=> ["/opt/libreoffice4.0/program/soffice", "--display", ":10235", @lo_args], 
 	  "3. unoconv" 			=> ["python", "$real_path/convertors/unoconv", "-f", "$type", "$doc_file"],
-	  "4. our office" 		=> ["/opt/libreoffice3.6/program/soffice", "--headless", @lo_args], 
-	  "5. our office with X" 	=> ["/opt/libreoffice3.6/program/soffice", "--display", ":10235", @lo_args], 
-	  "6. our office" 		=> ["/opt/libreoffice4.0/program/soffice", "--headless", @lo_args], 
-	  "7. our office with X" 	=> ["/opt/libreoffice4.0/program/soffice", "--display", ":10235", @lo_args], 
+	  "4. old office" 		=> ["/opt/libreoffice3.6/program/soffice", "--headless", @lo_args], 
+	  "5. old office with X" 	=> ["/opt/libreoffice3.6/program/soffice", "--display", ":10235", @lo_args], 
+	  "6. latest office" 		=> ["/opt/libreoffice4.0/program/soffice", "--headless", @lo_args], 
+	  "7. latest office with X" 	=> ["/opt/libreoffice4.0/program/soffice", "--display", ":10235", @lo_args], 
 	};
 
     INFO "\t-Generating $type file from $name$suffix.\t". (get_time_diff) ."\n\t\t$doc_file\n";
@@ -489,7 +490,9 @@ sub generate_html_file {
 	  local $SIG{ALRM} = sub { die "alarm\n" };
 	  alarm $max_wait_time;
 	  INFO "Running: ".(join ' ', @{$commands->{$key}}).".\n";
-	  system(@{$commands->{$key}});
+	  my ($stdout, $stderr, $exit) = capture { system(@{$commands->{$key}}); };
+	  INFO $stdout;
+	  ERROR $stderr if $stderr !~ m/^Fontconfig warning: .* Having multiple .family. in .alias. isn't supported and may not work as expected/;
 	  alarm 0;
 	};
 	$status = $@;

@@ -34,6 +34,9 @@ $Data::Dumper::Sortkeys = 1;
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 use Log::Log4perl qw(:easy);
 Log::Log4perl->init("$path_prefix/log4perl.config");
+sub logfile {
+  return "/var/log/mind/wiki_logs/wiki_update_customers";
+}
 
 use XML::Simple;
 use URI::Escape;

@@ -151,9 +151,10 @@ sub wiki_get_all_images {
 }
 
 sub wiki_get_page {
-  my $self = shift;
-  INFO "Wiki get page.\n";
-  my $page = $mw->get_page( { title => @_ } );
+  my ($self, $title) = @_;
+  INFO "Wiki get page $title.\n";
+  my $page = $mw->get_page( { title => $title } );
+# INFO Dumper("Got page", $page);
   return $page;
 }
 

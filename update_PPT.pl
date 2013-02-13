@@ -2,13 +2,8 @@
 
 use warnings;
 use strict;
-
 $SIG{__WARN__} = sub { die @_ };
 $| = 1;
-
-my @crt_timeData = localtime(time);
-foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
-print "Start: ". ($crt_timeData[5]+1900) ."-".($crt_timeData[4]+1)."-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
 
 use Cwd 'abs_path','chdir';
 use File::Basename;
@@ -41,6 +36,13 @@ $Data::Dumper::Sortkeys = 1;
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 use Log::Log4perl qw(:easy);
 Log::Log4perl->init("$path_prefix/log4perl.config");
+sub logfile {
+  return "/var/log/mind/wiki_logs/wiki_update_ppt";
+} 
+
+my @crt_timeData = localtime(time);
+foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
+INFO "Start: ". ($crt_timeData[5]+1900) ."-".($crt_timeData[4]+1)."-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
 
 use Mind_work::WikiCommons;
 

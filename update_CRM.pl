@@ -1,11 +1,8 @@
 #!/usr/bin/perl
 use warnings;
 use strict;
-
 $SIG{__WARN__} = sub { die @_ };
-my @crt_timeData = localtime(time);
-foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
-print "Start: ". ($crt_timeData[5]+1900) ."-".($crt_timeData[4]+1)."-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
+$| = 1; 
 
 use Cwd 'abs_path','chdir';
 use File::Basename;
@@ -78,10 +75,22 @@ use LWP::UserAgent;
 use File::Path qw(make_path remove_tree);
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
+use Getopt::Std; 
+my $options = {};
+getopts("d:n:", $options); 
 
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 use Log::Log4perl qw(:easy);
 Log::Log4perl->init("$path_prefix/log4perl.config");
+sub logfile {
+  my @tmp1 = fileparse(abs_path($options->{'d'}), qr/\.[^.]*/);
+  my $name = $tmp1[0].$tmp1[2];
+  return "/var/log/mind/wiki_logs/wiki_import_$name";
+} 
+
+my @crt_timeData = localtime(time);
+foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
+INFO "Start: ". ($crt_timeData[5]+1900) ."-".($crt_timeData[4]+1)."-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
 
 use File::Listing qw(parse_dir);
 use File::Find;
@@ -96,8 +105,7 @@ use HTML::TreeBuilder;
 use Mind_work::WikiClean;
 use Mind_work::WikiWork;
 
-our $to_path = shift;
-our $domain = shift;
+our ($to_path, $domain) = ($options->{d}, $options->{n});
 LOGDIE "We need the destination path and the domain: m=MIND, s=Sentori, p=PhonEX. We got :$to_path and $domain.\n" if ( ! defined $to_path || ! defined $domain || $domain !~ m/^[msp]$/i);
 WikiCommons::makedir ("$to_path");
 $to_path = abs_path("$to_path");

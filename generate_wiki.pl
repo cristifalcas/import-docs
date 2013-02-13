@@ -1,14 +1,10 @@
 #!/usr/bin/perl -w
-my @crt_timeData = localtime(time);
-foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
-print "Start: ". ($crt_timeData[5]+1900) ."-".($crt_timeData[4]+1)."-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
 use warnings;
 use strict;
 $| = 1;
-
+$SIG{__WARN__} = sub { die @_ };
 # perl -e 'print sprintf("\\x{%x}", $_) foreach (unpack("C*", "Ó"));print"\n"' 
 
-$SIG{__WARN__} = sub { die @_ };
 # categories:
 # $file_url -> $rest_dir[length], $ver, $cust
 # $rest_dir[length] -> $rest_dir[length-1]
@@ -63,22 +59,32 @@ use File::Basename;
 use File::Copy;
 use File::Find;
 use Getopt::Std;
-
-# my $real_path = abs_path($0);
 use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."our_perl_lib/lib";
 
 use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
 use Data::Dumper;
 $Data::Dumper::Sortkeys = 1;
-# use Digest::MD5 qw(md5 md5_hex md5_base64);
 use Text::Balanced;
-# use Encode;
 use URI::Escape;
 use File::Path qw(make_path remove_tree);
+use Log::Log4perl qw(:easy);
+
+my $options = {};
+getopts("rd:n:c:", $options);
 
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
-use Log::Log4perl qw(:easy);
 Log::Log4perl->init("$path_prefix/log4perl.config");
+
+sub logfile {
+  my @tmp1 = fileparse(abs_path($options->{'d'}), qr/\.[^.]*/);
+  my $name = $tmp1[0].$tmp1[2];
+  $name = "users" if $name eq "Autoimport in wiki";
+  return "/var/log/mind/wiki_logs/wiki_import_$name";
+}
+
+my @crt_timeData = localtime(time);
+foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
+INFO "Start: ". ($crt_timeData[5]+1900) ."-".($crt_timeData[4]+1)."-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
 INFO "$path_prefix\n";
 
 use Mind_work::WikiWork;
@@ -93,24 +99,6 @@ use Mind_work::WikiMindCMS;
 use File::Slurp;
 use DBI;
 my $dbh_mysql;
-
-sub connect_mysql {
-    my ($wikidb_server, $wikidb_name, $wikidb_user, $wikidb_pass) = ();
-    open(FH, "/var/www/html/wiki/LocalSettings.php") or LOGDIE "Can't open file for read: $!.\n";
-    while (<FH>) {
-      $wikidb_server = $2 if $_ =~ m/^(\s*\$wgDBserver\s*=\s*\")(.+)(\"\s*;\s*)$/;
-      $wikidb_name = $2 if $_ =~ m/^(\s*\$wgDBname\s*=\s*\")(.+)(\"\s*;\s*)$/;
-      $wikidb_user = $2 if $_ =~ m/^(\s*\$wgDBuser\s*=\s*\")(.+)(\"\s*;\s*)$/;
-      $wikidb_pass = $2 if $_ =~ m/^(\s*\$wgDBpassword\s*=\s*\")(.+)(\"\s*;\s*)$/;
-    }
-    close(FH);
-    $dbh_mysql = DBI->connect("DBI:mysql:database=$wikidb_name;host=$wikidb_server", "$wikidb_user", "$wikidb_pass");
-# my $sth_mysql = $dbh_mysql->do("CREATE TABLE IF NOT EXISTS mind_wiki_info (WIKI_NAME VARCHAR( 255 ) NOT NULL ,FILES_INFO_INSERTED VARCHAR( 9000 ) ,PRIMARY KEY ( WIKI_NAME ) )");
-}
-
-# declare the perl command line flags/options we want to allow
-my $options = {};
-getopts("rd:n:c:", $options);
 
 our $remote_work = "no";
 if ($options->{'r'}){
@@ -168,11 +156,25 @@ my $categories_pos = 4;
 
 my $count_files;
 our $coco;
-WikiCommons::is_remote("$remote_work");
+WikiCommons::is_remote($remote_work);
 WikiCommons::set_real_path($path_prefix);
 chdir "/tmp/" || die "can't go to /tmp.\n";
 use Env qw($JAVA_HOME);
 $JAVA_HOME="/opt/jdk1.7.0_13/";
+
+sub connect_mysql {
+    my ($wikidb_server, $wikidb_name, $wikidb_user, $wikidb_pass) = ();
+    open(FH, "/var/www/html/wiki/LocalSettings.php") or LOGDIE "Can't open file for read: $!.\n";
+    while (<FH>) {
+      $wikidb_server = $2 if $_ =~ m/^(\s*\$wgDBserver\s*=\s*\")(.+)(\"\s*;\s*)$/;
+      $wikidb_name = $2 if $_ =~ m/^(\s*\$wgDBname\s*=\s*\")(.+)(\"\s*;\s*)$/;
+      $wikidb_user = $2 if $_ =~ m/^(\s*\$wgDBuser\s*=\s*\")(.+)(\"\s*;\s*)$/;
+      $wikidb_pass = $2 if $_ =~ m/^(\s*\$wgDBpassword\s*=\s*\")(.+)(\"\s*;\s*)$/;
+    }
+    close(FH);
+    $dbh_mysql = DBI->connect("DBI:mysql:database=$wikidb_name;host=$wikidb_server", "$wikidb_user", "$wikidb_pass");
+# my $sth_mysql = $dbh_mysql->do("CREATE TABLE IF NOT EXISTS mind_wiki_info (WIKI_NAME VARCHAR( 255 ) NOT NULL ,FILES_INFO_INSERTED VARCHAR( 9000 ) ,PRIMARY KEY ( WIKI_NAME ) )");
+}
 
 sub add_swf_users {
     my ($doc_file, $work_dir, $new_file, $suffix, $zip_name) = @_;

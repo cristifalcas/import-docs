@@ -4,11 +4,6 @@ use warnings;
 use strict;
 $SIG{__WARN__} = sub { die @_ };
 
-my @crt_timeData = localtime(time);
-foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
-print "Start: ". ($crt_timeData[5]+1900) ."-".($crt_timeData[4]+1)."-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
-
-## ~ 10 hours first run
 use Cwd 'abs_path','chdir';
 use File::Basename;
 use lib (fileparse(abs_path($0), qr/\.[^.]*/))[1]."our_perl_lib/lib";
@@ -20,6 +15,10 @@ $Data::Dumper::Sortkeys = 1;
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 use Log::Log4perl qw(:easy);
 Log::Log4perl->init("$path_prefix/log4perl.config");
+
+sub logfile {
+  return "/var/log/mind/wiki_logs/wiki_update_svn";
+}
 
 use File::Listing qw(parse_dir);
 use File::Find;
@@ -33,6 +32,10 @@ my $svn_url = "";
 our @search_in_dirs = ("Documents", "Scripts");
 our $svn_helper_file = "svn_helper_trunk_info.txt";
 our $mind_ver_min = "5.00";
+
+my @crt_timeData = localtime(time);
+foreach (@crt_timeData) {$_ = "0$_" if($_<10);}
+INFO "Start: ". ($crt_timeData[5]+1900) ."-".($crt_timeData[4]+1)."-$crt_timeData[3] $crt_timeData[2]:$crt_timeData[1]:$crt_timeData[0].\n";
 
 LOGDIE "We need the destination path.\n" if ( $#ARGV != 0 );
 our ($to_path) = @ARGV;
