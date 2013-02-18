@@ -57,6 +57,8 @@ LOGDIE "We need the source and destination paths. We got :$from_path and $to_pat
 
 my $hash_ftp = {};
 my $hash_swf = {};
+use Env qw($JAVA_HOME);
+$JAVA_HOME="/opt/jdk1.7.0_13/";
 
 sub add_document_local {
     my $doc_file = shift;

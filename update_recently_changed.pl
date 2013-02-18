@@ -30,6 +30,9 @@ my $our_wiki = new WikiWork();
 my $path_prefix = (fileparse(abs_path($0), qr/\.[^.]*/))[1]."";
 use Log::Log4perl qw(:easy);
 Log::Log4perl->init("$path_prefix/log4perl.config");
+sub logfile {
+  return "/var/log/mind/wiki_logs/wiki_update_recently_changed";
+}
 
 my $wiki_page = '<div style="text-align: right;">'."\n";
 # <div style=";font-size:80%">updated by [[User:Wiki auto import]]<br>on 20110218123142  </div>';

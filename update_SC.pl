@@ -1017,7 +1017,7 @@ sub remove_old_dirs {
 
 sub add_versions_to_wiki_db {
     my ($change_id, $info, $index, $hash, $categories) = @_;
-    INFO "Update dn info about $change_id.";
+    INFO "Update db info about $change_id.";
     $to_update++;
     my $text = "";
     for (my $i=0;$i<@doc_types;$i++) {
@@ -1156,7 +1156,7 @@ sub fork_function {
 	my $crt_thread = shift @thread if scalar keys %$crt_hash;
 	if (defined $crt_thread) {
 	    my $change_id = (sort keys %$crt_hash)[0];
-# if ($change_id !~ m/F00050/){push @thread, $crt_thread;delete $crt_hash->{$change_id};delete $failed->{$change_id};next;}
+# if ($change_id !~ m/B105245|B628313|B633811/){push @thread, $crt_thread;delete $crt_hash->{$change_id};delete $failed->{$change_id};next;}
 	    my $val = $crt_hash->{$change_id};
 	    $crt_nr++;
 	    INFO "************* Start working in thread nr $crt_thread for $change_id (nr $crt_nr of $total_nr). Free threads: ".(scalar @thread)." out of $nr_threads.\n";

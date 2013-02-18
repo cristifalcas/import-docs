@@ -106,7 +106,7 @@ sub getTasks_inSP {
     my $SEL_INFO = "
 SELECT T1.CHANGEID,
        nvl(c.name, ' '),
-       T1.PRIORITY,
+       nvl(T1.PRIORITY, ' '),
        T1.ChangeType,
        T1.STATUS,
        T1.TITLE,
@@ -295,6 +295,7 @@ foreach my $sp (sort keys %$sps) {
 	    my $modules = sql_get_modules(@module_ids);
 	    my $modules_str = join "\' <br/> \'", @$modules;
 
+	    LOGDIE Dumper($sc, $tasks->{$sc}->{'ChangeType'}, $tasks->{$sc}->{'TITLE'}, $modules_str, $cust, $tasks->{$sc}->{'STATUS'}, $tasks->{$sc}->{'COMMENTS'}, $tasks->{$sc}->{'PRIORITY'}, $tasks->{$sc}->{'WorkerName'}) if ! defined $sc || ! defined $tasks->{$sc}->{'ChangeType'} || ! defined $tasks->{$sc}->{'TITLE'} || ! defined $modules_str || ! defined $cust || ! defined $tasks->{$sc}->{'STATUS'} || ! defined $tasks->{$sc}->{'COMMENTS'} || ! defined $tasks->{$sc}->{'PRIORITY'} || ! defined $tasks->{$sc}->{'WorkerName'};
 	    $sp_txt .= "|-
 | [[SC:$sc|$sc]] || ".$tasks->{$sc}->{'ChangeType'}." || ".$tasks->{$sc}->{'TITLE'}." || \'$modules_str\' "." || $cust || ".$tasks->{$sc}->{'STATUS'}." || ".$tasks->{$sc}->{'COMMENTS'}." || ".$tasks->{$sc}->{'PRIORITY'}." || ".$tasks->{$sc}->{'WorkerName'}."\n";
 	    $full_deployment->{$sc} = getClones($sc);

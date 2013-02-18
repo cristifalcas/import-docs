@@ -429,7 +429,7 @@ sub check_vers {
 
 sub generate_html_file {
     my ($doc_file, $type, $thread) = @_;
-    $thread = "no thread" if ! defined $thread;
+    $thread = "no_thread" if ! defined $thread;
     INFO "\t## using thread ".Dumper($thread);
     my ($name,$dir,$suffix) = fileparse($doc_file, qr/\.[^.]*/);
 

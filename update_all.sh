@@ -40,36 +40,36 @@ case "$1" in
     $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/b2 -d "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_after_7.0/ -n b2
     $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/cancel -d "$WIKI_DIR_PATH"/Documentation/sc/sccanceled_docs/ -n cancel
     $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/i  -d "$WIKI_DIR_PATH"/Documentation/sc/scsentori_docs/ -n i
-    $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/f  -d "$WIKI_DIR_PATH"/Documentation/sc/scsip_docs/	-n f
+    $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/f  -d "$WIKI_DIR_PATH"/Documentation/sc/scsip_docs/ -n f
     $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/h  -d "$WIKI_DIR_PATH"/Documentation/sc/scinfrastructure_docs/ -n h
-    $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/r  -d "$WIKI_DIR_PATH"/Documentation/sc/scpmg_docs/	-n r
+    $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/r  -d "$WIKI_DIR_PATH"/Documentation/sc/scpmg_docs/ -n r
     $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/d  -d "$WIKI_DIR_PATH"/Documentation/sc/scphonexone_docs/ -n d
-    $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/e  -d "$WIKI_DIR_PATH"/Documentation/sc/sccms_docs/	-n e
+    $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/e  -d "$WIKI_DIR_PATH"/Documentation/sc/sccms_docs/ -n e
     $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/g  -d "$WIKI_DIR_PATH"/Documentation/sc/scmindreporter_docs/ -n g
-    $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/s  -d "$WIKI_DIR_PATH"/Documentation/sc/scsimulators_docs/-n s
-    $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/t  -d "$WIKI_DIR_PATH"/Documentation/sc/scnagios_docs/-n t
-    $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/k  -d "$WIKI_DIR_PATH"/Documentation/sc/scabacus_docs/-n k
+    $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/s  -d "$WIKI_DIR_PATH"/Documentation/sc/scsimulators_docs/ -n s
+    $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/t  -d "$WIKI_DIR_PATH"/Documentation/sc/scnagios_docs/ -n t
+    $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/k  -d "$WIKI_DIR_PATH"/Documentation/sc/scabacus_docs/ -n k
     $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/z  -d "$WIKI_DIR_PATH"/Documentation/sc/scother_docs/ -n z
     $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/a  -d "$WIKI_DIR_PATH"/Documentation/sc/scphonex_docs/ -n a
     $CMD "$SCRIPT_PATH"/update_SC.pl -t /tmp/wiki_update/p  -d "$WIKI_DIR_PATH"/Documentation/sc/scplugins_docs/ -n p
   ;;
 "import_sc")
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_until_7.0/	-n sc_docs
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_after_7.0/	-n sc_docs
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scsip_docs/	-n sc_docs
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scsentori_docs/	-n sc_docs
+    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_until_7.0/ -n sc_docs
+    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scmind_docs_after_7.0/ -n sc_docs
+    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scsip_docs/ -n sc_docs
+    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scsentori_docs/ -n sc_docs
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scinfrastructure_docs/ -n sc_docs
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scpmg_docs/ 	-n sc_docs
+    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scpmg_docs/ -n sc_docs
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scphonexone_docs/ -n sc_docs
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/sccms_docs/	-n sc_docs
+    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/sccms_docs/ -n sc_docs
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scmindreporter_docs/ -n sc_docs
     $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scsimulators_docs/ -n sc_docs
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scnagios_docs/ 	-n sc_docs
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scabacus_docs/ 	-n sc_docs
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scother_docs/ 	-n sc_docs
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scphonex_docs/ 	-n sc_docs
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scplugins_docs/ 	-n sc_docs
-    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/sccanceled_docs/ 	-n sc_docs
+    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scnagios_docs/ -n sc_docs
+    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scabacus_docs/ -n sc_docs
+    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scother_docs/ -n sc_docs
+    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scphonex_docs/ -n sc_docs
+    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/scplugins_docs/ -n sc_docs
+    $CMD "$SCRIPT_PATH"/generate_wiki.pl -d "$WIKI_DIR_PATH"/Documentation/sc/sccanceled_docs/ -n sc_docs
   ;;
 "update_crm")
     $CMD "$SCRIPT_PATH"/update_CRM.pl -d "$WIKI_DIR_PATH"/Documentation/crm/crm_iphonex/   -n m &
@@ -98,7 +98,7 @@ case "$1" in
   ;;
 "import_all")
     ##update_customers
-    $CMD "$SCRIPT_PATH"/update_customers.pl "$SCRIPT_PATH"/ &
+    $CMD "$SCRIPT_PATH"/update_customers.pl "$SCRIPT_PATH"/
     $CMD "$SCRIPT_PATH"/maintenance.pl 0
 
     "$0" import_crm
@@ -106,6 +106,7 @@ case "$1" in
     "$0" import_sc
 
     $CMD "$SCRIPT_PATH"/maintenance.pl 0
+    sudo -u apache php /var/www/html/wiki/maintenance/runJobs.php
   ;;
 *)
     echo "Incorrect parameter"
