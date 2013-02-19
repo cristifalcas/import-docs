@@ -613,6 +613,8 @@ sub get_correct_customer{
     return "Eastlink" if $name =~ m/^Eastlink$/i;
     return "Alon" if $name =~ m/^(alon|AlonCellular|Alon Cellular)/i;
     return "United" if $name =~ m/^(united)$/i;
+    return "Chat Mobility" if $name =~ m/^(Chat Mobility)$/i;
+
 
     if ( ! scalar keys %$customers ){
 	$customers = WikiCommons::xmlfile_to_hash ("$real_path/customers.xml");

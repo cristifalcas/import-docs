@@ -87,11 +87,10 @@ case "$1" in
 "update_all")
     ##update_ppt
     $CMD "$SCRIPT_PATH"/update_PPT.pl "$WIKI_DIR_PATH/ftp_mirror/" "$WIKI_DIR_PATH/ppt_as_flash/" &
-    sleep 120
 
-    "$0" update_crm
-    "$0" update_svn
-    "$0" update_sc
+    "$0" update_crm &
+    "$0" update_svn &
+    "$0" update_sc &
 
     ##update_sp 
     $CMD "$SCRIPT_PATH"/update_service_packs.pl &

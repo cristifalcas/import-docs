@@ -1,5 +1,5 @@
 #!/usr/bin/perl -w
-print "Start\n";
+# print "Start\n";
 use warnings;
 use strict;
 $| = 1; 
