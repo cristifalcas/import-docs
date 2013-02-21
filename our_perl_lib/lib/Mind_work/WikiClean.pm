@@ -86,7 +86,7 @@ sub tree_clean_div {
 
 sub tree_remove_TOC {
     my $tree = shift;
-    INFO "\t-Clean table of contents.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t-Clean table of contents.\n";
     foreach my $a_tag ($tree->guts->look_down(_tag => "div")) {
 	if (defined $a_tag->attr('id') && $a_tag->attr('id') =~ m/^Table of Contents[0-9]$/ ){
 	    INFO "\tfound TOC: ".$a_tag->attr('id')."\n" ;
@@ -99,7 +99,7 @@ sub tree_remove_TOC {
 	    $a_tag->detach;
 	}
     }
-    INFO "\t+Clean table of contents.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t+Clean table of contents.\n";
 
     return $tree;
 }
@@ -155,7 +155,7 @@ sub cleanup_html {
     my ($html, $file_name) = @_;
     my ($name,$dir,$suffix) = fileparse($file_name, qr/\.[^.]*/);
 
-    INFO "\t-Fix html file $name.html.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t-Fix html file $name.html.\n";
 
     my $tree = HTML::TreeBuilder->new();
 
@@ -240,7 +240,7 @@ WikiCommons::write_file("$dir/".++$i.". tree_fix_numbers_in_headings.$name.html"
 
     $tree->no_space_compacting(0);
     my $html_res = tree_to_html($tree);
-    INFO "\t+Fix html file $name.html.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t+Fix html file $name.html.\n";
     $tree = $tree->delete;
 WikiCommons::write_file("$dir/$name.fixed.html", $html_res, 1) if $debug eq "yes";
     return Encode::encode('utf8', $html_res);
@@ -415,7 +415,7 @@ sub tree_clean_span {
 
 sub tree_clean_headings {
     my $tree = shift;
-    INFO "\t-Fix headings.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t-Fix headings.\n";
 
     foreach my $a_tag ($tree->descendants()) {
 	if ($a_tag->tag =~ m/^h[0-9]{1,2}$/) {
@@ -452,7 +452,7 @@ sub tree_clean_headings {
 	}
     }
 
-    INFO "\t+Fix headings.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t+Fix headings.\n";
     return $tree;
 }
 
@@ -749,7 +749,7 @@ sub make_wiki_from_html {
 
     $html = cleanup_html($html, $html_file) || return undef;
 
-    INFO "\t-Generating wiki file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t-Generating wiki file from $name$suffix.\n";
     my $wiki;
     my $strip_tags = [ '~comment', 'head', 'script', 'style', 'strike'];
     my $wc = new HTML::WikiConverter(
@@ -770,11 +770,11 @@ WikiCommons::write_file("$dir/original.$name.wiki", $wiki, 1) if $debug eq "yes"
     my $parsed_html = $wc->parsed_html;
 WikiCommons::write_file("$dir/parsed.$name.html", $parsed_html, 1) if $debug eq "yes";
 
-    INFO "\t+Generating wiki file from $name$suffix.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t+Generating wiki file from $name$suffix.\n";
     $wiki =~ s/mind_tag/div/gm;
 
     my $image_files = ();
-    INFO "\t-Fixing wiki.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t-Fixing wiki.\n";
 #     $wiki =~ s/[ ]{8}/\t/gs;
     $wiki = fix_wiki_chars($wiki);
 WikiCommons::write_file("$dir/fix_wiki_chars.$name.txt", $wiki, 1) if $debug eq "yes";
@@ -802,7 +802,7 @@ WikiCommons::write_file("$dir/fix_external_links.$name.txt", $wiki, 1) if $debug
 WikiCommons::write_file("$dir/fix_small_issues.$name.txt", $wiki, 1) if $debug eq "yes";
 
     WikiCommons::write_file("$dir/$name.wiki", $wiki);
-    INFO "\t+Fixing wiki.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t+Fixing wiki.\n";
 
     return ($wiki, $image_files);
 }
@@ -942,13 +942,13 @@ sub fix_wiki_chars {
 
 sub get_wiki_images {
     my ($wiki, $image_files, $dir) = @_;
-    INFO "\tFix images from wiki.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\tFix images from wiki.\n";
     while ($wiki =~ m/(\[\[Image:)([[:print:]].*?)(\]\])/g ) {
 	my $pic_name = uri_unescape( $2 );
 	$pic_name =~ s/(.*?)(\|.*)/$1/;
 	my $info = image_info("$dir/$pic_name");
 	if (my $error = $info->{error}) {
-	    INFO "Can't parse image info for dir \"$dir\", file \"$pic_name\":\n\t $error.\t". (WikiCommons::get_time_diff) ."\n";
+	    INFO "Can't parse image info for dir \"$dir\", file \"$pic_name\":\n\t $error.\n";
 	    LOGDIE "" if $dir !~ m/CMS:MIND-IPhonEX CMS 80.00.020/;
 	    next;
 	}
@@ -959,7 +959,7 @@ sub get_wiki_images {
 
 sub fix_wiki_footers {
     my $wiki = shift;
-    INFO "\tFix footers from wiki.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\tFix footers from wiki.\n";
     ## fix footers
     $wiki =~ s/(<div id="sdfootnote.*?">)/----\n$1/gsi;
     my $count = 0;
@@ -981,7 +981,7 @@ sub fix_wiki_footers {
 
 sub fix_wiki_links_menus {
     my $wiki = shift;
-    INFO "\tFix links to menus from wiki.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\tFix links to menus from wiki.\n";
     ## fix links to menus
     my $newwiki = $wiki;
     my $count = 0;
@@ -1009,7 +1009,7 @@ sub fix_wiki_links_menus {
 sub fix_wiki_url {
     my $wiki = shift;
     ### fix url links
-#     INFO "\tFix urls from wiki.\t". (WikiCommons::get_time_diff) ."\n";
+#     INFO "\tFix urls from wiki.\n";
     my $newwiki = $wiki;
     while ($wiki =~ m/(http:\/\/.*?)\s+/g) {
 	my $q = $1;

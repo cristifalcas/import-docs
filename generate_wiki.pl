@@ -196,7 +196,7 @@ sub add_swf_users {
     my $zip = Archive::Zip->new();
     $zip->addFile( "$work_dir/$new_file$suffix", "$new_file$suffix") or LOGDIE "Error adding file $new_file$suffix to zip.\n";
     $zip->writeToFileNamed( "$work_dir/$wiki_result/$zip_name.zip" ) == AZ_OK or LOGDIE "Write error for zip file.\n";
-#     open (FILE, ">>$work_dir/$wiki_files_uploaded") or LOGDIE "at create wiki can't open file $work_dir/$wiki_files_uploaded for writing: $!\t". (WikiCommons::get_time_diff) ."\n";
+#     open (FILE, ">>$work_dir/$wiki_files_uploaded") or LOGDIE "at create wiki can't open file $work_dir/$wiki_files_uploaded for writing: $!\n";
 #     print FILE "File:$new_file.swf\n";
 #     print FILE "File:$zip_name.zip\n";
 #     close (FILE);
@@ -213,7 +213,7 @@ sub create_wiki {
     my ($name_url, $dir_url, $suffix_url) = fileparse($page_url, qr/\.[^.]*/);
     my ($name, $dir, $suffix) = fileparse($doc_file, qr/\.[^.]*/);
     if ( -d $work_dir) {
-	INFO "Path $work_dir already exists. Moving to $bad_dir.\t". (WikiCommons::get_time_diff) ."\n" ;
+	INFO "Path $work_dir already exists. Moving to $bad_dir.\n" ;
 	my $name_bad = "$bad_dir/$page_url".time();
 	WikiCommons::makedir($name_bad);
 	WikiCommons::move_dir($work_dir, $name_bad);
@@ -223,7 +223,7 @@ sub create_wiki {
     $name = WikiCommons::normalize_text($name);
 
     my $new_file = "$name_url$suffix_url";
-    copy("$doc_file","$work_dir/$new_file$suffix") or LOGDIE "Copy failed for $page_url at create_wiki: $doc_file to $work_dir: $!\t". (WikiCommons::get_time_diff) ."\n";
+    copy("$doc_file","$work_dir/$new_file$suffix") or LOGDIE "Copy failed for $page_url at create_wiki: $doc_file to $work_dir: $!\n";
     $doc_file = "$work_dir/$new_file$suffix";
     my $dest = "$work_dir/$wiki_result";
     WikiCommons::makedir ($dest);
@@ -242,31 +242,31 @@ sub create_wiki {
 	    WikiCommons::add_to_remove ("$work_dir/$wiki_result", "dir");
 
 	    my %seen = ();
-	    open (FILE, ">>$work_dir/$wiki_files_uploaded") or LOGDIE "at create wiki can't open file $work_dir/$wiki_files_uploaded for writing: $!\t". (WikiCommons::get_time_diff) ."\n";
-	    INFO "\t-Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
+	    open (FILE, ">>$work_dir/$wiki_files_uploaded") or LOGDIE "at create wiki can't open file $work_dir/$wiki_files_uploaded for writing: $!\n";
+	    INFO "\t-Moving pictures and making zip file.\n";
 	    foreach my $img (@$image_files){
-		move ($img, $dest) or LOGDIE "Moving file \"$img\" failed: $!\t". (WikiCommons::get_time_diff) ."\n" unless $seen{$img}++;
+		move ($img, $dest) or LOGDIE "Moving file \"$img\" failed: $!\n" unless $seen{$img}++;
 		my ($img_name,$img_dir,$img_suffix) = fileparse($img, qr/\.[^.]*/);
 		print FILE "File:$img_name$img_suffix\n";
 	    }
 	    $image_files = ();
 
 	    my $zip = Archive::Zip->new();
-	    $zip->addFile( "$work_dir/$new_file$suffix", "$new_file$suffix") or LOGDIE "Error adding file $new_file$suffix to zip.\t". (WikiCommons::get_time_diff) ."\n";
-	    LOGDIE "Write error for zip file.\t". (WikiCommons::get_time_diff) ."\n" if $zip->writeToFileNamed( "$dest/$zip_name.zip" ) != AZ_OK;
+	    $zip->addFile( "$work_dir/$new_file$suffix", "$new_file$suffix") or LOGDIE "Error adding file $new_file$suffix to zip.\n";
+	    LOGDIE "Write error for zip file.\n" if $zip->writeToFileNamed( "$dest/$zip_name.zip" ) != AZ_OK;
 	    print FILE "File:$zip_name.zip\n";
 	    close (FILE);
-	    INFO "\t+Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
+	    INFO "\t+Moving pictures and making zip file.\n";
 
 	    WikiCommons::add_to_remove( $doc_file, "file" );
 	    WikiCommons::add_to_remove( $html_file, "file" );
 	    return $wiki;
 	} else {
-	    INFO "OpenOffice could not create the html file.\t". (WikiCommons::get_time_diff) ."\n";
+	    INFO "OpenOffice could not create the html file.\n";
 	    return;
 	}
     } else {
-	 INFO "Strange, can't find the doc file in $work_dir.\t". (WikiCommons::get_time_diff) ."\n";
+	 INFO "Strange, can't find the doc file in $work_dir.\n";
 	 return;
     }
 }
@@ -278,14 +278,14 @@ sub get_existing_pages {
     $_ = "$wiki_dir/".$_ foreach (@allfiles);
 
     $count_files = 0;
-    INFO "-Searching for files in db.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "-Searching for files in db.\n";
     my $total = scalar @allfiles;
     my $crt_nr = 0;
     foreach my $dir (sort @allfiles) {
 	if (-d "$dir") {
 	    next if ($dir eq "$wiki_dir/categories");
 	    $crt_nr++;
-	    INFO "\tDone $crt_nr from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($crt_nr%2000 == 0);
+	    INFO "\tDone $crt_nr from a total of $total.\n" if ($crt_nr%2000 == 0);
 	    my ($name,$dir_dir,$suffix) = fileparse($dir, qr/\.[^.]*/);
 	    $name = "$name$suffix";
 # if ( -f "$dir/$wiki_files_info" && -s "$dir/$wiki_files_info") {
@@ -313,7 +313,7 @@ sub get_existing_pages {
 		$rel_path =~ s/(^\s+|\s+$)//g;
 		$svn_url =~ s/(^\s+|\s+$)//g;
 		$url_type =~ s/(^\s+|\s+$)//g;
-		LOGDIE "\tWe already have this url. But this is insane...\t". (WikiCommons::get_time_diff) ."\n" if (exists $pages_toimp_hash->{$dir});
+		LOGDIE "\tWe already have this url. But this is insane...\n" if (exists $pages_toimp_hash->{$dir});
 		$pages_local_hash->{$name} = [$md5, $rel_path, $svn_url, $url_type, []];
 		++$count_files;
 	    } else {
@@ -328,8 +328,8 @@ sub get_existing_pages {
 	    INFO "\tExtra files in wiki dir: $dir\n";
 	}
     }
-    INFO "\tTotal number of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n";
-    INFO "+Searching for files in db.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\tTotal number of files: ".($count_files)."\n";
+    INFO "+Searching for files in db.\n";
 }
 
 sub generate_new_updated_pages {
@@ -422,7 +422,7 @@ sub generate_cleaned_real_and_links {
 		}
 	    }
 	}
-	INFO "done $count out of $total.\t". (WikiCommons::get_time_diff) ."\n" if ++$count%1000 == 0;
+	INFO "done $count out of $total.\n" if ++$count%1000 == 0;
     }
 }
 
@@ -461,15 +461,15 @@ sub generate_pages_for_real_and_redir {
 }
 
 sub generate_pages_to_delete_to_import {
-    INFO "Start generating new/updated/to_delete/to_keep urls.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "Start generating new/updated/to_delete/to_keep urls.\n";
     generate_new_updated_pages();
-    INFO "Done generating new/updated urls.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "Done generating new/updated urls.\n";
     generate_real_and_links();
-    INFO "Done separating urls in real and links.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "Done separating urls in real and links.\n";
     generate_pages_for_real_and_redir();
-    INFO "Done cleaning real and redirects.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "Done cleaning real and redirects.\n";
     generate_cleaned_real_and_links();
-    INFO "Done final cleaning of urls.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "Done final cleaning of urls.\n";
 
     my $tmp = {};
     foreach (keys %$pages_toimp_hash) {$tmp->{$_} = 1 if ($pages_toimp_hash->{$_}[$link_type_pos] eq "link")};
@@ -487,7 +487,7 @@ sub make_categories {
     my $general_categories_hash = $coco->get_categories;
     return if ($delete_everything eq "yes");
     my $categories_ref = $dbh_mysql->selectall_hashref("select WIKI_NAME from mind_wiki_info where WIKI_NAME like 'Category:%'", 'WIKI_NAME');
-    INFO "-Making categories.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "-Making categories.\n";
     foreach my $key (sort keys %$general_categories_hash) {
 	my $text = "----\n\n";
 	$url = "Category:$key";
@@ -500,7 +500,7 @@ sub make_categories {
 	$text .= "----\n\n";
 	if (WikiCommons::is_remote ne "yes"){
 	    $our_wiki->wiki_edit_page($url, $text);
-	    LOGDIE "Could not import url $url.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url) );
+	    LOGDIE "Could not import url $url.\n" if ( ! $our_wiki->wiki_exists_page($url) );
 	} else {
 	    INFO "\tCopy category to $remote_work_path\n";
 	    WikiCommons::makedir("$remote_work_path");
@@ -512,7 +512,7 @@ sub make_categories {
 		  (WIKI_NAME,FILES_INFO_INSERTED) VALUES 
 		  (".$dbh_mysql->quote($url).", ".$dbh_mysql->quote($txt).")");
     }
-    INFO "+Making categories.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "+Making categories.\n";
 }
 
 sub insertdata {
@@ -522,18 +522,18 @@ sub insertdata {
 
     if (WikiCommons::is_remote ne "yes"){
 	$our_wiki->wiki_import_files ("$work_dir/$wiki_result", "$url");
-	INFO "\tDeleting url $url just to be sure.\t". (WikiCommons::get_time_diff) ."\n";
+	INFO "\tDeleting url $url just to be sure.\n";
 	$our_wiki->wiki_delete_page ($url) if ( $our_wiki->wiki_exists_page($url) && $delete_previous_page ne "no");
-	INFO "\tImporting url $url.\t". (WikiCommons::get_time_diff) ."\n";
+	INFO "\tImporting url $url.\n";
 	$our_wiki->wiki_edit_page($url, $wiki);
-	LOGDIE "Could not import url $url.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url) );
-	INFO "\tDone $url.\t". (WikiCommons::get_time_diff) ."\n";
+	LOGDIE "Could not import url $url.\n" if ( ! $our_wiki->wiki_exists_page($url) );
+	INFO "\tDone $url.\n";
     } else {
 	INFO "\tCopy files to $remote_work_path/$wiki_result\n";
 	WikiCommons::makedir("$remote_work_path/$wiki_result");
 	WikiCommons::add_to_remove ("$remote_work_path/$wiki_result", "dir");
 	WikiCommons::copy_dir ("$work_dir/$wiki_result", "$remote_work_path/$wiki_result") if -e "$work_dir/$wiki_result";
-	copy("$work_dir/$url.full.wiki","$remote_work_path/$url") or LOGDIE "Copy failed for: $url.full.wiki to $remote_work_path: $!\t". (WikiCommons::get_time_diff) ."\n";
+	copy("$work_dir/$url.full.wiki","$remote_work_path/$url") or LOGDIE "Copy failed for: $url.full.wiki to $remote_work_path: $!\n";
     }
 
     my $text = "md5 = ".$pages_toimp_hash->{$url}[$md5_pos]."\n";
@@ -578,7 +578,7 @@ sub work_begin {
     if (WikiCommons::is_remote ne "yes") {
         LOGDIE Dumper(sort keys %$to_delete)."\nToo many to delete.\n" if (keys %$to_delete) > $max_to_delete;
 	foreach my $url (sort keys %$to_delete) {
-	    INFO "Deleting $url.\t". (WikiCommons::get_time_diff) ."\n";
+	    INFO "Deleting $url.\n";
 	    remove_tree("$wiki_dir/$url") || LOGDIE "Can't remove dir $wiki_dir/$url: $?.\n";
 	    my $sth_mysql = $dbh_mysql->do("DELETE FROM mind_wiki_info where WIKI_NAME=".$dbh_mysql->quote($url));
 	    $our_wiki->wiki_delete_page($url) if ( $our_wiki->wiki_exists_page($url) );
@@ -662,7 +662,7 @@ sub fork_function {
 	    my $val = $pages_toimp_hash->{$url};
 	    $crt_nr++;
 	    INFO "************************* $crt_nr of $total_nr\n";
-	    INFO "Making url for $url.\t". (WikiCommons::get_time_diff) ."\n";
+	    INFO "Making url for $url.\n";
 	    my $pid = fork();
 	    if (! defined ($pid)){
 		LOGDIE  "Can't fork.\n";
@@ -747,8 +747,8 @@ sub link_worker {
     my $link_file = "$wiki_dir/$link_to/$link_to.wiki";
     WikiCommons::makedir("$wiki_dir/$url/");
     WikiCommons::write_file("$wiki_dir/$url/$wiki_files_uploaded", "");
-    copy("$link_file","$wiki_dir/$url/$url.wiki") or LOGDIE "Copy failed for link: $link_file to $wiki_dir/$url: $!\t". (WikiCommons::get_time_diff) ."\n";
-    open (FILEHANDLE, "$wiki_dir/$url/$url.wiki") or LOGDIE $!."\t". (WikiCommons::get_time_diff) ."\n";
+    copy("$link_file","$wiki_dir/$url/$url.wiki") or LOGDIE "Copy failed for link: $link_file to $wiki_dir/$url: $!\n";
+    open (FILEHANDLE, "$wiki_dir/$url/$url.wiki") or LOGDIE $!."\n";
     my $wiki = do { local $/; <FILEHANDLE> };
     close (FILEHANDLE);
 
@@ -993,9 +993,9 @@ sub sc_worker {
 	$title =~ s/^<center><font size="[0-9]{1,}">'''(.*?)'''<\/font><\/center>.*$/$1/gsi;
 	my $url_s = $url; $url_s =~ s/^SC:(.*)/$1/;
 	$deployment_txt = "=<small>[[SC:$url_s|$url_s: $title]]</small>=\n".$deployment_txt;
-	INFO "\tImporting url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n";
+	INFO "\tImporting url $url_deployment.\n";
 	$our_wiki->wiki_edit_page($url_deployment, $deployment_txt);
-	LOGDIE "Could not import url $url_deployment.\t". (WikiCommons::get_time_diff) ."\n" if ( ! $our_wiki->wiki_exists_page($url_deployment) );
+	LOGDIE "Could not import url $url_deployment.\n" if ( ! $our_wiki->wiki_exists_page($url_deployment) );
     }
     make_redirect($url, $wrong_hash);
     }; ## eval
@@ -1044,21 +1044,21 @@ sub quick_and_dirty_html_to_wiki {
     WikiCommons::add_to_remove ("$work_dir/$wiki_result", "dir");
     WikiCommons::makedir ("$dest");
     my %seen = ();
-    open (FILE, ">>$work_dir/$wiki_files_uploaded") or LOGDIE "at create wiki can't open file $work_dir/$wiki_files_uploaded for writing: $!\t". (WikiCommons::get_time_diff) ."\n";
-    INFO "\t-Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
+    open (FILE, ">>$work_dir/$wiki_files_uploaded") or LOGDIE "at create wiki can't open file $work_dir/$wiki_files_uploaded for writing: $!\n";
+    INFO "\t-Moving pictures and making zip file.\n";
     foreach my $img (@$image_files){
-	move ("$img", "$dest") or LOGDIE "Moving file \"$img\" failed: $!\t". (WikiCommons::get_time_diff) ."\n" unless $seen{$img}++;
+	move ("$img", "$dest") or LOGDIE "Moving file \"$img\" failed: $!\n" unless $seen{$img}++;
 	my ($img_name,$img_dir,$img_suffix) = fileparse($img, qr/\.[^.]*/);
 	print FILE "File:$img_name$img_suffix\n";
     }
     $image_files = ();
 
     my $zip = Archive::Zip->new();
-    $zip->addFile( "$work_dir/$name$suffix", "$name$suffix") or LOGDIE "Error adding file $name$suffix to zip.\t". (WikiCommons::get_time_diff) ."\n";
-    LOGDIE "Write error for zip file.\t". (WikiCommons::get_time_diff) ."\n" if $zip->writeToFileNamed( "$dest/$zip_name.zip" ) != AZ_OK;
+    $zip->addFile( "$work_dir/$name$suffix", "$name$suffix") or LOGDIE "Error adding file $name$suffix to zip.\n";
+    LOGDIE "Write error for zip file.\n" if $zip->writeToFileNamed( "$dest/$zip_name.zip" ) != AZ_OK;
     print FILE "File:$zip_name.zip\n";
     close (FILE);
-    INFO "\t+Moving pictures and making zip file.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t+Moving pictures and making zip file.\n";
     WikiCommons::add_to_remove( $html_file, "file" );
 
     $pages_toimp_hash->{$url}[$md5_pos] = "";

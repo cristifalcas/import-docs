@@ -725,7 +725,7 @@ $ENV{NLS_LANG} = 'AMERICAN_AMERICA.AL32UTF8';
 sql_connect('10.0.10.92', 'BILL', 'service25', 'service25');
 WikiCommons::reset_time();
 local $| = 1;
-INFO "-Get common info.\t". (WikiCommons::get_time_diff) ."\n";
+INFO "-Get common info.\n";
 get_eventscode();
 get_customers();
 get_staff();
@@ -733,13 +733,13 @@ get_priorities();
 get_problem_categories();
 get_problem_types();
 get_servicestatus();
-INFO "+Get common info.\t". (WikiCommons::get_time_diff) ."\n";
+INFO "+Get common info.\n";
 
 my $crt_cust = get_previous_customers($to_path);
 my @new_cust_arr = ();
 
 foreach my $cust (sort keys %$customers){
-    INFO "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\n\tStart for customer $customers->{$cust}->{'displayname'}/$customers->{$cust}->{'name'}:$cust.\n";
 # next if $customers->{$cust}->{'displayname'} ne "SIW";
 #     next if (! defined $customers->{$cust}->{'ver'} || $customers->{$cust}->{'ver'} lt "5.00")
 # 	    && $customers->{$cust}->{'displayname'} ne "Billing";

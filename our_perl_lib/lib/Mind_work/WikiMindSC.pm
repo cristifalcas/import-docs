@@ -49,10 +49,10 @@ sub get_documents {
     my $total = @all;
     my $count = 0;
     my $url_sep = WikiCommons::get_urlsep;
-    INFO "-Searching for files in SC dir.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "-Searching for files in SC dir.\n";
     foreach my $node (sort @all) {
 	$count++;
-	INFO "\tDone $count from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($count%1000 == 0);
+	INFO "\tDone $count from a total of $total.\n" if ($count%1000 == 0);
 	my $md5 = $node;
 	my $ret = $dbh_mysql->selectrow_array("select FILES_INFO_CRT from mind_sc_ids_versions where SC_ID='$node'");
 	if (! defined $ret) {
@@ -161,8 +161,8 @@ LOGDIE "no namespace here 2: $node.\n".Dumper(@data) if $url_namespace eq "";
 	$pages_toimp_hash->{"$url_namespace:$node"} = [$md5." redirect", "$node", $info_crt_h, "real", \@categories];
 	$pages_toimp_hash->{"SC:$node"} = [$md5, "$node", $info_crt_h, "real", \@categories];
     }
-    INFO "\tDone $count from a total of $total.\t". (WikiCommons::get_time_diff) ."\n" if ($count%500 != 0);
-    INFO "+Searching for files in SC dir.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\tDone $count from a total of $total.\n" if ($count%500 != 0);
+    INFO "+Searching for files in SC dir.\n";
 # INFO Dumper($pages_toimp_hash);exit 1;
     return $pages_toimp_hash;
 }

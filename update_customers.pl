@@ -60,7 +60,7 @@ sub write_customer {
     my $name = $hash->{'displayname'};
     delete $hash->{'displayname'};
 
-    INFO "\tWrite $name info.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\tWrite $name info.\n";
     my $txt = "=Information=\n\n";
 
     my $acct_mng = "";

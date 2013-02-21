@@ -49,7 +49,7 @@ sub add_document {
 
     if (-f "$dir/$name.txt") {
 	local( $/, *FILEHANDLE ) ;
-	open (FILEHANDLE, "$dir/$name.txt") or LOGDIE $!."\t". (WikiCommons::get_time_diff) ."\n";
+	open (FILEHANDLE, "$dir/$name.txt") or LOGDIE $!."\n";
 # 	my @text = <FILEHANDLE>;
 	my $text1 = <FILEHANDLE>;
 	close (FILEHANDLE);

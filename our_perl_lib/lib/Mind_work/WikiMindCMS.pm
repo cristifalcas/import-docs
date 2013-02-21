@@ -101,14 +101,14 @@ sub get_documents {
     my @APPEND_DIRS=("Docs_CMS", "Docs_Phonex", "Docs_Sentori");
     my $url_sep = WikiCommons::get_urlsep;
     foreach my $append_dir (@APPEND_DIRS) {
-	INFO "-Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
+	INFO "-Searching for files in $append_dir.\n";
 	$count_files = 0;
 	find ({
 	    wanted => sub { add_document ($File::Find::name, $append_dir, "$self->{path_files}", "$url_sep") if -f && (/(\.doc|\.docx|\.rtf|\.xls)$/i) },},
 	    "$self->{path_files}/$append_dir"
 	    ) if  (-d "$self->{path_files}/$append_dir");
-	INFO "\tTotal number of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n";
-	INFO "+Searching for files in $append_dir.\t". (WikiCommons::get_time_diff) ."\n";
+	INFO "\tTotal number of files: ".($count_files)."\n";
+	INFO "+Searching for files in $append_dir.\n";
     }
 
     return $pages_toimp_hash;
@@ -132,7 +132,7 @@ sub find_svn_helper {
 	}
 	$dir = dirname($dir);
     } while ($dir ne "$path_file");
-    LOGDIE "should have found a wiki helper until now for $doc_file: dir $dir svndir $path_file.\t". (WikiCommons::get_time_diff) ."\n";
+    LOGDIE "should have found a wiki helper until now for $doc_file: dir $dir svndir $path_file.\n";
 }
 
 return 1;

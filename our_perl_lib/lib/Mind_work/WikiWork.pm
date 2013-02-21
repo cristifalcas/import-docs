@@ -37,8 +37,7 @@ sub wiki_on_error {
     1. Error code: " . $mw->{error}->{code} . "
     2. Error details: " . Dumper($mw->{error}->{details})."
     3. Error response: " . Dumper($mw->{response})."
-    4. Error stacktrace: " . $mw->{error}->{stacktrace}."
-    time elapsed"."\t". (WikiCommons::get_time_diff) ."\n";
+    4. Error stacktrace: " . $mw->{error}->{stacktrace}."\n";
 }
 
 sub new {
@@ -191,7 +190,7 @@ sub wiki_delete_page {
 #       if ( defined $url && wiki_exists_page($self, $url) && not defined $page->{missing} ) {
 	INFO "\tDelete page $url.\n";
 	$mw->edit( { action => 'delete', title => $url, reason => 'no longer needed' } )
-	|| LOGDIE "Could not delete url $url: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
+	|| LOGDIE "Could not delete url $url: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\n";
       }
     }
 }
@@ -213,24 +212,24 @@ sub wiki_get_deleted_revs {
 
 sub wiki_edit_page {
   my ($self, $title, $text) = @_;
-  INFO "\t-Uploading page for url $title. ". (WikiCommons::get_time_diff) ."\n";
+  INFO "\t-Uploading page for url $title.\n";
   my $page = $mw->get_page( { title => $title } );
   INFO "\t Creating a new page for url $title.\n" if ($page->{missing});
   my $timestamp = $page->{timestamp};
 
   $mw->edit( { action => 'edit', title => $title, text => Encode::decode('utf8', $text) } )
-      || LOGDIE "Could not upload text for $title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff) ."\n";
-  INFO "\t+Uploading page for url $title. ". (WikiCommons::get_time_diff) ."\n";
+      || LOGDIE "Could not upload text for $title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\n";
+  INFO "\t+Uploading page for url $title.\n";
 }
 
 sub wiki_import_files {
     my ($self, $file_path, $url) = @_;
     ## need in /etc/sudoers to have "wiki ALL=(apache) NOPASSWD: ALL"
-    INFO "\t-Uploading files ($file_path) for url $url.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t-Uploading files ($file_path) for url $url.\n";
     my $cmd_output = `sudo -u apache php "$wiki_site_path/maintenance/importImages.php" --conf "$wiki_site_path/LocalSettings.php" --user="$wiki_user" --check-userblock "$file_path" --overwrite`;
     LOGDIE "\tError $? for importImages.php: ".Dumper($cmd_output) if ($?);
     INFO "$cmd_output\n";
-    INFO "\t+Uploading files for url $url.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "\t+Uploading files for url $url.\n";
 }
 
 sub wiki_upload_file {
@@ -286,7 +285,7 @@ sub wiki_move_page {
     INFO "Wiki move page $title to $new_title.\n";
     $mw->edit( {
     action => 'move', from => "$title", to => "$new_title" } )
-    || LOGDIE "Could not move url $title to $new_title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\t". (WikiCommons::get_time_diff)."\n";
+    || LOGDIE "Could not move url $title to $new_title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\n";
 }
 
 sub wiki_get_nonredirects {

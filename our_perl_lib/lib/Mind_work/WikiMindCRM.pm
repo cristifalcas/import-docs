@@ -67,7 +67,7 @@ sub add_document{
     $general_categories_hash->{"$values[0]$url_sep"."CRM"}->{"$values[0]"} = 1;
 
     ++$count_files;
-    INFO "\tNumber of files: ".($count_files)."\t". (WikiCommons::get_time_diff) ."\n" if ($count_files%1000 == 0);
+    INFO "\tNumber of files: ".($count_files)."\n" if ($count_files%1000 == 0);
 
     LOGDIE "Page already exists.: $ns$page_url\n" if exists $pages_toimp_hash->{"$ns:$page_url"};
     $pages_toimp_hash->{"$ns:$page_url"} = [$md5." redirect", $rel_path, "", "real"];
@@ -78,9 +78,9 @@ sub get_documents {
     my $self = shift;
     my $path_files = $self->{path_files};
     my $url_sep = WikiCommons::get_urlsep;
-    INFO "-Searching for files in CRM dir.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "-Searching for files in CRM dir.\n";
     find sub { add_document ($File::Find::name, "$self->{path_files}", "$url_sep") if -f && (/\.wiki$/i) }, "$self->{path_files}/" if  (-d "$self->{path_files}");
-    INFO "+Searching for files in CRM dir.\t". (WikiCommons::get_time_diff) ."\n";
+    INFO "+Searching for files in CRM dir.\n";
     return $pages_toimp_hash;
 }
 

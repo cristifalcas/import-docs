@@ -105,7 +105,7 @@ case "$1" in
     "$0" import_sc
 
     $CMD "$SCRIPT_PATH"/maintenance.pl 0
-    sudo -u apache php /var/www/html/wiki/maintenance/runJobs.php
+    for i in $(seq 1 10); do while (( $(sudo -u apache /usr/bin/php /var/www/html/wiki/maintenance/runJobs.php --maxjobs 20 | sed '/^$/d' | wc -l) )); do echo worky;done & done
   ;;
 *)
     echo "Incorrect parameter"

@@ -189,16 +189,16 @@ sub write_file {
     $remove = 0 if not defined $remove;
     my ($name,$dir,$suffix) = fileparse($path, qr/\.[^.]*/);
     add_to_remove("$dir/$name$suffix", "file") if $remove ne 0;
-    INFO "\tWriting file $name$suffix.\t". get_time_diff() ."\n";
+    INFO "\tWriting file $name$suffix.\n";
     open (FILE, ">$path") or LOGDIE "at generic write can't open file $path for writing: $!\n";
     ### don't decode/encode to utf8
     print FILE "$text";
     close (FILE);
 }
 
-sub get_time_diff {
-    return (time() - $start_time);
-}
+# sub get_time_diff {
+#     return (time() - $start_time);
+# }
 
 sub get_urlsep {
     return "$url_sep";
@@ -465,13 +465,13 @@ sub generate_html_file {
 	  "7. latest office with X" 	=> ["/opt/libreoffice4.0/program/soffice", "--display", ":10235", @lo_args], 
 	};
 
-    INFO "\t-Generating $type file from $name$suffix.\t". (get_time_diff) ."\n\t\t$doc_file\n";
+    INFO "\t-Generating $type file from $name$suffix.\n\t\t$doc_file\n";
     system("Xvfb :10235 -screen 0 1024x768x16 &> /dev/null &"); ## if we don't use headless
 #     system("python $real_path/convertors/unoconv -l &"); ## start a listener
     my $max_wait_time = 150;
     $max_wait_time = 30 if (-s $doc_file < 100000);
     foreach my $key (sort keys %$commands) {
-	INFO "\tTrying to use $key.\t". (get_time_diff) ."\n";
+	INFO "\tTrying to use $key.\n";
 	my $pids_to_kill = `ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | grep "$lo_tmp_dir" | gawk '{print \$2}'`;
 	if ($pids_to_kill =~ m/^\s*$/) {
 	    INFO "No office to kill.\n";
@@ -499,10 +499,10 @@ sub generate_html_file {
 
 	last if ! $status && -f "$dir/$name.$type";
 	$max_wait_time = $max_wait_time <= 60 ? 300 : $max_wait_time * 2;
-	ERROR "\t\tError: $status. Try again with next command.\t". (get_time_diff) ."\n";
+	ERROR "\t\tError: $status. Try again with next command.\n";
     }
 
-    INFO "\t+Generating $type file from $name$suffix.\t". (get_time_diff) ."\n";
+    INFO "\t+Generating $type file from $name$suffix.\n";
 #     return $status;
 }
 

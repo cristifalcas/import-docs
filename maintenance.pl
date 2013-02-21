@@ -1,5 +1,4 @@
 #!/usr/bin/perl -w
-print "Start.\n";
 use warnings;
 use strict;
 $SIG{__WARN__} = sub { die @_ };
@@ -1026,6 +1025,7 @@ if ($view_only ne "user_sr") {
 }
 $dbh_mysql->disconnect() if defined($dbh_mysql);
 
+  ## problem: crm is from user1, sc is from user2. user1 will have crm with close bug, which is wrong
 INFO "##### Update users:\n";
 update_user_pages($namespaces->{'private'}->{'User'});
 
