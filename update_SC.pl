@@ -678,19 +678,9 @@ sub sql_get_dealer_names {
 sub sql_get_all_changes {
     INFO "-Get all db changes.\n";
     my $cond = "";
-    my $ver = "(version >= '5.0' or (nvl(version, 1) < '5.0' and nvl(fixversion,6) > '5.0')) and version <= \'7.0\'";
+    my $ver = "(version >= '5.0' or (nvl(version, 1) < '5.0' and nvl(fixversion,6) > '5.0')) and nvl(version,1) <= \'7.0\'";
     if ($sc_type eq 'B2') {
 	$ver = "version > \'7.0\'";
-# 	$ver = "version >= \'5.0\' and version < \'5.3\'";
-#     } elsif ($sc_type eq 'B2') {
-# 	$ver = "version >= \'5.3\' and version < \'6.0\'";
-#     } elsif ($sc_type eq 'B3') {
-# 	$ver = "version >= \'6.0\' and version < \'6.5\'";
-#     } elsif ($sc_type eq 'B4') {
-# 	$ver = "version >= \'6.5\' and version < \'7.0\'";
-#     } elsif ($sc_type eq 'B5') {
-# 	$ver = "(version >= \'7.0\' or
-# 	(nvl(version, 1) < \'5.0\' and nvl(fixversion, 6) > \'5.0\'))";
     }
 
     my $no_cancel = "and status <> 'Cancel'
