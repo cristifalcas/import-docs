@@ -199,6 +199,8 @@ WikiCommons::write_file("$dir/".++$i.". tree_clean_lists.$name.html", tree_to_ht
     $tree = tree_clean_lists_ol_ul($tree);
     $tree = tree_clean_span_to_div($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_clean_span_to_div.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
+
+    $tree = tree_bgcolor_from_tables($tree);
 ## can't do it
 #     $html = html_fix_html_tabs($html);
 # WikiCommons::write_file("$dir/html_fix_html_tabs.$name.html", $html, 1);
@@ -277,6 +279,21 @@ sub tree_to_html {
     return encode('utf8',$text);
 }
 
+sub tree_bgcolor_from_tables {
+    my ($tree) = @_;
+    INFO " Clean bgcolor.\n";
+    ## libreoffice exports tables with an ugly backkground color: #FF0000. we hate this
+    foreach my $a_tag ($tree->guts->look_down(_tag => "td")) {
+	foreach my $attr_name ($a_tag->all_external_attr_names){
+	    my $attr_value = $a_tag->attr($attr_name);
+	    next if ( $attr_name ne "bgcolor" || $attr_value ne "#FF0000");
+	    INFO "Removing background color $attr_value.\n";
+	    $a_tag->attr("bgcolor", undef);
+	}
+    }
+    return $tree;
+}
+
 sub tree_clean_font {
     my ($tree) = @_;
     INFO " Clean font.\n";
@@ -287,7 +304,7 @@ sub tree_clean_font {
 	    next if ( $attr_name eq "color" );
 	    if ( $attr_name eq "face" ||$attr_name eq "size"
 		    || ($attr_name eq "style" && $attr_value =~ m/^font-size: [0-9]{1,}pt$/i) ){
-		$a_tag->attr("$attr_name", undef);
+		$a_tag->attr($attr_name, undef);
 		next;
 	    }
 	    LOGDIE "Attr name for font: $attr_name = $attr_value.\n";

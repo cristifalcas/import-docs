@@ -87,7 +87,7 @@ sub fix_rest_dirs {
 
 sub get_md5_fast {
     my $doc_file = shift;
-    ## md5 is fatser, but more IO consuming... we don't like high IO
+    ## md5 is faster, but more IO consuming... we don't like high IO
     my $md5 = WikiCommons::svn_info("$doc_file\@", "", "");
     if (defined $md5) {
 	$md5 =~ s/^.*?\nChecksum: (.*?)\n.*?$/$1/gs;
@@ -96,6 +96,7 @@ sub get_md5_fast {
 	INFO "are we reallly using md5 for $doc_file?\n";
 	$md5 = WikiCommons::get_file_md5($doc_file);
     }
+    $md5 .= "_1" if $doc_file =~ m/xlsx?$/i; ## reimport all xlss to fix bgcolor
     return $md5;
 }
 

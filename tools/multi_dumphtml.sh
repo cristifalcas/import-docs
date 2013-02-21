@@ -1,14 +1,19 @@
 #!/bin/bash
 
 threads=50
-export_dir="/media/wiki_files/wiki_html_dump/"
+export_dir="/media/wiki_files/wiki_html_dump"
 max=$(echo "SELECT MAX(page_id) FROM page" | mysql -u root wikidb -sN -p'!0root@9')
+#"
 range=$(echo $max/$threads | bc)
 start=1
 end=$range
 
+if [ -d "$export_dir" ]; then
 sudo -u apache rm -rf "$export_dir"_prev
-mv "$export_dir" "$export_dir"_prev
+mv "$export_dir" "$export_dir"_prev || exit 1
+fi
+mkdir "$export_dir"
+chown apache:nobody "$export_dir"
 
 for i in $(seq 1 $threads); do 
   sudo -u apache php /var/www/html/wiki/extensions_mind/q/dumpHTML.php --munge-title windows -d $export_dir --image-snapshot --checkpoint /tmp/dumphtml_$i.checkpoint -s $start -e $end --show-titles > /tmp/dumpHTML_$i.log &
