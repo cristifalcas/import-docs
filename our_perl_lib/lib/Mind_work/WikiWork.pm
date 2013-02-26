@@ -43,7 +43,7 @@ sub wiki_on_error {
 sub new {
     my $class = shift;
     my $self = { user_type => shift};
-    INFO "Logging in.\n";
+    INFO "Logging in.";
     if (WikiCommons::is_remote ne "yes" ) {
 	my ($user, $pass) = ($wiki_user, $wiki_pass);
 	($user, $pass) = ($robot_user, $robot_pass) if defined $self->{'user_type'} && $self->{'user_type'} eq "robot";
@@ -71,7 +71,7 @@ sub new {
 
 sub wiki_get_namespaces {
     my $self = shift;
-    INFO "Wiki get namespaces.\n";
+    INFO "Wiki get namespaces.";
     my %return;
     my $res = $mw->api({
             action => 'query',
@@ -91,7 +91,7 @@ sub wiki_get_namespaces {
 sub delete_archived_image {
     my ($self, $archive) = @_;
     my ($timestamp, $file) = split(m/!/, $archive);
-    INFO "Wiki delete file $file.\n";
+    INFO "Wiki delete file $file.";
     my $summary = 'deleting old version of image';
     my $res;
 
@@ -108,28 +108,28 @@ sub delete_archived_image {
 
 sub undelete_image {
     my ($self, $archive) = @_;
-    INFO "Wiki undelete file $archive.\n";
+    INFO "Wiki undelete file $archive.";
     my $res = $bmw->undelete($archive);
     return $res;
 }
 
 sub wiki_get_categories {
     my $self = shift;
-    INFO "Wiki get categories 1.\n";
+    INFO "Wiki get categories 1.";
     my $res = wiki_get_all_pages($self, 14);
     return $res;
 }
 
 sub wiki_get_images {
     my $self = shift;
-    INFO "Wiki get all images 1.\n";
+    INFO "Wiki get all images 1.";
     my $res = wiki_get_all_pages($self, 6);
     return $res;
 }
 
 sub wiki_get_all_categories {
     my $self = shift;
-    INFO "Wiki get categories 2.\n";
+    INFO "Wiki get categories 2.";
     $array = ();
     $mw->list ( { action => 'query',
 	    list => 'allcategories', aclimit=>'5000',},
@@ -140,7 +140,7 @@ sub wiki_get_all_categories {
 
 sub wiki_get_all_images {
     my $self = shift;
-    INFO "Wiki get all images 2.\n";
+    INFO "Wiki get all images 2.";
     $array = ();
     $mw->list ( { action => 'query',
 	    list => 'allimages', ailimit=>'5000',},
@@ -151,7 +151,7 @@ sub wiki_get_all_images {
 
 sub wiki_get_page {
   my ($self, $title) = @_;
-  INFO "Wiki get page $title.\n";
+  INFO "Wiki get page $title.";
   my $page = $mw->get_page( { title => $title } );
 # INFO Dumper("Got page", $page);
   return $page;
@@ -159,7 +159,7 @@ sub wiki_get_page {
 
 sub wiki_get_page_section {
   my ($self, $title, $section) = @_;
-  INFO "Wiki get page section.\n";
+  INFO "Wiki get page section.";
   my $page = $mw->get_page( { title => "$title#$section" } );
   return $page;
 }
@@ -188,7 +188,7 @@ sub wiki_delete_page {
       my $page = $mw->get_page( { title => $url } );
       unless ( defined $page->{missing} ) {
 #       if ( defined $url && wiki_exists_page($self, $url) && not defined $page->{missing} ) {
-	INFO "\tDelete page $url.\n";
+	INFO "\tDelete page $url.";
 	$mw->edit( { action => 'delete', title => $url, reason => 'no longer needed' } )
 	|| LOGDIE "Could not delete url $url: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\n";
       }
@@ -212,24 +212,24 @@ sub wiki_get_deleted_revs {
 
 sub wiki_edit_page {
   my ($self, $title, $text) = @_;
-  INFO "\t-Uploading page for url $title.\n";
+  INFO "\t-Uploading page for url $title.";
   my $page = $mw->get_page( { title => $title } );
-  INFO "\t Creating a new page for url $title.\n" if ($page->{missing});
+  INFO "\t Creating a new page for url $title." if ($page->{missing});
   my $timestamp = $page->{timestamp};
 
   $mw->edit( { action => 'edit', title => $title, text => Encode::decode('utf8', $text) } )
       || LOGDIE "Could not upload text for $title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\n";
-  INFO "\t+Uploading page for url $title.\n";
+  INFO "\t+Uploading page for url $title.";
 }
 
 sub wiki_import_files {
     my ($self, $file_path, $url) = @_;
     ## need in /etc/sudoers to have "wiki ALL=(apache) NOPASSWD: ALL"
-    INFO "\t-Uploading files ($file_path) for url $url.\n";
+    INFO "\t-Uploading files ($file_path) for url $url.";
     my $cmd_output = `sudo -u apache php "$wiki_site_path/maintenance/importImages.php" --conf "$wiki_site_path/LocalSettings.php" --user="$wiki_user" --check-userblock "$file_path" --overwrite`;
     LOGDIE "\tError $? for importImages.php: ".Dumper($cmd_output) if ($?);
     INFO "$cmd_output\n";
-    INFO "\t+Uploading files for url $url.\n";
+    INFO "\t+Uploading files for url $url.";
 }
 
 sub wiki_upload_file {
@@ -245,7 +245,7 @@ sub wiki_upload_file {
 	LOGDIE "as\n";
     }
     foreach my $img (@images) {
-	INFO "\t-Start uploading file $img.\n";
+	INFO "\t-Start uploading file $img.";
 	open FILE, "$img" or LOGDIE $!;
 	binmode FILE;
 	my ($buffer, $data);
@@ -257,13 +257,13 @@ sub wiki_upload_file {
 	$mw->upload( { title => "$name$suffix",
 		    summary => 'This is the summary to go on the Image:file.jpg page',
 		    data => $data } ) || LOGDIE $mw->{error}->{code} . ': ' . $mw->{error}->{details};
-	INFO "\t+Start uploading file $img.\n";
+	INFO "\t+Start uploading file $img.";
     }
 }
 
 sub wiki_exists_page {
     my ($self, $title) = @_;
-    TRACE "Wiki check if page $title exists.\n";
+    TRACE "Wiki check if page $title exists.";
     my $page = $mw->get_page( { title => $title } );
 # INFO Dumper($page->{'timestamp'});
     return 0 unless ( $page->{'*'} ) ;
@@ -282,7 +282,7 @@ sub wiki_geturl {
 
 sub wiki_move_page {
     my ($self, $title, $new_title) = @_;
-    INFO "Wiki move page $title to $new_title.\n";
+    INFO "Wiki move page $title to $new_title.";
     $mw->edit( {
     action => 'move', from => "$title", to => "$new_title" } )
     || LOGDIE "Could not move url $title to $new_title: ".$mw->{error}->{code} . ': ' . $mw->{error}->{details}."\n";
@@ -290,7 +290,7 @@ sub wiki_move_page {
 
 sub wiki_get_nonredirects {
     my ($self, $ns) = @_;
-    DEBUG "Wiki get non redirects for ns $ns.\n";
+    DEBUG "Wiki get non redirects for ns $ns.";
     $array = ();
     $mw->list ( { action => 'query',
 	    list => 'allpages', aplimit=>'5000',
@@ -302,7 +302,7 @@ sub wiki_get_nonredirects {
 
 sub wiki_get_redirects {
     my ($self, $ns) = @_;
-    DEBUG "Wiki get redirects for ns $ns.\n";
+    DEBUG "Wiki get redirects for ns $ns.";
     $array = ();
     $mw->list ( { action => 'query',
 	    list => 'allpages', aplimit=>'5000',
@@ -314,7 +314,7 @@ sub wiki_get_redirects {
 
 sub wiki_get_all_pages {
     my ($self, $ns) = @_;
-    INFO "Wiki get all pages with ns $ns.\n";
+    INFO "Wiki get all pages with ns $ns.";
     $array = ();
     $mw->list ( { action => 'query',
 	    list => 'allpages', aplimit=>'5000',
@@ -326,7 +326,7 @@ sub wiki_get_all_pages {
 
 sub wiki_get_unused_images {
     my $self = shift;
-    INFO "Wiki get unused images.\n";
+    INFO "Wiki get unused images.";
 
     my $arr = wiki_get_all_pages($self, 6);
     my $unused_img = ();
@@ -346,7 +346,7 @@ sub wiki_get_unused_images {
 
 sub wiki_get_pages_using {
     my ($self, $file, $nr) = @_;
-    INFO "Wiki get pages using file $file.\n";
+    INFO "Wiki get pages using file $file.";
 
     my $limit = 5000; my $max = 1000;
     if (defined $nr ) {
@@ -363,7 +363,7 @@ sub wiki_get_pages_using {
 
 sub wiki_get_pages_linking_to {
     my ($self, $url) = @_;
-    INFO "Wiki pages linking to $url.\n";
+    INFO "Wiki pages linking to $url.";
     $array = ();
     $mw->list ( { action => 'query',
 	    list => 'backlinks', bllimit => "5000",
@@ -375,7 +375,7 @@ sub wiki_get_pages_linking_to {
 
 sub wiki_get_pages_in_category {
     my ($self, $cat, $nr) = @_;
-    DEBUG "Wiki pages in category $cat.\n";
+    DEBUG "Wiki pages in category $cat.";
     my $limit = 5000; my $max = 1000;
     if (defined $nr ) {
 	$limit = $nr; $max = 1;
@@ -392,7 +392,7 @@ sub wiki_get_pages_in_category {
 sub wiki_add_url {
     my ( $ref) = @_;
 
-    INFO "Adding to list ".(scalar @$ref)." pages.\n";
+    INFO "Adding to list ".(scalar @$ref)." pages.";
     foreach (@$ref) {
 	my $info;
 	if ( (scalar keys %$_) && defined $_->{'*'}) {

@@ -89,7 +89,9 @@ sub clean_path {
     my ($svn, $local) = @_;
     my @local_dirs = ();
     @local_dirs = get_dir($local) if -d "$local";
-    my @svn_dirs = split "\n", WikiCommons::svn_list($svn, $svn_pass, $svn_user);
+    my $result = WikiCommons::svn_list($svn, $svn_pass, $svn_user);
+    return () if ! defined $result;
+    my @svn_dirs = split "\n", $result;
     my ($only_on_local, $only_on_svn, $common) = WikiCommons::array_diff( \@local_dirs, \@svn_dirs);
     foreach (@$only_on_local) {
 	INFO "Remove dir $local/$_.\n";
