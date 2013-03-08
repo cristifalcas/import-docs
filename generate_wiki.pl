@@ -262,7 +262,7 @@ sub create_wiki {
 	    WikiCommons::add_to_remove( $html_file, "file" );
 	    return $wiki;
 	} else {
-	    INFO "OpenOffice could not create the html file.\n";
+	    INFO "LibreOffice could not create the html file.\n";
 	    return;
 	}
     } else {
@@ -862,7 +862,7 @@ sub sc_worker {
 	my ($node, $title, $header);
 	if ($suffix eq ".doc" || $suffix eq ".odt" || $suffix eq ".docx") {
 	    my $info_crt_h = $pages_toimp_hash->{$url}[$svn_url_pos];
-	    foreach my $key (keys %$info_crt_h) {
+	    foreach my $key (sort keys %$info_crt_h) {
 		next if $key eq "SC_info";
 		if ($key =~ m/^([0-9]{1,}) $name$/) {
 		    $node = $1;
@@ -894,11 +894,9 @@ sub sc_worker {
 	INFO "\tWork for $file.\n";
 	my $wiki_txt = create_wiki("$url/$url $name", $file, "$url $name");
 	if (! defined $wiki_txt ){
-# 		$to_keep->{$url} = $pages_toimp_hash->{$url};
-	    delete $pages_toimp_hash->{$url};
-	    $wrong = "yes";
-	    ERROR "Skip url $url\n";
-	    last;
+	    $wrong_hash->{$url} = 1;
+	    ERROR "Can't generate wiki from url $url.\n";
+	    $wiki_txt = "ERROR: LibreOffice could not open the document.\n\n";
 	}
 	WikiCommons::add_to_remove("$wiki_dir/$url/$url $name", "dir");
 	$wiki_txt =~ s/\n(=+)(.*?)(=+)\n/\n=$1$2$3=\n/g;
@@ -998,7 +996,7 @@ sub sc_worker {
     }
     make_redirect($url, $wrong_hash);
     }; ## eval
-    if ($@ && $@ !~ m/^Exiting eval via next at/) {
+    if (($@ && $@ !~ m/^Exiting eval via next at/) || (keys %$wrong_hash)) {
 	ERROR "Error generating sc for $url: $@\n";
 	exit 10;
     }

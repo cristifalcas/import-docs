@@ -1146,7 +1146,6 @@ sub fork_function {
 	my $crt_thread = shift @thread if scalar keys %$crt_hash;
 	if (defined $crt_thread) {
 	    my $change_id = (sort keys %$crt_hash)[0];
-# if ($change_id !~ m/B105245|B628313|B633811/){push @thread, $crt_thread;delete $crt_hash->{$change_id};delete $failed->{$change_id};next;}
 	    my $val = $crt_hash->{$change_id};
 	    $crt_nr++;
 	    INFO "************* Start working in thread nr $crt_thread for $change_id (nr $crt_nr of $total_nr). Free threads: ".(scalar @thread)." out of $nr_threads.\n";
@@ -1262,13 +1261,13 @@ mysql_connect();
 oracle_conenct();
 $crt_hash = sql_get_all_changes();
 remove_old_dirs(keys %$crt_hash);
-$failed = dclone($crt_hash);
 ($index_comm, $info_comm) = sql_get_common_info();
 write_common_info ($index_comm, $info_comm);
 ($index, $SEL_INFO) = sql_generate_select_changeinfo();
 $dbh->disconnect if defined($dbh);
 $dbh_mysql->disconnect() if defined($dbh_mysql);
-
+# foreach (sort keys %$crt_hash){delete $crt_hash->{$_} if $_ !~ m/B21095|B628313|B633811/}
+$failed = dclone($crt_hash);
 fork_function($nr_threads, \&update_scid);
 
 ERROR "Failed: $_\n" foreach (sort keys %$failed);
