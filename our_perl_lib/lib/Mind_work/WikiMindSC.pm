@@ -52,7 +52,7 @@ sub get_documents {
     INFO "-Searching for files in SC dir.\n";
     foreach my $node (sort @all) {
 	$count++;
-	INFO "\tDone $count from a total of $total.\n" if ($count%1000 == 0);
+	INFO "\tDone $count from a total of $total.\n" if ($count%2000 == 0);
 	my $md5 = $node;
 	my $ret = $dbh_mysql->selectrow_array("select FILES_INFO_CRT from mind_sc_ids_versions where SC_ID='$node'");
 	if (! defined $ret) {

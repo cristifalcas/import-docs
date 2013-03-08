@@ -842,7 +842,6 @@ sub sc_worker {
     $lo_user = $lo_user."_$thread";
     my $wrong_hash = {};
     eval {
-# return if $url !~ m/B635709/;
     WikiCommons::makedir "$wiki_dir/$url/";
     WikiCommons::makedir "$wiki_dir/$url/$wiki_result";
     WikiCommons::add_to_remove ("$wiki_dir/$url/$wiki_result", "dir");
@@ -888,7 +887,7 @@ sub sc_worker {
 	}
 
 	if (! defined $title) {
-	    ERROR "No title for $name.\n";
+	    ERROR "No title for $name.\n".Dumper($file, $pages_toimp_hash->{$url});
 	    $wrong = "yes";
 	    last;
 	}
