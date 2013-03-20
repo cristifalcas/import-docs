@@ -297,7 +297,7 @@ sub get_file_sha {
     use Digest::SHA qw(sha1_hex);
     my $sha = Digest::SHA->new();
     $sha->addfile($doc_file);
-    return $sha->hexdigest;;
+    return $sha->hexdigest;
 }
 
 sub capitalize_string {

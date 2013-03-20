@@ -135,7 +135,7 @@ my $our_wiki;
 my $path_files = abs_path($options->{'d'});
 my $path_type = $options->{'n'};
 my @tmp = fileparse($path_files, qr/\.[^.]*/);
-our $wiki_dir = "$path_prefix/work/workfor_". $tmp[0].$tmp[2] ."";
+our $wiki_dir = "$path_prefix/work/workfor_". $tmp[0].$tmp[2]."";
 WikiCommons::makedir $wiki_dir;
 $wiki_dir = abs_path($wiki_dir);
 
@@ -897,6 +897,9 @@ sub sc_worker {
 	    $wrong_hash->{$url} = 1;
 	    ERROR "Can't generate wiki from url $url.\n";
 	    $wiki_txt = "ERROR: LibreOffice could not open the document.\n\n";
+	    ## otherwise we will not try to reimport them
+	    $wrong = "yes";
+	    last;
 	}
 	WikiCommons::add_to_remove("$wiki_dir/$url/$url $name", "dir");
 	$wiki_txt =~ s/\n(=+)(.*?)(=+)\n/\n=$1$2$3=\n/g;
@@ -1074,7 +1077,7 @@ sub cleanAndExit {
 
 use sigtrap 'handler' => \&cleanAndExit, 'INT', 'ABRT', 'QUIT', 'TERM';
 
-if (-f "$pid_file") {
+if (-f $pid_file) {
     open (FH, "<$pid_file") or LOGDIE "Could not read file $pid_file.\n";
     my @info = <FH>;
     close (FH);
@@ -1083,8 +1086,8 @@ if (-f "$pid_file") {
     my $exists = kill 0, $pid_old if defined $pid_old && $pid_old =~ m/^[0-9]+$/;
     if ( $exists ) {
 	my $proc_name = `ps -p $pid_old -o cmd`;
-# 	print "$proc_name\n";
 	LOGDIE "Process is already running.\n" if $proc_name =~ m/(.+?)generate_wiki\.pl -d (.+?) -n $path_type(.*)/;
+# 	exit 1;
 # 	exit 1 if $proc_name =~ m/(.+?)generate_wiki\.pl -d (.+?) -n $path_type(.*)/;
     }
 }

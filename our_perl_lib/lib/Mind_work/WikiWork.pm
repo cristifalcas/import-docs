@@ -46,7 +46,7 @@ sub new {
     INFO "Logging in.";
     if (WikiCommons::is_remote ne "yes" ) {
 	my ($user, $pass) = ($wiki_user, $wiki_pass);
-	($user, $pass) = ($robot_user, $robot_pass) if defined $self->{'user_type'} && $self->{'user_type'} eq "robot";
+# 	($user, $pass) = ($robot_user, $robot_pass) if defined $self->{'user_type'} && $self->{'user_type'} eq "robot";
 	$mw = MediaWiki::API->new({ api_url => "$wiki_url/api.php" }, retries  => 3) or LOGDIE "coco";
 	$mw->{config}->{on_error} = \&wiki_on_error;
 	$mw->login( {lgname => $user, lgpassword => $pass } )

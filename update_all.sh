@@ -7,7 +7,7 @@ LOG_PATH="/var/log/mind/wiki_logs/wiki_"
 mkdir -p "/var/log/mind/wiki_logs/"
 export LC_ALL=en_US.UTF-8
 # CMD="nice -n 20 perl"
-CMD=perl
+# CMD=perl
 
 case "$1" in
 "update_ftp")
@@ -86,14 +86,14 @@ case "$1" in
   ;;
 "update_all")
     ##update_ppt
-    $CMD "$SCRIPT_PATH"/update_PPT.pl "$WIKI_DIR_PATH/ftp_mirror/" "$WIKI_DIR_PATH/ppt_as_flash/" &
+    $CMD "$SCRIPT_PATH"/update_PPT.pl "$WIKI_DIR_PATH/ftp_mirror/" "$WIKI_DIR_PATH/ppt_as_flash/"
 
-    "$0" update_crm &
-    "$0" update_svn &
-    "$0" update_sc &
+    "$0" update_crm
+    "$0" update_svn
+    "$0" update_sc
 
     ##update_sp 
-    $CMD "$SCRIPT_PATH"/update_service_packs.pl &
+#     $CMD "$SCRIPT_PATH"/update_service_packs.pl
   ;;
 "import_all")
     ##update_customers
@@ -105,7 +105,7 @@ case "$1" in
     "$0" import_sc
 
     $CMD "$SCRIPT_PATH"/maintenance.pl 0
-    for i in $(seq 1 10); do while (( $(sudo -u apache /usr/bin/php /var/www/html/wiki/maintenance/runJobs.php --maxjobs 20 | sed '/^$/d' | wc -l) )); do echo worky;done & done
+    for i in $(seq 1 10); do while (( $(sudo -u apache /usr/bin/php /var/www/html/wiki/maintenance/runJobs.php --maxjobs 20 | sed '/^$/d' | wc -l) )); do echo "" ;done & done
   ;;
 *)
     echo "Incorrect parameter"

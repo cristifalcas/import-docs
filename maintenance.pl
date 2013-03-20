@@ -46,22 +46,25 @@ use Digest::MD5 qw(md5 md5_hex md5_base64);
 use Mind_work::WikiWork;
 use Mind_work::WikiCommons;
 
-my ($dbh,$dbh_mysql);
+my ($dbh, $dbh_mysql, $skip_ns);
 my $workdir = "$path_prefix/work/";
 my $images_dir = "/var/www/html/wiki/images/";
 my $our_wiki = new WikiWork();
 my $view_only = shift;
 $view_only = 1 if ! defined $view_only;
-my $max_elements = 3000;
-my $max_to_delete = 3000;
+my $max_elements = 2000;
+my $max_to_delete = 2000;
+$skip_ns->{Exceptions} = 1;
+$skip_ns->{something_else_bla_bla} = 1;
 
 sub fixnamespaces {
   my $namespaces = shift;
   my $res = {};
   foreach my $ns_nr (sort keys %$namespaces){
-    if ($ns_nr >= 100) {
+    if ($ns_nr >= 100 ) {
 	my $name = $namespaces->{$ns_nr};
 	$name =~ s/ /_/g;
+	next if defined $skip_ns->{$name};
 	if ($name =~ m/^SC_Deployment$/i) {
 	    $res->{'deploy'}->{$name} = $ns_nr;
 	} elsif ($name =~ m/^(SC_|CRM_)/i) {
@@ -1010,7 +1013,7 @@ if ($view_only ne "user_sr") {
     INFO "##### Fix double redirects:\n";
     scdoubleredirects;
     INFO "##### Get unused categories:\n";
-#     Dmy $unused = unused_categories();
+#     my $unused = unused_categories();
     INFO "##### Syncronize:\n";
     syncronize_local_wiki($namespaces);
     INFO "##### Remove unused images:\n";

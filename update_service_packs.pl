@@ -42,7 +42,8 @@ use Mind_work::WikiWork;
 our $dbh;
 our $work_type = shift;
 my $urlsep = WikiCommons::get_urlsep;
-my $our_wiki = WikiWork->new('robot', '1');
+# my $our_wiki = WikiWork->new('robot', '1');
+my $our_wiki = WikiWork->new();
 my $deployment_ns = "SC_Deployment";
 my $canceled_ns = "SC_Canceled";
 my $deployment_wiki = getWikiPages($deployment_ns);
@@ -59,6 +60,7 @@ sub clean_existing_deployment {
 	next if $page =~m/^[a-z][0-9]+$/i;
 	$our_wiki->wiki_delete_page("$deployment_ns:$page");
     }
+    exit 0;
 }
 
 sub sql_connect {
