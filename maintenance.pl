@@ -89,7 +89,7 @@ sub get_results {
   if ($type eq "list" ){
     $regexp = q{/html/body/div[@id="content"]/div[@id="bodyContent"]/div[@id="mw-content-text"]/div[@class="mw-spcontent"]/ol/li/a/@title};
   } elsif ($type eq "ul" ){
-    $regexp = q{/html/body/div[@id="content"]/div[@id="bodyContent"]/div[@id="mw-content-text"]/div[@class="mw-spcontent"]/ul[@class="gallery"]/li/div/div/div/a/img/@alt};
+    $regexp = q{/html/body/div[@id="content"]/div[@id="bodyContent"]/div[@id="mw-content-text"]/div[@class="mw-spcontent"]/ul[@class="gallery"]/li/div/div/a/@title};
   } elsif ($type eq "table" ){
     $regexp = q{/html/body/div[@id="content"]/div[@id="bodyContent"]/div[@id="mw-content-text"]/div[@class="mw-spcontent"]/table[@class="gallery"]/tr/td/div[@class="gallerybox"]/div[@class="gallerytext"]/a/@title};
   } elsif ($type eq "q" ){
@@ -464,19 +464,19 @@ sub unused_categories {
     return $result;
 }
 
-sub wanted_categories {
-  my $link = "http://localhost/wiki/index.php?title=Special:WantedCategories&limit=$max_elements&offset=0";
-  my $res = get_results($link);
-  my $result = ();
-  foreach my $elem (@$res){
-      $elem =~ s/ \(page does not exist\)$//;
-      my $cat = "Category:$elem";
-      push @$result, $cat;
-#       INFO"add category $cat.\n";
-#       $our_wiki->wiki_edit_page("$cat", "----") if ! $view_only;
-  }
-  return $result;
-}
+# sub wanted_categories {
+#   my $link = "http://localhost/wiki/index.php?title=Special:WantedCategories&limit=$max_elements&offset=0";
+#   my $res = get_results($link);
+#   my $result = ();
+#   foreach my $elem (@$res){
+#       $elem =~ s/ \(page does not exist\)$//;
+#       my $cat = "Category:$elem";
+#       push @$result, $cat;
+# #       INFO"add category $cat.\n";
+# #       $our_wiki->wiki_edit_page("$cat", "----") if ! $view_only;
+#   }
+#   return $result;
+# }
 
 sub broken_redirects {
   my $link = "http://localhost/wiki/index.php?title=Special:BrokenRedirects&limit=$max_elements&offset=0";
@@ -531,7 +531,8 @@ sub unused_images_dirty {
       $elem =~ s/%26/&/g;
       $ret = 1 if ! $view_only;
       INFO "rm file $elem.\n";
-      eval{$our_wiki->wiki_delete_page("File:$elem")} if ! $view_only;
+#       eval{$our_wiki->wiki_delete_page("File:$elem")} if ! $view_only;
+      eval{$our_wiki->wiki_delete_page($elem)} if ! $view_only;
   }
   INFO "\treturn from unused images with code $ret.\n";
   return $ret;
@@ -585,20 +586,20 @@ sub fix_missing_files {
 #   return $missing_files;
 }
 
-sub fix_wanted_files {
-    ## this will delete pages if the user forgot to add an image
-  my $link = "http://localhost/wiki/index.php?title=Special:WantedFiles&limit=$max_elements&offset=0";
-  my $res = get_results($link);
-#   my $missing = {};
-  my $missing_files = ();
-  foreach my $elem (@$res){
-    next if $elem =~ m/^Special:WhatLinksHere/i;
-    $elem =~ s/ \(page does not exist\)//;
-    $missing_files->{$elem} = 1;
-  }
-
-  return $missing_files;
-}
+# sub fix_wanted_files {
+#     ## this will delete pages if the user forgot to add an image
+#   my $link = "http://localhost/wiki/index.php?title=Special:WantedFiles&limit=$max_elements&offset=0";
+#   my $res = get_results($link);
+# #   my $missing = {};
+#   my $missing_files = ();
+#   foreach my $elem (@$res){
+#     next if $elem =~ m/^Special:WhatLinksHere/i;
+#     $elem =~ s/ \(page does not exist\)//;
+#     $missing_files->{$elem} = 1;
+#   }
+# 
+#   return $missing_files;
+# }
 
 sub getlocalimages {
   use File::Find;
@@ -1012,12 +1013,10 @@ if ($view_only ne "user_sr") {
     broken_redirects;
     INFO "##### Fix double redirects:\n";
     scdoubleredirects;
-    INFO "##### Get unused categories:\n";
-#     my $unused = unused_categories();
-    INFO "##### Syncronize:\n";
-    syncronize_local_wiki($namespaces);
     INFO "##### Remove unused images:\n";
     while (unused_images_dirty()){};
+    INFO "##### Syncronize:\n";
+    syncronize_local_wiki($namespaces);
     INFO "##### Syncronize wiki files with fs files.\n";
     fix_images();
 

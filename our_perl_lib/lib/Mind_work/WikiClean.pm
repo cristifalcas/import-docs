@@ -25,14 +25,14 @@ use Encode;
 
 our $debug = "no";
 
-sub tree_remove_strike {
-    my $tree = shift;
-    INFO " Remove strikes.\n";
-    foreach my $a_tag ($tree->guts->look_down(_tag => "strike")) {
-	$a_tag->detach;
-    }
-    return $tree;
-}
+# sub tree_remove_strike {
+#     my $tree = shift;
+#     INFO " Remove strikes.\n";
+#     foreach my $a_tag ($tree->guts->look_down(_tag => "strike")) {
+# 	$a_tag->detach;
+#     }
+#     return $tree;
+# }
 
 sub tree_clean_empty_p {
     my $tree = shift;
@@ -167,8 +167,6 @@ sub cleanup_html {
 WikiCommons::write_file("$dir/".++$i.". original.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
     $tree = tree_remove_TOC($tree);
 WikiCommons::write_file("$dir/".++$i.". tree_remove_TOC.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
-#     $tree = tree_remove_strike($tree);
-# WikiCommons::write_file("$dir/".++$i.". tree_remove_strike.$name.html", tree_to_html($tree), 1) if $debug eq "yes";
     $tree = heading_new_line($tree);
 
 #     $tree->no_space_compacting(1);
@@ -396,6 +394,7 @@ sub tree_clean_span {
 			if ($att =~ m/^\s*float: (top|left|right)\s*$/i
 				    || $att =~ m/^\s*text-decoration:/i
 				    || $att =~ m/^\s*letter-spacing:/i
+				    || $att =~ m/^\s*color:#[0-9a-f]{6}/i
 				    || $att =~ m/^\s*position: absolute\s*$/i
 				    || $att =~ m/^\s*(margin-)?(top|left|right): -?[0-9]{1,}(\.[0-9]{1,})?in\s*$/i
 				    || $att =~ m/^\s*margin: [0-9]{1,}(\.[0-9]{1,})?in\s*$/i
@@ -588,6 +587,7 @@ sub tree_clean_tables_attributes {
 		|| $attr_name eq "align"
 		|| $attr_name eq "style"
 		|| $attr_name eq "cols"
+		|| $attr_name eq "class"
 # 			&& ( $attr_value =~ "page-break-(before|after|inside)")
 		|| $attr_name eq "hspace"
 		|| $attr_name eq "vspace"){
@@ -635,7 +635,7 @@ sub tree_clean_tables {
 		### clean tr attributes
 		foreach my $attr_name ($b_tag->all_external_attr_names){
 		    my $attr_value = $b_tag->attr($attr_name);
-		    if ( $attr_name eq "valign"){
+		    if ( $attr_name eq "valign" || $attr_name eq "class"){
 			$a_tag->attr("$attr_name", undef);
 		    } elsif ( $attr_name eq "bgcolor") {
 		    } else {
@@ -757,7 +757,7 @@ sub html_tidy {
 }
 
 sub make_wiki_from_html {
-    my $html_file = shift;
+    my ($html_file, $type) = @_;
     my ($name,$dir,$suffix) = fileparse($html_file, qr/\.[^.]*/);
 
     open (FILEHANDLE, "$html_file") or LOGDIE "at wiki from html Can't open file $html_file: ".$!."\n";
@@ -768,7 +768,8 @@ sub make_wiki_from_html {
 
     INFO "\t-Generating wiki file from $name$suffix.\n";
     my $wiki;
-    my $strip_tags = [ '~comment', 'head', 'script', 'style', 'strike'];
+    my $strip_tags = [ '~comment', 'head', 'script', 'style'];
+    push @$strip_tags, 'strike' if defined $type && $type !~ m/mindserve/i;
     my $wc = new HTML::WikiConverter(
 	dialect => 'MediaWiki_Mind',
 	strip_tags => $strip_tags,
@@ -847,8 +848,11 @@ sub fix_tabs {
 sub fix_small_issues {
     my $wiki = shift;
 
+    INFO "Fix small wiki issues.\n";
     ## replace breaks
     $wiki =~ s/(<BR>)|(<br\ \/>)/\n\n/gmi;
+    ## fix start with shit from wiki
+    $wiki =~ s/^(\*|#|;|:|=|!|----)/<nowiki>$1<\/nowiki>/gm;
     ## remove empty sub
     $wiki =~ s/<sub>[\s]{0,}<\/sub>//gsi;
     $wiki =~ s/(<center>)|(<\/center>)/\n\n/gmi;
@@ -966,7 +970,7 @@ sub get_wiki_images {
 	my $info = image_info("$dir/$pic_name");
 	if (my $error = $info->{error}) {
 	    INFO "Can't parse image info for dir \"$dir\", file \"$pic_name\":\n\t $error.\n";
-	    LOGDIE "" if $dir !~ m/CMS:MIND-IPhonEX CMS 80.00.020/;
+# 	    LOGDIE "" if $dir !~ m/CMS:MIND-IPhonEX CMS 80.00.020/;
 	    next;
 	}
 	push (@$image_files,  "$dir/$pic_name");

@@ -236,7 +236,7 @@ sub create_wiki {
 	my $html_file = "$work_dir/$new_file.html";
 
 	if ( -f $html_file && ! -e ".~lock.$new_file#") {
-	    my ($wiki, $image_files) = WikiClean::make_wiki_from_html ( $html_file );
+	    my ($wiki, $image_files) = WikiClean::make_wiki_from_html ( $html_file, $path_type );
 	    return undef if (! defined $wiki );
 
 	    WikiCommons::add_to_remove ("$work_dir/$wiki_result", "dir");
@@ -1026,48 +1026,48 @@ sub getCommonInfoSC {
 }
 
 # quick_and_dirty_html_to_wiki
-sub quick_and_dirty_html_to_wiki {
-    my $url = "SIP Call Flow";
-    my $work_dir = "$wiki_dir/$url";
-    $wiki_result = "result";
-    my $dest = "$work_dir/$wiki_result";
-    WikiCommons::makedir ("$dest");
-    `cp -R "./tmp/SIP Call Flow/"* "$work_dir"`;
-    my $html_file = "$work_dir/article.asp.htm";
-
-    my ($name,$dir,$suffix) = fileparse($html_file, qr/\.[^.]*/);
-    my $zip_name = $name;
-    my ($wiki, $image_files) = WikiClean::make_wiki_from_html ( $html_file );
-    return undef if (! defined $wiki );
-
-
-    WikiCommons::add_to_remove ("$work_dir/$wiki_result", "dir");
-    WikiCommons::makedir ("$dest");
-    my %seen = ();
-    open (FILE, ">>$work_dir/$wiki_files_uploaded") or LOGDIE "at create wiki can't open file $work_dir/$wiki_files_uploaded for writing: $!\n";
-    INFO "\t-Moving pictures and making zip file.\n";
-    foreach my $img (@$image_files){
-	move ("$img", "$dest") or LOGDIE "Moving file \"$img\" failed: $!\n" unless $seen{$img}++;
-	my ($img_name,$img_dir,$img_suffix) = fileparse($img, qr/\.[^.]*/);
-	print FILE "File:$img_name$img_suffix\n";
-    }
-    $image_files = ();
-
-    my $zip = Archive::Zip->new();
-    $zip->addFile( "$work_dir/$name$suffix", "$name$suffix") or LOGDIE "Error adding file $name$suffix to zip.\n";
-    LOGDIE "Write error for zip file.\n" if $zip->writeToFileNamed( "$dest/$zip_name.zip" ) != AZ_OK;
-    print FILE "File:$zip_name.zip\n";
-    close (FILE);
-    INFO "\t+Moving pictures and making zip file.\n";
-    WikiCommons::add_to_remove( $html_file, "file" );
-
-    $pages_toimp_hash->{$url}[$md5_pos] = "";
-    $pages_toimp_hash->{$url}[$rel_path_pos] = "";
-    $pages_toimp_hash->{$url}[$svn_url_pos] = "";
-    $pages_toimp_hash->{$url}[$link_type_pos] = "";
-    insertdata($url, $wiki);
-    LOGDIE "Failed in cleanup.\n" if WikiCommons::cleanup($work_dir);
-}
+# sub quick_and_dirty_html_to_wiki {
+#     my $url = "SIP Call Flow";
+#     my $work_dir = "$wiki_dir/$url";
+#     $wiki_result = "result";
+#     my $dest = "$work_dir/$wiki_result";
+#     WikiCommons::makedir ("$dest");
+#     `cp -R "./tmp/SIP Call Flow/"* "$work_dir"`;
+#     my $html_file = "$work_dir/article.asp.htm";
+# 
+#     my ($name,$dir,$suffix) = fileparse($html_file, qr/\.[^.]*/);
+#     my $zip_name = $name;
+#     my ($wiki, $image_files) = WikiClean::make_wiki_from_html ( $html_file );
+#     return undef if (! defined $wiki );
+# 
+# 
+#     WikiCommons::add_to_remove ("$work_dir/$wiki_result", "dir");
+#     WikiCommons::makedir ("$dest");
+#     my %seen = ();
+#     open (FILE, ">>$work_dir/$wiki_files_uploaded") or LOGDIE "at create wiki can't open file $work_dir/$wiki_files_uploaded for writing: $!\n";
+#     INFO "\t-Moving pictures and making zip file.\n";
+#     foreach my $img (@$image_files){
+# 	move ("$img", "$dest") or LOGDIE "Moving file \"$img\" failed: $!\n" unless $seen{$img}++;
+# 	my ($img_name,$img_dir,$img_suffix) = fileparse($img, qr/\.[^.]*/);
+# 	print FILE "File:$img_name$img_suffix\n";
+#     }
+#     $image_files = ();
+# 
+#     my $zip = Archive::Zip->new();
+#     $zip->addFile( "$work_dir/$name$suffix", "$name$suffix") or LOGDIE "Error adding file $name$suffix to zip.\n";
+#     LOGDIE "Write error for zip file.\n" if $zip->writeToFileNamed( "$dest/$zip_name.zip" ) != AZ_OK;
+#     print FILE "File:$zip_name.zip\n";
+#     close (FILE);
+#     INFO "\t+Moving pictures and making zip file.\n";
+#     WikiCommons::add_to_remove( $html_file, "file" );
+# 
+#     $pages_toimp_hash->{$url}[$md5_pos] = "";
+#     $pages_toimp_hash->{$url}[$rel_path_pos] = "";
+#     $pages_toimp_hash->{$url}[$svn_url_pos] = "";
+#     $pages_toimp_hash->{$url}[$link_type_pos] = "";
+#     insertdata($url, $wiki);
+#     LOGDIE "Failed in cleanup.\n" if WikiCommons::cleanup($work_dir);
+# }
 
 sub cleanAndExit {
     WARN "Killing all child processes\n";
@@ -1112,7 +1112,7 @@ if ($path_type eq "mind_svn") {
     work_for_docs();
 } elsif ($path_type =~ m/^crm_(.+)$/) {
     $lo_user = "";
-    $coco = new WikiMindCRM("$path_files", "$1");
+    $coco = new WikiMindCRM($path_files, "$1");
     $all_real = "yes";
     work_begin();
     make_categories();
@@ -1120,13 +1120,22 @@ if ($path_type eq "mind_svn") {
     fork_function($crm_nr_forks, \&crm_worker);
 } elsif ($path_type eq "sc_docs") {
     $lo_user = "wiki_sc";
-    $coco = new WikiMindSC("$path_files", WikiCommons::get_urlsep);
+    $coco = new WikiMindSC($path_files, WikiCommons::get_urlsep);
     $all_real = "yes";
     work_begin();
     make_categories();
     split_redirects();
     foreach (keys %$pages_toimp_hash) {LOGDIE "There are no links.\n" if ($pages_toimp_hash->{$_}[$link_type_pos] eq "link")};
     fork_function($sc_nr_forks, \&sc_worker, getCommonInfoSC());
+} elsif ($path_type eq "mindserve") {
+    $lo_user = "wiki_mindserve";
+#     $coco = new WikiMindServe($path_files, WikiCommons::get_urlsep);
+#     $all_real = "yes";
+#     work_begin();
+#     make_categories();
+#     split_redirects();
+#     foreach (keys %$pages_toimp_hash) {LOGDIE "There are no links.\n" if ($pages_toimp_hash->{$_}[$link_type_pos] eq "link")};
+#     fork_function($sc_nr_forks, \&mindserve_worker);
 }
 
 ## connection is broken in threads

@@ -1,17 +1,5 @@
 #!/bin/bash
 
-OUT_DIR="/mnt/svn/"
-mkdir -p "$OUT_DIR"
-PREFIX="$OUT_DIR/$(date '+%d-%b-%Y')"
-
-if [[ $(echo $(df | grep "/mnt/svn" | gawk '{print $(NF-2)}')-20000000|bc) -gt 0 ]]; then 
-    #'
-    echo "We have enough space for the backup"
-else 
-    echo "Not enough space for the backup"
-    exit 1
-fi
-
 function bkp_scripts {
   echo "local scripts: vpn, expect"
   NAME=$PREFIX-scripts.tar.bz2
@@ -76,32 +64,37 @@ sudo -u apache php /var/www/html/wiki/maintenance/namespaceDupes.php --fix
 
 function clean {
   echo "clean dirs"
-  rm -rf /tmp/systemd-private*
   rm -rf /tmp/webdriver-rb*
   rm -rf /var/www/html/wiki/images/deleted/*
   rm -rf /var/www/html/wiki/images/archive/*
+## The filearchive table stores all the media that has been deleted
+  echo "TRUNCATE filearchive" |mysql wikidb -u wikiuser -p\!0wikiuser\@9
   rm -rf /var/www/html/wiki/images/thumb/*
-#   rm -rf /home/vpnis/.java/deployment/log/
-#   rm -rf /mnt/share2/remote/auto_scripts/*
-  find "$OUT_DIR/" -maxdepth 1 -type f -mtime +10 -exec rm {} \;
-#   find /mnt/share2/iptables_logs/ -mtime +30 -exec rm {} \;
-  find /mnt/wiki_files/wiki_files/work/bad_dir/ -mtime +14 -exec rm {} \;
+  find /media/share/Documentation/cfalcas/q/import_docs/work/bad_dir/ -mtime +14 -exec rm {} \;
 }
 
-LOG_PREFIX="/var/log/mind/backup"
-/bin/cp -f /etc/hosts.good /etc/hosts
+# OUT_DIR="/mnt/svn/"
+# mkdir -p "$OUT_DIR"
+# PREFIX="$OUT_DIR/$(date '+%d-%b-%Y')"
+# if [[ $(echo $(df | grep "/mnt/svn" | gawk '{print $(NF-2)}')-20000000|bc) -gt 0 ]]; then 
+#     #'
+#     echo "We have enough space for the backup"
+# else 
+#     echo "Not enough space for the backup"
+#     exit 1
+# fi
+# /bin/cp -f /etc/hosts.good /etc/hosts
+# bkp_scripts > "$LOG_PREFIX"_bkp_scripts.log 2>&1
+# bkp_wikidir > "$LOG_PREFIX"_bkp_wikidir.log 2>&1
+# bkp_fullxmldump > "$LOG_PREFIX"_bkp_fullxmldump.log 2>&1
+# bkp_mysqldir > "$LOG_PREFIX"_bkp_mysqldir.log 2>&1
+# bkp_mysqldump > "$LOG_PREFIX"_bkp_mysqldump.log 2>&1
+# bkp_fullos > "$LOG_PREFIX"_bkp_fullos.log 2>&1
+
+LOG_PREFIX="/var/log/mind/wiki"
 clean > "$LOG_PREFIX"_clean.log 2>&1
-bkp_scripts > "$LOG_PREFIX"_bkp_scripts.log 2>&1
-bkp_wikidir > "$LOG_PREFIX"_bkp_wikidir.log 2>&1
-bkp_fullxmldump > "$LOG_PREFIX"_bkp_fullxmldump.log 2>&1
-bkp_mysqldir > "$LOG_PREFIX"_bkp_mysqldir.log 2>&1
-bkp_mysqldump > "$LOG_PREFIX"_bkp_mysqldump.log 2>&1
-bkp_fullos > "$LOG_PREFIX"_bkp_fullos.log 2>&1
 clean_wiki > "$LOG_PREFIX"_clean_wiki.log 2>&1
 
 mysqlcheck -uwikiuser -p\!0wikiuser\@9 --databases wikidb --optimize > "$LOG_PREFIX"_mysql_optimize.log 2>&1
 sudo -u apache php /var/www/html/wiki/maintenance/rebuildall.php > "$LOG_PREFIX"_rebuildall.log 2>&1
 sudo -u apache php /var/www/html/wiki/maintenance/refreshLinks.php > "$LOG_PREFIX"_refreshLinks.log 2>&1
-
-
-# rm `find /mnt/wiki_files/wiki_files/html/wiki/images/ -iname \*.jpg | grep "SVN:" | grep "_--_" | head -n 100 `

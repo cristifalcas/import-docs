@@ -451,19 +451,30 @@ sub generate_html_file {
 		    "pdf"  => "pdf:impress_pdf_Export",
 		    "swf"  => "swf:impress_flash_Export",
 		    "txt"  => "txt:TEXT (StarWriter_Web)",
+		    "odt"  => "odt:writer8",
+		    "odt_macro"  => "macro:///Standard.Module1.embedImagesInWriter($doc_file)",
+		    "doc"  => "doc:MS Word 97",
+		    "docx"  => "docx:MS Word 2007 XML",
+		    "null"  => "null",
 		  };
-    my $lo_tmp_dir = "/tmp/wiki_libreoffice_$thread";
-    ## I removed libreoffice from the system.
-    my @lo_args = ("--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "--convert-to", $filters->{$type}, "--outdir", "$dir", "$doc_file", "-env:UserInstallation=file://$lo_tmp_dir");
+    my $lo_tmp_dir = "/tmp/wiki_libreoffice_tmp_home/$thread";
+
+    my @lo_args_common = ("--invisible", "--nodefault", "--nologo", "--nofirststartwizard", "--norestore", "-env:UserInstallation=file://$lo_tmp_dir");
+    my @lo_args_normal = ("--convert-to", $filters->{$type}, "--outdir", $dir, $doc_file);
+    my @lo_args_macro = ($filters->{$type});
+
+    my @lo_args = (@lo_args_common, @lo_args_normal);
+    @lo_args = (@lo_args_common, @lo_args_macro) if $type eq "odt_macro";
+
     my $commands = {
 	  "1. latest office" 		=> ["/opt/libreoffice4.0/program/soffice", "--headless", @lo_args], 
 	  "2. latest office with X" 	=> ["/opt/libreoffice4.0/program/soffice", "--display", ":10235", @lo_args], 
-	  "3. unoconv" 			=> ["python", "$real_path/convertors/unoconv", "-f", "$type", "$doc_file"],
-	  "4. old office" 		=> ["/opt/libreoffice3.6/program/soffice", "--headless", @lo_args], 
-	  "5. old office with X" 	=> ["/opt/libreoffice3.6/program/soffice", "--display", ":10235", @lo_args], 
-	  "6. latest office" 		=> ["/opt/libreoffice4.0/program/soffice", "--headless", @lo_args], 
-	  "7. latest office with X" 	=> ["/opt/libreoffice4.0/program/soffice", "--display", ":10235", @lo_args], 
+	  "3. old office" 		=> ["/opt/libreoffice3.6/program/soffice", "--headless", @lo_args], 
+	  "4. old office with X" 	=> ["/opt/libreoffice3.6/program/soffice", "--display", ":10235", @lo_args], 
+	  "5. latest office" 		=> ["/opt/libreoffice4.0/program/soffice", "--headless", @lo_args], 
+	  "6. latest office with X" 	=> ["/opt/libreoffice4.0/program/soffice", "--display", ":10235", @lo_args], 
 	};
+# 	  "3. unoconv" 			=> ["python", "$real_path/convertors/unoconv", "-f", "$type", "$doc_file"],  ## not working
 
     INFO "\t-Generating $type file from $name$suffix.\n\t\t$doc_file\n";
     system("Xvfb :10235 -screen 0 1024x768x16 &> /dev/null &"); ## if we don't use headless
@@ -485,6 +496,13 @@ sub generate_html_file {
 	}
 # 	`kill -9 \$(ps -ef | egrep soffice.bin\\|oosplash.bin | grep -v grep | grep "$lo_tmp_dir" | gawk '{print \$2}') &>/dev/null`;
 	remove_tree($lo_tmp_dir);
+	if ($type eq "odt_macro") {
+	    INFO "Setting macro.\n";
+	    my $lo_macro_from = "$real_path/tools/LO_Module1.xba";
+	    my $lo_macro_prefix = "user/basic/Standard/Module1.xba";
+	    capture { system(@{$commands->{$key}}, "/dev/null") };
+	    copy ($lo_macro_from, "$lo_tmp_dir/$lo_macro_prefix") || LOGDIE "Can't copy file $lo_macro_from to \n\t$lo_tmp_dir/$lo_macro_prefix\n: $!.\n";
+	}
 	sleep 1;
 	eval {
 	  local $SIG{ALRM} = sub { die "alarm\n" };
@@ -492,12 +510,13 @@ sub generate_html_file {
 	  INFO "Running: ".(join ' ', @{$commands->{$key}}).".\n";
 	  my ($stdout, $stderr, $exit) = capture { system(@{$commands->{$key}}); };
 	  INFO $stdout;
-	  ERROR $stderr if $stderr !~ m/^Fontconfig warning: .* Having multiple .family. in .alias. isn't supported and may not work as expected/;
+	  ERROR $stderr if $stderr !~ m/^Fontconfig warning: .* Having multiple .family. in .alias. isn't supported and may not work as expected/ &&
+				$stderr !~ m/^javaldx: Could not find a Java Runtime Environment/;
 	  alarm 0;
 	};
 	$status = $@;
 
-	last if ! $status && -f "$dir/$name.$type";
+	last if (! $status && -f "$dir/$name.$type") || ($type eq "odt_macro" && ! $status && -f "$dir/$name.odt");
 	$max_wait_time = $max_wait_time <= 60 ? 300 : $max_wait_time * 2;
 	ERROR "\t\tError: $status. Try again with next command.\n";
     }
